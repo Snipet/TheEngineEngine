@@ -1,0 +1,143 @@
+From 3532f6feb077bfad36f81eb651f7d5fe0a95193f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 19:40:28 +0000
+Subject: [PATCH] predict: a two-stage cam's points under its switch read as an
+ upward sweep reaches them (the stage latched in the band let down; the speed
+ brought up at 100 rad/s^2)
+
+The 5740 rpm point of two-stage-cam-20 read stage B at 181.3 N m (P's 13 N m notch): reached from 6827 rpm with the
+stage latched, or stepped up from below with the absorber's loop overshooting the up switch (some 13 % of the step).
+Now stage A, 192.1 N m; the stepped dyno upward 190.3. Builds with no stages, and points over the switch, untouched.
+The test fails without the cure (the band point reads 1).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgS18iAMhTAJ6tm4wT6
+---
+ host/src/Predict.cpp      | 44 +++++++++++++++++++++++++++++++++++++++
+ tests/host/EngineTest.cpp | 38 +++++++++++++++++++++++++++++++++
+ 2 files changed, 82 insertions(+)
+
+diff --git a/host/src/Predict.cpp b/host/src/Predict.cpp
+index c6edf297..b6c655f7 100644
+--- a/host/src/Predict.cpp
++++ b/host/src/Predict.cpp
+@@ -65,6 +65,14 @@ namespace tee
+                 hasState_ = find("tel.engine.state", state_);
+                 hasFlags_ = find("tel.engine.flags", flagsH_);
+                 hasRetard_ = find("ecu.one.knock.retard", retardH_);
++                // a two-stage cam's switch (valvetrain/lab.fm): up above its speed, down below it less the hysteresis
++                hasStage_ = build.fieldOf("valve.stages") >= 0 && build.get("valve.stages") != 0.0
++                            && build.fieldOf("valve.stageSpeed") >= 0 && find("tel.valve.stage", stageH_);
++                if (hasStage_)
++                {
++                    stageUp_ = build.get("valve.stageSpeed");
++                    stageHyst_ = build.fieldOf("valve.stageHyst") >= 0 ? build.get("valve.stageHyst") : 0.0;
++                }
+                 hasBoost_ = build.fieldOf("boost.kind") >= 0 && build.get("boost.kind") != 0.0
+                             && find("tel.boost.pressure", boostH_);
+                 for (const std::string& name : options_.fields)
+@@ -290,9 +298,42 @@ namespace tee
+                 }
+             }
+ 
++            // A two-stage cam's switch holds its stage across the hysteresis band, so a point under the up switch reads
++            // the stage of the way the rig came: from a point above it, the stage left latched; from one below, the
++            // absorber's loop carrying the speed over the up switch as it steps up (a critically damped loop overshoots a
++            // step in its set speed by some 13 % of the step: 430 to 601 rad/s peaks near 624, over 612.6). Each point
++            // under the switch is read as an upward sweep reaches it (a published full-load curve's way): a stage latched
++            // is let down first, under its down switch; then the speed is brought up at 100 rad/s^2 (some 950 rpm a
++            // second, a dyno's sweep: judgement), which the loop follows within a rad/s. Card N1, 25 Nov: P's 13 N m notch
++            // at 5740 rpm on the two-stage was this. A build with no stages, or a point at or over the switch, is untouched
++            void approachFromBelow(double speed)
++            {
++                if (!hasStage_ || speed >= stageUp_)
++                    return;
++                double from = instance_->read(speed_);
++                if (instance_->read(stageH_) >= 0.5)
++                {
++                    from = std::min(speed, stageUp_ - stageHyst_) - 10.0;   // rad/s (some 95 rpm under: judgement)
++                    for (long done = 0; done < std::lround(1.0 * options_.sampleRate) && instance_->read(stageH_) >= 0.5;
++                         done += options_.block)
++                        step(from, options_.block);
++                }
++                if (from >= speed)
++                    return;
++                const double dt = static_cast<double>(options_.block) / options_.sampleRate;
++                const long n = std::max(1L, std::lround((speed - from) / (100.0 * dt)));
++                for (long k = 1; k <= n; ++k)
++                {
++                    if (options_.warm && k % 64 == 1)
++                        warm();   // held as the warm-up and the points hold it
++                    step(from + (speed - from) * static_cast<double>(k) / static_cast<double>(n), options_.block);
++                }
++            }
++
+             // One point: held at `speed`, cycle after cycle until two agree or the most are run.
+             PredictPoint point(double speed, const std::atomic<bool>* cancel)
+             {
++                approachFromBelow(speed);
+                 PredictPoint p;
+                 p.speed = speed;
+                 const double perCycle = kFourPi / std::max(speed, 1.0) * options_.sampleRate;   // samples
+@@ -794,6 +835,9 @@ namespace tee
+             bool hasTorque_ = false, redline_ = false, idle_ = false, holdCrank_ = false, hasState_ = false,
+                  absorber_ = false, hasFlags_ = false, faulted_ = false, hasRetard_ = false, limiting_ = false;
+             Schema::Handle flagsH_, retardH_, heatSettleH_;
++            bool hasStage_ = false;
++            Schema::Handle stageH_;
++            double stageUp_ = 0.0, stageHyst_ = 0.0;   // rad/s
+             std::vector<std::pair<const FieldInfo*, std::size_t>> extra_;   // PredictOptions::fields
+             bool heatSettle_ = false, hasBoost_ = false;
+             Schema::Handle boostH_;
+diff --git a/tests/host/EngineTest.cpp b/tests/host/EngineTest.cpp
+index 0ea30743..c1904219 100644
+--- a/tests/host/EngineTest.cpp
++++ b/tests/host/EngineTest.cpp
+@@ -523,6 +523,44 @@ TEST_CASE("predicted points are the stepped dyno's settled torque within 3 %: th
+     predictedMatchesSteps("turbo-four-20-gdi.json", {423.8, 542.9}, 0.03);
+ }
+ 
++// The two-stage's switch holds its stage across its hysteresis band (valvetrain/lab.fm: up over 612.6 rad/s, down under
++// 581.2), so a predicted point in the band read the stage of the way the rig came to it: on the tip of 25 Nov the
++// 5740 rpm point, reached from 6827 rpm (or stepped up from 4110 with the absorber's loop carrying it over the switch),
++// read stage B at 181.3 N m between 194.5 and 202.5: P's 13 N m notch. Read as an upward sweep reaches it, stage A, 192.1
++// (the stepped dyno, upward: 190.3). Every point under the switch reads A and every one over it B, whatever the order
++// the rigs take them in (card N1)
++TEST_CASE("a two-stage cam's predicted points read the stage an upward sweep reaches them in: none latched in the band",
++          "[engine][sim][predict]")
++{
++    if (!haveSim())
++        SKIP("sim/engine.fm is not there yet");
++    std::string error;
++    const auto sim = compiled(simDir(), {}, error);
++    REQUIRE(sim != nullptr);
++    Build build(sim->fields());
++    std::vector<std::string> warnings;
++    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/two-stage-cam-20.json",
++                           BuildPart::Whole, warnings, error));
++    const double up = build.get("valve.stageSpeed");
++    PredictOptions options;
++    options.from = 89.0;      // P's rows' range
++    options.to = 942.5;
++    options.fields = {"tel.valve.stage"};
++    PredictCurve curve;
++    REQUIRE(predictCurve(sim, build, options, curve, error));
++    int band = 0;
++    for (const PredictPoint& p : curve.points)
++    {
++        if (!p.valid || p.limited)
++            continue;
++        REQUIRE(p.fields.size() == 1);
++        CAPTURE(p.speed * 30.0 / 3.14159265358979, p.torque, p.fields[0]);
++        CHECK(p.fields[0] == (p.speed > up ? 1.0 : 0.0));
++        band += p.speed < up && p.speed > up - build.get("valve.stageHyst") ? 1 : 0;
++    }
++    CHECK(band >= 1);   // a point in the band, where the way it came decides
++}
++
+ TEST_CASE("the knock limit's key moves with what moves the knock limit, and not with the air or the person's timing",
+           "[engine][sim][bake]")
+ {
+-- 
+2.43.0
+
