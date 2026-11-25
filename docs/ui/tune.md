@@ -47,4 +47,17 @@ The live cell, trail and slices are the map read where the engine is: `engine.sp
 `ctl.bakeMaps`) and, when the Scope's `bakeCount` moves, copies `scope.baked*` into the table and turns the formula
 off, one step of undo; with no way to ask it copies the newest bake there is. Nothing else is computed here.
 
-Tests: `ui.tune.stage`, `ui.tune.large` (with `tune.paper`), `ui.tune.edit`, `ui.tune.inspector`, `ui.tune.absent`, `ui.tune.bake`, `ui.tune.knocklimit`.
+## The fuel
+
+A band across the top when the build has `fuel.grade` (sim/spec/fuel.fm): the grade by its name (the Spec's choices),
+PREV FUEL and NEXT FUEL stepping among the spark-lit grades (one gesture; a diesel's own fuel is shown, not stepped);
+AKI, RON and MON read from the simulator's own table (`sim/combustion/fuels.fm`'s `kFuelRon`, `kFuelMon`, through
+`FrameServices::simSource`, which the application serves from the sim/ it compiled; `ui/views/tune/Fuel.*` reads the
+text), a dash for each when the table is not served or has no number; a diesel says "No octane: lit by compression";
+an untested grade is in amber and says so in words. One line of what it changes: before any change, how much longer
+the end gas waits than on Regular (knock.fm's exponent, read from its text); after a change, the knock-limit map is
+shown, the line gives the bake's state as the host says it, and once the table is re-baked, its change in degrees off
+boost (load up to 1) and on boost (above 1), the mean over its cells. With `fuel.model` on Reference it says the grade
+is not read. Pressing the band (off its buttons) selects `fuel.grade`: the inspector's menu.
+
+Tests: `ui.tune.fuel`, `ui.build.tune.fuel` (the real Spec: the grade changed in the band re-keys the knock limit, undone current again), `ui.tune.stage`, `ui.tune.large` (with `tune.paper`), `ui.tune.edit`, `ui.tune.inspector`, `ui.tune.absent`, `ui.tune.bake`, `ui.tune.knocklimit`.

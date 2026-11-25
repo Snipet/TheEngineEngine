@@ -41,6 +41,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -175,6 +177,10 @@ namespace tee::app
             addFileServices(frameServices, kept->file, kept->library);
             frameServices.sparkMap = [kept] { return kept->bake.state(); };
             frameServices.stillKnocking = [kept] { return kept->bake.stillKnocking(); };
+            frameServices.simSource = [dir = engine.simDir](const std::string& file) {
+                std::ifstream in(dir / file, std::ios::binary);
+                return dir.empty() || !in ? std::string() : std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+            };
             shown.frame = [kept] { kept->bake.tick(); };
             if (window)
             {
