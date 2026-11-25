@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Air-cooled flat six",
-  "notes": "A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm (3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, auto-data.net). The real intake is a two-stage resonance intake, a flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the viscous fan. In a rear-engined coupe, five-speed manual. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the rocker class's rule (section 8 of the judgement sources). Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm (3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, auto-data.net). The real intake is a two-stage resonance intake, a flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the viscous fan. In a rear-engined coupe, five-speed manual. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the rocker class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Flat 6",
@@ -63,12 +63,12 @@
       "dIn": 0.049,
       "dEx": 0.0425,
       "train": "Rocker",
-      "inDurSeat": 256,
-      "inDur1mm": 218.0,
+      "inDurSeat": 260.0,
+      "inDur1mm": 222,
       "inLift": 0.0115,
       "inCentre": 108,
-      "exDurSeat": 252,
-      "exDur1mm": 214.0,
+      "exDurSeat": 254.0,
+      "exDur1mm": 216,
       "exLift": 0.0105,
       "exCentre": 112,
       "springRate": 48500.0,
@@ -113,6 +113,114 @@
       },
       "idle": {
         "speed": 89.012
+      },
+      "maps": {
+        "knockLimitAuto": false,
+        "knockLimit": {
+          "x": [
+            104.71975511965977,
+            188.4955092119052,
+            272.2712633041506,
+            356.0470173963961,
+            439.8227714886415,
+            523.5985255808869,
+            607.3742796731324,
+            691.1500337653778
+          ],
+          "y": [
+            0.2,
+            0.3132850776320891,
+            0.4265701552641782,
+            0.5398552328962672,
+            0.6531403105283564,
+            0.7664253881604455,
+            0.8797104657925345,
+            0.9929955434246236
+          ],
+          "z": [
+            [
+              3.2559227140814375,
+              3.2559227140814375,
+              3.2559227140814375,
+              3.2559227140814375,
+              3.2559227140814375,
+              3.2559227140814375,
+              3.2559227140814375,
+              3.7917029376452476
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              2.76128896323757
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        "knockLimitKey": 96152077
       }
     },
     "car": {

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "7.0 L pushrod V8, dry sump",
-  "notes": "A 7.0 L small-block-sized pushrod V8 with titanium intake valves and a dry sump: 104.8 x 101.6 mm (7011 cc), 11:1, 7000 rpm (the LS7 kind: 377 kW at 6300 rpm, 637 N m at 4800; gmauthority.com). In a light front-engined sports car, six-speed manual. Its cam: the LS7's (GM 12638426: 211/230 deg at 0.050 in, 0.593/0.588 in lift on 1.8 rockers, 121 deg lobe separation; from search snippets of Chevrolet Performance's listing, the page itself refused and not read); the seats 26 deg a side beyond the 0.050 in figure and the intake centreline 112 JUDGEMENT. Its head's port quality 1.44 / 1.68 from the LS7 head's flow sheet (RLD Performance's bench, 28 in H2O: measured, third party), balanced from 0.300 to 0.600 in lift; the model's port limit over-reads that head by up to 7.5 % at 0.400 in. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: its card's advertised and 0.050 in durations are tappet lift: through its 1.8 rocker (the LS7's 1.8, search snippets of Chevrolet Performance's listing, the page not read) to the valve, solved in the simulator's lift curve (section 8 of the judgement sources). Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 7.0 L small-block-sized pushrod V8 with titanium intake valves and a dry sump: 104.8 x 101.6 mm (7011 cc), 11:1, 7000 rpm (the LS7 kind: 377 kW at 6300 rpm, 637 N m at 4800; gmauthority.com). In a light front-engined sports car, six-speed manual. Its cam: the LS7's (GM 12638426: 211/230 deg at 0.050 in, 0.593/0.588 in lift on 1.8 rockers, 121 deg lobe separation; from search snippets of Chevrolet Performance's listing, the page itself refused and not read); the seats 26 deg a side beyond the 0.050 in figure and the intake centreline 112 JUDGEMENT. Its head's port quality 1.44 / 1.68 from the LS7 head's flow sheet (RLD Performance's bench, 28 in H2O: measured, third party), balanced from 0.300 to 0.600 in lift; the model's port limit over-reads that head by up to 7.5 % at 0.400 in. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: its card's advertised and 0.050 in durations are tappet lift: through its 1.8 rocker (the LS7's 1.8, search snippets of Chevrolet Performance's listing, the page not read) to the valve, solved in the simulator's lift curve (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -123,6 +123,114 @@
       },
       "idle": {
         "speed": 78.54
+      },
+      "maps": {
+        "knockLimitAuto": false,
+        "knockLimit": {
+          "x": [
+            104.71975511965977,
+            192.98351144404805,
+            281.24726776843636,
+            369.51102409282464,
+            457.7747804172129,
+            546.0385367416012,
+            634.3022930659895,
+            722.5660493903778
+          ],
+          "y": [
+            0.2,
+            0.31379535881710197,
+            0.427590717634204,
+            0.5413860764513059,
+            0.6551814352684079,
+            0.7689767940855099,
+            0.8827721529026118,
+            0.9965675117197139
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        "knockLimitKey": 426352099
       }
     },
     "car": {

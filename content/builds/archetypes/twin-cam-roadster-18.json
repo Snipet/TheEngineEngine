@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.8 L twin-cam roadster",
-  "notes": "A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule (section 8 of the judgement sources). Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -54,12 +54,12 @@
       "dIn": 0.031,
       "dEx": 0.026,
       "train": "Bucket",
-      "inDurSeat": 236,
-      "inDur1mm": 200.0,
+      "inDurSeat": 240.0,
+      "inDur1mm": 204,
       "inLift": 0.0086,
       "inCentre": 110,
-      "exDurSeat": 232,
-      "exDur1mm": 196.0,
+      "exDurSeat": 236.0,
+      "exDur1mm": 200,
       "exLift": 0.0083,
       "exCentre": 112,
       "springRate": 25900.0,
@@ -104,6 +104,114 @@
       },
       "idle": {
         "speed": 89.012
+      },
+      "maps": {
+        "knockLimitAuto": false,
+        "knockLimit": {
+          "x": [
+            104.71975511965977,
+            192.98351144404805,
+            281.24726776843636,
+            369.51102409282464,
+            457.7747804172129,
+            546.0385367416012,
+            634.3022930659895,
+            722.5660493903778
+          ],
+          "y": [
+            0.2,
+            0.31608872175813335,
+            0.43217744351626664,
+            0.5482661652744001,
+            0.6643548870325333,
+            0.7804436087906665,
+            0.8965323305488,
+            1.0126210523069332
+          ],
+          "z": [
+            [
+              2.781825318466872,
+              2.781825318466872,
+              2.781825318466872,
+              2.781825318466872,
+              2.781825318466872,
+              2.781825318466872,
+              2.781825318466872,
+              2.874324768781662
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              2.9067250679971446
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        "knockLimitKey": 167223921
       }
     },
     "car": {
