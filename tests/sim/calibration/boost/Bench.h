@@ -37,7 +37,7 @@ namespace tee::calib
     inline bool dyno(const std::shared_ptr<Sim>& sim, const std::string& buildFile, const std::vector<double>& rpms,
                      const std::vector<std::pair<std::string, double>>& sets, const std::vector<std::string>& lines,
                      std::vector<Row>& out, std::string& error, double settle = 5.0, double measure = 1.0,
-                     double warmup = 8.0)
+                     double warmup = 8.0, bool heatSettle = false)
     {
         const Fields& fields = sim->fields();
         SimHost host;
@@ -139,7 +139,21 @@ namespace tee::calib
         for (const double rpm : rpms)
         {
             c.dynoSpeed = static_cast<float>(rpm * 0.10471976);
-            play(settle, nothing);
+            if (heatSettle)
+            {
+                // (card C's settle, as tee-calib-boost --heat-settle: 1 s into each speed the exhaust's walls and the
+                // intercooler's core are put where the present flow holds them, so that a speed reached from another
+                // does not carry that one's heat for minutes)
+                static int presses = 0;
+                const double first = std::min(1.0, settle);
+                play(first, nothing);
+                ++presses;
+                build.set("exhaust.heatSettle", presses);
+                build.set("boost.heatSettle", presses);
+                play(settle - first, nothing);
+            }
+            else
+                play(settle, nothing);
             std::vector<double> sums(tel.size(), 0.0);
             int n = 0;
             double ex = 0.0, in = 0.0, last = -1.0;

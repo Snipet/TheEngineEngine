@@ -158,11 +158,15 @@ TEST_CASE("calibration boost: twin turbos on one bank, each fed by its own colle
     CHECK(r.at("boost.pressure") > 85000.0);
 }
 
-// (marked [!mayfail] by N2: on real exhaust mass and the design-point matching D2's truck at 1300 rpm makes 15 kPa fixed, its
-// compressor (matched to the build's 3.17) in surge; to the lead and D2)
 TEST_CASE("calibration boost: variable vanes past the surge line open (one state, no worse than a fixed nozzle)",
-          "[calibration][boost][!mayfail]")
+          "[calibration][boost]")
 {
+    // (restated, the lead's ruling: the property is one state, so each run is held until settled: the exhaust's walls
+    // and the cooler's core settled 1 s into each speed (card C's heatSettle; held unsettled, 25 s at 2000 rpm carried
+    // its heat down to 1300 and read 80.5 kPa against 74.6 from 800), then 15 s, then read over 5 s: on the corrected
+    // map (compressor-map-model.md) the 0.5 s means stand within 72 to 76 kPa from 10 s on. The climb from below, 11 s
+    // to 90 % (tee-calib-boost --from 800), is reported, not bounded: the surge guard holds the vanes open while the
+    // compressor sits left of its flag, and the climb is made on open vanes)
     // Card D2's 15 L truck at 1300 rpm, full load, its target out of reach (the spring's 220 kPa): the vanes' loop
     // shut them to 0.47 and the engine stood in a second state, 98 kPa and 882 N m, its compressor surging, against
     // 209 kPa and 1945 N m with the vanes at 0.9 (a fixed nozzle 206 kPa). Now the surge guard opens them: the same
@@ -177,7 +181,7 @@ TEST_CASE("calibration boost: variable vanes past the surge line open (one state
         std::vector<Row> rows;
         std::string error;
         REQUIRE(tee::calib::dyno(s.sim, "content/builds/truck-15l-six.json", {from, 1300.0}, sets,
-                                 {"boost.pressure", "engine.torque"}, rows, error, 5.0, 1.0));
+                                 {"boost.pressure", "engine.torque"}, rows, error, 15.0, 5.0, 8.0, true));
         return rows[1];
     };
     const Row fixed = run(0, 800.0);
@@ -216,4 +220,32 @@ TEST_CASE("calibration boost: the telemetry says when the charge system is far f
     CHECK(static_cast<int>(big.at("boost.mismatch")) == 5);
     CHECK(big.at("boost.coolerWants") > 2.0 * big.at("boost.coolerHas"));
     CHECK(static_cast<int>(four.at("boost.mismatch")) == 0);
+}
+
+// (marked [!mayfail] by N2 on a finding, the lead's ruling: a sequential pair cycles at its join flow, the transfer valve's
+// hysteresis (opens above the join flow, closes under 0.8 of it) narrower than the boost's swing when it opens: the
+// 13B-kind rotary at 4250 rpm, full load, swings 26 to 110 kPa and 171 to 263 N m in 0.1 s windows on a18f1bd4 and on
+// the corrected compressor map alike; not fixed in the map's commit)
+TEST_CASE("calibration boost: a sequential pair at its join flow holds one state (no cycling of the transfer valve)",
+          "[calibration][boost][!mayfail]")
+{
+    Sims s;
+    std::vector<Row> rows;
+    std::string error;
+    REQUIRE(tee::calib::dyno(s.sim, "content/builds/archetypes/rotary-twin-13.json", std::vector<double>(40, 4250.0), {},
+                             {"boost.pressure", "engine.torque"}, rows, error, 0.0, 0.1));
+    double lo = 1.0e9, hi = -1.0e9, mean = 0.0;
+    for (std::size_t i = 20; i < rows.size(); ++i)
+    {
+        const double b = rows[i].at("boost.pressure");
+        lo = std::min(lo, b);
+        hi = std::max(hi, b);
+        mean += b / 20.0;
+    }
+    std::printf("rotary at its join, 4250 rpm: boost %.1f to %.1f kPa over 0.1 s windows, mean %.1f\n", lo / 1000.0, hi / 1000.0,
+                mean / 1000.0);
+    // (one state: the 0.1 s means within 15 % of their mean (judgement: the engine's own pulsing and the loop's settle
+    // move them a few per cent; the cycling moves them by a factor of four))
+    CHECK(hi < 1.15 * mean);
+    CHECK(lo > 0.85 * mean);
 }
