@@ -203,6 +203,16 @@ namespace tee::app
             }
             else if (arg == "--expect-fault")
                 o.expectFault = true;
+            else if (arg == "--probe-input")
+            {
+                if (o.probeInput < 0.0)
+                    o.probeInput = 60.0;
+            }
+            else if (arg == "--probe-seconds")
+            {
+                if (!real(o.probeInput, 0.0, 3600.0))
+                    return false;
+            }
             else if (arg == "--cold")
                 o.cold = true;
             else if (arg == "--reference")
@@ -277,6 +287,8 @@ namespace tee::app
              "  --keep-going           with --seconds or --frames: go on when the program does not compile\n"
              "  --quality full|economy the simulator inside at 96 kHz (full, the default) or 48 kHz (economy: about half\n"
              "                         the CPU, the top octave lost); the settings file's when not given\n"
+             "  --probe-input          (the window's program) list the game controllers SDL sees (a wheel's axes, buttons,\n"
+             "                         force feedback), then print their changes for 60 s (--probe-seconds S); no window\n"
              "  --cold                 the engine starts cold (the oil and water at the air's), not warm\n"
              "  --reference            the window opens no build: the simulator's defaults, every model at Reference\n"
              "                         (without it: the remembered build, else content/builds/first.json)\n"

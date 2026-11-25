@@ -86,8 +86,7 @@ namespace tee::app
                  it.increment(ec))
             {
                 if (!user && it.depth() == 0 && it->is_directory(ec)
-                    && std::any_of(std::begin(kFixtureFolders), std::end(kFixtureFolders),
-                                   [&](const char* f) { return it->path().filename() == f; }))
+                    && files::BuildLibrary::isFixture(it->path().lexically_relative(dir)))
                 {
                     it.disable_recursion_pending();   // the test suite's fixtures: not shipped builds
                     continue;
