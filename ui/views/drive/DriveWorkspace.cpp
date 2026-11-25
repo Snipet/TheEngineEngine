@@ -384,17 +384,18 @@ namespace tee::ui
             speedo_->setRange(0.0, std::ceil(vmax / every) * every);
             speedo_->setTicks(static_cast<int>(std::ceil(vmax / every)), 2);
             speedo_->setUnit(upper(ctx_.units.unit(Quantity::speed).name));
-            // The small dials' spans in the user's units, re-chosen there to round steps (the owner's ask, 25 Nov: 0 25 50
-            // 75 100 psi, not 0 25 51 76 102), two or four steps, a number at the ends and the middle only (a face too
-            // small for the ends keeps the middle's: Gauge::setClearNumerals).
+            // The small dials' spans in the user's units, re-chosen there to round steps with the least excess (the owner's ask
+            // and the lead's rule, 25 Nov: 0 25 50 75 100 125 psi for a real 0 to 102, never 0 to 200), two to five steps,
+            // a few numbers where they fall.
             for (int i = 0; i < dash::kDials; ++i)
             {
                 const dash::Dial& d = dash::dial(i);
                 Gauge& g = *dials_[static_cast<std::size_t>(i)];
-                const dash::Scale sc = dash::roundScale(ctx_.units.toUser(d.quantity, d.lo), ctx_.units.toUser(d.quantity, d.hi), 4, true);
+                const dash::Scale sc = dash::roundScale(ctx_.units.toUser(d.quantity, d.lo), ctx_.units.toUser(d.quantity, d.hi));
                 g.setRange(sc.lo, sc.hi);
                 g.setTicks(sc.steps, 2);
-                g.setNumeralStride(sc.steps == 4 ? 2 : 1);   // the ends and the middle
+                // a few numbers where they fall: the ends and the middle when a step marks it (2, 4), else every step's
+                g.setNumeralStride(sc.steps % 2 == 0 ? sc.steps / 2 : 1);   // (a small face keeps those nearest the top)
                 g.setRedline(std::isfinite(d.red) ? ctx_.units.toUser(d.quantity, d.red) : d.red);
                 g.setUnit(ctx_.units.unit(d.quantity).name);
                 g.setNumerals([](double v) { return look::num(std::fabs(v) < 1e-9 ? 0.0 : v, "%g"); });
