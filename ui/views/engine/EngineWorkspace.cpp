@@ -90,6 +90,15 @@ namespace tee::ui
                 });
                 tabs_[t]->setLit([this, t] { return tab_ == t; });
             }
+            // Hover help (the owner's ask, 25 Nov).
+            live_->setHelp("Move the drawings with the running engine's own crank");
+            slowBtn_->setHelp("Play the last measured cycle slowly, at the pace beside it");
+            pace_->setHelp("How slowly SLOW plays a cycle: 2, 4 or 8 seconds a cycle; click for the next");
+            linear_->setHelp("The P-V loop on linear axes: pressure against volume");
+            logLog_->setHelp("The P-V loop on logarithmic axes, where compression and expansion are straight lines");
+            tabs_[0]->setHelp("Show the firing ring: each cylinder's place in its cycle, in firing order");
+            tabs_[1]->setHelp("Show the P-V loop: cylinder 1's pressure against its volume over a cycle");
+            tabs_[2]->setHelp("Show the numbers derived from the build: displacement, bore and stroke, ratios");
         }
 
         // The panels drawn now (for tests: no text may cross one's edge).
