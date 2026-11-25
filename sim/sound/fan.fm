@@ -13,17 +13,30 @@
 // a kelvin either side decided whether a 280 Hz line was in the render: the lead's 21:47). Its motor takes it to
 // 2400 rpm in about a second (time constant 0.35 s) and lets it coast down in some three (1.2 s).
 //
-// What it sounds like (Neise, "Noise reduction in centrifugal fans", and the axial fan's literature): the blades'
-// passing, at the blades times the fan's turns, with its harmonic, and the broadband noise of the turbulence off the
-// blades, whose sound power rises as the tip speed's fifth to sixth power: amplitude here as (U / U0)^2.75, shaped
-// into a band an octave or so about the passing frequency's fourth harmonic, falling 18 dB an octave above twice
-// that (a fan's broadband spectrum falls steeply above its peak; the band alone, 6 dB an octave, left a 2400 rpm
-// fan's 8 kHz octave 3 dB under the whole idling exhaust's, the owner's 21:32 report). An electric fan's motor adds its
+// What it sounds like (Neise, "Noise reduction in centrifugal fans", and the axial fan's literature): rushing air with
+// a tone inside it. The broadband noise of the turbulence off the blades, whose sound power rises as the tip speed's
+// fifth to sixth power: amplitude here as (U / U0)^2.75, shaped into a band an octave or so about twice the blade
+// pass, falling 18 dB an octave above eight times it (a fan's broadband spectrum falls steeply above its peak; a band
+// at four times with 6 dB an octave left a 2400 rpm fan's 8 kHz octave 3 dB under the whole idling exhaust's, the
+// owner's 21:32 report). The blades' passing, with its harmonic: the blades are unevenly spaced, as automotive cooling
+// fans are made (SAE 2008-01-0569, Lee and Nam, "Development of Low-Noise Cooling Fan Using Uneven Fan Blade Spacing";
+// the size of the effect here is this model's own geometry, FAN_SPREAD, judgement), so the blade pass's energy is
+// spread over the shaft orders beside it (makeLines). The tone's level against the rush is judgement, set by the
+// lead's ruling of 25 Nov: every one of its lines at least 10 dB under the fan's own rush in its third octave
+// (tests/sim/sound/FrontTest.cpp, "fan: an electric fan running"; at even spacing and the old level, 0.004, the
+// 280 Hz line stood 9 to 22 dB over everything in its third octave at the cameras: the owner's hum whenever the fan ran). An electric fan's motor adds its
 // commutator's ripple (8 segments, faint). Tip speed at the fan's 0.4 m across.
 #pragma once
 #include "lib/biquad.fm"
 #include "lib/noise.fm"
 #include "osc.fm"
+
+// how far a blade sits from its even place, at most, as a share of the pitch (judgement: see makeLines)
+const float FAN_SPREAD = 0.25f;
+// the tone's amplitude at a 40 m/s tip (was 0.004) and the rush's band's centre in blade passes (was 4): judgement, so
+// that the tone sits 10 dB under the fan's own rush in its third octaves (the lead's ruling, 25 Nov)
+const float FAN_TONE = 0.0001f;
+const float FAN_RUSH_AT = 2.0f;
 
 enum
 {
@@ -51,6 +64,11 @@ module FanVoice
     int heatOn;         // lead's ruling, 24 Nov: the thermoswitch a physical state, so the fan cools what switched it on);
     float heatLock;     // 0: its own, as below (a rig with no engine)
     float blades;
+    float bladesSeen;   // the blades the lines below were made for
+    int kMin;           // the tone's lowest shaft order
+    int kMax;           // and its highest
+    float ordSin[28];   // the tone's weights by shaft order (from the blades' places): its sine's
+    float ordCos[28];   // and its cosine's
     Glide aTone;
     Glide aNoise;
     float motor;        // an electric fan's motor ripple's share
@@ -82,6 +100,14 @@ module FanVoice
         heatOn = 0;
         heatLock = 0.25f;
         blades = 7.0f;
+        bladesSeen = 0.0f;
+        kMin = 1;
+        kMax = 0;
+        for (int i = 0; i < 28; ++i)
+        {
+            ordSin[i] = 0.0f;
+            ordCos[i] = 0.0f;
+        }
         motor = 0.0f;
         out = 0.0f;
     }
@@ -136,14 +162,65 @@ module FanVoice
             motor = 0.0f;
         }
         hzStep = (hzSet - hz) * 0.0625f;
+        if (blades != bladesSeen)
+            makeLines();
         // the tip's speed over 40 m/s, (0.4 m across: pi 0.4 a turn)
         const float u = hzSet * 1.2566371f / 40.0f;
         const float lu = u > 1.0e-4f ? expf(2.75f * logf(u)) : 0.0f;
         const float fb = fmaxf(blades * hzSet, 20.0f);
-        broad.setBandpass(fminf(4.0f * fb, 6000.0f), 0.6f, rate);
+        broad.setBandpass(fminf(FAN_RUSH_AT * fb, 6000.0f), 0.5f, rate);
         soft.setLowpass(fminf(8.0f * fb, 12000.0f), 0.707f, rate);
-        aTone.to(k * 0.004f * fminf(lu, 16.0f));
+        aTone.to(k * FAN_TONE * fminf(lu, 16.0f));
         aNoise.to(k * 0.012f * fminf(lu, 16.0f));
+    }
+
+    // The tone's lines from the blades' places (when the count changes). Blade i of B sits at (i + d_i) / B of a turn,
+    // d_i = SPREAD sin(2 pi i / B) of a pitch: an uneven, sinusoidally modulated spacing. Each blade's pressure pulse
+    // repeats once a turn, so the tone is a sum over shaft orders k of h(k) |c_k| sin(2 pi k phase + arg c_k) (kept as a sine's and a cosine's weights), with
+    // c_k = (1 / B) sum_i exp(i 2 pi k (i + d_i) / B): evenly spaced (SPREAD 0) only k = B, 2B, ... are left and this is
+    // the even fan's line at the blade pass and its harmonic; uneven, the blade pass's energy spreads to the orders
+    // beside it (the cooling fan's uneven spacing: SAE 2008-01-0569). h(k) the pulse's own spectrum: 1 about the
+    // blade pass, 0.4 about twice it. The orders kept: B - 2 to B + 2 and 2B - 2 to 2B + 2 (to order 27; the next ones out are some 23 dB down at
+    // this spacing).
+    void makeLines()
+    {
+        bladesSeen = blades;
+        const int b = (int)(blades + 0.5f) < 2 ? 2 : ((int)(blades + 0.5f) > 12 ? 12 : (int)(blades + 0.5f));
+        kMin = b - 2 < 1 ? 1 : b - 2;
+        kMax = 0;
+        for (int i = 0; i < 28; ++i)
+        {
+            ordSin[i] = 0.0f;
+            ordCos[i] = 0.0f;
+        }
+        for (int h = 1; h <= 2; ++h)
+        {
+            for (int j = -2; j <= 2; ++j)
+            {
+                const int k = h * b + j;
+                if (k < 1 || k > 27 || (h == 2 && k <= b + 2))
+                    continue;
+                float re = 0.0f;
+                float im = 0.0f;
+                for (int i = 0; i < b; ++i)
+                {
+                    const float d = FAN_SPREAD * sinf(6.28318531f * (float)i / (float)b);
+                    const float th = 6.28318531f * (float)k * ((float)i + d) / (float)b;
+                    re += cosf(th);
+                    im += sinf(th);
+                }
+                re /= (float)b;
+                im /= (float)b;
+                // (h |c_k| sin(x + arg c_k) = h re sin x + h im cos x; a line under 1 % is left out)
+                const float w = h == 1 ? 1.0f : 0.4f;
+                if (sqrtf(re * re + im * im) < 0.01f)
+                    continue;
+                ordSin[k] = w * re;
+                ordCos[k] = w * im;
+                if (k > kMax)
+                    kMax = k;
+            }
+        }
     }
 
     void tick()
@@ -155,11 +232,21 @@ module FanVoice
         out = 0.0f;
         if (at != 0.0f || an != 0.0f)
         {
-            const float m = fan.mesh(blades);
-            const float s = sn->at(m);
-            const float c = sn->cosAt(m);
-            out = at * (s + 0.4f * 2.0f * s * c + 0.05f * motor * sn->at(fan.mesh(8.0f)))
-                  + an * soft.tick(broad.tick(nScale * noise.rnd()));
+            // (the shaft's orders by rotation from the lowest kept one: four table reads a sample, not two a line)
+            const float s1 = sn->at(fan.ph);
+            const float c1 = sn->cosAt(fan.ph);
+            const float x0 = (float)kMin * fan.ph;
+            float sk = sn->at(x0);
+            float ck = sn->cosAt(x0);
+            float tone = 0.0f;
+            for (int k = kMin; k <= kMax; ++k)
+            {
+                tone += ordSin[k] * sk + ordCos[k] * ck;
+                const float sn1 = sk * c1 + ck * s1;
+                ck = ck * c1 - sk * s1;
+                sk = sn1;
+            }
+            out = at * (tone + 0.05f * motor * sn->at(fan.mesh(8.0f))) + an * soft.tick(broad.tick(nScale * noise.rnd()));
         }
     }
 };

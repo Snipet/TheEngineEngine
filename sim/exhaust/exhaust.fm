@@ -1771,6 +1771,11 @@ module Exhaust
         t->portExitTemperature = exitTemperature();
         t->flap = flapFitted() != 0 ? b.fEff[0] : 0.0f;
         t->pFlap = flapFitted() != 0 ? b.pFl[0] : 0.0f;
+        {
+            int nRaised = 0;
+            t->boreRaised = model != 0 ? b.boresRaised(&nRaised) : 0;
+            t->boresRaised = model != 0 ? nRaised : 0;
+        }
         const int bangs = model != 0 && b.bangOn != 0 ? 1 : 0;
         t->bangHeat = bangs != 0 ? b.bangRate : 0.0f;
         t->bangTime = bangs != 0 ? b.bangTau : 0.0f;

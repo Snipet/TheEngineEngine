@@ -139,3 +139,10 @@ let out, never sees that heat, and the housing's gas temperature doesn't either.
   increase, alongside the valves' `mE`.
 - The housing's inlet temperature would need to rise by that heat over the block's mass flow and cp.
 - Not built (anti-lag's turbine drive waits: the lead's ruling).
+
+**Stated bores' floor (X-038, 25 Nov; the lead's option 2).** A stated exhaust pipe bore in (0, 10 mm) is raised to
+10 mm by the builder, and `tel.exhaust.boreRaised` / `boresRaised` say which (docs/models/exhaust.md, "Stated
+bores"). The intake's twin (X-040: runner 8 mm, snorkel 10 mm) is N1's, with the helper and sites sent. **For card C,
+next window (refusal at input in the loader and the inspector):** the FMinus compiler is the owner's and not ours to
+change, so no new `fminus::` attribute. The rule lives in the host (a table beside the Spec's lint in
+host/src/Fields.cpp) or in an attribute namespace the compiler already passes through.
