@@ -284,7 +284,7 @@ namespace
 
 namespace
 {
-    // U1: the knock-limit bake's adapter (card C's KnockBakeService) over the real Spec: a build's state is one of the
+    // U1: the calibration bake's adapter (card C's CalibrationBakeService: the cam, then the knock limit) over the real Spec: a build's state is one of the
     // service's words; an edit of what moves the knock limit sets the table aside at once (knockLimitAuto on) and asks a
     // bake, waiting for the edits to rest. The bake itself (some 12 s) is card C's to test: not waited for here.
     BUILD_TEST(bakeTest, "build.bake")
@@ -304,7 +304,7 @@ namespace
         bake.tick();
         const std::string after = bake.state();
         std::printf("  after an edit of the compression: %s\n", after.c_str());
-        CHECK_MSG(after == "waiting to bake" || after == "baking", after);
+        CHECK_MSG(after == "waiting to bake" || after.rfind("baking", 0) == 0, after);   // "baking spark map", "baking cam" ...
         CHECK(rig.doc->get(autoF) > 0.5);   // set aside: the engine on its knock control
         CHECK(bake.error().empty());
         return 0;

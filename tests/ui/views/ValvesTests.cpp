@@ -605,3 +605,32 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // Both phasers (the EA888's 60 and 30 degrees): each band's words on its outer side, the exhaust's at its left and
+    // the intake's at its right, so they never meet between the cams. At the frame's stages, with no text out of place.
+    VIEW_TEST(testValvesTwoPhasers, "valves.twophasers")
+    {
+        const funkgui::Rect sizes[] = { { 64, 48, 696, 574 }, { 112, 48, 1128, 874 } };
+        for (const funkgui::Rect& st : sizes)
+        {
+            const std::string tag = st.w < 700.0f ? "small" : "large";
+            LabRig rig(static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
+            const int f = rig.doc.find("valve.exPhaseRange");
+            CHECK(f >= 0);
+            if (f < 0)
+                return 0;
+            rig.doc.set(f, 30.0);
+            rig.live();
+            rig.engine.set("valve.exPhase", 12.0);
+            rig.engine.set("valve.exPhaseTarget", 20.0);
+            rig.ctx.live.reset();
+            rig.host->tick(5);
+            const std::string why = tee::test::u2::textFaults(rig.host->draw(), { 0, 0, st.w, st.h }, tee::ui::valvesPanels(*rig.ws));
+            CHECK_MSG(why.empty(), tag + ": " + why);
+            picture("valves.twophasers." + tag, *rig.host);
+        }
+        return 0;
+    }
+}
