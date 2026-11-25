@@ -136,7 +136,9 @@ TEST_CASE("boost: electric assist spools the shaft sooner", "[boost][layout]")
 // (marked [!mayfail] by N2 on a finding: on the corrected compressor map's matching (the design flow at the charge's
 // temperature, compressor-map-model.md) the matched turbine is smaller, and asked for 400 kPa its vanes reach their open
 // stop (1.00) with the turbine's inlet at 1.64 of the boost against the limit's 1.4 and the case's 1.55 (3.85 without
-// the limit): the limit opens all it can and the fully open nozzle cannot pass that flow lower; to the lead)
+// the limit): the limit opens all it can and the fully open nozzle cannot pass that flow lower. The smaller nozzle is what
+// moved it: the case passed on the corrected map with the sizing before the design flow took the charge's temperature.
+// It goes with the vane loop's work; to the lead)
 TEST_CASE("boost: a variable nozzle's back-pressure limit holds the turbine's inlet and leaves a loop that holds its target alone",
           "[boost][layout][!mayfail]")
 {

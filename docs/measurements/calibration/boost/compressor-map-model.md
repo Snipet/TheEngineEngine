@@ -254,3 +254,41 @@ shaft krpm):
 The prediction was **wrong at both ends**: the low end gains more (+7 % and +14 % against +2 and +3 %), and the top
 does not fall (288 either way; the IS20's compressor at 6200 still at 0.74, its tip 432 m/s, short of choke). The
 maker's 350 from 1500 is still not reached at 1500 to 1800 (232 / 270): the spool there is the turbine's matter.
+
+## Tried and refuted: the surge cap on the corrected map (the lead dropped it)
+
+The loop's target capped at the surge flag's ratio at the compressor's present flow (followed over 50 ms), less a
+tenth of its rise. The turbo four (first.json), swept 1500 -> 1800 -> 2500 -> 3000 -> 4000 -> 6200, heat settled:
+
+| rpm | without, N m / kPa g | with the cap |
+|---|---|---|
+| 1500 | 216 / 16 | 216 / 16 |
+| 1800 | 237 / 25 | 237 / 25 |
+| 2500 | 385 / 124 | **301 / 61** |
+| 3000 | 351 / 122 | 352 / 122 |
+| 4000 | 365 / 124 | 365 / 124 |
+| 6200 | 289 / 88 | 288 / 88 |
+
+A target fed back from the flow it controls latches: reached straight from the warm-up at 2500 the capped engine reads
+the uncapped one's point (a ratio of 2.21 against 2.23), stepped up from 1800 it stays at 61 kPa. And it protects
+nothing on this map: uncapped, the 2500 point is flagged as surging 11 % of the time, its operating line right of the
+flag. **Condition for trying again**: a target from engine speed and load, as a maker's target map is, never one fed
+back from the compressor's flow. The patch is not in the tree.
+
+## The wastegate loop's overshoot (the lead's ruling: before anything else; main waits on it)
+
+first.json's tip-in from the dyno's take-up, 0.1 s windows against the ECU's 120 kPa target (peak over the target, the
+time above it + 5 %, the time to within 5 % from below):
+
+| rpm | the plain PI | feed-forward + windowed integral |
+|---|---|---|
+| 2500 | 166 kPa (+39 %), 1.0 s, 5.6 s | 125 kPa (+4 %), 0.0 s, 5.6 s |
+| 3500 | 187 kPa (+56 %), 2.7 s, 2.2 s | 133 kPa (+11 %), 0.6 s, 2.2 s |
+| 4500 | 177 kPa (+48 %), 3.7 s, 0.6 s | 137 kPa (+14 %), 2.8 s, 0.6 s |
+
+Tried on the way (each measured, none kept): the integral held at the duty's stops (no change: the plain PI's integral
+was not wound at a stop but gathered through the climb, 0.86 at 1.5 s); the window both sides of the target with a
+proportional 0.5 (a limit cycle at 4500, 113 to 143 kPa) and 0.25 / 0.15 (the kei then stood at 82.7 kPa against 60,
+its gate needing more opening than a +-0.2 integral gives); the duty let go more than 10 % over the target (the turbo
+four then settled 7 % over its target). The nine diesel take-ups are unchanged (their variable vanes keep the plain
+PI); F's wastegate case unmarked (100.0 kPa at 3500).
