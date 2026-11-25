@@ -29,7 +29,7 @@ target_compile_definitions(tee-tests-combo PRIVATE "TEE_SOURCE_DIR=\"${PROJECT_S
 # Every [fast] case carries one of the three tags: combo.fast-tags fails if one does not. The rest (the nightly tier) are
 # discovered one by one.
 catch_discover_tests(tee-tests-combo DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "combo."
-  TEST_SPEC "~[fast]" PROPERTIES TIMEOUT 7200)
+  TEST_SPEC "~[fast]" PROPERTIES TIMEOUT 7200 SKIP_RETURN_CODE 4)
 foreach(_part 1 2 3)
   add_test(NAME combo.fast-${_part} COMMAND tee-tests-combo "[fast-${_part}]")
   set_tests_properties(combo.fast-${_part} PROPERTIES LABELS "combo;fast" TIMEOUT 900)
