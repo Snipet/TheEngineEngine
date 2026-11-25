@@ -332,3 +332,13 @@ for ENGINE 1, TUNE's FUEL, EXHAUST 1 (and `.scrolled`), TUNE's ECU 1 (the choice
   each workspace would add `partRect(path)` (about twenty lines each, eleven workspaces, their packages'). Its fields
   are the first six of the selection's page, so a workspace chooses them by ordering its page. The card is a second
   Tab stop. Help as Rows.
+
+## TextField for a chat, and the error colour (J2, 25 Nov, for card A)
+
+`TextField::setOptions({ enterOnly, multiline })`, both off by default (every existing field is as it was):
+`enterOnly`: only Enter commits; leaving the field (a press elsewhere, Tab, Escape, the focus going) keeps the typed
+text as a draft, shown in the field and taken up again on entering; a commit the owner takes empties the field back to
+`value()` and it stays open; a refusal keeps the text and marks the field in `Look::error`. `multiline`: Shift+Enter
+starts a new line; the field shows the lines its height holds, the caret's in view. `Look::error` is a red apart from
+the accent and readable on the ground (a lighter one on graphite, a deeper one on paper). Tests: `ui.textfield.draft`,
+`ui.look.error`.

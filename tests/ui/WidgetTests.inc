@@ -567,3 +567,71 @@
         }
         return 0;
     }
+
+    // For card A's chat: TextField::Options{ enterOnly, multiline }. Only Enter commits; leaving keeps the draft
+    // (a press elsewhere, Tab, Escape) and entering again takes it up; Shift+Enter is a new line; a commit that is
+    // taken empties the field and typing goes on; a refusal is drawn in the Look's error colour. The default field
+    // still commits on leaving (ui.textfield.type holds the rest of its behaviour).
+    TEST(testTextFieldDraft, "textfield.draft")
+    {
+        BoardRig rig;
+        std::vector<std::string> sent;
+        auto& chat = rig.place<tee::ui::TextField>({ 20, 20, 400, 80 }, std::string(), [] { return std::string(); },
+                                                    [&](const std::string& s) {
+                                                        if (s == "no")
+                                                            return false;
+                                                        sent.push_back(s);
+                                                        return true;
+                                                    },
+                                                    500);
+        chat.setOptions({ true, true });
+        rig.host.click(200, 60);
+        CHECK(chat.editing());
+        typeKeys(rig.host, "h i shift+return t h e r e");
+        CHECK(chat.buffer() == "hi\nthere");
+        rig.host.click(600, 400);                        // a press elsewhere: left, the draft kept, nothing sent
+        CHECK(!chat.editing() && chat.hasDraft() && chat.buffer() == "hi\nthere" && sent.empty());
+        rig.host.click(200, 60);                         // taken up again where it was
+        CHECK(chat.editing() && chat.buffer() == "hi\nthere");
+        typeKeys(rig.host, "escape");                    // Escape leaves too, and keeps it
+        CHECK(!chat.editing() && chat.hasDraft());
+        rig.host.click(200, 60);
+        typeKeys(rig.host, "!");
+        typeKeys(rig.host, "return");                    // Enter sends: the field empties and stays open
+        CHECK(sent.size() == 1 && sent[0] == "hi\nthere!");
+        CHECK(chat.editing() && chat.buffer().empty() && !chat.hasDraft());
+        typeKeys(rig.host, "n o return");                // refused: kept, marked
+        CHECK(chat.editing() && chat.buffer() == "no" && chat.refused() && sent.size() == 1);
+        const auto items = rig.host.accessibility();
+        CHECK(!items.empty() && items[0].value == "no");
+        // The default field is as it was: leaving commits.
+        std::string name = "Stock";
+        auto& plain = rig.place<tee::ui::TextField>({ 20, 200, 300, 28 }, std::string("Name"), [&] { return name; },
+                                                     [&](const std::string& s) { name = s; return true; });
+        CHECK(!plain.options().enterOnly && !plain.options().multiline);
+        rig.host.click(250, 214);
+        typeKeys(rig.host, "H o t");
+        rig.host.click(600, 400);
+        CHECK(name == "Hot" && !plain.editing() && !plain.hasDraft());
+        typeKeys(rig.host, "shift+return");              // no lines in a plain field
+        CHECK(name == "Hot");
+        return 0;
+    }
+
+    // The Look's error colour: apart from the accent, and readable on the ground, in both themes.
+    TEST(testLookError, "look.error")
+    {
+        for (int t = 0; t < funkgui::Theme::kCount; ++t)
+        {
+            const funkgui::Theme th = funkgui::Theme::byIndex(t);
+            const tee::ui::Look l = tee::ui::Look::of(th);
+            const auto dist = [](funkgui::Col a, funkgui::Col b) {
+                return std::abs(a.r - b.r) + std::abs(a.g - b.g) + std::abs(a.b - b.b);
+            };
+            const auto luma = [](funkgui::Col c) { return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; };
+            CHECK_MSG(dist(l.error, l.accent) > 60, funkgui::Theme::name(t));
+            CHECK_MSG(std::fabs(luma(l.error) - luma(l.ground)) > 60.0, funkgui::Theme::name(t));
+            CHECK(l.error.a == 255 && l.error.r > l.error.g && l.error.r > l.error.b);   // a red
+        }
+        return 0;
+    }
