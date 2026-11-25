@@ -37,6 +37,70 @@
 
 ## Landed
 
+- **08:02 (25 Nov) `main` moved e7e58973 to 5548dcf8**, fast-forward. Run 45569559847: Linux 540 of 540, macOS 540 of
+  540 (the lead checked the run's jobs; Windows still in flight; main's own run follows). Its sim/, host/ and tools/
+  are identical to 32320974, the commit P's bake was made on (0 lines, diffed by the lead). **What it holds over
+  e7e58973**: N2's compressor map (surge on the published middles, the flag where the model does surge), the sizing
+  at the design tip speed and the matching on the charge's own temperature (the truck one state; the tractor's and
+  the pickup's low end; the turbo four at its target by 2500), the wastegate loop's feed-forward (tip-in overshoot
+  from 39 to 56 % down to 7 to 13 % with the IS20's wheel), the simulator kept stepping while a turbo runs down;
+  D2's smoke limit at 0.77, the diesels' start-of-combustion spread at its cited size, the full-load fuel curve (the
+  15 L truck and the tractor); N1's four-valve low-lift curtain was already in. **Content** (P's 066165a0): the hot
+  hatch as the 4A-GE, the 7.0 on the LS7's cam and ports, the 3.2 on the S54's cams, the two-stage's low stage and
+  5850, first.json's IS20 wheel, the petrol judgement cards under the class rule with the 1 mm held, the diesels off
+  it; **every petrol build's knock-limit table and every phased build's cam map baked in the app's order on this
+  simulator**, so the app finds them current at once (proved on first.json, the V10, the tractor and the hot hatch:
+  no cache file written); all 31 gated warm and cold; no invariant failing; 120 of 847 rows missed on P's final
+  read. **Marked `[!mayfail]` in the default tier on it** (the steward's list): the VGT's back-pressure limit at the
+  open stop, the over-boost cut under a gate too small, the sequential pair at its join. Nightly: combustion H6 and
+  H7, and C's tractor lug case (restated, held). **Audible or visible and known**: the rotary hunts at 4250 rpm
+  rising (its cure is ready: `seqRpm` visible and stated); the two-stage's change is a torque dip (its crossing
+  about 7300 against 5500 to 5900); 7 to 13 % of overboost at tip-in on the turbo four; the DYNO ribbon's last point
+  at the limiter on some builds (C's 300 rpm margin, held); the tractor's hole under about 1050 rpm and its 7.9 s to
+  torque; a truck's rotor running down too long. *What it took, for the record*: the bake's keys hash the whole
+  program, so the bake had to be the last content step on the exact simulator shipped; sim/, host/ and tools/ were
+  frozen at 32320974; three crossings with C and one breach by N2 (un-hiding `seqRpm`, right in itself: a hidden
+  field is not read from a build's file) were undone by reading the branch and not messages; the last red was three
+  of C's host cases assuming content unbaked (5548dcf8: `unbaked()`). **The freeze is lifted**: C (the 300 rpm
+  default, kKnockBakeVersion 3, the lug case), N1 (B', the tie rule, kCamBakeVersion 2), N2 (`seqRpm` visible; the
+  rotary's sweep through the harness on the shipped build: 0.56 to 1.65 of its mean at 4250 becomes 0.89 to 1.13,
+  nothing else moves) and U1 (limited points as rings; bake.watch from an unbaked build) push held work; then P
+  states the rotary's 4500 and bakes once more on that tip: the next `main`. **New rules from tonight**: a push that
+  touches sim/ or content runs the whole default tier first; the lead reads the branch before ruling and moves
+  `main` only to a commit diffed against the bake's; anything from one agent's reading goes to the owner labelled
+  unconfirmed.
+
+- **06:59 (25 Nov) the lead's check-in; `main` stays at e7e58973; sim/, host/ and tools/ are FROZEN at 32320974 for
+  the bake `main` ships.** *How `main` moves now*: P bakes all 31 builds in the app's order on tools built at
+  32320974 (its Bake.h reads kKnockBakeVersion 2: C's cure A is in), gates them, proves on first.json, a naturally
+  aspirated build and the tractor that the app finds them "Current" at once with no cache file, and sends the sha;
+  the lead moves `main` only to a Linux and macOS green commit whose sim/, host/ and tools/ are identical to
+  32320974's (diffed by the lead). Why: P proved that the tables' keys hash the whole program, so content is current
+  only for the exact simulator it was baked on, and any change under sim/ makes every build bake again at its first
+  load. *Corrected table L* (P's first L read stale content from the pinned worktree: `report.py` now always names
+  its content, 74e055f6): on tools 430cd999 and content 74e055f6, **every invariant passes on all 31** and 118 of
+  847 are missed (K: 120 of 839). "The 6.7 pickup cannot reach its limiter", which the lead passed to the owner as
+  a broken build, was the stale read; the diesels stay off the class rule on its own ground. *The breach*: N2
+  pushed 3fe19dd9 (sim/spec/boost.fm: `seqRpm` un-hidden) during the freeze, before reading it; told to revert it
+  and 3e0c1c14 at once; not yet reverted at 06:58 (tip 95df1a30). **Its finding is real and confirmed by the lead's
+  code read**: `inFile` (host/src/Build.cpp) does not read a hidden field from a build's file, so the rotary's
+  stated 4500 was ignored and the "hunt on the shipped build" was the old join; with the field visible N2 reads 59
+  to 75 kPa at 4250 from the content alone. The cure goes into the next `main` with the whole sweep through the
+  harness on the build as it ships. *Three crossings with C* (cure A pushed, reverted, reinstated inside ten
+  minutes while the lead ruled by message): the tip was read by the lead and frozen where it stood. **Held until
+  `main` has moved**: N1's half of the cam bake's cures (B': the knock gate out of the cam bake, since the spark
+  table's cell does not depend on the cam, so the lead's B gated nothing; the tie rule; limited points as missing;
+  the cam's top at redline - 300; kCamBakeVersion 2; 540 of 540 and the economy four choosing 35 and 40 degrees
+  both ways) and C's 300 rpm default margin for the predictor (the DYNO ribbon's top point is at the limiter today:
+  -36, -81 and -155 N m on three builds; kKnockBakeVersion 3). C's findings on the cam bake (repeatable to the bit;
+  the limiter's row smoothed into the rows below; the gate fooled by the spark table; flat curves flipping inside a
+  point's floor) and C's verified reuse of tables across programs (approved, after the cures) are in C's messages
+  and Bake.h. *N2, measured and held*: the tractor's low-speed end (a guard pinning the ratio at its own flag's
+  gate below 1050 rpm; a surge cycle above; a wheel at 0.23 of choke where the published surge share is 0.27); (a)
+  the guard on the flow trades the hole at 1000 for a 3 s boost pulse and is held for (b), the matching placing the
+  torque peak, on P's source. *D2*: the tractor's BSFC is pumping (exhaust over intake 1.40 to 1.52 on the matched
+  nozzle), not combustion. *C*: a diesel reads current for the spark table without a bake (be3ce9c4).
+
 - **06:11 (25 Nov) the lead's check-in; `main` stays at e7e58973; the branch's tip 430cd999 holds everything `main`
   waits for and its run is queued.** *The gate*: Linux and macOS green outright on a commit holding N2's ef2160fd (the
   simulator kept stepping while a turbo's shaft turns; exhaust.engine passes at 72.9 Pa; a turbo four keeps it awake

@@ -31,6 +31,20 @@ namespace
     {
         return std::filesystem::exists(simDir() / "engine.fm");
     }
+
+    // A content build as it was before the bake shipped its tables: the knock-limit table and the intake cam map at
+    // their defaults (Auto on, no key). A case that bakes, or asks whether a table is current, starts here, so it does
+    // not depend on whether the content it loads happens to be baked.
+    void unbaked(Build& build)
+    {
+        const Build fresh(build.fields());
+        const auto& all = build.fields().all();
+        for (std::size_t i = 0; i < all.size(); ++i)
+            if (all[i].block == "spec"
+                && (all[i].path.find("ecu.maps.knockLimit") != std::string::npos
+                    || all[i].path.find("ecu.maps.camIn") != std::string::npos))
+                REQUIRE(build.setValues(static_cast<int>(i), fresh.values(static_cast<int>(i))));
+    }
 } // namespace
 
 namespace
@@ -346,6 +360,7 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     std::vector<std::string> warnings;
     REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/v12-65.json",
                            BuildPart::Whole, warnings, error));
+    unbaked(build);   // as before the content's tables were baked
     CamBakeOptions options;
     options.step = 25.0;   // three cells (0, 25, 50) and three speeds: the machine, not N1's whole table
     options.predict.from = 209.44;
@@ -468,6 +483,7 @@ TEST_CASE("the knock limit's key moves with what moves the knock limit, and not 
     std::vector<std::string> warnings;
     REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
                            BuildPart::Whole, warnings, error));
+    unbaked(build);   // as before the content's tables were baked
     const std::int64_t key = knockLimitKey(build, *sim);
     CHECK(key >= 0);
     CHECK(key <= 0x7fffffff);
@@ -556,6 +572,7 @@ TEST_CASE("the knock limit baked on the turbo four: a knocking point's cell its 
     std::vector<std::string> warnings;
     REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
                            BuildPart::Whole, warnings, error));
+    unbaked(build);   // as before the content's tables were baked
     KnockBakeOptions options;
     options.speeds = 5;
     options.pedals = {1.0, 0.5};
@@ -599,6 +616,7 @@ TEST_CASE("the knock limit's loads on a turbo: boost targets from its level down
     std::vector<std::string> warnings;
     REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
                            BuildPart::Whole, warnings, error));
+    unbaked(build);   // as before the content's tables were baked
     KnockBakeOptions options;
     options.speeds = 3;
     options.pedals = {1.0};
@@ -636,6 +654,7 @@ TEST_CASE("the background bake: a stale table set aside at once, baked when the 
     std::vector<std::string> warnings;
     REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
                            BuildPart::Whole, warnings, error));
+    unbaked(build);   // as before the content's tables were baked
     if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
         SKIP("the program has no knock-limit table yet");
     KnockBakeOptions options;   // small, for the test: two speeds at full throttle
@@ -768,6 +787,7 @@ TEST_CASE("the knock limit's corrections: a cell whose mean retard was over 12 d
     REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR)
                                / "content/builds/archetypes/straight-six-twin-turbo-30.json",
                            BuildPart::Whole, warnings, error));
+    unbaked(build);   // as before the content's tables were baked
     if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
         SKIP("the program has no knock-limit table yet");
     KnockBakeOptions options;
@@ -922,6 +942,7 @@ TEST_CASE("the calibration baked in the background: the spark, the cam on that s
     std::vector<std::string> warnings;
     REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/v12-65.json",
                            BuildPart::Whole, warnings, error));
+    unbaked(build);   // as before the content's tables were baked
     if (build.fieldOf("ecu.maps.camInKey") < 0 || build.fieldOf("ecu.maps.knockLimitKey") < 0)
         SKIP("the program has no knock-limit or cam key yet");
     REQUIRE(build.get("valve.inPhaseRange") > 0.0);
@@ -973,6 +994,7 @@ TEST_CASE("the calibration bake's cache across launches: a table baked once is t
     std::vector<std::string> warnings;
     REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
                            BuildPart::Whole, warnings, error));
+    unbaked(build);   // as before the content's tables were baked
     if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
         SKIP("the program has no knock-limit table yet");
     // a folder of the test's own, emptied first (nothing written outside it)
@@ -1031,9 +1053,11 @@ TEST_CASE("a prediction asked while a calibration bake runs goes first: its time
     Build econ(sim->fields());
     REQUIRE(econ.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/economy-four-15.json",
                           BuildPart::Whole, warnings, error));
+    unbaked(econ);   // as before the content's tables were baked
     Build turbo(sim->fields());
     REQUIRE(turbo.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
                            BuildPart::Whole, warnings, error));
+    unbaked(turbo);   // as before the content's tables were baked
     if (turbo.fieldOf("ecu.maps.knockLimitAuto") < 0)
         SKIP("the program has no knock-limit table yet");
     PredictOptions po;

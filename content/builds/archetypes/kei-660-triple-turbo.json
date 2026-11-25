@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Kei 660 cc triple turbo",
-  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule (section 8 of the judgement sources).",
+  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Inline 3",
@@ -50,12 +50,12 @@
       "dIn": 0.0245,
       "dEx": 0.021,
       "train": "Bucket",
-      "inDurSeat": 240,
-      "inDur1mm": 204.0,
+      "inDurSeat": 244.0,
+      "inDur1mm": 208,
       "inLift": 0.0075,
       "inCentre": 110,
-      "exDurSeat": 236,
-      "exDur1mm": 200.0,
+      "exDurSeat": 240.0,
+      "exDur1mm": 204,
       "exLift": 0.007,
       "exCentre": 112,
       "springRate": 25000.0,
@@ -112,6 +112,112 @@
         "on": true
       },
       "maps": {
+        "knockLimitAuto": false,
+        "knockLimit": {
+          "x": [
+            104.71975511965977,
+            207.9435072587802,
+            311.1672593979006,
+            414.3910115370211,
+            517.6147636761415,
+            620.8385158152619,
+            724.0622679543824,
+            827.2860200935028
+          ],
+          "y": [
+            0.2,
+            0.40503575393888125,
+            0.6100715078777625,
+            0.8151072618166437,
+            1.020143015755525,
+            1.225178769694406,
+            1.4302145236332875,
+            1.6352502775721685
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        "knockLimitKey": 121553624,
         "boostAuto": false,
         "boost": {
           "x": [
