@@ -37,6 +37,35 @@
 
 ## Landed
 
+- **04:36 (25 Nov) the lead's check-in; `main` at e7e58973, green on all three platforms** (its own run 45543212713:
+  542 of 542 on each, packed). `main` waits for N2's cure of the wastegate loop's overshoot. **N2's map commits are
+  on the branch** (9d55f503: 7e9bee72 the knee 0.40 + 0.178 (M - 1) floored at Mach 0.8, the flag and the guard at
+  0.9 of the knee, the island 0.61; 1acc1025 the sizing at the design tip speed; 29684891 the matching's design flow
+  at the charge's own temperature). Checked by the lead against the published file: surge on the flag 0.24 / 0.29 /
+  0.36 / 0.44 inside every range, the ridge 0.60 / 0.62 / 0.70 / 0.79 inside but 0.01 over at 3 (within the reading),
+  efficiency near surge 0.67 to 0.69, the onset measured on the flag. What it did: the truck one state at 76 to 78
+  kPa in 11 s (two states before; the predicted 55 to 65 kPa wrong and kept); the tractor archetype at 1300 from
+  1946 N m on 72 kPa to 2263 on 219; the pickup at 1600 from 657 on 32 to 995 on 185; the turbo four at 2500 from
+  309 to 385 N m at its target; 4 to 5 % lost at the top of two diesels on a smaller nozzle; EngineTest:124 passing
+  untouched; two former failures passing. **New with it, marked on its name: the wastegate loop overshoots** (the
+  test's four at 3500: 129 kPa against 100, settling after 8 s), N2's first job. *Ruled since 03:55*: the surge cap
+  dropped (it latches: 301 N m on 61 kPa stepped up from 1800 against 385 on 124 reached directly; tried and
+  refuted in the document); the sequential join rebuilt as proposed (pre-spool, the charge valve when the second
+  compressor can hold the pipe, the decision on speed, a dwell; hidden `seqRpm`; after the overshoot); first.json
+  states the IS20's wheel (N2's 6410dbf7: 232 / 270 / 388 / 364 / 288 against the matched 216 / 237 / 385 / 365 /
+  288; the prediction wrong at both ends and kept); F's 0.9 stays (two diesels pass 106 and 110 % of the new design
+  flow: recorded, looked at with table L); `ecu.afc` to 0.77 goes in although it binds in settled states where the
+  air is short (tractor at 1100: 2117 to 1929 N m; the 2.0 at 1800: 166 to 159; D2's V8 truck's rated 535 to 517
+  kW): the lead's "a transient limit, no settled point moves" was wrong. *Three things the lead passed to the owner
+  before a second look, all corrected with them*: the truck's fuelling (03:00), the turbo four's wheel "half again"
+  (03:06), and at 04:12 "the predictor reads slow engines before their boost arrives" (P's reading; C's holds agree
+  with the predictor within 2 %: 9c622135). What C found instead belongs to the tractor: **a knife's edge at about
+  1060 rpm** (30 s holds: 1544 N m at 1058, 1917 to 2023 at 1061), the VGT barely spooling below it, a dip of 658
+  N m at 905 that survives a hold: N2's, with the low-speed vane loop, after the join. *Table L*: P's content is
+  committed with every card change (b9dc1732), 31 builds idle, 14 cam maps re-baked on 9d55f503; L and its twin
+  next, the diesels after D2's 0.77, then the knock-limit second pass on the 16 naturally aspirated builds (what
+  C's bake does to them, which the app in `main` already does to every build and nobody has checked).
+
 - **03:55 (25 Nov) `main` moved 78cdd2f5 to e7e58973**, fast-forward: run 45539104538, Linux and macOS green outright
   (checked on the run's own jobs; Windows' job on it still running, main's own run to follow). Against 78cdd2f5 it
   adds N1's four-valve low-lift curtain (6771c402), D2's diesel telemetry (a90cd20f: fuelFlow the fuel injected,
