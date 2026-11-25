@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Highway tractor 15 L",
-  "notes": "A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo, a compression-release engine brake at its middle stage (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, idle 600 to 700; cummins.com, international.com); its limiter is the governed no-load speed, 2250 rpm, some 12 % over the rated 2000. In a 36 t tractor-trailer, eighteen speeds. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its full-load fuel curve (mg a stroke a cylinder): 250 at 700 rpm, 293 at 800 rpm, 326 at 1000 rpm, 326 at 1400 rpm, 287 at 1800 rpm, 246 at 2100 rpm, set from its class's cited torque through its own 8.34 N m a mg (D2's), so its torque and power rows are SET BY THE FUEL CURVE, not checks of the model; its plateau trimmed from 333 to 326 mg to meet the cited 2779 N m. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the rocker class's rule (section 8 of the judgement sources).",
+  "notes": "A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo, a compression-release engine brake at its middle stage (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, idle 600 to 700; cummins.com, international.com); its limiter is the governed no-load speed, 2250 rpm, some 12 % over the rated 2000. In a 36 t tractor-trailer, eighteen speeds. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its full-load fuel curve (mg a stroke a cylinder): 250 at 700 rpm, 293 at 800 rpm, 326 at 1000 rpm, 326 at 1400 rpm, 287 at 1800 rpm, 246 at 2100 rpm, set from its class's cited torque through its own 8.34 N m a mg (D2's), so its torque and power rows are SET BY THE FUEL CURVE, not checks of the model; its plateau trimmed from 333 to 326 mg to meet the cited 2779 N m.",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -63,11 +63,11 @@
       "dEx": 0.043,
       "train": "Rocker",
       "inDurSeat": 232,
-      "inDur1mm": 194.0,
+      "inDur1mm": 200,
       "inLift": 0.014,
       "inCentre": 112,
       "exDurSeat": 232,
-      "exDur1mm": 194.0,
+      "exDur1mm": 200,
       "exLift": 0.013,
       "exCentre": 112,
       "springRate": 25000.0,
