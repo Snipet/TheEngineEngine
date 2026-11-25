@@ -423,6 +423,18 @@ arch(slug="four-cam-v8-50", runner=0.35, name="Four-cam 5.0 L V8", geo="ref-12-v
 arch(slug="big-bore-70-pushrod-v8", runner=0.4, name="7.0 L pushrod V8, dry sump", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=104.8, stroke=101.6, rod=158.0, cr=11.0, valves=2, dIn=56.0, dEx=41.0,
      cam=(282, 230, 15.0, 112, 288, 234, 14.0, 116), train="Pushrod", redline=7000, idle=750,
+     # the LS7's own cam for table L (the lead, 01:33), applied with CAM_RULE: GM 12638426, 211/230 deg at 0.050 in
+     # tappet lift, 0.593/0.588 in valve lift on the LS7's 1.8 rockers, 121 deg lobe separation (a forum's 120): search
+     # snippets of Chevrolet Performance's listing; the page itself refused (403); not read. The seats 26 deg a side
+     # beyond the 0.050 in figure (JUDGEMENT inside the cited hydraulic rollers' 23 to 29.5); the intake centreline 112
+     # (JUDGEMENT, not found), the exhaust's 130 by the separation
+     camCard=dict(cam=(263, 211, 15.06, 112, 282, 230, 14.94, 130),
+                  tappet=dict(ratio=1.8, ratioBasis="the LS7's 1.8, search snippets of Chevrolet Performance's "
+                              "listing, the page not read", inAdv=263, in50=211, exAdv=282, ex50=230),
+                  cardNote="Its cam: the LS7's (GM 12638426: 211/230 deg at 0.050 in, 0.593/0.588 in lift on 1.8 "
+                           "rockers, 121 deg lobe separation; from search snippets of Chevrolet Performance's listing, "
+                           "the page itself refused and not read); the seats 26 deg a side beyond the 0.050 in figure "
+                           "and the intake centreline 112 JUDGEMENT."),
      friction="Roller", grade="Premium (91)", car="front-engine-sports", timing="Chain", lifters="Hydraulic",
      notes="A 7.0 L small-block-sized pushrod V8 with titanium intake valves and a dry sump: 104.8 x 101.6 mm "
            "(7011 cc), 11:1, 7000 rpm (the LS7 kind: 377 kW at 6300 rpm, 637 N m at 4800; gmauthority.com). "
@@ -581,6 +593,10 @@ TORQUE_PEAK = {k: v[3] for k, v in _val.T.items()}
 
 # ---- writing them ------------------------------------------------------------------------------------------------
 def build(a):
+    if CAM_RULE and "camCard" in a:
+        # an engine's own card replacing the generator's (table L's content: the lead, 01:33)
+        a = dict(a, **a["camCard"])
+        a["notes"] = a["notes"] + " " + a["camCard"]["cardNote"]
     e = {"layout": a["layout"], "custom": True, "compression": a["cr"]}
     e.update(geometry(a["geo"]))
     n = e["cylinders"]
