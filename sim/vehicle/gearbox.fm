@@ -1,5 +1,6 @@
 // gearbox.fm: the gearbox's logic, every 16 samples: which gear is in, which is coming, and how far each coupling is
 // closed. vehicle.fm's step turns that into torques each sample.
+// (card I's; the automatic clutch's overrun hold is card D's as integrator, with the lead's leave, 25 Nov: see `overrun`)
 //
 // Five kinds (spec.car.gearbox):
 //
@@ -59,6 +60,8 @@ module VehGearbox
     float aFrom;        // how far the old gear's coupling is closed, 0 to 1
     float aTo;          // the new gear's
     float robot;        // the automatic clutch, 0 open to 1 closed
+    bool overrun;       // the automatic clutch has slipped backwards while engaged (the road driving the engine): held
+                        // closed by the road's speed until the engine leads again (card D as integrator, the lead's leave)
     bool cut;           // asks the ECU to cut the ignition
     float blip;         // asks the ECU for this crank speed (rad/s), 0: nothing
     float lock;         // the lock-up clutch, 0 to 1
@@ -82,6 +85,7 @@ module VehGearbox
         aFrom = 1.0f;
         aTo = 0.0f;
         robot = 1.0f;
+        overrun = false;
         cut = false;
         blip = 0.0f;
         lock = 0.0f;
@@ -158,7 +162,26 @@ module VehGearbox
         refused = false;
         // the automatic clutch for pulling away: it closes with the revs from just over idle (as the reference's paddles)
         const float x = fminf(fmaxf((w - idleW - 15.7f) / 94.2f, 0.0f), 1.0f);
-        const float launch = x * x * (3.0f - 2.0f * x);
+        float launch = x * x * (3.0f - 2.0f * x);
+        // (on the overrun it is no launch: closing with the engine's own revs, the clutch passed only some 0.4 of its
+        // torque at 500 rpm over a truck's idle, so a compression brake slipped it, the engine fell to its idle and the
+        // clutch opened for good with the gear in (card D2's finding, 25 Nov: the 36 t rig down 6 %). Once it has slipped
+        // backwards while engaged, the engine more than 3 rad/s under the road's speed through the gear, it is held
+        // closed by the road's speed, opening only as that nears the idle (a guard against a stall: 50 to 250 rpm over
+        // it, as Vehicle::launch's), until the engine leads the road by 3 rad/s again, a shift begins, or neutral.
+        // Until a clutch first slips backwards nothing here changes. Card D as integrator, the lead's leave, 25 Nov)
+        const float gIn = ratioOf(gear);
+        if (gear == 0 || shifting || engage < 0.5f)
+            overrun = false;
+        else if (w < fabsf(gIn * wOut) - 3.0f)
+            overrun = true;
+        else if (w > fabsf(gIn * wOut) + 3.0f)
+            overrun = false;
+        if (overrun)
+        {
+            const float xr = fminf(fmaxf((fabsf(gIn * wRoad) - idleW - 5.2f) / 20.9f, 0.0f), 1.0f);
+            launch = fmaxf(launch, xr * xr * (3.0f - 2.0f * xr));
+        }
 
         if (kind == VEH_MANUAL)
         {
