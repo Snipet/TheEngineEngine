@@ -1,5 +1,9 @@
 // shell/input/g29/G29Evdev.cpp: G29Evdev.h. Ported from TestingPlayground's Source/plugin/WheelEvdev.cpp (47bac40;
 // g29/SEED.tsv), the MIDI taken out.
+#if defined(_WIN32)
+#error "Linux only: shell/CMakeLists.txt builds it there (Windows: RacingWheelNone.cpp)"
+#endif
+
 #include "input/g29/G29Evdev.h"
 
 #if defined(__linux__)

@@ -11,6 +11,10 @@
 //   listed and said, read once it may; a G29 in compatibility mode switched through alternate_modes; the hub gone: the
 //   spring off.
 #if defined(__linux__)
+#if defined(_WIN32)
+#error "Linux only: shell/CMakeLists.txt builds it there (Windows: RacingWheelNone.cpp)"
+#endif
+
 #include "input/g29/G29Evdev.h"
 
 #include <catch2/catch_test_macros.hpp>
