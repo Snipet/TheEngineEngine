@@ -1551,3 +1551,20 @@ V12 0.43, 7.0 0.52; the thesis's production cam 1.07 at 10 % load against a meas
 the consistent reading is the one the measured points support. The pi sqrt(2)/6 in eq. 7 is not the unit factor 1/6:
 it stays in both. What stands in any case is the model's excess over the measured residuals (about two), which D's
 algebra rests on.
+
+**N3-16, referee: N1's low-lift area (68e683f1: the effective area min(q A0, the curtain line))** (01:03 `date -u`, my probe,
+the same warm idles):
+
+| engine | share before | after | plenum kPa after | the yardsticks |
+|---|---|---|---|---|
+| v10-52 | 0.469 | **0.397** | 43.7 (was 54.8) | measured about 0.20 to 0.27; Cavina's form 0.189 |
+| v12-65 | 0.528 | **0.488** | 57.4 (73.6) | 0.20 to 0.27; 0.165 |
+| big-bore-70-pushrod-v8 | 0.518 | **0.481** | 53.1 (65.6) | 0.21 to 0.27; 0.212 |
+| economy-four-15 | 0.170 | **0.167** | 32.2 (33.0) | 0.18 to 0.23; 0.211 |
+
+N1's own probe agrees (0.399 / 0.488 / 0.476 / 0.168), and its speed sd falls to 1.6 (V10) and 2.3 rpm (V12). The V10's
+cylinder over the overlap (340 to 380): exhaust back in 0.029 g (was 0.054), pushed into the runner 0.043 g (0.066);
+burned 0.0214 g at TDC, 0.084 g at BDC (0.108), 0.055 of 0.139 g at closing. The big-cam shares are still about twice the
+measured band and Cavina's form; the economy four is unchanged and agrees. What is left (about 0.2 of the charge on the
+V10, 0.25 on the V12 and the 7.0) is the overlap's drive in the cylinder (D's). The OFs in my table above were taken with
+the heads, not the curtain-capped area; Cavina's form does not read the model's area, so its column stands.
