@@ -323,7 +323,11 @@ module ValveTel
     int waiting [[ui::label("Waiting")]]
         [[ui::help("Why the cams are not where asked, a bit each: 1 the intake phaser parked (no oil pressure), 2 the exhaust phaser parked, 4 the phasers slowed by cold oil, 8 the cam stage waiting for the coolant, 16 for oil pressure")]];
     float waitTemp [[fminus::range(0, 1000)]] [[ui::label("Stage waits for")]] [[ui::unit("K")]] [[ui::help("The coolant temperature the cam stage waits for; 0: not waiting")]];
-    float dpOverlap [[fminus::range(-300000, 300000)]] [[ui::label("Overlap pressure")]] [[ui::unit("Pa")]] [[ui::help("The intake port's pressure over the exhaust port's around the overlap's top centre, all cylinders: above 0 an overlap scavenges, below it the exhaust pushes back")]];
+    // (dpOverlap is not bounded itself: an exhaust brake holds the exhaust port to its stated limit, up to 500 kPa times
+    // 1.2 for the vanes' kind (card D2); its waves' part, dpWave, is bounded at +-300 kPa as dpOverlap was, and with no
+    // brake it is dpOverlap to the bit. X-037: the pickup's vane brake read -394 kPa)
+    float dpOverlap [[ui::label("Overlap pressure")]] [[ui::unit("Pa")]] [[ui::help("The intake port's pressure over the exhaust port's around the overlap's top centre, all cylinders: above 0 an overlap scavenges, below it the exhaust pushes back")]];
+    float dpWave [[fminus::range(-300000, 300000)]] [[ui::label("Overlap pressure, waves")]] [[ui::unit("Pa")]] [[ui::help("The overlap pressure less an exhaust brake's back pressure: the pipes' waves alone (with no brake, the overlap pressure)")]];
     float lift [[ui::label("Lift command")]] [[ui::quantity("fraction")]];
     int active [[ui::label("Active cylinders")]] [[ui::help("A bit a cylinder, in the layout's order")]];
     int floating [[fminus::range(0, 1)]] [[ui::label("Valve float")]];
