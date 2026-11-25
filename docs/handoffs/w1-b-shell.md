@@ -104,3 +104,11 @@ build wins).
 the other archetypes are (the bikes, the diesels, the V8s and V10s, the truck); `--reference` shows the bare engine
 for a comparison.
 
+
+**The calibration bakes' cache (C's 7f2ddfa1; 169a729a).** A person's window passes `CalibrationBakeOptions::
+cacheDirectory` = `settings::cacheDirectory()/bakes`: `TEE_CACHE_DIR` when set, else
+`%LOCALAPPDATA%\TheEngineEngine\bakes` (Windows), `~/Library/Caches/TheEngineEngine/bakes` (macOS),
+`$XDG_CACHE_HOME/TheEngineEngine/bakes` or `~/.cache/TheEngineEngine/bakes` (Linux). A machine's run (`--frames`,
+`--shot`, `--seconds`) uses none unless `TEE_CACHE_DIR` names one, so no test writes outside a folder it made. The bake
+yields to the ribbon's PredictService (ServiceDyno's) once U1's ServiceBake takes it; GARAGE's library curves are a
+DynoService (no PredictService) and simply share the cores.
