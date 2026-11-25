@@ -225,12 +225,11 @@ TEST_CASE("calibration boost: the telemetry says when the charge system is far f
     CHECK(static_cast<int>(four.at("boost.mismatch")) == 0);
 }
 
-// (marked [!mayfail] by N2 on a finding, the lead's ruling: a sequential pair cycles at its join flow, the transfer valve's
-// hysteresis (opens above the join flow, closes under 0.8 of it) narrower than the boost's swing when it opens: the
-// 13B-kind rotary at 4250 rpm, full load, swings 26 to 110 kPa and 171 to 263 N m in 0.1 s windows on a18f1bd4 and on
-// the corrected compressor map alike; not fixed in the map's commit)
+// (marked [!mayfail] by N2 while the rotary joined on its air: it hunted 26 to 106 kPa at 4250 rpm; unmarked on the rotary's
+// stated changeover speed (seqRpm 4500, P's sources §16) and the join on speed and load (machine.fm, sequential-join.md):
+// prediction, written before: within 15 % of its mean at 4250; measured: see the print, within 25 %, the lead's bound)
 TEST_CASE("calibration boost: a sequential pair at its join flow holds one state (no cycling of the transfer valve)",
-          "[calibration][boost][!mayfail]")
+          "[calibration][boost]")
 {
     Sims s;
     std::vector<Row> rows;
@@ -284,7 +283,7 @@ TEST_CASE("calibration boost: variable vanes past the surge line open: one state
 TEST_CASE("calibration boost: a sequential pair with a stated join speed changes over without a hunt", "[calibration][boost]")
 {
     // (the lead's ruling on the join: on a build that states spec.boost.seqRpm the pair changes over on engine speed and
-    // load (machine.fm); here the 13B-kind rotary with 4500 rpm stated, its source's figure (P's sources §16), swept across
+    // load (machine.fm); here the 13B-kind rotary as it ships, its build stating 4500 rpm, its source's figure (P's sources §16), swept across
     // the join in 250 rpm steps at full load: every 0.1 s window within 25 % of its speed's mean, the same either side of
     // the join. 25 %, the lead's reasoned margin: the hunt it guards against swung 26 to 77 kPa about a mean near 50, half
     // its mean either way; the cured join reads 59.4 to 76.6 against 67.3 at 4250 (0.88 to 1.14), and 15 % sat inside
@@ -296,7 +295,9 @@ TEST_CASE("calibration boost: a sequential pair with a stated join speed changes
             rpms.push_back(r);
     std::vector<Row> rows;
     std::string error;
-    REQUIRE(tee::calib::dyno(s.sim, "content/builds/archetypes/rotary-twin-13.json", rpms, {{"boost.seqRpm", 4500.0}},
+    // (the build's own file, no dyno sets: the speed must come from where a build states it; set here directly it passed
+    // while the file's value, a hidden field, was not read at all)
+    REQUIRE(tee::calib::dyno(s.sim, "content/builds/archetypes/rotary-twin-13.json", rpms, {},
                              {"boost.pressure", "engine.torque"}, rows, error, 0.0, 0.1));
     for (std::size_t at = 0; at + 30 <= rows.size(); at += 30)
     {
