@@ -457,3 +457,26 @@ Asked from the same runs: the turbo's energy ledger at the tractor's 1000 cell (
 73 kPa should need p3/p2 near 1.03 at eta_c 0.65, eta_t 0.60, T3 900 K; the model needs 1.40), and why the engine
 sits at phi/knee 0.88 where the rule's flow law put it near 0.99. Before any push: a second measurement of the key
 cells by another agent, and `main` moved.
+
+## 25 Nov 09:58: the guard stays (the lead's 09:40 ruling withdrawn); the hole below 1100 may be the burn, not the turbo
+
+N2's vane-guard-off.md (37da9aa3; one agent's, read by the lead on the branch). **The truck refutes "remove the
+guard":** with its opening gain at 0 the vanes shut to their stop and the compressor surges about 70 % of the time
+(1300: 408 N m at 31 kPa against 2199 at 169 with the guard; TurboTest:88 and :108 fail). The same guard makes the
+holes elsewhere (tractor 900: 637 against 845; 1000: 775 pulsing against 947 steady; pickup 1300: 576 against 810;
+the 2.0 at 1750 and 2000). Neither keeping nor removing it gives the right engine. It stays; its replacement (a vane
+floor by speed, N2's suggestion, or a limit on the boost target by measured flow) is open, table first.
+
+**The turbo's ledger at the tractor's 1000 cell (N2, guard off):** eta_t 0.66, eta_c 0.54 to 0.57, vanes 0.63,
+0.208 kg/s, p3 244, p4 106, p2 175 kPa, **T3 673 K**. The short term is T3 (a factor 0.75 against 900 K), then the
+compressor's efficiency.
+
+**The lead's arithmetic from N2's cells (unconfirmed, with D2 to read the code):** at 1000 rpm and 14 kPa the tractor
+makes 657 N m at BSFC 398 to 404 on fuel smoke-limited at lambda 1.30: about 0.89 g of fuel a cycle, 38 kJ, for 8.3
+kJ of brake work: brake efficiency 22 % where about 40 is expected, with a cold exhaust where 900 K or more is. Low
+work and a cold exhaust together mean the fuel's heat is not arriving (the burn at the smoke limit, or the walls).
+If so the hole below 1100, the 7.9 s take-up, "the turbine cannot hold 1000" and the guard's pulse are one fault
+upstream of the turbo. Asked of D2 (09:58): the cylinder's energy ledger at that cell with 1300 beside it, and what
+in the code falls toward the smoke limit. **(b) holds where it is until that is in.** Asked of N2 meanwhile: the
+rule's own evaluation against the model's phi, knee and tip Mach at that cell (the rule promised a margin near 0.99
+of the knee; N2's outside estimate reads 0.88).
