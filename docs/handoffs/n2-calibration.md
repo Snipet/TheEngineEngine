@@ -20,20 +20,19 @@ wants pairs (cooler, spring, pipes, compressor; U3 draws them); the inlet's stif
 (X-024) and the filter's loss bounded (X-026); the knock-limit table's ECU side (ecu.maps.knockLimit, knockLimitAuto,
 knockLimitKey; tel.ecu.knockTable; advanceAsked per charge). C bakes the table (tee-dyno --bake-spark).
 
-**Open**: (1) the compressor map against published maps (published-compressor-maps.md; compressor-map-model.md):
-surge/choke 0.31/0.38 at PR 1.5/2.0 against 0.22-0.26/0.26-0.34; the surge cap on the loop's target is held for the
-corrected map (1d053a48, reverted 69c1fdfa); the design-point rule is in (designShare, Boost::designSpeed).
-(2) The rotary's sequential pair at 6000
-to 7200 rpm: 26 to 39 kPa against 70 either rule; the second compressor barely flows (0.027 against 0.146 kg/s, both
-on the knee). (3) The knock-limit table's proof runs (retard under 3 degrees, torque within 2 %) when C's boost-sweep
-bake exists. (4) The pickup's top end (vanes fully open at p3/p2 1.41). (5) The boost package's CPU budget (80 s).
+**The compressor's map** (compressor-map-model.md): from published maps (knee, choke to M 1.63, island 0.61); flag
+and guard at 0.9 of the knee (the model's measured onset); sizing at the design tip speed; design flow at the charge's
+temperature. Marked findings: the VGT limit at its open stop, the wastegate overshoot at 3500, the sequential join.
+**Open**: (1) the surge cap, held, to try on this map. (2) The rotary: its join cycles at
+4250 (26 to 106 kPa); its top now 68 to 74 kPa. (3) The knock table's proof, when C's boost-sweep bake exists. (4) The pickup's top end (vanes fully open at p3/p2 1.41). (5) The boost package's CPU budget (80 s).
 
 **Outside my paths, done by owners**: D (overBoostRef, rotary x2 vd, stand-in dropped, testCell's line), T, D2
 (vanesAndPurge, its brake governor), G (externalGates, exhaustSides), N1 (the blower's leak inflow, X-026's seeds).
 
 **Cost**: sizing at apply time; cut, limit, guard, warnings: compares every 16 samples (tee-bench not run).
 
-**Listen** (nobody here can hear): the 2 L four at full load 5000-6500 rpm; a tip-in at 5000 rpm; the over-boost cut
+**Listen** (nobody here can hear): the tractor at 1300 and the pickup at 1600, full load (far more boost); the
+rotary at 4250 (its join's surge); the 2 L four at full load 5000-6500 rpm; a tip-in at 5000 rpm; the over-boost cut
 (gateDiameter 0.018, ecu.overBoost 150000, full load 5300 rpm): a rhythmic fuel cut; the kei's taper at 6000-7600;
 the twin six: two whines at one pitch; the truck's VGT tip-in at 1300 rpm: no surge chuff once spooled; a throttle
 chop with the blow-off valve: one soft puff, no flutter.
