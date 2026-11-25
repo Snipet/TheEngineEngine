@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Kei 660 cc triple turbo",
-  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py).",
   "spec": {
     "engine": {
       "layout": "Inline 3",
@@ -116,23 +116,23 @@
         "knockLimit": {
           "x": [
             104.71975511965977,
-            207.9435072587802,
-            311.1672593979006,
-            414.3910115370211,
-            517.6147636761415,
-            620.8385158152619,
-            724.0622679543824,
-            827.2860200935028
+            204.95151425536136,
+            305.1832733910629,
+            405.41503252676443,
+            505.64679166246606,
+            605.8785507981677,
+            706.1103099338692,
+            806.3420690695708
           ],
           "y": [
             0.2,
-            0.40503575393888125,
-            0.6100715078777625,
-            0.8151072618166437,
-            1.020143015755525,
-            1.225178769694406,
-            1.4302145236332875,
-            1.6352502775721685
+            0.40723399333826793,
+            0.6144679866765359,
+            0.821701980014804,
+            1.0289359733530719,
+            1.2361699666913397,
+            1.4434039600296078,
+            1.6506379533678757
           ],
           "z": [
             [
@@ -217,7 +217,7 @@
             ]
           ]
         },
-        "knockLimitKey": 121553624,
+        "knockLimitKey": 348530450,
         "boostAuto": false,
         "boost": {
           "x": [

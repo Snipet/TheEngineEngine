@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.8 L twin-cam roadster",
-  "notes": "A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -110,23 +110,23 @@
         "knockLimit": {
           "x": [
             104.71975511965977,
-            192.98351144404805,
-            281.24726776843636,
-            369.51102409282464,
-            457.7747804172129,
-            546.0385367416012,
-            634.3022930659895,
-            722.5660493903778
+            189.9915184406292,
+            275.2632817615986,
+            360.53504508256805,
+            445.8068084035375,
+            531.0785717245069,
+            616.3503350454763,
+            701.6220983664458
           ],
           "y": [
             0.2,
-            0.31608872175813335,
-            0.43217744351626664,
-            0.5482661652744001,
-            0.6643548870325333,
-            0.7804436087906665,
-            0.8965323305488,
-            1.0126210523069332
+            0.3159438114624088,
+            0.43188762292481764,
+            0.5478314343872264,
+            0.6637752458496352,
+            0.779719057312044,
+            0.8956628687744528,
+            1.0116066802368615
           ],
           "z": [
             [
@@ -147,7 +147,7 @@
               0.0,
               0.0,
               0.0,
-              2.9067250679971446
+              3.28808769620955
             ],
             [
               0.0,
@@ -211,7 +211,7 @@
             ]
           ]
         },
-        "knockLimitKey": 167223921
+        "knockLimitKey": 1740563239
       }
     },
     "car": {

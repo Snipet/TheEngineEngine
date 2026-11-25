@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Flat-plane 3.9 L V8, twin turbo",
-  "notes": "A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "V8 flat-plane",
@@ -147,13 +147,13 @@
         "camIn": {
           "x": [
             104.71975511965977,
-            207.9435072587802,
-            311.1672593979006,
-            414.3910115370211,
-            517.6147636761415,
-            620.8385158152619,
-            724.0622679543824,
-            827.2860200935028
+            204.95151425536136,
+            305.1832733910629,
+            405.41503252676443,
+            505.64679166246606,
+            605.8785507981677,
+            706.1103099338692,
+            806.3420690695708
           ],
           "y": [
             0.0,
@@ -183,14 +183,14 @@
             [
               0.0,
               0.0,
-              30.0,
-              30.0
+              35.0,
+              35.0
             ],
             [
               0.0,
               0.0,
-              30.0,
-              30.0
+              35.0,
+              35.0
             ],
             [
               0.0,
@@ -201,39 +201,39 @@
             [
               0.0,
               0.0,
-              20.0,
-              20.0
+              25.0,
+              25.0
             ],
             [
               0.0,
               0.0,
-              20.0,
-              20.0
+              25.0,
+              25.0
             ]
           ]
         },
-        "camInKey": 1528863495,
+        "camInKey": 802972341,
         "knockLimitAuto": false,
         "knockLimit": {
           "x": [
             104.71975511965977,
-            207.9435072587802,
-            311.1672593979006,
-            414.3910115370211,
-            517.6147636761415,
-            620.8385158152619,
-            724.0622679543824,
-            827.2860200935028
+            204.95151425536136,
+            305.1832733910629,
+            405.41503252676443,
+            505.64679166246606,
+            605.8785507981677,
+            706.1103099338692,
+            806.3420690695708
           ],
           "y": [
             0.2,
-            0.49806034330830773,
-            0.7961206866166155,
-            1.0941810299249233,
-            1.3922413732332308,
-            1.6903017165415388,
-            1.9883620598498464,
-            2.2864224031581544
+            0.5053629145958902,
+            0.8107258291917803,
+            1.1160887437876705,
+            1.4214516583835606,
+            1.7268145729794506,
+            2.032177487575341,
+            2.337540402171231
           ],
           "z": [
             [
@@ -318,7 +318,7 @@
             ]
           ]
         },
-        "knockLimitKey": 1561084670
+        "knockLimitKey": 225620049
       }
     },
     "car": {

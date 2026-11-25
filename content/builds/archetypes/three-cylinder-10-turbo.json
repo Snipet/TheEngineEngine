@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.0 L three-cylinder turbo",
-  "notes": "A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Inline 3",
@@ -119,13 +119,13 @@
         "camIn": {
           "x": [
             104.71975511965977,
-            185.50350481737394,
-            266.2872545150881,
-            347.07100421280234,
-            427.8547539105165,
-            508.6385036082306,
-            589.4222533059449,
-            670.206003003659
+            182.5115118139551,
+            260.3032685082504,
+            338.0950252025457,
+            415.88678189684106,
+            493.67853859113643,
+            571.4702952854317,
+            649.2620519797271
           ],
           "y": [
             0.0,
@@ -155,8 +155,8 @@
             [
               0.0,
               0.0,
-              50.0,
-              50.0
+              45.0,
+              45.0
             ],
             [
               0.0,
@@ -167,45 +167,45 @@
             [
               0.0,
               0.0,
-              35.0,
-              35.0
+              30.0,
+              30.0
             ],
             [
               0.0,
               0.0,
-              35.0,
-              35.0
+              30.0,
+              30.0
             ],
             [
               0.0,
               0.0,
-              40.0,
-              40.0
+              30.0,
+              30.0
             ]
           ]
         },
-        "camInKey": 306265151,
+        "camInKey": 1073656454,
         "knockLimitAuto": false,
         "knockLimit": {
           "x": [
             104.71975511965977,
-            185.50350481737394,
-            266.2872545150881,
-            347.07100421280234,
-            427.8547539105165,
-            508.6385036082306,
-            589.4222533059449,
-            670.206003003659
+            182.5115118139551,
+            260.3032685082504,
+            338.0950252025457,
+            415.88678189684106,
+            493.67853859113643,
+            571.4702952854317,
+            649.2620519797271
           ],
           "y": [
             0.2,
-            0.4573965052342181,
-            0.7147930104684361,
-            0.9721895157026541,
-            1.2295860209368723,
-            1.4869825261710903,
-            1.7443790314053083,
-            2.0017755366395265
+            0.460369391279828,
+            0.7207387825596561,
+            0.981108173839484,
+            1.241477565119312,
+            1.50184695639914,
+            1.7622163476789678,
+            2.022585738958796
           ],
           "z": [
             [
@@ -229,14 +229,14 @@
               0.0
             ],
             [
-              2.8243447908806423,
-              2.8243447908806423,
-              2.8243447908806423,
-              2.8243447908806423,
-              2.8243447908806423,
-              3.1737557730076524,
-              5.778812738111917,
-              7.093177504009669
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.2732144228301618,
+              2.828670252017502,
+              7.350636826621162,
+              7.350636826621162
             ],
             [
               0.0,
@@ -265,8 +265,8 @@
               0.0,
               0.0,
               0.0,
-              2.6934293416785304,
-              2.781251473290225
+              0.0,
+              2.5370979197323322
             ],
             [
               0.0,
@@ -290,7 +290,7 @@
             ]
           ]
         },
-        "knockLimitKey": 1476855530
+        "knockLimitKey": 867329383
       }
     },
     "car": {

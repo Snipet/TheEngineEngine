@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "V10 5.2 L",
-  "notes": "A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at 6500; makers' figures). In an all-wheel-drive mid-engined car. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at 6500; makers' figures). In an all-wheel-drive mid-engined car. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V10",
@@ -143,13 +143,13 @@
         "camIn": {
           "x": [
             104.71975511965977,
-            218.4155095606775,
-            332.11126400169525,
-            445.807018442713,
-            559.5027728837307,
-            673.1985273247485,
-            786.8942817657663,
-            900.590036206784
+            215.42351655725867,
+            326.12727799485754,
+            436.83103943245646,
+            547.5348008700554,
+            658.2385623076543,
+            768.9423237452531,
+            879.6460851828521
           ],
           "y": [
             0.0,
@@ -161,26 +161,26 @@
             [
               0.0,
               0.0,
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              15.0,
+              15.0
+            ],
+            [
+              0.0,
+              0.0,
               20.0,
               20.0
             ],
             [
               0.0,
               0.0,
-              35.0,
-              35.0
-            ],
-            [
-              0.0,
-              0.0,
-              25.0,
-              25.0
-            ],
-            [
-              0.0,
-              0.0,
-              25.0,
-              25.0
+              20.0,
+              20.0
             ],
             [
               0.0,
@@ -203,44 +203,44 @@
             [
               0.0,
               0.0,
-              35.0,
-              35.0
+              25.0,
+              25.0
             ]
           ]
         },
-        "camInKey": 1470307806,
+        "camInKey": 557201686,
         "knockLimitAuto": false,
         "knockLimit": {
           "x": [
             104.71975511965977,
-            218.4155095606775,
-            332.11126400169525,
-            445.807018442713,
-            559.5027728837307,
-            673.1985273247485,
-            786.8942817657663,
-            900.590036206784
+            215.42351655725867,
+            326.12727799485754,
+            436.83103943245646,
+            547.5348008700554,
+            658.2385623076543,
+            768.9423237452531,
+            879.6460851828521
           ],
           "y": [
             0.2,
-            0.3136713545521836,
-            0.4273427091043671,
-            0.5410140636565507,
-            0.6546854182087343,
-            0.7683567727609177,
-            0.8820281273131014,
-            0.9956994818652851
+            0.31375459315850696,
+            0.42750918631701385,
+            0.5412637794755207,
+            0.6550183726340277,
+            0.7687729657925346,
+            0.8825275589510415,
+            0.9962821521095484
           ],
           "z": [
             [
-              3.492411502636969,
-              3.492411502636969,
-              3.492411502636969,
-              3.492411502636969,
-              3.492411502636969,
-              3.492411502636969,
-              3.492411502636969,
-              3.8303574489429595
+              6.837477591633797,
+              6.837477591633797,
+              6.837477591633797,
+              6.837477591633797,
+              6.837477591633797,
+              6.837477591633797,
+              6.837477591633797,
+              6.216197499632844
             ],
             [
               0.0,
@@ -314,7 +314,7 @@
             ]
           ]
         },
-        "knockLimitKey": 792940605
+        "knockLimitKey": 1125075540
       }
     },
     "car": {

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "V12 6.5 L",
-  "notes": "A naturally aspirated 6.5 L V12 of the 2010s: 95 x 76.4 mm (6496 cc), 13.5:1, direct injection, four valves, all cams phased (engines of the kind: 515 to 588 kW at 8250 to 9000 rpm, 690 to 720 N m at 6000 to 7000; makers' figures). In a front-mid-engined GT with a seven-speed dual clutch. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A naturally aspirated 6.5 L V12 of the 2010s: 95 x 76.4 mm (6496 cc), 13.5:1, direct injection, four valves, all cams phased (engines of the kind: 515 to 588 kW at 8250 to 9000 rpm, 690 to 720 N m at 6000 to 7000; makers' figures). In a front-mid-engined GT with a seven-speed dual clutch. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V12",
@@ -151,13 +151,13 @@
         "camIn": {
           "x": [
             104.71975511965977,
-            221.4074965165927,
-            338.0952379135256,
-            454.7829793104586,
-            571.4707207073915,
-            688.1584621043244,
-            804.8462035012574,
-            921.5339448981903
+            218.41550351317386,
+            332.1112519066879,
+            445.80700030020193,
+            559.5027486937161,
+            673.1984970872302,
+            786.8942454807442,
+            900.5899938742583
           ],
           "y": [
             0.0,
@@ -169,8 +169,8 @@
             [
               0.0,
               0.0,
-              10.0,
-              10.0
+              45.0,
+              45.0
             ],
             [
               0.0,
@@ -199,56 +199,56 @@
             [
               0.0,
               0.0,
-              50.0,
-              50.0
-            ],
-            [
-              0.0,
-              0.0,
               40.0,
               40.0
             ],
             [
               0.0,
               0.0,
-              40.0,
-              40.0
+              35.0,
+              35.0
+            ],
+            [
+              0.0,
+              0.0,
+              35.0,
+              35.0
             ]
           ]
         },
-        "camInKey": 2114839832,
+        "camInKey": 1454449807,
         "knockLimitAuto": false,
         "knockLimit": {
           "x": [
             104.71975511965977,
-            221.4074965165927,
-            338.0952379135256,
-            454.7829793104586,
-            571.4707207073915,
-            688.1584621043244,
-            804.8462035012574,
-            921.5339448981903
+            218.41550351317386,
+            332.1112519066879,
+            445.80700030020193,
+            559.5027486937161,
+            673.1984970872302,
+            786.8942454807442,
+            900.5899938742583
           ],
           "y": [
             0.2,
-            0.31362937726904233,
-            0.4272587545380847,
-            0.540888131807127,
-            0.6545175090761693,
-            0.7681468863452117,
-            0.8817762636142541,
-            0.9954056408832963
+            0.31357758582707695,
+            0.42715517165415395,
+            0.5407327574812308,
+            0.6543103433083078,
+            0.7678879291353848,
+            0.8814655149624617,
+            0.9950431007895388
           ],
           "z": [
             [
-              3.6746701801223964,
-              3.6746701801223964,
-              3.6746701801223964,
-              3.6746701801223964,
-              3.6746701801223964,
-              3.6746701801223964,
-              3.6746701801223964,
-              3.353551299615841
+              23.155157552411158,
+              23.155157552411158,
+              23.155157552411158,
+              23.155157552411158,
+              23.155157552411158,
+              23.155157552411158,
+              23.155157552411158,
+              10.927722382048765
             ],
             [
               0.0,
@@ -258,7 +258,7 @@
               0.0,
               0.0,
               0.0,
-              0.0
+              3.3876519546510977
             ],
             [
               0.0,
@@ -267,18 +267,18 @@
               0.0,
               0.0,
               0.0,
-              0.0,
-              0.0
+              1.4960730693351296,
+              4.012212327033625
             ],
             [
-              0.0,
-              0.0,
-              0.0,
-              0.0,
-              0.0,
-              0.0,
-              0.0,
-              0.0
+              2.9123886787564284,
+              2.9123886787564284,
+              2.9123886787564284,
+              2.9123886787564284,
+              2.9123886787564284,
+              2.9123886787564284,
+              4.062374580398523,
+              4.597722336996419
             ],
             [
               0.0,
@@ -322,7 +322,7 @@
             ]
           ]
         },
-        "knockLimitKey": 1196728049
+        "knockLimitKey": 483460890
       }
     },
     "car": {

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "2.0 L turbo four, direct injection",
-  "notes": "The 2.0 L EA888 generation 3 of the Mk7 Golf GTI: 82.5 x 92.8 mm (1984 cc), 9.6:1, direct and port injection, both cams phased, two-stage exhaust valve lift, one IHI IS20 turbo with an electric wastegate (Audi SSP 920243; the turbo's model: eqtuning.com, enthusiast); 162 kW at 4500 to 6200 rpm, 350 N m from 1500 to 4400 (VW's press presentation). What is known and what is guessed: the exhaust's two lobes are gen 2's (SSP 922903: the small 6.35 mm, 180 deg, used to about 3100 rpm and from just after a start above -10 C; the large 10 mm, 215 deg; durations read at 1 mm); the intake phaser's 60 deg is the earlier 2.0 TSI's; the exhaust phaser's 42 deg is the EA855 2.5 TFSI's (SSP 920273: gen 3's own and its parked timing not published); the boost taper (1.2 bar to 4500 rpm, 0.7 by 7000) is judgement, its top end agreeing with an owner's stock log (81 kPa at 6048 rpm: carworklog.com); the turbo's wheels are the IS20's as rebuilders and a blog give them (compressor 42.5 / 54.0 mm, turbine about 50 mm, about 1 mm either way; no maker's figure), its A/Rs matched (none found). Front drive, six-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "The 2.0 L EA888 generation 3 of the Mk7 Golf GTI: 82.5 x 92.8 mm (1984 cc), 9.6:1, direct and port injection, both cams phased, two-stage exhaust valve lift, one IHI IS20 turbo with an electric wastegate (Audi SSP 920243; the turbo's model: eqtuning.com, enthusiast); 162 kW at 4500 to 6200 rpm, 350 N m from 1500 to 4400 (VW's press presentation). What is known and what is guessed: the exhaust's two lobes are gen 2's (SSP 922903: the small 6.35 mm, 180 deg, used to about 3100 rpm and from just after a start above -10 C; the large 10 mm, 215 deg; durations read at 1 mm); the intake phaser's 60 deg is the earlier 2.0 TSI's; the exhaust phaser's 42 deg is the EA855 2.5 TFSI's (SSP 920273: gen 3's own and its parked timing not published); the boost taper (1.2 bar to 4500 rpm, 0.7 by 7000) is judgement, its top end agreeing with an owner's stock log (81 kPa at 6048 rpm: carworklog.com); the turbo's wheels are the IS20's as rebuilders and a blog give them (compressor 42.5 / 54.0 mm, turbine about 50 mm, about 1 mm either way; no maker's figure), its A/Rs matched (none found). Front drive, six-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -141,15 +141,15 @@
         "camIn": {
           "x": [
             104.71975511965977,
-            189.9915070495168,
-            275.26325897937386,
+            186.99951404609794,
+            269.2792729725361,
             290.26800000000003,
             327.846,
-            360.5350109092309,
-            445.8067628390879,
-            531.078514768945,
-            616.350266698802,
-            701.622018628659
+            351.5590318989743,
+            433.8387908254125,
+            516.1185497518507,
+            598.3983086782888,
+            680.6780676047271
           ],
           "y": [
             0.0,
@@ -185,26 +185,26 @@
             [
               0.0,
               0.0,
-              32.58555221557617,
-              32.58555221557617
+              32.70038986206055,
+              32.70038986206055
             ],
             [
               0.0,
               0.0,
-              28.5166015625,
-              28.5166015625
+              29.597537994384766,
+              29.597537994384766
             ],
             [
               0.0,
               0.0,
-              17.42497444152832,
-              17.42497444152832
+              18.991863250732422,
+              18.991863250732422
             ],
             [
               0.0,
               0.0,
-              6.516252517700195,
-              6.516252517700195
+              8.376468658447266,
+              8.376468658447266
             ],
             [
               0.0,
@@ -220,28 +220,28 @@
             ]
           ]
         },
-        "camInKey": 1191411391,
+        "camInKey": 904668025,
         "knockLimitAuto": false,
         "knockLimit": {
           "x": [
             104.71975511965977,
-            189.9915070495168,
-            275.26325897937386,
-            360.5350109092309,
-            445.8067628390879,
-            531.078514768945,
-            616.350266698802,
-            701.622018628659
+            186.99951404609794,
+            269.2792729725361,
+            351.5590318989743,
+            433.8387908254125,
+            516.1185497518507,
+            598.3983086782888,
+            680.6780676047271
           ],
           "y": [
             0.2,
-            0.48764720136759365,
-            0.7752944027351873,
-            1.062941604102781,
-            1.3505888054703745,
-            1.6382360068379682,
-            1.9258832082055621,
-            2.213530409573156
+            0.4866308906982482,
+            0.7732617813964964,
+            1.0598926720947446,
+            1.3465235627929928,
+            1.633154453491241,
+            1.9197853441894892,
+            2.2064162348877376
           ],
           "z": [
             [
@@ -255,14 +255,14 @@
               0.0
             ],
             [
-              4.274920607275433,
-              4.274920607275433,
-              4.274920607275433,
-              4.274920607275433,
-              4.274920607275433,
               0.0,
               0.0,
-              0.0
+              0.0,
+              0.0,
+              0.5495562113371714,
+              2.9881981367193577,
+              2.9881981367193577,
+              2.9881981367193577
             ],
             [
               0.0,
@@ -326,7 +326,7 @@
             ]
           ]
         },
-        "knockLimitKey": 2126661338,
+        "knockLimitKey": 1946640178,
         "boostAuto": false,
         "boost": {
           "x": [

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Rotary twin, side ports",
-  "notes": "A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a two-stage intake; its side ports' timing EO 50 BBDC, EC 3 ATDC, IO 3 ATDC, IC 65 ABDC in eccentric-shaft degrees (N1, from memory, to some 10 degrees) (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through mufflers. In a light rear-drive coupe. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a two-stage intake; its side ports' timing EO 50 BBDC, EC 3 ATDC, IO 3 ATDC, IC 65 ABDC in eccentric-shaft degrees (N1, from memory, to some 10 degrees) (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through mufflers. In a light rear-drive coupe. Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py).",
   "spec": {
     "engine": {
       "layout": "Rotary",
@@ -94,13 +94,13 @@
         "knockLimit": {
           "x": [
             104.71975511965977,
-            222.90351179282038,
-            341.08726846598097,
-            459.27102513914156,
-            577.4547818123021,
-            695.6385384854628,
-            813.8222951586234,
-            932.006051831784
+            219.9115187894015,
+            335.10328245914326,
+            450.295046128885,
+            565.4868097986267,
+            680.6785734683685,
+            795.8703371381102,
+            911.0621008078521
           ],
           "y": [
             0.2,
@@ -195,7 +195,7 @@
             ]
           ]
         },
-        "knockLimitKey": 772209791
+        "knockLimitKey": 10787321
       }
     },
     "car": {

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.2 L straight six, high-revving",
-  "notes": "A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, 8000 rpm (the S54 kind: 252 kW at 7900 rpm, 365 N m at 4900; makers' figures, from memory, firm to 5 %). Rear drive, six-speed manual. Its cams: the S54's (BMW training manuals ST041 and ST609: 12 mm lift, spreads intake 70 to 130 and exhaust 83 to 128 crank degrees, ranges 60 and 45, the intake resting at 130); the 260 deg durations read from a row whose height is not stated (taken as the seat); the exhaust resting at 128, the lead's reading of BMW's \"Exhaust Camshaft = Advance (83\u00ba spread angle)\", which is doubted. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule, the seat held (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, 8000 rpm (the S54 kind: 252 kW at 7900 rpm, 365 N m at 4900; makers' figures, from memory, firm to 5 %). Rear drive, six-speed manual. Its cams: the S54's (BMW training manuals ST041 and ST609: 12 mm lift, spreads intake 70 to 130 and exhaust 83 to 128 crank degrees, ranges 60 and 45, the intake resting at 130); the 260 deg durations read from a row whose height is not stated (taken as the seat); the exhaust resting at 128, the lead's reading of BMW's \"Exhaust Camshaft = Advance (83\u00ba spread angle)\", which is doubted. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule, the seat held (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -123,13 +123,13 @@
         "camIn": {
           "x": [
             104.71975511965977,
-            207.9435072587802,
-            311.1672593979006,
-            414.3910115370211,
-            517.6147636761415,
-            620.8385158152619,
-            724.0622679543824,
-            827.2860200935028
+            204.95151425536136,
+            305.1832733910629,
+            405.41503252676443,
+            505.64679166246606,
+            605.8785507981677,
+            706.1103099338692,
+            806.3420690695708
           ],
           "y": [
             0.0,
@@ -141,20 +141,20 @@
             [
               0.0,
               0.0,
-              30.0,
-              30.0
+              60.0,
+              60.0
             ],
             [
               0.0,
               0.0,
-              40.0,
-              40.0
+              45.0,
+              45.0
             ],
             [
               0.0,
               0.0,
-              40.0,
-              40.0
+              45.0,
+              45.0
             ],
             [
               0.0,
@@ -177,50 +177,50 @@
             [
               0.0,
               0.0,
-              30.0,
-              30.0
+              25.0,
+              25.0
             ],
             [
               0.0,
               0.0,
-              30.0,
-              30.0
+              25.0,
+              25.0
             ]
           ]
         },
-        "camInKey": 582197640,
+        "camInKey": 1122264442,
         "knockLimitAuto": false,
         "knockLimit": {
           "x": [
             104.71975511965977,
-            207.9435072587802,
-            311.1672593979006,
-            414.3910115370211,
-            517.6147636761415,
-            620.8385158152619,
-            724.0622679543824,
-            827.2860200935028
+            204.95151425536136,
+            305.1832733910629,
+            405.41503252676443,
+            505.64679166246606,
+            605.8785507981677,
+            706.1103099338692,
+            806.3420690695708
           ],
           "y": [
             0.2,
-            0.3136353472736245,
-            0.427270694547249,
-            0.5409060418208735,
-            0.654541389094498,
-            0.7681767363681224,
-            0.8818120836417469,
-            0.9954474309153714
+            0.31366177170350007,
+            0.4273235434070002,
+            0.5409853151105002,
+            0.6546470868140003,
+            0.7683088585175004,
+            0.8819706302210004,
+            0.9956324019245004
           ],
           "z": [
             [
-              5.367987980445227,
-              5.367987980445227,
-              5.367987980445227,
-              5.367987980445227,
-              5.367987980445227,
-              5.367987980445227,
-              5.367987980445227,
-              3.8911856512228646
+              6.466774260004361,
+              6.466774260004361,
+              6.466774260004361,
+              6.466774260004361,
+              6.466774260004361,
+              6.466774260004361,
+              6.466774260004361,
+              5.750348379214606
             ],
             [
               0.0,
@@ -294,7 +294,7 @@
             ]
           ]
         },
-        "knockLimitKey": 335027930
+        "knockLimitKey": 245217589
       }
     },
     "car": {

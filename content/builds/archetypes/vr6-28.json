@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Narrow-angle VR6 2.8 L",
-  "notes": "A 15-degree narrow-angle six, one head over both banks, two valves a cylinder: 81 x 90.3 mm (2792 cc), 10:1 (the 12-valve VR6 of 1991: 128 kW at 5800 rpm, 235 N m at 4200; makers' figures, from memory, firm to 5 %). In a front-drive hatch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the rocker class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 15-degree narrow-angle six, one head over both banks, two valves a cylinder: 81 x 90.3 mm (2792 cc), 10:1 (the 12-valve VR6 of 1991: 128 kW at 5800 rpm, 235 N m at 4200; makers' figures, from memory, firm to 5 %). In a front-drive hatch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the rocker class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -121,13 +121,13 @@
         "knockLimit": {
           "x": [
             104.71975511965977,
-            185.50350481737394,
-            266.2872545150881,
-            347.07100421280234,
-            427.8547539105165,
-            508.6385036082306,
-            589.4222533059449,
-            670.206003003659
+            182.5115118139551,
+            260.3032685082504,
+            338.0950252025457,
+            415.88678189684106,
+            493.67853859113643,
+            571.4702952854317,
+            649.2620519797271
           ],
           "y": [
             0.2,
@@ -222,7 +222,7 @@
             ]
           ]
         },
-        "knockLimitKey": 424923970
+        "knockLimitKey": 1639320482
       }
     },
     "car": {

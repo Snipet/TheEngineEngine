@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Supercharged 6.2 L V8",
-  "notes": "The 6.2 L pushrod V8 of 103.25 x 92 mm (6162 cc) at 9.1:1 under a 1.9 L positive-displacement blower at some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec table for the compression). In a heavy six-speed coupe. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 20 deg a side, the pushrod class's rule, the seat held (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "The 6.2 L pushrod V8 of 103.25 x 92 mm (6162 cc) at 9.1:1 under a 1.9 L positive-displacement blower at some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec table for the compression). In a heavy six-speed coupe. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 20 deg a side, the pushrod class's rule, the seat held (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -139,23 +139,23 @@
         "knockLimit": {
           "x": [
             104.71975511965977,
-            181.01551130453913,
-            257.31126748941847,
-            333.6070236742978,
-            409.90277985917714,
-            486.1985360440565,
-            562.4942922289359,
-            638.7900484138153
+            178.02351830112025,
+            251.32728148258076,
+            324.63104466404127,
+            397.9348078455017,
+            471.2385710269623,
+            544.5423342084227,
+            617.8460973898833
           ],
           "y": [
             0.2,
-            0.40697192996369536,
-            0.6139438599273908,
-            0.8209157898910859,
-            1.0278877198547813,
-            1.2348596498184767,
-            1.441831579782172,
-            1.6488035097458673
+            0.4013288657431885,
+            0.602657731486377,
+            0.8039865972295654,
+            1.0053154629727539,
+            1.2066443287159425,
+            1.4079731944591307,
+            1.6093020602023194
           ],
           "z": [
             [
@@ -174,19 +174,19 @@
               0.0,
               0.0,
               0.0,
-              0.48314614147310136,
-              5.132962255641963,
-              5.523777581751347
+              0.0,
+              4.413950563305478,
+              5.596261917480401
             ],
             [
               0.0,
               0.0,
               0.0,
               0.0,
-              0.05647729727926003,
-              1.246329007165329,
-              2.4361807170513967,
-              2.8920054935477673
+              0.0,
+              1.0175985937448473,
+              2.2261722366090644,
+              2.954404704986761
             ],
             [
               0.0,
@@ -240,7 +240,7 @@
             ]
           ]
         },
-        "knockLimitKey": 1909879639
+        "knockLimitKey": 1192069613
       }
     },
     "car": {
