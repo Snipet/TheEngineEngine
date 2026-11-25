@@ -102,6 +102,47 @@ def crossing(bin_dir, slug, out_dir, build_path):
     return lo[0][0] if d[0] >= 0 else lo[-1][0]
 
 
+TAKEUP = {"name": "Take-up: 90 % of peak torque after the pedal, at a lug (s)", "range": [0, 5], "unit": "s",
+          "basis": "cited",
+          "source": "the lead's ruling (03:11, D2's reading 03:13): held at 1100 rpm on the dyno (a loaded truck's speed "
+                    "barely moves in the seconds the makers quote), the pedal floored from none at 6 s, the time to 90 %% "
+                    "of the build's own peak torque (its predicted curve's top). The makers' claims: Detroit's DD15 spec "
+                    "sheet \"90%% peak torque in 1.5 seconds\", \"At just over 1100 RPM\"; the older engines' \"four "
+                    "seconds\" (the S60, TRUCKiNG Info 2007) and competitors' \"up to 4.4 seconds\" (Detroit's "
+                    "brochure); 5 s their slowest with margin (judgement). Not reached in the 34 s read: 34. Printed "
+                    "beside it: the time to 90 %% of what it settles at, and the settled torque over the peak"}
+TAKEUP_SLUGS = ("tractor-15-inline-six",)
+
+
+def takeup(bin_dir, slug, out_dir, build_path, peak):
+    """TAKEUP: seconds from the pedal to 90 % of `peak` (N m), and to 90 % of the settled torque, and settled / peak."""
+    path = os.path.join(out_dir, slug + ".takeup.txt")
+    if not os.path.exists(path):
+        wav = os.path.join(out_dir, slug + ".takeup.wav")
+        cmd = [os.path.join(bin_dir, "tee-render"), "--build", build_path, "--scenario",
+               os.path.join(ROOT, "content", "validation", "scenarios", "p-takeup-1100.json"), "--out", wav,
+               "--tel", "engine.torque"] + (["--sim", SIM] if SIM else [])
+        subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+        rows = []
+        with open(wav[:-4] + ".csv") as f:
+            next(f)
+            for line in f:
+                t, q = line.split(",")[:2]
+                rows.append((float(t), float(q)))
+        for x in (wav, wav[:-4] + ".csv"):
+            if os.path.exists(x):
+                os.remove(x)
+        end = [q for t, q in rows if t >= 36.0]
+        settled = sum(end) / max(len(end), 1)
+        after = [(t - 6.0, q) for t, q in rows if t >= 6.0]
+        t_peak = next((t for t, q in after if q >= 0.9 * peak), 34.0)
+        t_set = next((t for t, q in after if q >= 0.9 * settled), 34.0)
+        with open(path, "w") as fh:
+            fh.write("%.2f %.2f %.1f\n" % (t_peak, t_set, settled))
+    v = open(path).read().split()
+    return float(v[0]), float(v[1]), float(v[2])
+
+
 def comb_depth(x, sr, fire):
     """D2's comb depth (dB): the firing harmonics from 1 to 3 kHz against the half-way gaps, Welch, A-weighting
     cancelling in the ratio."""
@@ -330,6 +371,18 @@ def main():
                                 else "FAIL"))
     content = a.content or os.path.join(ROOT, "content")
     for s_ in slugs:
+        if s_ in TAKEUP_SLUGS and results[s_] is not None:
+            # the build's own peak torque: its predicted curve from 600 rpm to its rows' top dyno step (a governed
+            # diesel's rows are stepped; its peak sits low, near 1000 rpm)
+            tops = [max(t["dyno"]["steps"]) for t in docs[s_]["targets"] if "dyno" in t and "steps" in t["dyno"]]
+            plan_ = {"from": 600 * RPM, "to": max(tops)} if tops else None
+            if plan_:
+                peak = max(p[1] for p in curve(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), plan_))
+                tp, ts, st_ = takeup(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), peak)
+                row = dict(TAKEUP, source=TAKEUP["source"] + "; read: to 90 %% of settled %.2f s, settled %.0f N m = "
+                           "%.0f %% of the peak %.0f; the climb from 800 rpm (N2's take-up tool) not measured here"
+                           % (ts, st_, 100.0 * st_ / peak, peak))
+                results[s_].append((row, tp, "pass" if TAKEUP["range"][0] <= tp <= TAKEUP["range"][1] else "FAIL"))
         if s_ in CROSS_SLUGS and results[s_] is not None:
             x = crossing(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]))
             if x is not None:
