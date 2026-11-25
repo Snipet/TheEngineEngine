@@ -70,6 +70,7 @@ module HeavyDiesel
     float idleI;        // the electronic idle governor's integral
     float lever;        // what the charge is given (-1: the reference's)
     float fuelFull;     // kg a stroke at full rack
+    float ceilK;        // the torque ceiling's share of the full-load fuel (1: none taken)
     float setSpeed;     // the speed the governor aims for (rad/s)
     float highIdle;
     // the compression brake
@@ -130,6 +131,7 @@ module HeavyDiesel
         back = 0.0f;
         backP = 0.0f;
         exOn = 0;
+        ceilK = 1.0f;
         vaneOpen = 0.0f;
         flapReal = 0;
         aPrev = 0.0f;
@@ -168,7 +170,7 @@ module HeavyDiesel
     // the crank's speed (rad/s) and the ECU's idle and redline (rpm); clutch 0 engaged to 1 open; mdot kg/s and tGas K
     // the exhaust's; vTotal m^3; bore m
     void control16(float d16, int fuelUse, int state, float pedal, float omegaIn, float idleRpm, float redRpm, float sinceStart,
-                   float clutch, float mdot, float tGas, float boostBar, float vTotal, int n, float bore, float tAmb, int buttons)
+                   float clutch, float mdot, float tGas, float boostBar, float vTotal, int n, float bore, float tAmb, int buttons, float tqEngine)
     {
         on = fuelUse != 0 && (spec->governor != 0 || spec->engineBrake != 0 || spec->exhaustBrake != 0) ? 1 : 0;
         if (on == 0)
@@ -196,6 +198,22 @@ module HeavyDiesel
         const float curve = state == 2 ? fuelCurve(omega * 9.5492966f) : 0.0f;
         if (curve > 0.0f)
             fuelFull = curve * 1.0e-6f;
+        // (the torque ceiling, the Electronic governor's only (ecu.torqueMax, powerMax): the full-load fuel under a share
+        // that only ever lowers it, moved by an integral on the engine's torque against the ceiling, min(torqueMax,
+        // powerMax / omega), its error over the ceiling at 2 a second (judgement). The engine's torque: a torque-based
+        // ECU's own estimate, from the fuel through its calibrated torque model; here the model's brake torque over some
+        // 0.1 s (Engine's tqBrake) stands in for that estimate, the quantity a maker calibrates it against on the dyno.
+        // The smoke limit and the fuel curve still act under it. Running only: cranking takes the start quantity)
+        if (spec->governor == 2 && state == 2 && (spec->torqueMax > 0.0f || spec->powerMax > 0.0f))
+        {
+            float lim = spec->torqueMax > 0.0f ? spec->torqueMax : 1.0e9f;
+            if (spec->powerMax > 0.0f)
+                lim = fminf(lim, spec->powerMax / fmaxf(omega, 50.0f));
+            ceilK = fminf(fmaxf(ceilK + 2.0f * (lim - tqEngine) / lim * d16, 0.05f), 1.0f);
+            fuelFull *= ceilK;
+        }
+        else
+            ceilK = 1.0f;
         // the brakes engage with the pedal up, the clutch in, the engine running above the cut-out speed
         const bool may = state == 2 && pedal < 0.02f && clutch < 0.5f && omega > spec->brakeMin;
         // (the dash's stage switch; ctl.buttons' BTN_ENGINE_BRAKE, 64, held: on, at High if the switch is Off)

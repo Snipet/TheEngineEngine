@@ -151,21 +151,39 @@ falling. The vanes' actuator in card F's machine is a 50 ms lag; real electric o
 
 ## The full-load fuel curve (`ecu.fuelCurveRpm`, `ecu.fuelCurveMg`; 25 Nov)
 
-A governed diesel's full-load torque curve is its fuel curve: the maker shapes torque speed by speed with the fuel at
-full rack. Eight pairs, rpm and mg a stroke a cylinder at full rack, in the fuel's own units (a maker's
-injected-quantity table fills it directly); used where mg > 0, linear between, held outside; none set: `fuelBoost`'s
-flat line, to the bit. The over-fuel allowance and the compensator act on it as on the flat line, so it cannot give
-torque the air does not support. Where a build derives it from torque, the conversion is the build's own model torque a
-milligram (truck-15l-six: 8.94 N m/mg at 1600 rpm, fuel-limited), so the curve absorbs the model's efficiency; its
-torque and power against speed are then set by the curve, not evidence, and what still tests the model is what the
-curve does not set: BSFC (the truck 179-189 g/kWh; P's tractor archetype 202-211, against a 15 L's published minimum
-near 185-195, P to source), the boost and lambda at peak torque and rated, the take-up.
+A diesel's full-load fuel at full rack, by speed: eight pairs, rpm and mg a stroke a cylinder, in the fuel's own units, so
+a maker's **cited** injected-quantity table fills it directly; used where mg > 0, linear between, held outside, running
+only (cranking takes the pump's start quantity); none set: `fuelBoost`'s flat line, to the bit. The over-fuel allowance
+and the compensator act on it as on the flat line. **No build derives it from a published torque curve** (the lead's
+rule, 25 Nov: no build part computed from its own validation targets): until 25 Nov truck-15l-six's curve was its cited
+2779 N m and 451 kW turned to milligrams through the build's own 8.94 N m/mg, the forbidden kind; it is removed, and the
+truck states a torque ceiling instead (below). GovernorTest keeps the mechanism with a curve stated in the test.
 
-truck-15l-six (and its bobtail): the class's cited 2779 N m at 1000 rpm held to 1400 and 451 kW at 1800 and 2100
-(cited), 75 and 88 % of the peak at 700 and 800 (judgement). Held, heat settled, before -> after: 1100 rpm 2671 ->
-2660 N m (lambda 1.30: air-limited on the reference turbo's 140 kPa, the curve's low points not showing), 1300 2718 ->
-2715, 1600 2759 -> 2703, 2100 2729 N m / 600 kW -> 2135 / 470 kW. The tractor archetype's curve is proposed to card P,
-who commits it with its validation rows moved to "set by the fuel curve".
+## The torque ceiling (`ecu.torqueMax`, `ecu.powerMax`; 25 Nov, the lead's ruling)
+
+An electronically governed diesel's ECU holds its rated plateau by torque: a torque-based ECU converts its torque limit
+to fuel through its own calibrated torque model. Here: the full-load fuel under a share (0 to 1) that only ever lowers
+it, moved by an integral on the engine's torque against min(torqueMax, powerMax / omega), its error over the ceiling at
+2 a second (judgement); the engine's torque read as the model's brake torque over some 0.1 s, a stand-in for the ECU's own
+estimate (the quantity a maker calibrates that estimate against on the dyno). The smoke limit and any cited fuel curve
+act under it; 0: none, bit-identical. **The Electronic governor only**: a mechanical pump has a rack stop, not a torque
+estimate; a mechanical build states a full-load delivery (its `fuelBoost` line or a cited mm3 a stroke), never a torque.
+
+**What it holds stops counting as validation.** A build that states torqueMax or powerMax reads its peak-torque and
+rated-power rows by construction: those rows are "held by calibration", out of the hit and miss counts, and a rated row
+reading the cited figure is not a pass. What validates such a build is what the ceiling does not decide: the speed at
+which the plateau begins (the air's), BSFC, boost, lambda, the exhaust's heat, the smoke limit's reach.
+
+Measured (25 Nov): the 2.0 common rail with 320 N m (VW's, not yet in its build: card P's), 2500 / 3000 rpm 326 / 331 ->
+320 / 321 N m, 3500 / 4000 unchanged (319 / 284, under it), 1750 / 2000 unchanged (155 / 173: smoke-limited, the air's);
+a pedal step from 0.6 to full at 3000: the first second's most 327 N m (2.2 % over), settled 320, 316-322 over the sixth
+second (the engine's own ripple: 326-332 without); at 2500, where the vanes' loop meets it, 320 (318-324), no hunting.
+truck-15l-six (its own reference turbo, 25 Nov): 800-1200 rpm 1822 / 2263 / 2666 N m (lambda 1.30: smoke-limited, under
+the ceiling), 1400 2779, 1600-2100 450-451 kW (held by calibration).
+
+Which builds may state it: truck-15l-six and its bobtail (Electronic: they do, 2779 N m and 451 kW, cited); diesel-v8-truck
+and diesel-pickup-tuned (Electronic: none cited, none stated); diesel-mechanical-classic and diesel-marine-v12 (Mechanical:
+never; their full-load delivery is the `fuelBoost` line, judgement).
 
 ## The idle's clatter: a hump, not a comb (24 Nov, late)
 

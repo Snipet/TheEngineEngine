@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Truck 15 L six, bobtail",
-  "notes": "Card D2. A highway tractor alone (a bobtail, 9 t): a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a three-stage compression-release brake and an exhaust flap (both off at their switches); an eighteen-speed (Eaton RTLO-18918B: the lever, the splitter and the range; ctl.lever 1-4, 5 the L slot, buttons 16 and 32) on 295/75R22.5 tyres, 3.55 axle. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades. Its full-load fuel curve (ecu.fuelCurveRpm/Mg, mg a stroke at full rack): the class's cited 2779 N m at 1000 rpm (a 15 L six's top rating, cummins.com) held to 1400 and 451 kW at 1800 and 2100 (cited), 75 and 88 % of the peak at 700 and 800 (judgement), each turned to fuel by this build's own model torque a milligram, 8.94 N m/mg (measured at 1600 rpm, fuel-limited, 25 Nov): so its torque and power against speed are set by the curve, not evidence. Below some 1600 rpm the reference turbo's 140 kPa does not carry that fuel: the compensator holds lambda 1.30 there (air-limited; the curve's low points not showing). Its BSFC (179-189 g/kWh held at 1100-2100 rpm, 25 Nov) is flattered by some 5 %: the reference turbo gives its 140 kPa of boost with no back pressure, so its pumping is a gain (PMEP -1.0 to -1.2 bar, the exhaust port at 0.48 of the intake's); on card F's machine (the tractor archetype) the same class pays 1.9-2.6 bar. Its valves (25 Nov): the tractor archetype's events (Lab valvetrain, four valves of 46/43 mm, 232 deg at the seat, 200 at 1 mm, lifts 14/13 mm, centres 112/112: that archetype's judgement; no cam card for the class found). Before, the reference's cam dial at 0.9999 (300 deg, lobe separation 106: 88 deg of overlap, the intake closing 76 deg after the bottom): with the turbine's back pressure over the boost its exhaust blew back through the overlap, VE 0.35 to 0.51 and smoke-limited (N2's truck-valve-events.md); measured, the overlap was the harm (the dial's overlap on these closings 758 N m at 1000 rpm, its late closing on this overlap 1176, these 1521). Its idle trim -400 -> -50: the ECU raised a 0.9999 cam's idle by 350 rpm (idle.fm), which the old trim took back; the same 597 rpm idle.",
+  "notes": "Card D2. A highway tractor alone (a bobtail, 9 t): a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a three-stage compression-release brake and an exhaust flap (both off at their switches); an eighteen-speed (Eaton RTLO-18918B: the lever, the splitter and the range; ctl.lever 1-4, 5 the L slot, buttons 16 and 32) on 295/75R22.5 tyres, 3.55 axle. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades. Its torque ceiling (ecu.torqueMax 2779 N m, powerMax 451 kW; the electronic governor's, as a torque-based ECU holds its rated plateau): the class's cited top rating, 2779 N m and 451 kW (a 15 L six's, cummins.com), used as calibration inputs. They hold the peak-torque and rated-power rows by construction, so those rows are not validation: what validates this build is what the ceiling does not decide (where the plateau begins, the air's; BSFC, boost, lambda, the exhaust's heat, the smoke limit's reach). Until 25 Nov a full-load fuel curve fitted to those figures through this build's own torque a milligram stood here: a build part computed from its own targets, the lead's rule forbids it; removed. Below some 1600 rpm the reference turbo's 140 kPa holds the fuel under the ceiling: the compensator, lambda 1.30 (air-limited). Its BSFC (179-189 g/kWh held at 1100-2100 rpm, 25 Nov) is flattered by some 5 %: the reference turbo gives its 140 kPa of boost with no back pressure, so its pumping is a gain (PMEP -1.0 to -1.2 bar, the exhaust port at 0.48 of the intake's); on card F's machine (the tractor archetype) the same class pays 1.9-2.6 bar. Its valves (25 Nov): the tractor archetype's events (Lab valvetrain, four valves of 46/43 mm, 232 deg at the seat, 200 at 1 mm, lifts 14/13 mm, centres 112/112: that archetype's judgement; no cam card for the class found). Before, the reference's cam dial at 0.9999 (300 deg, lobe separation 106: 88 deg of overlap, the intake closing 76 deg after the bottom): with the turbine's back pressure over the boost its exhaust blew back through the overlap, VE 0.35 to 0.51 and smoke-limited (N2's truck-valve-events.md); measured, the overlap was the harm (the dial's overlap on these closings 758 N m at 1000 rpm, its late closing on this overlap 1176, these 1521). Its idle trim -400 -> -50: the ECU raised a 0.9999 cam's idle by 350 rpm (idle.fm), which the old trim took back; the same 597 rpm idle.",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -63,26 +63,8 @@
       "exhaustBrake": "Flap",
       "fuelBoost": 140000,
       "ratedSpeed": 219.9,
-      "fuelCurveRpm": [
-        700,
-        800,
-        1000,
-        1400,
-        1800,
-        2100,
-        0,
-        0
-      ],
-      "fuelCurveMg": [
-        233,
-        274,
-        311,
-        311,
-        268,
-        229,
-        0,
-        0
-      ]
+      "torqueMax": 2779.0,
+      "powerMax": 451000.0
     },
     "car": {
       "kind": "Truck",
