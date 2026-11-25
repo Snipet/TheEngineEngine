@@ -171,3 +171,6 @@ sheet will include every registered workspace.
   interface's own settings text (`drive.style=race`, beside the units' lines; STANDARD is not written), so no shell
   change. The alarms' limits are judgement, marked in Dash.cpp. Not shown, as the simulator does not publish it: a
   lateral g (only car.accel, the longitudinal, exists), so the g meter is longitudinal only.
+  CLASSIC's small dials keep their digits out of the needle's sweep (`Gauge::setReadoutClear`); under a stage width
+  where eight would be too small for that (a small dial under 96 px) it shows four larger ones (boost, oil pressure,
+  water, lambda; the band's lamps still say oil temperature, exhaust and knock).

@@ -16,7 +16,9 @@
 //                          order
 //                  cancel  {id} -> {"cancelled": bool}: a waiting call is answered "cancelled", the running one stops
 //                          as soon as it can (and still answers)
-//   a reply      one line, {"id": 1, "result": ...} or {"id": 1, "error": "why"}, exactly one a request
+//   a reply      one line, {"id": 1, "result": ...} or {"id": 1, "error": "why"} (with "code", a JSON-RPC error's, when
+//                the bridge must answer its client with one: -32602 for a call of a tool that does not exist), exactly one
+//                a request
 //
 // macOS and Linux. Windows has no link in this version: every function here says so (kNoLink) and the app's switch
 // stays off.
@@ -129,29 +131,66 @@ namespace tee::assistant::wire
  #endif
     }
 
-    // A socket not inherited by a program the process starts.
+    // A write to a socket whose peer has gone must never raise SIGPIPE (it would end the app: the owner's window gone
+    // because Claude Desktop's bridge went away). Every socket made here takes SO_NOSIGPIPE where the system has it
+    // (macOS), and every send is sendAll's, with MSG_NOSIGNAL where the system has that (Linux). The application's
+    // main ignores SIGPIPE besides, as a second line.
+    inline void noSigpipe([[maybe_unused]] int fd)
+    {
+ #if defined(SO_NOSIGPIPE)
+        const int one = 1;
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof one);
+ #endif
+    }
+
+    // The whole of `n` bytes to a socket: false when the peer has gone (EPIPE, ECONNRESET) or the socket refused it
+    // (a send timeout); never a signal. EINTR is retried.
+    inline bool sendAll(int fd, const char* data, std::size_t n)
+    {
+        std::size_t at = 0;
+        while (at < n)
+        {
+ #if defined(MSG_NOSIGNAL)
+            const ssize_t sent = send(fd, data + at, n - at, MSG_NOSIGNAL);
+ #else
+            const ssize_t sent = send(fd, data + at, n - at, 0);   // (the socket's SO_NOSIGPIPE)
+ #endif
+            if (sent < 0 && errno == EINTR)
+                continue;
+            if (sent <= 0)
+                return false;
+            at += static_cast<std::size_t>(sent);
+        }
+        return true;
+    }
+
+    // A socket not inherited by a program the process starts, and never raising SIGPIPE.
     inline int newSocket()
     {
  #if defined(SOCK_CLOEXEC)
-        return socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+        const int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
  #else
         const int fd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (fd >= 0)
             fcntl(fd, F_SETFD, FD_CLOEXEC);
-        return fd;
  #endif
+        if (fd >= 0)
+            noSigpipe(fd);
+        return fd;
     }
 
     inline int acceptFrom(int listener)
     {
  #if defined(SOCK_CLOEXEC) && !defined(__APPLE__)
-        return accept4(listener, nullptr, nullptr, SOCK_CLOEXEC);
+        const int fd = accept4(listener, nullptr, nullptr, SOCK_CLOEXEC);
  #else
         const int fd = accept(listener, nullptr, nullptr);
         if (fd >= 0)
             fcntl(fd, F_SETFD, FD_CLOEXEC);
-        return fd;
  #endif
+        if (fd >= 0)
+            noSigpipe(fd);
+        return fd;
     }
 
     // Two connected sockets, neither blocking: a thread's wake-up (written to one, read from the other).
@@ -166,6 +205,7 @@ namespace tee::assistant::wire
         {
             fcntl(fds[i], F_SETFD, FD_CLOEXEC);
             fcntl(fds[i], F_SETFL, O_NONBLOCK);
+            noSigpipe(fds[i]);
         }
         return true;
  #endif

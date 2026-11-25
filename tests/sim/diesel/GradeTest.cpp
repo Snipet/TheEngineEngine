@@ -1,6 +1,8 @@
 // tests/sim/diesel/GradeTest.cpp: card D2: the 36 t rig (content/builds/truck-15l-six.json, the vehicle model, its
 // eighteen gears worked by the paddles' robotised clutch; 300 K, 101325 Pa) pulling away loaded, up a 6 % grade and
 // held on the way down by its brakes.
+// (The case "the paddles' clutch holds the compression brake's overrun at low revs" is card D's as integrator, with the
+// lead's leave, 25 Nov.)
 #include "Diesel.h"
 
 #include <cstdio>
@@ -168,4 +170,55 @@ TEST_CASE("diesel truck, full: on the way down a 6 % grade the brakes hold the r
     }
     CHECK(vEnd[1] < vEnd[0] - 3.0);
     CHECK(vEnd[1] * 3.6 < 70.0);
+}
+
+TEST_CASE("diesel truck: the paddles' clutch holds the compression brake's overrun at low revs, and the brake stays on",
+          "[diesel][truck][brake]")
+{
+    // (card D2's finding, 25 Nov: in gear at some 1150 rpm, down 6 % with the compression brake on High and the flap, the
+    // robotised clutch, closing with the engine's own revs, passed some 0.4 of its torque there; the brake's overrun (on
+    // D2's corrected valves some -1450 N m) slipped it, the engine fell to its idle, the brake cut out below its 900 rpm
+    // and the clutch opened for good with the gear in: the rig ran away. Now a clutch that slips backwards is held closed
+    // by the road's speed: the brake stays on and the slip small. The fixture needs no diesel package: the brake as it
+    // is on the branch (some -1170 N m here) against the clutch scaled to 2500 N m from 3500, so overrun over capacity is
+    // D2's (measured 25 Nov without the hold: 891 N m of capacity at 1116 rpm, slip -150 rad/s by 13 s))
+    Engine e("truck-15l-six");
+    e.spec("ecu.brakeSwitch", 3);
+    e.spec("ecu.exBrakeSwitch", 1);
+    e.spec("car.clutchTorque", 2500.0);
+    startDriving(e);
+    Driver d{e};
+    e.ctl().throttle = 1.0f;
+    double t = 0.0;
+    while (t < 60.0 && e.tel("car.speed") < 28.0 / 3.6)
+    {
+        d.step(0.1);
+        t += 0.1;
+    }
+    // (up the gears with the pedal light until the road's speed through the gear is under 1250 rpm)
+    e.ctl().throttle = 0.2f;
+    auto roadRpm = [&] { return e.tel("car.speed") / 0.5 * e.tel("car.ratio") / 0.10471976; };
+    for (int k = 0; k < 6 && roadRpm() > 1250.0; ++k)
+    {
+        e.ctl().shiftUp += 1;
+        REQUIRE(e.run(1.5));
+    }
+    e.ctl().throttle = 0.0f;
+    e.spec("env.grade", -0.06);
+    const int gear = static_cast<int>(e.tel("car.gear"));
+    const double r0 = roadRpm();
+    double worst = 0.0;
+    for (int i = 0; i < 100; ++i)
+    {
+        REQUIRE(e.run(0.1));
+        worst = std::max(worst, std::fabs(e.get("car.m1.slipC")));
+    }
+    std::printf("down 6 %% in gear %d from %.0f rpm, the brake on High and the flap: after 10 s %.0f rpm (road %.0f), %.0f N m on the "
+                "crank, the clutch's slip %.1f rad/s at worst, %.1f km/h\n",
+                gear, r0, e.tel("engine.speed") / 0.10471976, roadRpm(), e.tel("engine.torque"), worst, e.tel("car.speed") * 3.6);
+    CHECK(r0 < 1300.0);                                        // (the case's own: it starts where the clutch was half closed)
+    CHECK(static_cast<int>(e.tel("car.gear")) == gear);
+    CHECK(e.tel("engine.torque") < -500.0);                    // the brake still on
+    CHECK(std::fabs(e.tel("engine.speed") / 0.10471976 - roadRpm()) < 30.0);   // the clutch closed: the engine at the road's
+    CHECK(worst < 20.0);                                       // the slip bounded (the run-away reached 150 rad/s)
 }

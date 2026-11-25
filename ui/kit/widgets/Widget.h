@@ -27,6 +27,9 @@ namespace tee::ui
     struct Look
     {
         funkgui::Col ground, face, faceHi, edge, text, label, dim, value, accent, accentDim, signal;
+        // J2 (card A's chat): what went wrong (a message refused, a fault), apart from the one accent: a red that reads on
+        // the theme's ground (a lighter one on a dark ground, a deeper one on paper).
+        funkgui::Col error;
 
         static Look of(const funkgui::Theme& th) noexcept
         {
@@ -42,6 +45,8 @@ namespace tee::ui
             l.accent = th.accent;
             l.accentDim = th.accentDim;
             l.signal = th.signal;
+            const int light = th.ground.r + th.ground.g + th.ground.b;
+            l.error = light > 3 * 128 ? funkgui::Col{ 0xC4, 0x22, 0x3A, 0xFF } : funkgui::Col{ 0xF2, 0x55, 0x66, 0xFF };
             return l;
         }
         // c at alpha a over the ground, opaque (a curve's colour: funkgui::premix).
