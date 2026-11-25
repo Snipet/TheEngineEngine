@@ -32,8 +32,9 @@
 // 16 ms (kSlugLife: a stoichiometric slug mixing with an equal mass of air passes lambda 1.8 at 0.8 of a 20 ms mixing
 // time; judgement, G's), and at each later opening of its bank lights with the chance (T - 900) / 300 of the hottest
 // gas it meets there, that blowdown's or the bank's recent one held (Ecu::blow: the account's own ramp and hold,
-// judgement; under a hard spark cut no charge fires for a while, and the last fired ones' gas still lights what follows
-// them); past its life it joins the unmixed store. The unmixed store only
+// judgement, G's review: under a hard spark cut no charge fires for a while, and the last fired ones' gas, still hot
+// in the pipe, lights what follows them. It is not the re-fire: the first fired blowdown after the cut lights what is
+// still waiting by the same rule, not by a rule of its own); past its life it joins the unmixed store. The unmixed store only
 // flushes (0.25 s): it mixes too slowly to bang (Coward and Jones's limits, G's side). Each burn is handed over whole
 // (out*: combustion passes them to Pop::burnEvent): heat its fuel times the fuel's lower heating value.
 #pragma once
