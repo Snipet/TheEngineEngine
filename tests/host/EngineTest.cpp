@@ -523,6 +523,65 @@ TEST_CASE("predicted points are the stepped dyno's settled torque within 3 %: th
     predictedMatchesSteps("turbo-four-20-gdi.json", {423.8, 542.9}, 0.03);
 }
 
+// A part with hysteresis holds its state across a band of speed (the two-stage cam: up over 612.6 rad/s, down under
+// 581.2), so a predicted point in the band read the state of the way the rig came to it: on the tip of 25 Nov the 5740 rpm
+// point, reached from 6827 rpm or stepped up from 4110 with the absorber's loop carrying it over the switch, read stage B
+// at 181.3 N m between 194.5 and 202.5 (P's 13 N m notch; card N1's find and cure). Read as an upward sweep reaches it:
+// stage A (the stepped dyno, upward: 190.3). Every point under the switch reads A and every one over it B, whatever the
+// order the rigs take them in, and none needed forcing
+TEST_CASE("a part with hysteresis: the predicted points read the state an upward sweep reaches them in",
+          "[engine][sim][predict]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    if (sim->fields().find("tel.engine.latched") == nullptr || sim->fields().find("tel.engine.hysteresis") == nullptr)
+        SKIP("the program does not say yet when a part with hysteresis is latched");
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/two-stage-cam-20.json",
+                           BuildPart::Whole, warnings, error));
+    const double up = build.get("valve.stageSpeed");
+    PredictOptions options;
+    options.from = 89.0;      // P's rows' range
+    options.to = 942.5;
+    options.fields = {"tel.valve.stage"};
+    PredictCurve curve;
+    REQUIRE(predictCurve(sim, build, options, curve, error));
+    int band = 0;
+    for (const PredictPoint& p : curve.points)
+    {
+        if (!p.valid || p.limited)
+            continue;
+        REQUIRE(p.fields.size() == 1);
+        CAPTURE(p.speed * 30.0 / 3.14159265358979, p.torque, p.fields[0]);
+        CHECK(p.fields[0] == (p.speed > up ? 1.0 : 0.0));
+        CHECK_FALSE(p.approachForced);
+        band += p.speed < up && p.speed > up - build.get("valve.stageHyst") ? 1 : 0;
+    }
+    CHECK(band >= 1);   // a point in the band, where the way it came decides
+
+    // a point in the band reached from above (one share: the coarse ends first, so the band point comes after the
+    // point over the switch, its stage latched): let down, it reads A all the same
+    const double hyst = build.get("valve.stageHyst");
+    PredictOptions above;
+    above.threads = 1;
+    above.shares = 1;
+    above.coarse = 2;
+    above.speeds = {up - 150.0, up - 0.3 * hyst, up + 20.0};   // a small step down: its undershoot stays in the band
+    above.fields = {"tel.valve.stage"};
+    REQUIRE(predictCurve(sim, build, above, curve, error));
+    REQUIRE(curve.points.size() == 3);
+    const PredictPoint& inBand = curve.points[1];
+    CAPTURE(inBand.speed, inBand.torque);
+    REQUIRE(inBand.fields.size() == 1);
+    CHECK(inBand.fields[0] == 0.0);
+    CHECK_FALSE(inBand.approachForced);
+    CHECK(curve.points[2].fields[0] == 1.0);
+}
+
 TEST_CASE("the knock limit's key moves with what moves the knock limit, and not with the air or the person's timing",
           "[engine][sim][bake]")
 {

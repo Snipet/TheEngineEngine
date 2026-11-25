@@ -43,6 +43,14 @@
 
 ## Landed
 
+- **25 Nov 20:41 UTC: frozen for the bake at 9c33806c** (not in `main`). The window landed: the diesel package;
+  the clutch's latch; bangs Burned in the pipe as the default with G's fix and L's exposure rule for them; the
+  bores' floors; the fan's tone; the predictor reading a point as an upward sweep reaches it (the two-stage's
+  notch cured); the Logitech G29 on macOS (compiled and run by CI, not yet on a wheel) with `tee-wheel-dump`;
+  the assistant's build list and its yes/no dialog; the DRIVE dials' numbers clear of the needle; Rows as the
+  inspector, with the part card. CI green on all three with the diesel package (61ca5f0d, 60e87aef) and on
+  macOS and Windows with the wheel, the default and the kit (adf53f54); the last pushes not yet read. P bakes
+  every build next; `main` follows the baked commit's CI.
 - **25 Nov 19:44 UTC: on the branch, not in `main`:** bangs Burned in the pipe as the default with G's fix
   (81ec1b12); the Logitech G29's first slice on macOS (5b66951a: pedals, clutch, paddles, the H shifter, the PS
   button as the start key, the five shift lights, 900 degrees and the spring; ported from TestingPlayground;

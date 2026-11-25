@@ -129,6 +129,9 @@ namespace tee
         // The rev limiter (tel.engine.flags' FLAG_LIMITER; a diesel's governor) acted in a counted cycle: the torque is
         // the cut's, no measure of the engine. Still valid (valid is a fault's), but a bake treats it as missing.
         bool limited = false;
+        // A part with hysteresis held a state an upward sweep would not hold here, and letting the speed down to half
+        // the point's did not release it (Predict.cpp: approach): the point reads the way the rig came. Never expected
+        bool approachForced = false;
         std::vector<double> history;  // each cycle's mean torque there, in order (the first after a change of speed)
     };
 
