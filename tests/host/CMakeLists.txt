@@ -17,7 +17,10 @@ add_test(NAME host.sim.cases COMMAND tee-host-tests "[sim]~[nightly]" WORKING_DI
 set_tests_properties(host.sim.cases PROPERTIES TIMEOUT 900 LABELS "host;sim")
 add_test(NAME host.sim.nightly COMMAND tee-host-tests "[sim][nightly]" WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 set_tests_properties(host.sim.nightly PROPERTIES TIMEOUT 3600 LABELS "host;sim;nightly")
-catch_discover_tests(tee-host-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_SPEC "~[sim]" PROPERTIES TIMEOUT 900)
+# a case tagged [timing] checks a wall-clock budget: alone, not beside a parallel run's load
+add_test(NAME host.timing COMMAND tee-host-tests "[timing]~[sim]" WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_tests_properties(host.timing PROPERTIES TIMEOUT 900 RUN_SERIAL TRUE LABELS "host;timing")
+catch_discover_tests(tee-host-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_SPEC "~[sim]~[timing]" PROPERTIES TIMEOUT 900)
 # the tools a test runs, beside the tests in bin/
 target_compile_definitions(tee-host-tests PRIVATE "TEE_BIN_DIR=\"$<TARGET_FILE_DIR:tee-host-tests>\"")
 foreach(_tool tee-dyno tee-render)
