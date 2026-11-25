@@ -8,12 +8,14 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <future>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -470,4 +472,89 @@ TEST_CASE("assistant: the curves yield to the app's own: never with the ribbon's
     CHECK(busy.isError);
     CHECK(busy.value["error"].get<std::string>().find("busy") != std::string::npos);
     CHECK(late.tools->pointsRun() == 0);
+}
+
+TEST_CASE("assistant: the builds are GARAGE's whole builds, archetypes included, by folder; no fixture, no part",
+          "[assistant][sharedsim]")
+{
+    Rig rig("whole");
+    const fs::path shipped = fs::path(TEE_SOURCE_DIR) / "content" / "builds";
+    const auto t0 = std::chrono::steady_clock::now();
+    const Result listed = rig.call("list_builds");
+    const double listSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    INFO(listed.text().substr(0, 400));
+    REQUIRE_FALSE(listed.isError);
+    std::set<std::string> names;
+    for (const json& b : listed.value["builds"])
+        names.insert(b["name"].get<std::string>());
+    // what the library calls whole, one for one (its rule is GARAGE's: the shell's test holds the two together)
+    const std::vector<files::WholeBuild> whole = rig.library->wholeBuilds(rig.build().fields());
+    CHECK(names.size() == whole.size());
+    for (const files::WholeBuild& w : whole)
+    {
+        INFO(w.name);
+        CHECK(names.count(w.name) == 1);
+    }
+    // every archetype is listed by its folder-qualified name
+    std::size_t archetypes = 0;
+    std::error_code ec;
+    for (const auto& e : fs::directory_iterator(shipped / "archetypes", ec))
+        if (e.path().extension() == ".json")
+        {
+            ++archetypes;
+            const std::string name = "archetypes/" + e.path().stem().string();
+            INFO(name);
+            CHECK(names.count(name) == 1);
+        }
+    CHECK(archetypes >= 30);
+    // no fixture, no part, no path
+    for (const std::string& n : names)
+    {
+        INFO(n);
+        CHECK(n.rfind("combo/", 0) != 0);
+        CHECK(n.rfind("cams/", 0) != 0);
+        CHECK(n.rfind("exhausts/", 0) != 0);
+        CHECK(n.find(".json") == std::string::npos);
+    }
+    // the list fits one result whole (32 KB), and costs the frame little
+    CHECK(listed.text().size() < 32u * 1024u);
+    CHECK(listSeconds < 5.0);
+    // every archetype loads by its name, in any letter case
+    std::size_t loaded = 0;
+    for (const std::string& n : names)
+    {
+        if (n.rfind("archetypes/", 0) != 0)
+            continue;
+        std::string asked = n;
+        if (loaded % 2 == 1)
+            for (char& c : asked)
+                c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        const Result r = rig.call("load_build", {{"name", asked}});
+        INFO(asked << ": " << r.text());
+        CHECK_FALSE(r.isError);
+        CHECK(r.value["loaded"] == n);
+        CHECK_FALSE(rig.file->dirty());
+        ++loaded;
+    }
+    CHECK(loaded == archetypes);
+    // a fixture and a part: refused, whatever the spelling, and nothing loaded
+    const std::uint64_t hash = rig.build().hash();
+    std::string fixture, part;
+    for (const auto& e : fs::directory_iterator(shipped / "combo", ec))
+        if (e.path().extension() == ".json" && fixture.empty())
+            fixture = "combo/" + e.path().stem().string();
+    for (const auto& e : fs::directory_iterator(shipped / "cams", ec))
+        if (e.path().extension() == ".json" && part.empty())
+            part = "cams/" + e.path().stem().string();
+    REQUIRE_FALSE(fixture.empty());
+    REQUIRE_FALSE(part.empty());
+    for (const std::string& bad : {fixture, part, std::string("archetypes/no-such-build"), std::string("archetypes")})
+    {
+        const Result r = rig.call("load_build", {{"name", bad}});
+        INFO(bad << ": " << r.text());
+        CHECK(r.isError);
+        CHECK(r.text().find(".json") == std::string::npos);
+        CHECK(r.text().find(TEE_SOURCE_DIR) == std::string::npos);
+    }
+    CHECK(rig.build().hash() == hash);
 }
