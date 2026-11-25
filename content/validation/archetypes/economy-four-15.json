@@ -232,6 +232,23 @@
       "basis": "recalled"
     },
     {
+      "name": "Idle manifold pressure",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "tel": "intake.manifold",
+      "measure": "mean",
+      "during": [
+        8,
+        14
+      ],
+      "range": [
+        20000.0,
+        34000.0
+      ],
+      "unit": "Pa",
+      "source": "Honda's L15 ECM/PCM data table: \"At idle speed: about 20-34 kPa (150-260 mmHg, 6-10 in.Hg)\", warm, in neutral or park, A/C and accessories off, 750 rpm (the L15A1/A6 page): the same class's engine",
+      "basis": "cited"
+    },
+    {
       "name": "Idle steadiness",
       "scenario": "validation/scenarios/p-idle-warm.json",
       "tel": "engine.speed",

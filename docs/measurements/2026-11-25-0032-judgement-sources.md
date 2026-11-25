@@ -116,3 +116,30 @@ Q quoted, F read off a figure, D derived. Measured, light-duty, accessories off 
 | 2009 Toyota Corolla, 1.8 L I4 | about 0.22 gal/h AC off | D (from "~0.13 gal/h ... 60% increase") | dyno | same |
 
 **Fitted lines, not measurements:** Argonne's light-duty worksheet, 1 to 5 L: 0.16, 0.32, 0.48, 0.63, 0.79 gal/h "no accessories" (Q), no data basis stated; it is NRCan's "0.6 litres/hr per litre of engine displacement" (Q; Taylor 2003, not found) to the rounding. Argonne's own measured range: "0.2 to 0.5 gal/h for passenger vehicles across a range of sizes, and increased with idling speed" (Q). **The line over-predicts every measured warm idle above 2 L by 25 to 45 %**, and the measured rates grow less than in proportion to displacement. No source states neutral or park; none gives the idle speed.
+
+## 10. Manifold pressure at warm idle (the lead's ask, 25 Nov 01:46 UTC)
+
+kPa absolute, 1 inHg 3.386 kPa, vacuum taken from 101.3 kPa unless stated. Q quoted, D derived.
+
+| Engine | Idle MAP | Idle speed, conditions | Basis | Source |
+|---|---|---|---|---|
+| Honda L15 (Fit/Jazz), the economy 1.5's class | 20-34 | 750 ± 50 rpm (L15A1/A6 page); warm, CVT in P or N, M/T in N, A/C and all accessories off | maker, Q: "At idle speed: about 20-34 kPa (150-260 mmHg, 6-10 in.Hg)" | Honda workshop manual, ECM/PCM data table (hondziarze.duckdns.org/jazz) |
+| Toyota 4A-GE 16V | about 48 (400 mmHg vacuum); or 53.5 as the post writes it | 800 rpm; conditions not stated | a forum post quoting the maker, Q: "Toyota 16V 4AGE Service Specification of 53.5 kPa (abs) = 15.75" Hg @ 800 rpm idle", from the May 1987 4A-F/4A-GE repair manual, p. A6 (the manual not read; 15.75 inHg is 400 mmHg of vacuum, so the post's "abs" is likely wrong) | aeu86.org thread "vacuum reading on idle" |
+| GM LS7 (stock) | 38 | not stated | forum, Q: "The stock ls7 idles at 38 kPa" | forum.hptuners.com, p=322472 |
+| BMW S54 | about 30 (21 inHg) | not stated | forum, second-hand, a search snippet only; the S54 has no MAP sensor (BMW ST041: hot-film air mass meter, idle air actuator) | bimmerforums t-2235462; BMW ST041 |
+| Audi 5.2 V10 FSI; Lamborghini L539, Ferrari F140 and other NA V12s | not found | | | Ross-Tech wiki, Audizine, AudiWorld (blocked), FerrariChat, MoTeC guides |
+
+**Class figures:** MOTOR magazine (July 2006), Q: "On a normal engine, normal idle vacuum should be a steady reading between 17 and 21 in./Hg", warm: 30 to 44 kPa. AA1Car (L. Carley), Q: "typically ranges from 16 to 20 inches Hg in most vehicles": 34 to 47 kPa. Toyota 1AZ-FSE "Idling: 22 - 32 kPa" and Suzuki SX4 "24 - 38 kPa at specified idle after warm-up" (maker data lists, search snippets only). Cams (trade and forum, snippets): overlap lowers idle vacuum by reversion; stock engines 30 to 40 kPa, cammed "from 50 on up"; a cammed LS7 at 67 kPa.
+
+**As validation rows** ("Idle manifold pressure", p-idle-warm, 8 to 14 s): the economy four 20-34 (cited, the class's maker); the hot hatch 43-54 (recalled: the forum's quote of Toyota, both readings, plus 5 kPa judgement); the 7.0, 3.2, V10 and V12 30-44 (recalled: MOTOR's class figure, their own not found or forum only).
+
+## 11. Valve timing at a stated lift (the lead's ask, 25 Nov 01:42 UTC)
+
+**No maker's source found for these five gives the lift height its valve events are quoted at.** M maker, E enthusiast reference, F forum.
+- **5.2 V10 FSI** (Audi SSP 923603 / 376, M): both cams phased, "The adjustment range of the camshafts is 42°" (unit not stated); "mechanically locked into place until sufficient oil pressure is developed", lock position not stated; exhaust "210°". Its parent 4.2 V8 FSI (SSP 377, M): "Adjustment range of the camshafts is 42 crank angle degrees"; "locked ... at a standstill; Intake in advance position, exhaust in retard position"; intake 200, exhaust 210 crank degrees (230/220 on the RS4's); "internal exhaust gas recirculation through the use of a corresponding valve overlap". No events found.
+- **L539 V12** (Aventador press release, Lamborghini bulletin BI.07.17, M): intake and exhaust phased; no angles. F140: nothing.
+- **4A-GE** (E, F; no Toyota document found): big-port IVO 9 BTDC, IVC 51 ABDC, EVO 51 BBDC, EVC 9 ATDC, 240 deg, 7.56 mm, centres 111/111; "240 gross duration, duration @.050" lift is 204" (F). Small-port 232 deg, IVO 8 BTDC, IVC 44 ABDC, exhaust 44/8 or 47/5, 7.1 mm, centres 108/111 (F); lift height of the events not stated ("approximate", Club4AG).
+- **S54** (BMW ST041 and ST609, M): lift 12/12 mm; spread (lobe centre) intake 70-130, exhaust 83-128 crank degrees; ranges 60 and 45; "The 'default' mechanical stop position without VANOS influence is: Intake Camshaft = Retarded (130º spread angle) / Exhaust Camshaft = Advance (83º spread angle)"; a row 260/260 (probably duration, read as such). Idle position not found.
+- **1NZ-FE** (a Toyota-format table on iFixit, M?): IVO -7 to 33 BTDC, IVC 52 to 12 ABDC (40 deg range, 225 deg), EVO 42 BBDC, EVC 2 ATDC (224 deg); at full retard about -5 deg overlap (D). Locks at most retarded (1NZ-FXE repair manual EM-152, M; toyota-club.net, E: idle at "maximum retard", "Minimal valves overlap").
+
+**Against the cards** (seat; centres after the intake's park): the S54's cited parks are intake 130, exhaust 83 lobe centre; ours park the intake at 126 and fix the exhaust at 110. The 4A-GE's 240 deg on 111/111 (gross) against ours 256/248 on 108/110. Every other centreline and park in the five cards is judgement.
