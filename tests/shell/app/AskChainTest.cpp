@@ -272,3 +272,31 @@ TEST_CASE("app: the assistant's load over unsaved work asks through the frame's 
     CHECK(doc.build().hash() == hash);
     CHECK(doc.dirty());
 }
+
+// The hook that stops the questions moves with the Panel: a Shown moved from never calls it. The chain above was red on
+// macOS alone (c06258e5: "the call: an error {"error":"the owner said no; nothing was loaded"}" within one frame): the
+// rig's `shown = makePanel(...)` left a moved-from Shown whose std::function libc++ keeps, and its destructor cleared
+// the live frame's asker. libstdc++ and MSVC empty a moved-from std::function, so this case was green there either way;
+// on macOS it is the line between the two.
+TEST_CASE("app: a moved-from Shown never calls the panel's going hook; a move-assignment calls the replaced one",
+          "[shell][app]")
+{
+    int calls = 0;
+    {
+        app::Shown made;
+        made.panelGoing = [&calls] { ++calls; };
+        app::Shown kept(std::move(made));
+        CHECK_FALSE(static_cast<bool>(made.panelGoing));
+        app::Shown assigned;
+        assigned = std::move(kept);                 // over a Shown with no hook: nothing called
+        CHECK(calls == 0);
+        CHECK_FALSE(static_cast<bool>(kept.panelGoing));
+        CHECK(static_cast<bool>(assigned.panelGoing));
+
+        app::Shown other;
+        other.panelGoing = [&calls] { calls += 10; };
+        assigned = std::move(other);                // the replaced Panel's hook runs, once
+        CHECK(calls == 1);
+    }
+    CHECK(calls == 11);                             // the last one, as its Shown went; the moved-from ones none
+}
