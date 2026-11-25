@@ -184,6 +184,7 @@ module BoostMachine
     float cmdVanes;     // the ECU's vanes (below 0: the loop's)
     float duty;
     float integ;
+    int vanesHeld;      // 1: last step a variable nozzle stood more open than the loop asked (its stop, or the back-pressure limit)
     float overBoost;
     float assistCmd;
     // sequential
@@ -370,6 +371,7 @@ module BoostMachine
         mBov = 0.0f;
         duty = 0.0f;
         integ = 0.0f;
+        vanesHeld = 0;
         seqOpen = 0.0f;
         seqWant = 0.0f;
         seqXfer = 0.0f;
@@ -1271,7 +1273,18 @@ module BoostMachine
                     vanes = 1;
             if (vanes != 0)
             {
-                integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
+                // (no accumulation while the vanes cannot follow, the lead's ruling, 25 Nov: conditional integration.
+                // Short of the target the integral grew to its bound while the vanes stood at their stop or were held
+                // open by the back-pressure limit, through every spool and lift; past the target it then unwound at
+                // the error's own rate, 5 to 15 % a second, and held the boost 10 to 16 % over it for 6 to 10 s on the
+                // tractor's step to rated and the truck's re-application at 1300 rpm (vgt-windup.md). Not
+                // back-calculation: that needs a tracking time, a number this loop has no source for; here the stops
+                // the vanes have decide, and nothing new is chosen)
+                const float uRaw = 0.5f * e + integ;
+                const int cannotShut = e > 0.0f && (uRaw >= 0.95f || vanesHeld != 0);
+                const int cannotOpen = e < 0.0f && uRaw <= 0.0f;
+                if (cannotShut == 0 && cannotOpen == 0)
+                    integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
                 u = fminf(fmaxf(0.5f * e + integ, 0.0f), 0.95f);
             }
             else
@@ -1353,6 +1366,8 @@ module BoostMachine
                     bpOpen[t] = 0.0f;
                 }
                 v = fminf(fmaxf(v, turb[t].vaneMin), 1.0f);
+                if (t == 0)
+                    vanesHeld = cmdVanes < 0.0f && tg > 0.0f && v > 1.0f - u + 1.0e-3f ? 1 : 0;
                 turb[t].vanes += (v - turb[t].vanes) * (1.0f - expf(-d16 / 0.05f));
                 // (with vanes the gate is a relief only: well above the target)
                 if (tg > 0.0f && boost < 1.2f * tg)
