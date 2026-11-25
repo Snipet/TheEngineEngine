@@ -13,12 +13,28 @@ add_library(tee_assistant STATIC
   src/Tools.cpp
   src/Cards.cpp
   src/McpLink.cpp
-  src/Session.cpp)
+  src/Session.cpp
+  src/Transport.cpp)
 add_library(Tee::assistant ALIAS tee_assistant)
 tee_target_defaults(tee_assistant)
 target_include_directories(tee_assistant PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 find_package(Threads REQUIRED)
 target_link_libraries(tee_assistant PUBLIC Tee::host Tee::shell_files nlohmann_json::nlohmann_json Threads::Threads)
+
+# The key chat's HTTP (src/Transport.cpp): libcurl from the macOS SDK, from the system on Linux (the package
+# libcurl4-openssl-dev). Where its headers are missing the build goes on without it: the chat then says so in words.
+# Windows has none in this version.
+option(TEE_ASSISTANT_CURL "The key chat's HTTP through libcurl, where its headers are found" ON)
+if(TEE_ASSISTANT_CURL AND NOT WIN32)
+  find_package(CURL QUIET)
+  if(CURL_FOUND)
+    target_link_libraries(tee_assistant PRIVATE CURL::libcurl)
+    target_compile_definitions(tee_assistant PRIVATE TEE_HAS_CURL=1)
+    message(STATUS "TheEngineEngine: the assistant's HTTP is libcurl ${CURL_VERSION_STRING}")
+  else()
+    message(STATUS "TheEngineEngine: the assistant's HTTP is off (no libcurl headers: libcurl4-openssl-dev on Linux)")
+  endif()
+endif()
 
 if(NOT WIN32)
   add_executable(tee-mcp mcp/Main.cpp)
