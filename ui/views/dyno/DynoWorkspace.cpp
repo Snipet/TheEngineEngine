@@ -152,6 +152,30 @@ namespace tee::ui
                 extraBtn_[static_cast<std::size_t>(i)] = &make<Button>(extraNames[i], [this, i] { extra_ = i - 1; });
                 extraBtn_[static_cast<std::size_t>(i)]->setLit([this, i] { return extra_ == i - 1; });
             }
+            // Hover help (the owner's ask, 25 Nov): what each control of the plan and the runs does.
+            engineBtn_->setHelp("Plan an engine run: the engine alone on the brake, its torque and power at the crank");
+            chassisBtn_->setHelp("Plan a chassis run: the car on rollers in one gear, its power at the wheels");
+            from_->setHelp("The engine speed the run starts at");
+            to_->setHelp("The engine speed the run ends at");
+            rate_->setHelp("How fast a sweep raises the engine speed, per second; slower reads closer to steady");
+            sweepBtn_->setHelp("Run as one sweep: the speed raised steadily from start to end");
+            stepsBtn_->setHelp("Run in steps: the speed held every 500 rpm and read once it is steady");
+            settleBtn_->setHelp("Lit: each step waits for the exhaust's walls to reach their heat; off: cold walls, "
+                                "which read low");
+            dwell_->setHelp("How long each step is held before it is read, in seconds");
+            pedal_->setHelp("The accelerator through the run, in percent of full");
+            gearStep_->setHelp("The gear a chassis run is made in");
+            start_->setHelp("Start the planned run; it is drawn as it goes and kept in the list");
+            stop_->setHelp("Stop the run now; what was read so far is kept");
+            name_->setHelp("The chosen run's name in the list; type to rename it");
+            copy_->setHelp(canSave() ? "Save the chosen run as a CSV file: speed, torque, power and the rest"
+                                     : "Copy the chosen run to the clipboard as CSV: speed, torque, power and the rest");
+            extraBtn_[0]->setHelp("No third quantity in the band under the plot");
+            extraBtn_[1]->setHelp("The boost pressure along each run, in the band under the plot");
+            extraBtn_[2]->setHelp("The air-fuel ratio as lambda (1 is stoichiometric) along each run, in the band "
+                                  "under the plot");
+            extraBtn_[3]->setHelp("The spark advance along each run, in degrees before top dead centre, in the band "
+                                  "under the plot");
         }
 
         const char* id() const override { return "dyno"; }

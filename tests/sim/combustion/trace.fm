@@ -183,6 +183,16 @@ module Trace
         return gas.sum;
     }
 
+    // The octane index with a stated pump number (fuelOctaneAt), and whether it is past the knock fit
+    float octaneAt(int kind, float aki)
+    {
+        return fuelOctaneAt(kind, aki);
+    }
+    int octanePast(int kind, float aki)
+    {
+        return fuelOctaneExtrapolated(kind, aki);
+    }
+
     // A row of the fuel table: 0 the ratio, 1 the heating value, 2 the latent heat, 3 the octane index
     float row(int kind, int what)
     {
