@@ -395,7 +395,9 @@ namespace
         CHECK(has(tee::ui::tuneFuelText(*rig.ws), "The reference burn does not read the grade"));
         // The table's reader on the simulator's file itself: every grade a row, the diesel none, two untested.
         const tee::ui::fuel::Table table = tee::ui::fuel::parse(simSource("combustion/fuels.fm"), simSource("combustion/knock.fm"));
-        CHECK(table.rows.size() == 9);
+        // (every grade a row: ten since the 93 was appended last, card N1 25 Nov; it a tested spark-lit grade)
+        CHECK(table.rows.size() == 10);
+        CHECK(!table.rows[9].compression && !table.rows[9].untested && table.aki(9) == 93.0);
         CHECK(std::isnan(table.aki(6)) && table.rows[6].compression);
         CHECK(table.rows[7].untested && table.rows[8].untested && !table.rows[2].untested);
         CHECK(table.exponent > 3.0 && table.exponent < 4.0);

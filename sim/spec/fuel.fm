@@ -33,6 +33,6 @@ module FuelSpec
         [[ui::help("A common-rail diesel's injection pressure: higher atomises the fuel finer")]] [[ui::unit("bar")]];
     float overFuel [[fminus::range(0, 0.4)]] [[fminus::default(0)]] [[ui::label("Over-fuel")]] [[ui::quantity("fraction")]]
         [[ui::help("Fuel past the smoke limit: more torque, black smoke")]];
-    float octane [[fminus::range(0, 120)]] [[fminus::default(0)]] [[ui::label("Octane")]]
+    float octane [[fminus::range(0, 120)]] [[fminus::default(0)]] [[ui::label("Octane")]] [[ui::unit("AKI")]]
         [[ui::help("The pump number, (R+M)/2 (AKI); 0: the grade's own. It moves the knock and nothing else, read as the research octane by the grade's own sensitivity (RON = AKI + (RON - MON) / 2). The knock law is Douaud and Eyzat's fit over octanes 80 to 100: a number giving a RON past them (about AKI 75 to 95 on pump gasoline) is extrapolated, as race fuel and E85 already are. A diesel ignores it")]];
 };
