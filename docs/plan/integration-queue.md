@@ -1074,31 +1074,78 @@ compiler is the owner's).
 **A note on clocks:** N1's and L's containers run about five to seven minutes ahead of the lead's and the
 server's. A time in a message is still from `date -u`, and is that container's.
 
+## Card C, for the next window (25 Nov 19:58 UTC)
+
+- **The stepped dyno approaches a held step from below where `tel.engine.hysteresis` reads 1.** N1 measured it is
+  exposed as the predictor was: the two-stage held at 597 rad/s reads stage B, 191.6 N m when the run starts from the
+  default `from` (150: the jump's overshoot, some 13 %, crosses the up switch), 184.7 when started at 590. Dyno.cpp's
+  steps are its own timeline (the absorber's set speed), not the predictor's Rig, so the predictor's `approach()` is
+  lifted into a helper both call, with a stepped-dyno test on the two-stage (each held step under the switch reads A).
+  Not in this window's push; the predictor's side did not wait for it.
+
+## 25 Nov 20:41 UTC: the window closed; what it landed; what waits
+
+**FROZEN at 9c33806c** (C's predictor, merged on U1's 765fb16f). The trees the bake is of: `sim` 94c3c479,
+`host` 80df52e0, `tools` 50b8ac3a.
+
+**Landed since the 19:44 entry:**
+- B: `tee-wheel-dump` 90cfbf0e (the G29's HID elements beside the table's rows). macOS: CI built and ran the
+  application with the wheel's code at adf53f54, 594 of 594 (Windows 587 of 587); never yet run on a wheel.
+- card A: `list_builds` / `load_build` on `wholeBuilds` (adf53f54): 66 whole builds by folder-qualified name, a
+  name never a path, fixtures and parts refused.
+- G: the exhaust's stated bores raised to a 10 mm floor, the telemetry naming which (5ff6b27d; X-038, X-029; the
+  solver's own limit measured between 2 and 5 mm on three cases); the back-pressure note for N2 (docs).
+- L: a burst does not set the auto level's exposure (a375b473): a part over FOUR times the parts' running 80th
+  percentile goes to the limiter (at twice, a free rev's own pulses counted: the kei and the V12 went red).
+  Burned against Carved, the body under a bang: the rally five's lift 6.4 dB under, now 0.8 over; its anti-lag
+  3.5 under, now 2.1; **the V8's lift stays 4.5 under** (dense bangs are its body): not cured, stated in listen.md.
+- M: the fan heard as rushing air with a tone inside it (d18a798b): the 280 Hz line against its third octave in
+  the mix from +7.6 / +10.4 / +21.7 / +18.9 dB (Tailpipe, Rear, Side, Driver) to -23.6 / -21.9 / -14.4 / -15.5;
+  uneven spacing's use cited (SAE 2008-01-0569), its size judgement.
+- N1: `tel.engine.hysteresis` and `tel.engine.latched` (3bfc234b, with the integrator's lines, read and agreed;
+  kCamBakeVersion 4); `tel.valve.dpWave`, the overlap pressure less an exhaust brake's back pressure, bounded
+  as before, the brake's own pressure bounded by its stated limit (b07522fc; X-037 no longer reproduces, -230 kPa);
+  the intake's bores' floors, runner 8 mm and snorkel 10 mm (28d4df13; X-040 runs finite at the floor).
+- C: the predictor reads a point as an upward sweep reaches it where the program says a part can latch
+  (cfab843b; kKnockBakeVersion 6): the let-down first, then the question, upward moves ramped, `approachForced`
+  where it never clears. The two-stage at 5740 rpm reads stage A at 192.1 N m (was B at 181.3, the 13 N m
+  notch). Builds without stages: bit for bit (the economy four's 16 points). Measured first: without stages a
+  point's path moves it by one to two of its own standard errors (0.2 to 1.0 % on six points, three builds, no
+  direction repeating).
+- U1 (765fb16f, a pure fast-forward of 593 of 593 on exactly that state): the yes/no dialog for the assistant's
+  questions; **the DRIVE dials** (a needle never crosses a number or the read-out; round steps in the shown unit;
+  `drive.dials` checks every dial at rest, mid scale and full scale in both unit systems); **the frame shows
+  Rows** (the owner's pick) and the part card; the settings' WHEEL row (shown once card B serves it).
+
+**Not landed, by their owners' own second measurement:** the steward's X-030 cure (the fuel cut through the dog
+cut cleared the V8 and moved the small four's reds, one worse: wall film feeds the cylinders after the injectors
+stop); N2's joined pair on the rotary (evening the pair gains under 2 %: the pair's match is the fault).
+
+**For the next window** (each with its owner's note in docs/handoffs or above): the rotary's pair and rule (c) and
+the rated match (N2; G's back-pressure fit); X-030 / X-031 / X-032 / X-036 (the steward; X-032 is the turbo
+six's unsettled start and idle); the stepped dyno's approach from below (C) and the dyno loop's 13.5 % step
+overshoot, a PI's zero (the integrator); refusal of a bore at input, by a rule in the host and no new `fminus::`
+attribute (C); the workspaces' warning for a raised bore; L's restated X-039 check with N2's inlet solve; the
+V8's dense bangs and the exposure (L); the cut's kind as a choice once the account books a cut's charge (G, the
+steward); the voices' cost on first.json, 0.24 R against 0.08 (M); the fixtures out of content/ (X, N1, the
+integrator, P), after the bake; the wheel on Linux and Windows, a learn mode (B).
+
+**Process, for the next round:** U1's pure fast-forward landed at the third attempt, once thirteen sessions had
+each answered "holding" BEFORE the tip was named. A hold sent into a running turn is not read until that turn's
+next message boundary: C announced a push while "holding" was still unread, and only a message that breaks into
+the turn stopped it. So: the hold is asked first, every answer is collected, and a session that has not answered
+is interrupted, not assumed.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 18:37: `main` HAS MOVED to 43006034.** The window is OPEN for the items below and nothing else. Rule:
-  one green whole default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
-  CI judges the combination; a red tip is fixed before anything else is pushed over it (one exception today: a
-  macOS red on `shell/input/g29/` alone is B's to fix at once and stops nobody else). **U1:** goes LAST in a
-  round; tells the lead before its final merge; the lead collects a "holding" from every pusher, then names the
-  tip, and it is held from U1's merge to its push.
-- **On the branch since `main`:** the steward's ci commits; the integrator's latch 87629688; X's measure, click
-  check and tee-fuzz; C's four waits; B's `wholeBuilds`, `--probe-input` and the G29's first slice; THE DIESEL
-  PACKAGE (e9b2ef3f); B2's bike clutch; card A's "Add a key"; G's bang fix and THE DEFAULT, Burned in the pipe
-  (81ec1b12); J2's Rows and part card in the kit. **The baked tables are stale until P bakes.**
-- **Still to land under sim/ or host/ before the freeze (each says early if it will not make it):**
-  - L: the exposure against the bangs on builds that burn (nothing, if the duck is under 2 dB);
-  - C: the predictor's approach from below (N1's patch), and the measurement of path-dependence without stages;
-  - N1: X-032 / X-034 / X-037;
-  - N2: the rotary's joined pair, only if the cure is small;
-  - G: the bores' floors (X-038, X-040);
-  - M: the fan's tone;
-  - the steward: X-030 / X-031 / X-036 (X-030's cure tested with `exhaust.bang` 1, now the default);
-  - the fixtures out of content/ in one step (X moves; N1 and the integrator repoint; P the manual's table).
-- **ui / assistant / shell, at any time (no sim/):** U1 (the DRIVE dials' numbers under the needle with its
-  picture test; the yes/no dialog a6e00140; J2's two hooks; a WHEEL row in SETTINGS); card A (`list_builds` and
-  `load_build` on `wholeBuilds`); B (macOS's first compile, `tee-wheel-dump`, then Linux and the learn mode).
-- **Then the lead writes FROZEN FOR THE BAKE here and P bakes** (re-timing N2's named 4 s rows, adding VW's 320
-  at 1750, marking rows held by calibration; `[soak]` alone on its own last line; the manual's "Pops" from G).
-- **NOT open:** rule (c), the feed-forward and the turbine's rated match (research); refusal of a bore at input.
-- **Docs-only pushes (docs/** and *.md) at any time**, except while the tip is held for U1.
+- **25 Nov 20:41 UTC: FROZEN FOR THE BAKE at 9c33806c.** Nothing is pushed under `sim/`, `host/` or `tools/`
+  until P's baked commit is on the branch. The trees: `sim` 94c3c479, `host` 80df52e0, `tools` 50b8ac3a. Both
+  bake versions moved (knock 6, cam 4): P bakes every build.
+- **Open during the bake:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, docs. Push rule as before (one
+  green whole default tier on a merged state, then merge a moved tip and push, saying what was not in the run).
+  A test that needs a change under sim/, host/ or tools/ to pass waits.
+- **P's push is ONE push**, with `[soak]` alone on its own last line. While P is in its final merge, tier and
+  push (P says when), nobody pushes: the lead asks for "holding" then, as for U1.
+- **`main`** is at 43006034 and moves, fast-forward, to the baked commit when Linux, macOS and Windows are each
+  green on a commit whose `sim/`, `host/`, `tools/` equal the bake's.
+- **After the bake:** the fixtures' move; then the next window opens here.

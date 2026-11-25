@@ -65,6 +65,8 @@ namespace tee
                 hasState_ = find("tel.engine.state", state_);
                 hasFlags_ = find("tel.engine.flags", flagsH_);
                 hasRetard_ = find("ecu.one.knock.retard", retardH_);
+                // a part with hysteresis (a two-stage cam today), as the program states it in one place
+                hasHysteresis_ = find("tel.engine.hysteresis", hysteresisH_) && find("tel.engine.latched", latchedH_);
                 hasBoost_ = build.fieldOf("boost.kind") >= 0 && build.get("boost.kind") != 0.0
                             && find("tel.boost.pressure", boostH_);
                 for (const std::string& name : options_.fields)
@@ -290,11 +292,68 @@ namespace tee
                 }
             }
 
+            // A part with hysteresis (tel.engine.hysteresis: a two-stage cam's switch today; a power valve, a runner flap
+            // tomorrow) holds its state across a band of speed, so a point in the band would read the state of the way
+            // the rig came: from a point above it, the state left latched; stepped up from below, the absorber's loop
+            // carrying the speed over the switch (a critically damped loop overshoots a step in its set speed by some
+            // 13 %: 430 to 601 rad/s peaks near 624, over the two-stage's 612.6). So each point is reached as an upward
+            // sweep reaches it (a published full-load curve's way): while the program says a state is latched that an
+            // upward sweep would not hold here (tel.engine.latched), the speed is let down in steps until it is not;
+            // then any rise into the point is a ramp of 100 rad/s^2 (some 950 rpm a second, a dyno's sweep: judgement),
+            // which the loop follows within a rad/s. Card N1's find and cure (25 Nov: P's 13 N m notch at 5740 rpm on
+            // the two-stage), generalised. A build with no such part (or a program without the fields) is untouched,
+            // bit for bit. False when a latched state would not let go (the point says so: approachForced).
+            bool approach(double speed)
+            {
+                if (!hasHysteresis_ || instance_->read(hysteresisH_) < 0.5)
+                    return true;
+                double from = instance_->read(speed_);
+                bool released = true;
+                if (from > speed)
+                {
+                    // from above: down to the point first (a step down crosses no up switch), so that what the program
+                    // says is latched is said at the point's speed (the two-stage's latch is "stage B under its up
+                    // switch": over the switch, where the rig was, it reads 0)
+                    for (long done = 0; done < std::lround(0.1 * options_.sampleRate); done += options_.block)
+                        step(speed, options_.block);
+                    from = speed;
+                }
+                if (instance_->read(latchedH_) >= 0.5)
+                {
+                    // down in steps of 5 % under the point, a quarter second each, to a floor of half its speed
+                    released = false;
+                    for (double at = std::min(from, speed) * 0.95; at >= 0.5 * speed && !released; at *= 0.95)
+                    {
+                        from = at;
+                        for (long done = 0; done < std::lround(0.25 * options_.sampleRate) && !released;
+                             done += options_.block)
+                        {
+                            step(at, options_.block);
+                            released = instance_->read(latchedH_) < 0.5;
+                        }
+                    }
+                }
+                if (from < speed)
+                {
+                    const double dt = static_cast<double>(options_.block) / options_.sampleRate;
+                    const long n = std::max(1L, std::lround((speed - from) / (100.0 * dt)));
+                    for (long k = 1; k <= n; ++k)
+                    {
+                        if (options_.warm && k % 64 == 1)
+                            warm();   // held as the warm-up and the points hold it
+                        step(from + (speed - from) * static_cast<double>(k) / static_cast<double>(n), options_.block);
+                    }
+                }
+                return released;
+            }
+
             // One point: held at `speed`, cycle after cycle until two agree or the most are run.
             PredictPoint point(double speed, const std::atomic<bool>* cancel)
             {
+                const bool released = approach(speed);
                 PredictPoint p;
                 p.speed = speed;
+                p.approachForced = !released;
                 const double perCycle = kFourPi / std::max(speed, 1.0) * options_.sampleRate;   // samples
                 double previous = 0.0, held = 0.0;
                 faulted_ = false;
@@ -794,6 +853,8 @@ namespace tee
             bool hasTorque_ = false, redline_ = false, idle_ = false, holdCrank_ = false, hasState_ = false,
                  absorber_ = false, hasFlags_ = false, faulted_ = false, hasRetard_ = false, limiting_ = false;
             Schema::Handle flagsH_, retardH_, heatSettleH_;
+            bool hasHysteresis_ = false;
+            Schema::Handle hysteresisH_, latchedH_;
             std::vector<std::pair<const FieldInfo*, std::size_t>> extra_;   // PredictOptions::fields
             bool heatSettle_ = false, hasBoost_ = false;
             Schema::Handle boostH_;
