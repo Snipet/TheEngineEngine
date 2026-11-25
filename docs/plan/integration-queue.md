@@ -535,3 +535,39 @@ Checked against the tree at d0a7330e by the lead. None was already whole.
 
 **Order, the fleet kept thin (the owner's word, 10:53):** U1 now on 5 then 3 (ui/ and app/ only, no re-key);
 after the diesel `main`: G on 4 and the octane control (1), in one sim/ window with one re-key; 2 as a plan first.
+
+## The pops: G's inventory and the design ruled (25 Nov 11:24; the owner's todo 4)
+
+**Inventory (G's probe, one agent's; nothing changed):** every path ends in the carved `Pop` (a half-sine of 0.25
+to 0.85 ms, then single-sample random clicks dying over 4 to 16 ms). Under `ecu.model` 1 the account's store lights
+when a blowdown is over 900 K and its pulse is `30 kPa (1 - exp(-m / 7 mg))`: 16 mg and 70 mg both give about 30
+kPa. At the defaults what feeds it is the **fuel-cut limiter** (fired cylinders at lambda 0.87, the cut cylinders'
+air beside them): first.json held on its limiter fires 25 to 50 bangs a second at about 26 kPa; the rally five's
+spark cut 212 a second at the ceiling; the overrun itself is silent after 0.3 s. `ecu.pops` does nothing under
+model 1. So the owner most likely heard first.json on its limiter.
+
+**Ruled, to be built by G (sim/exhaust, and with the lead's word the seams in `sim/ecu/overrun.fm` and
+combustion.fm's account call; H has no live session):**
+- A bang is heat released in the collector's gas, fed to the junction as a volume source
+  `q = (gamma - 1) / (gamma p) Qdot`; its energy the account's own fuel mass times the LHV; no pulse shape, no
+  crackle, no ceiling formula.
+- The store split: **premixed** (a charge that never burned: spark cut, misfire, an overrun charge lit late)
+  burns as a flame through its slug; **unmixed** (a rich charge's excess meeting a cut charge's air) burns only as
+  the slugs mix, slowly: heat, not a report. A stock fuel-cut limiter then has no bangs to speak of.
+- The flame speed from the slug's own state (a published laminar-speed correlation at its temperature and
+  pressure, the pipe flow's turbulence, the burned gas's expansion, a slug burning both ways), not a flat 20 m/s:
+  by the lead's unchecked arithmetic about 7 ms for a 0.9 m slug where the flat figure gives 45.
+- `exhaust.bang` appended and **visible** (Carved / Burned in the pipe; the new one the default under
+  `exhaust.model` 1), so the owner compares by ear in the app; `exhaust.model` 0 and the reference ECU's dice to
+  the bit. Anti-lag's heat into the turbine waits.
+- Clips for the owner (first.json: the limiter held 2 s, a lift from 6000, a full-throttle upshift; the rally five
+  on its spark cut), both ways; scenario files in content/scenarios and rows in the listening pack, with the lead's
+  permission. Pushed on the lead's word, in the re-key after D2's.
+
+## Card A's first asks, ruled 11:21
+
+`add_subdirectory(assistant)` after shell: yes. `Build::undoStep()`, `redoStep()`, `gestureOpen()` (ids from 1,
+never reused; append-only): yes, pushed early and alone with the library's skeleton and the step-id tests so the
+host/ change is on the branch before the next bake starts. Added: the assistant's `predict_curve` and `run_dyno`
+join the predictor's and the bake's sharing (`yieldTo`), with a test. The frame's drain calls in app/Main.cpp and
+app/Offline.cpp (B's, asleep) at A2, the exact lines to the lead first.
