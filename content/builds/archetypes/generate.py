@@ -880,9 +880,18 @@ def build(a):
     if "boost" in a:
         t["knock.on"] = True
     if a["slug"] in CAMS:
-        # the maker's calibrated intake cam map, baked and saved by N1's tee-dyno --bake-cam --save (cams.py)
-        t["maps.camInAuto"] = False
-        t["maps.camIn"] = CAMS[a["slug"]]
+        # what the app's calibration bakes, baked in its order by cams.py (the knock-limit table, the intake cam map on
+        # it, the table again) on the simulator the content ships with, each with its key (the app finds it current)
+        m = CAMS[a["slug"]]
+        if "camIn" in m:
+            t["maps.camInAuto"] = False
+            t["maps.camIn"] = m["camIn"]
+            if "camInKey" in m:
+                t["maps.camInKey"] = m["camInKey"]
+        if "knockLimit" in m:
+            t["maps.knockLimitAuto"] = False
+            t["maps.knockLimit"] = m["knockLimit"]
+            t["maps.knockLimitKey"] = m["knockLimitKey"]
     if "boostTaper" in a:
         # the class's power cap met as its makers meet it: the boost target falls with speed (a baked boost map,
         # every gear alike; rpm and kPa over the air from N2's measurements on the kei with the resized gate)
@@ -1012,9 +1021,15 @@ BAKED_CAMS = True
 
 
 def _cams():
-    """{slug: the saved ecu.maps.camIn} from cam-maps.json, while BAKED_CAMS is on."""
-    path = os.path.join(HERE, "data", "cam-maps.json")
-    return json.load(open(path)) if BAKED_CAMS and os.path.exists(path) else {}
+    """{slug: {camIn, camInKey, knockLimit, knockLimitKey}} from bake-maps.json (cams.py, the app's order), while
+    BAKED_CAMS is on; else from the older cam-maps.json ({slug: camIn}, cam alone)."""
+    if not BAKED_CAMS:
+        return {}
+    path = os.path.join(HERE, "data", "bake-maps.json")
+    if os.path.exists(path):
+        return json.load(open(path))
+    old = os.path.join(HERE, "data", "cam-maps.json")
+    return {k: {"camIn": v} for k, v in json.load(open(old)).items()} if os.path.exists(old) else {}
 
 
 CAMS = _cams()
