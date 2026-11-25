@@ -244,10 +244,17 @@ TEST_CASE("mufflers in their order; the bypass valve opens without a click", "[e
                 db(snap.hfTravel / snap.hfOpen), db(normal.hfTravel / normal.hfOpen), db(slow.hfTravel / slow.hfOpen));
     // a valve that snaps open clicks: the measure sees it
     CHECK(snap.hfTravel > 2.0 * snap.hfOpen);
-    // at its default travel no burst of highs; at a second's travel fewer highs than running open, and the largest
-    // step within 5 % of running open's (measured 2 %: the chamber's own response to the moving split, not a click)
+    // at its default travel no burst of highs; at a second's travel fewer highs than running open
     CHECK(normal.hfTravel <= 1.05 * normal.hfOpen);
     CHECK(slow.hfTravel <= 1.05 * slow.hfOpen);
+    // the largest step between samples falls as the travel lengthens (measured 24.5, 14.9, 8.6 against open's 8.4):
+    // a click is a step the opening adds, so it shows as this ladder
+    CHECK(snap.stepTravel > normal.stepTravel);
+    CHECK(normal.stepTravel > slow.stepTravel);
+    // and at a second's travel the step is running open's own: measured 1.03 times it. The 3 % is the chamber's
+    // response to a split that moves through the second (the waveform's peaks change with it), not a jump; the
+    // highs above fall 8.5 dB over the same second. The bound 1.05 is judgement: above that 3 %, and far below
+    // what any travel that adds a step gives (0.3 s: 1.76 times, 10 ms: 2.9 times)
     CHECK(slow.stepTravel <= 1.05 * slow.stepOpen);
 }
 
