@@ -846,7 +846,11 @@ two-stage build's high lobe at 247 deg on a centre of 98).
   4. D2: 28ac7654 only (the start's fuel). L: 327e0db0, 27eb2429 (the start's exposure);
   5. G: the exhaust's half of the pops (g/bang-wip); then N1's seam, G reviewing;
   6. ui only, any time: U1 (6e6c768e, aa711bbc; after card A, the switch row and the chat's place), U5, J2;
-  7. X: the soak's shards when ready.
+  7. X: the soak's shards when ready;
+  8. (added 14:19) the integrator: c1ab538a, the clutch's overrun hold (sim/vehicle/gearbox.fm, a case in
+     GradeTest): the paddles' robotised clutch is a smoothstep of the ENGINE's speed (0.357 of capacity at 1116
+     rpm on the truck), in drive and on the overrun alike; a clutch that slips backwards now latches closed by the
+     road's speed through the gear. Every printed number of the vehicle, bike and diesel suites identical.
 - **NOT open:** the diesel package (D2's 811c744d, c24c127e, v8; N2's (b), nozzle and guard), M's fan cure, and
   anything not named above. Ask the lead.
 - **Docs-only pushes (docs/** and *.md) are allowed at any time**: the workflow ignores them and starts no run.
