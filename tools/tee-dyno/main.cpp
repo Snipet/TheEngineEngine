@@ -392,9 +392,9 @@ int main(int argc, char** argv)
             std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
             return 1;
         }
-        std::printf("intake cam baked by %zu curves in %.1f s (parked centreline %.1f deg; %d midpoints added as rows; %d speeds fell back to the auto phase); "
+        std::printf("intake cam baked by %zu curves in %.1f s (parked centreline %.1f deg; %d midpoints added as rows; %d speeds fell back to the auto phase; %d half-step points; %d stage rows); "
                     "torque N m by advance:\n%8s",
-                    r.advances.size(), r.wallSeconds, r.parkedCentre, r.added, r.fellBack, "rpm");
+                    r.advances.size(), r.wallSeconds, r.parkedCentre, r.added, r.fellBack, r.halfSteps, r.stageRows, "rpm");
         for (const double a : r.advances)
             std::printf(" %7.0f", a);
         std::printf("   best\n");

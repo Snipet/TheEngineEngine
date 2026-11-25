@@ -245,13 +245,17 @@ namespace combo
         }
     } // namespace
 
-    tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times)
+    tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times,
+                                 double shiftPhase)
     {
         times = Times{};
         tee::test::Scenario sc(build.find('/') != std::string::npos ? build : buildPath(build));
         for (const Step& st : steps(kind, mask, times))
         {
-            sc.at(st.t);
+            // shiftPhase moves the upshifts after the pull-away (3 s) by a few ms: where a shift cut ends among the
+            // firings sets its bang's size, so a case reads the worst over a firing interval
+            const bool moved = st.what == "press" && st.name == "shiftUp" && st.t > 3.0;
+            sc.at(moved ? st.t + shiftPhase : st.t);
             if (st.what == "ctl")
                 sc.control(st.name, st.value);
             else if (st.what == "spec")

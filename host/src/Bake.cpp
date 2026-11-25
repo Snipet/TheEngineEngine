@@ -13,11 +13,68 @@
 
 namespace tee
 {
+    namespace
+    {
+        // The fields that move the intake cam's best advance (Bake.h, intakeCamKey): the valvetrain whole (lobes,
+        // centres, phaser ranges, the stages and their lobes), the intake, the exhaust, the boost, the engine's
+        // geometry, the fuel. Hidden fields never (the heat-settle counters the dynos bump, the keys); the ECU's maps
+        // never (the cam map is the result; the spark is carried by knockLimitBaseKey). Over-including costs a bake,
+        // never a wrong map
+        bool movesCam(const FieldInfo& f)
+        {
+            if (f.hidden || f.block != "spec")
+                return false;
+            for (const char* prefix : {"spec.valve.", "spec.intake.", "spec.exhaust.", "spec.boost.", "spec.engine."})
+                if (f.path.rfind(prefix, 0) == 0)
+                    return true;
+            return f.path == "spec.fuel.kind" || f.path == "spec.fuel.grade";
+        }
+    } // namespace
+
+    std::int64_t intakeCamKey(const Build& build, const Sim& sim)
+    {
+        std::uint64_t h = 1469598103934665603ull;
+        const auto mixIn = [&h](const void* data, std::size_t n) {
+            const unsigned char* b = static_cast<const unsigned char*>(data);
+            for (std::size_t i = 0; i < n; ++i)
+            {
+                h ^= b[i];
+                h *= 1099511628211ull;
+            }
+        };
+        const std::uint64_t program = sim.sourceHash();
+        mixIn(&program, sizeof program);
+        const auto& all = build.fields().all();
+        for (std::size_t i = 0; i < all.size(); ++i)
+        {
+            if (!movesCam(all[i]))
+                continue;
+            mixIn(all[i].path.data(), all[i].path.size());
+            for (const double v : build.values(static_cast<int>(i)))
+                mixIn(&v, sizeof v);
+        }
+        // the spark the cam was chosen on (C's: the knock key without the cam maps, so a re-spark after the cam leaves
+        // the cam current and the two bakes end)
+        const std::int64_t spark = knockLimitBaseKey(build, sim);
+        mixIn(&spark, sizeof spark);
+        return static_cast<std::int64_t>(h & 0x7fffffffull);
+    }
+
+    bool intakeCamCurrent(const Build& build, const Sim& sim)
+    {
+        if (build.fieldOf("ecu.maps.camIn") < 0 || build.fieldOf("ecu.maps.camInAuto") < 0
+            || build.fieldOf("ecu.maps.camInKey") < 0)
+            return false;
+        return build.get("ecu.maps.camInAuto") == 0.0
+               && static_cast<std::int64_t>(build.get("ecu.maps.camInKey")) == intakeCamKey(build, sim);
+    }
+
     bool bakeIntakeCam(const std::shared_ptr<Sim>& sim, const Build& build, const CamBakeOptions& options,
                        CamBakeResult& result, std::string& error, const std::atomic<bool>* cancel)
     {
         const auto t0 = std::chrono::steady_clock::now();
         result = CamBakeResult{};
+        result.key = intakeCamKey(build, *sim);
         if (build.fieldOf("valve.inCentre") < 0 || build.fieldOf("valve.inPhaseRange") < 0)
         {
             error = "the program has no intake phaser to hold (spec.valve.inCentre, inPhaseRange)";
@@ -62,6 +119,71 @@ namespace tee
             }
             result.torque.push_back(std::move(torque));
             result.knock.push_back(std::move(knock));
+        }
+
+        // a curve with the phaser held at `advance`, at `speeds` (empty: the options' own)
+        auto heldCurve = [&](double advance, const std::vector<double>& speeds, PredictCurve& curve) {
+            Build held(build.fields());
+            std::vector<std::string> warnings;
+            if (!held.load(build.save(), BuildPart::Whole, warnings, error))
+                return false;
+            held.set("valve.inPhaseRange", 0.0);
+            held.set("valve.inCentre", result.parkedCentre - advance);
+            PredictOptions po = options.predict;
+            if (!speeds.empty())
+                po.speeds = speeds;
+            return predictCurve(sim, held, po, curve, error, cancel);
+        };
+        const double nan = std::numeric_limits<double>::quiet_NaN();
+        // a row at `speed` measured at every advance, inserted in order (the stage's rows)
+        auto insertRows = [&](const std::vector<double>& at) {
+            std::vector<std::vector<double>> tAt(result.advances.size()), kAt(result.advances.size());
+            for (std::size_t a = 0; a < result.advances.size(); ++a)
+            {
+                PredictCurve curve;
+                if (!heldCurve(result.advances[a], at, curve))
+                    return false;
+                for (const PredictPoint& p : curve.points)
+                {
+                    tAt[a].push_back(p.valid ? p.torque : nan);
+                    kAt[a].push_back(p.knockRetard);
+                }
+            }
+            for (std::size_t k = 0; k < at.size() && k < tAt.front().size(); ++k)
+            {
+                std::size_t pos = 0;
+                while (pos < result.speeds.size() && result.speeds[pos] < at[k])
+                    ++pos;
+                result.speeds.insert(result.speeds.begin() + static_cast<std::ptrdiff_t>(pos), at[k]);
+                for (std::size_t a = 0; a < result.advances.size(); ++a)
+                {
+                    result.torque[a].insert(result.torque[a].begin() + static_cast<std::ptrdiff_t>(pos), tAt[a][k]);
+                    result.knock[a].insert(result.knock[a].begin() + static_cast<std::ptrdiff_t>(pos), kAt[a][k]);
+                }
+            }
+            return true;
+        };
+        // A build with two-stage cams (spec.valve.stages): each steady point already runs on the lobe the engine runs
+        // at that speed (the stage switches itself in the predictor as on the road), but two rows either side of the
+        // change would let the map blend the two lobes' advances across it: a row just below the change back down
+        // (stageSpeed less its hysteresis) and one just above the change up, so the map steps there (N3, causes.md
+        // B-3: the turbo four's advance on its short lobe and on its long one differ; baked on one, run on the other,
+        // -6 %)
+        if (options.stageRows && build.fieldOf("valve.stages") >= 0 && build.get("valve.stages") > 0.5
+            && build.fieldOf("valve.stageSpeed") >= 0 && result.speeds.size() >= 2 && result.speeds.size() <= 14)
+        {
+            const double up = build.get("valve.stageSpeed");
+            const double hyst = build.fieldOf("valve.stageHyst") >= 0 ? build.get("valve.stageHyst") : 0.0;
+            std::vector<double> at;
+            for (const double w : {(up - hyst) * 0.99, up * 1.01})
+                if (w > result.speeds.front() && w < result.speeds.back())
+                    at.push_back(w);
+            if (!at.empty())
+            {
+                if (!insertRows(at))
+                    return false;
+                result.stageRows = static_cast<int>(at.size());
+            }
         }
 
         // at each speed the most torque among the cells that do not knock more than the parked one by the limit
@@ -187,6 +309,68 @@ namespace tee
             if (result.added == addedBefore)
                 break;   // (again over the intervals the new rows made, to three passes: a row can spoil its neighbours')
         }
+        // The optimum can be narrower than the grid (N3's turbo four at 1800 rpm on its short exhaust lobe: 28 degrees
+        // 302 N m, 35 degrees 319, 50 degrees 220): at each speed the half steps either side of its best cell measured
+        // too, a curve for each such advance over just the speeds whose best is beside it, and the best taken again
+        // over all
+        if (options.halfSteps && result.advances.size() >= 2)
+        {
+            const double h = 0.5 * step;
+            std::vector<double> extra;
+            for (std::size_t sp = 0; sp < result.speeds.size(); ++sp)
+                for (const double c : {result.best[sp] - h, result.best[sp] + h})
+                    if (c > 0.0 && c < range && std::find(extra.begin(), extra.end(), c) == extra.end())
+                        extra.push_back(c);
+            std::sort(extra.begin(), extra.end());
+            for (const double c : extra)
+            {
+                if (cancel != nullptr && cancel->load())
+                {
+                    error = "cancelled";
+                    return false;
+                }
+                std::vector<double> at;
+                std::vector<std::size_t> where;
+                for (std::size_t sp = 0; sp < result.speeds.size(); ++sp)
+                    if (std::fabs(result.best[sp] - c) < h + 1e-9)
+                    {
+                        at.push_back(result.speeds[sp]);
+                        where.push_back(sp);
+                    }
+                PredictCurve curve;
+                if (!heldCurve(c, at, curve))
+                    return false;
+                std::vector<double> torque(result.speeds.size(), nan), knock(result.speeds.size(), nan);
+                for (std::size_t k = 0; k < curve.points.size() && k < where.size(); ++k)
+                {
+                    torque[where[k]] = curve.points[k].valid ? curve.points[k].torque : nan;
+                    knock[where[k]] = curve.points[k].knockRetard;
+                }
+                std::size_t pos = 0;
+                while (pos < result.advances.size() && result.advances[pos] < c)
+                    ++pos;
+                result.advances.insert(result.advances.begin() + static_cast<std::ptrdiff_t>(pos), c);
+                result.torque.insert(result.torque.begin() + static_cast<std::ptrdiff_t>(pos), std::move(torque));
+                result.knock.insert(result.knock.begin() + static_cast<std::ptrdiff_t>(pos), std::move(knock));
+                result.halfSteps += static_cast<int>(at.size());
+            }
+            for (std::size_t sp = 0; sp < result.speeds.size(); ++sp)
+            {
+                const double parkedKnock = result.knock.front()[sp];
+                for (std::size_t a = 0; a < result.advances.size(); ++a)
+                {
+                    const double t = result.torque[a][sp];
+                    if (!std::isfinite(t) || !(result.knock[a][sp] <= parkedKnock + options.knockLimit))
+                        continue;
+                    if (t > result.bestTorque[sp] || !std::isfinite(result.bestTorque[sp]))
+                    {
+                        result.bestTorque[sp] = t;
+                        result.best[sp] = result.advances[a];
+                    }
+                }
+            }
+        }
+
         // smooth across speed: the advances chosen together, the most torque less a cost for each step between
         // neighbouring rows (stepCost of the best torque per 10 degrees: judgement), so the map does not swing back and
         // forth between cells chasing the waves' teeth (a turbo four's grid bake read 20, 20, 0, 30, 0, 20, 30, 20; the
@@ -302,7 +486,9 @@ namespace tee
         for (std::size_t i = 0; i < x.size(); ++i)
             z[i] = {0.0, 0.0, best[i], best[i]};
         build.beginGesture();
-        const bool ok = build.setMap("ecu.maps.camIn", x, y, z) && build.set("ecu.maps.camInAuto", 0.0);
+        const bool ok = build.setMap("ecu.maps.camIn", x, y, z) && build.set("ecu.maps.camInAuto", 0.0)
+                        && (build.fieldOf("ecu.maps.camInKey") < 0
+                            || build.set("ecu.maps.camInKey", static_cast<double>(result.key)));
         build.endGesture();
         if (!ok)
             error = "the baked cam does not fit ecu.maps.camIn";
@@ -411,6 +597,13 @@ namespace tee
             "spec.ecu.maps.lambda",    "spec.ecu.maps.lambdaAuto", "spec.ecu.maps.camIn",   "spec.ecu.maps.camInAuto",
             "spec.ecu.maps.camEx",     "spec.ecu.maps.camExAuto",  "spec.ecu.maps.spark",   "spec.ecu.maps.sparkAuto"};
 
+        // The intake and exhaust cam maps: in the knock limit's key, not in its base key (Bake.h)
+        bool camMap(const std::string& path)
+        {
+            return path == "spec.ecu.maps.camIn" || path == "spec.ecu.maps.camInAuto" || path == "spec.ecu.maps.camEx"
+                   || path == "spec.ecu.maps.camExAuto";
+        }
+
         bool movesKnock(const FieldInfo& f)
         {
             if (f.hidden)
@@ -424,29 +617,42 @@ namespace tee
         }
     } // namespace
 
+    namespace
+    {
+        std::int64_t knockKeyOf(const Build& build, const Sim& sim, bool withCams)
+        {
+            std::uint64_t h = 1469598103934665603ull;
+            const auto mixIn = [&h](const void* data, std::size_t n) {
+                const unsigned char* b = static_cast<const unsigned char*>(data);
+                for (std::size_t i = 0; i < n; ++i)
+                {
+                    h ^= b[i];
+                    h *= 1099511628211ull;
+                }
+            };
+            const std::uint64_t program = sim.sourceHash();
+            mixIn(&program, sizeof program);
+            const auto& all = build.fields().all();
+            for (std::size_t i = 0; i < all.size(); ++i)
+            {
+                if (all[i].block != "spec" || !movesKnock(all[i]) || (!withCams && camMap(all[i].path)))
+                    continue;
+                mixIn(all[i].path.data(), all[i].path.size());
+                for (const double v : build.values(static_cast<int>(i)))
+                    mixIn(&v, sizeof v);
+            }
+            return static_cast<std::int64_t>(h & 0x7fffffffull);
+        }
+    } // namespace
+
     std::int64_t knockLimitKey(const Build& build, const Sim& sim)
     {
-        std::uint64_t h = 1469598103934665603ull;
-        const auto mixIn = [&h](const void* data, std::size_t n) {
-            const unsigned char* b = static_cast<const unsigned char*>(data);
-            for (std::size_t i = 0; i < n; ++i)
-            {
-                h ^= b[i];
-                h *= 1099511628211ull;
-            }
-        };
-        const std::uint64_t program = sim.sourceHash();
-        mixIn(&program, sizeof program);
-        const auto& all = build.fields().all();
-        for (std::size_t i = 0; i < all.size(); ++i)
-        {
-            if (all[i].block != "spec" || !movesKnock(all[i]))
-                continue;
-            mixIn(all[i].path.data(), all[i].path.size());
-            for (const double v : build.values(static_cast<int>(i)))
-                mixIn(&v, sizeof v);
-        }
-        return static_cast<std::int64_t>(h & 0x7fffffffull);
+        return knockKeyOf(build, sim, true);
+    }
+
+    std::int64_t knockLimitBaseKey(const Build& build, const Sim& sim)
+    {
+        return knockKeyOf(build, sim, false);
     }
 
     bool knockLimitCurrent(const Build& build, const Sim& sim)
@@ -768,13 +974,37 @@ namespace tee
         return "no table";
     }
 
-    KnockBakeService::KnockBakeService(std::shared_ptr<Sim> sim, KnockBakeOptions options, double debounceSeconds)
-        : sim_(std::move(sim)), options_(std::move(options)), debounce_(std::max(debounceSeconds, 0.0))
+    namespace
     {
+        bool hasTable(const Build& build)
+        {
+            return build.fieldOf("ecu.maps.knockLimit") >= 0 && build.fieldOf("ecu.maps.knockLimitAuto") >= 0
+                   && build.fieldOf("ecu.maps.knockLimitKey") >= 0;
+        }
+
+        CalibrationBakeOptions sparkOnly(KnockBakeOptions spark, double debounce)
+        {
+            CalibrationBakeOptions o;
+            o.spark = std::move(spark);
+            o.bakeCam = false;
+            o.debounceSeconds = debounce;
+            return o;
+        }
+    } // namespace
+
+    CalibrationBakeService::CalibrationBakeService(std::shared_ptr<Sim> sim, CalibrationBakeOptions options)
+        : sim_(std::move(sim)), options_(std::move(options))
+    {
+        options_.debounceSeconds = std::max(options_.debounceSeconds, 0.0);
         thread_ = std::thread([this] { coordinator(); });
     }
 
-    KnockBakeService::~KnockBakeService()
+    KnockBakeService::KnockBakeService(std::shared_ptr<Sim> sim, KnockBakeOptions options, double debounceSeconds)
+        : CalibrationBakeService(std::move(sim), sparkOnly(std::move(options), debounceSeconds))
+    {
+    }
+
+    CalibrationBakeService::~CalibrationBakeService()
     {
         {
             const std::lock_guard<std::mutex> lock(mutex_);
@@ -786,7 +1016,7 @@ namespace tee
             thread_.join();
     }
 
-    void KnockBakeService::setState(KnockBakeState s)
+    void CalibrationBakeService::setState(KnockBakeState s)
     {
         if (state_ != s)
         {
@@ -795,46 +1025,57 @@ namespace tee
         }
     }
 
-    KnockBakeState KnockBakeService::consider(Build& build)
+    bool CalibrationBakeService::camWanted(const Build& build) const
     {
-        if (build.fieldOf("ecu.maps.knockLimit") < 0 || build.fieldOf("ecu.maps.knockLimitAuto") < 0
-            || build.fieldOf("ecu.maps.knockLimitKey") < 0)
+        return options_.bakeCam && build.fieldOf("ecu.maps.camInKey") >= 0 && build.fieldOf("ecu.maps.camIn") >= 0
+               && build.fieldOf("valve.inPhaseRange") >= 0 && build.get("valve.inPhaseRange") > 0.0;
+    }
+
+    KnockBakeState CalibrationBakeService::consider(Build& build)
+    {
+        if (!hasTable(build))
         {
             const std::lock_guard<std::mutex> lock(mutex_);
             setState(KnockBakeState::NoTable);
             return state_;
         }
-        const std::int64_t key = knockLimitKey(build, *sim_);
-        if (knockLimitCurrent(build, *sim_))
+        const bool wantCam = camWanted(build);
+        const bool camCurrent = !wantCam || intakeCamCurrent(build, *sim_);
+        if (knockLimitCurrent(build, *sim_) && camCurrent)
         {
             const std::lock_guard<std::mutex> lock(mutex_);
-            if (key_ != key)
+            if (asked_ || state_ == KnockBakeState::Waiting || state_ == KnockBakeState::Baking)
                 cancel_ = true;   // what runs is for another build: not wanted
             asked_ = false;
             ready_ = false;
-            key_ = key;
             setState(KnockBakeState::Current);
             return state_;
         }
-        // stale: the table set aside now (the engine on its knock control alone), a bake asked
-        if (build.get("ecu.maps.knockLimitAuto") == 0.0)
+        // stale: the stale tables set aside now (the engine on its knock control and its auto cam), a bake asked
+        if (wantCam && !camCurrent && build.get("ecu.maps.camInAuto") == 0.0)
+            build.set("ecu.maps.camInAuto", 1.0);
+        if (!knockLimitCurrent(build, *sim_) && build.get("ecu.maps.knockLimitAuto") == 0.0)
             build.set("ecu.maps.knockLimitAuto", 1.0);
+        const std::int64_t sparkKey = knockLimitKey(build, *sim_);
+        const std::int64_t camKey = wantCam ? intakeCamKey(build, *sim_) : 0;
         const std::lock_guard<std::mutex> lock(mutex_);
-        if (key == key_ && state_ != KnockBakeState::Failed && state_ != KnockBakeState::Current)
+        if (sparkKey == sparkKey_ && camKey == camKey_ && state_ != KnockBakeState::Failed
+            && state_ != KnockBakeState::Current)
             return state_;   // asked already (waiting, baking, or ready to take)
-        key_ = key;
+        sparkKey_ = sparkKey;
+        camKey_ = camKey;
         json_ = build.save();
         asked_ = true;
         ready_ = false;
         due_ = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                                     std::chrono::duration<double>(debounce_));
+                                                     std::chrono::duration<double>(options_.debounceSeconds));
         cancel_ = true;   // a bake running is of an older build
         setState(KnockBakeState::Waiting);
         wake_.notify_all();
         return state_;
     }
 
-    bool KnockBakeService::take(KnockBakeResult& out)
+    bool CalibrationBakeService::take(CalibrationBakeResult& out)
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         if (!ready_)
@@ -844,19 +1085,56 @@ namespace tee
         return true;
     }
 
-    KnockBakeState KnockBakeService::state() const
+    bool CalibrationBakeService::take(KnockBakeResult& out)
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        if (!ready_ || done_.hasCam || !done_.hasSpark)
+            return false;
+        out = done_.spark;
+        ready_ = false;
+        return true;
+    }
+
+    bool CalibrationBakeService::takeAndApply(Build& build, std::string& error)
+    {
+        CalibrationBakeResult r;
+        if (!take(r))
+            return false;
+        bool applied = false;
+        if (r.hasCam && intakeCamKey(build, *sim_) == r.cam.key)
+        {
+            if (!applyIntakeCam(build, r.cam, error))
+                return false;
+            applied = true;
+        }
+        if (r.hasSpark && knockLimitKey(build, *sim_) == r.spark.key)
+        {
+            if (!applyKnockLimit(build, r.spark, error))
+                return false;
+            applied = true;
+        }
+        return applied;
+    }
+
+    KnockBakeState CalibrationBakeService::state() const
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         return state_;
     }
 
-    std::string KnockBakeService::error() const
+    std::string CalibrationBakeService::stage() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return state_ == KnockBakeState::Baking ? stage_ : std::string();
+    }
+
+    std::string CalibrationBakeService::error() const
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         return error_;
     }
 
-    void KnockBakeService::coordinator()
+    void CalibrationBakeService::coordinator()
     {
         std::unique_lock<std::mutex> lock(mutex_);
         while (!stop_)
@@ -873,22 +1151,50 @@ namespace tee
             }
             asked_ = false;
             const std::string json = json_;
-            const std::int64_t key = key_;
+            const std::int64_t sparkKey = sparkKey_, camKey = camKey_;
             cancel_ = false;
+            stage_.clear();
             setState(KnockBakeState::Baking);
             lock.unlock();
 
-            KnockBakeResult result;
+            const auto at = [&](const char* stage) {
+                const std::lock_guard<std::mutex> guard(mutex_);
+                stage_ = stage;
+                ++revision_;
+            };
+            CalibrationBakeResult result;
             std::string error;
             Build build(sim_->fields());
             std::vector<std::string> warnings;
             bool ok = build.load(json, BuildPart::Whole, warnings, error);
-            if (ok)
-                ok = bakeKnockLimit(sim_, build, options_, result, error, &cancel_);
+            // the spark, if stale, applied to the copy
+            if (ok && !knockLimitCurrent(build, *sim_))
+            {
+                at("spark map");
+                ok = bakeKnockLimit(sim_, build, options_.spark, result.spark, error, &cancel_)
+                     && applyKnockLimit(build, result.spark, error);
+                result.hasSpark = ok;
+            }
+            // the cam on that spark, if wanted and stale, applied to the copy; the spark again if that made it stale
+            if (ok && camWanted(build) && !intakeCamCurrent(build, *sim_))
+            {
+                at("cam");
+                ok = bakeIntakeCam(sim_, build, options_.cam, result.cam, error, &cancel_)
+                     && applyIntakeCam(build, result.cam, error);
+                result.hasCam = ok;
+                if (ok && !knockLimitCurrent(build, *sim_))
+                {
+                    at("spark map again");
+                    ok = bakeKnockLimit(sim_, build, options_.spark, result.spark, error, &cancel_)
+                         && applyKnockLimit(build, result.spark, error);
+                    result.hasSpark = ok;
+                }
+            }
 
             lock.lock();
-            if (stop_ || asked_ || key != key_ || cancel_)
+            if (stop_ || asked_ || sparkKey != sparkKey_ || camKey != camKey_ || cancel_)
                 continue;   // a newer build was asked meanwhile, or this one was set aside: dropped
+            stage_.clear();
             if (ok)
             {
                 done_ = std::move(result);
@@ -901,6 +1207,7 @@ namespace tee
                 error_ = error;
                 setState(KnockBakeState::Failed);
             }
+            ++revision_;
         }
     }
 } // namespace tee

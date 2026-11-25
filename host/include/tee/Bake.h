@@ -42,6 +42,11 @@ namespace tee
         // default: refined, the V12's hole at 2000 rpm filled +16 % but 1500-1750 fell 4 % (card N1).
         bool refine = false;
         double midLoss = 0.03;
+        // The half steps either side of each speed's best cell measured too (the optimum can be narrower than the grid:
+        // N3's turbo four at 1800 rpm, 28 degrees 302 N m, 35 degrees 319, 50 degrees 220), at the speeds beside them
+        bool halfSteps = true;
+        // A two-stage cam (spec.valve.stages): a row either side of the change, so the map steps there
+        bool stageRows = true;
         // Acceptance: the map against the auto schedule at full load, a row falling back to the auto's phase where it
         // makes more than acceptLoss less.
         bool accept = true;
@@ -63,6 +68,9 @@ namespace tee
         double wallSeconds = 0.0;
         int added = 0;                               // midpoints added as rows of their own (refine)
         int fellBack = 0;                            // rows given the auto schedule's phase by the acceptance
+        int halfSteps = 0;                           // points measured at the half steps beside the best cells
+        int stageRows = 0;                           // rows added either side of a two-stage cam's change
+        std::int64_t key = 0;                        // intakeCamKey(build, sim) of the build it measured
     };
 
     // Sweeps `build`'s intake cam (above). False, with `error`, when the program or the build has no intake phaser to
@@ -71,8 +79,17 @@ namespace tee
                        CamBakeResult& result, std::string& error, const std::atomic<bool>* cancel = nullptr);
 
     // Writes the result into `build`: ecu.maps.camIn over the swept speeds, parked (0) at loads 0 and 0.75 of the
-    // air's pressure and the baked advance at 0.95 and 3, and ecu.maps.camInAuto off. One undo step.
+    // air's pressure and the baked advance at 0.95 and 3, ecu.maps.camInAuto off and ecu.maps.camInKey the result's
+    // key. One undo step.
     bool applyIntakeCam(Build& build, const CamBakeResult& result, std::string& error);
+
+    // The intake cam map's key: a hash of the program and the fields that move the cam's best (the valvetrain whole,
+    // its stages included, the intake, the exhaust, the boost, the engine, the fuel; never a hidden field nor an ECU
+    // map) with the spark it was chosen on (knockLimitBaseKey: the knock key without the cam maps, so that the
+    // calibration's order, spark then cam then spark again, ends). A 31-bit number, as spec.ecu.maps.camInKey holds it.
+    std::int64_t intakeCamKey(const Build& build, const Sim& sim);
+    // Whether the build's cam map is baked and current: camInAuto off and camInKey this build's key
+    bool intakeCamCurrent(const Build& build, const Sim& sim);
 
     // The idle gate (P's, content/builds/archetypes/generate.py idle_check, the same windows and limits, so that the
     // two never disagree: the lead, 22:55). On the scenarios p-idle-warm (8 to 14 s: the mean within 100 rpm of
@@ -163,6 +180,11 @@ namespace tee
     // program itself (Sim::sourceHash). Not the air's temperature (baked at the cell's 300 K) nor ecu.timing (the
     // person's offset, on top). A 31-bit number, as spec.ecu.maps.knockLimitKey holds it.
     std::int64_t knockLimitKey(const Build& build, const Sim& sim);
+    // The same without the cam maps (ecu.maps.camIn, camInAuto, camEx, camExAuto): what the intake cam's bake key
+    // carries of the spark (its intakeCamKey), so that the spark baked again after the cam (its key moved by the cam)
+    // does not make the cam stale in turn: spark, cam, spark, and it ends. Hidden fields (the heatSettle counters)
+    // are in neither.
+    std::int64_t knockLimitBaseKey(const Build& build, const Sim& sim);
     // Whether the build's bake is in use and current: knockLimitAuto off and its key this build's (false when the
     // program has no knock-limit table).
     bool knockLimitCurrent(const Build& build, const Sim& sim);
@@ -174,66 +196,100 @@ namespace tee
     // has no knock-limit table.
     bool applyKnockLimit(Build& build, const KnockBakeResult& result, std::string& error);
 
-    // The knock limit baked in the background, for the application (the lead's ruling: nobody waits on it, and its
-    // state is shown). After each edit the UI thread calls consider(build): a build whose table is current is left as
-    // it is; one whose key moved (an edit of what moves the knock limit) has its table set aside at once
-    // (knockLimitAuto on: the engine runs on its knock control alone, as before any bake) and a bake of it is asked,
-    // debounced (a knob's drag asks once, when it rests), a newer one cancelling the one running. Controls never move
-    // the key, so they never bake. take() gives the finished bake of the newest asked: apply it (applyKnockLimit) if
-    // the build's key is still its key. TUNE shows state(): "spark map: baking", "baked".
+    // The calibration baked in the background, for the application (the lead's rulings: nobody waits on a bake, and
+    // its state is shown; the spark table first, the intake cam on that spark, the spark again on that cam). After
+    // each edit the UI thread calls consider(build): a build whose tables are current is left as it is; one whose key
+    // moved (an edit of what moves them) has each stale table set aside at once (knockLimitAuto, camInAuto on: the
+    // engine on its knock control and its auto cam, as before any bake) and a bake asked, debounced (a knob's drag
+    // asks once, when it rests), a newer one cancelling the one running. The bake, on a copy of the build: the spark
+    // table if stale, applied to the copy; the intake cam if stale (on that spark), applied; the spark again if the cam
+    // made it stale (its key carries the cam maps; the cam's carries knockLimitBaseKey, so it ends). Controls never
+    // move a key, so they never bake. takeAndApply(build) applies what is done, the cam first and then the spark, each
+    // only while the build's key is still its key. TUNE shows stage() and state(): "spark map: baking", "cam: baking",
+    // "baked".
     //
-    //   tee::KnockBakeService bakes(sim);                  // once
+    //   tee::CalibrationBakeService bakes(sim);            // once
     //   bakes.consider(build);                             // after each edit, and when a build is loaded
-    //   tee::KnockBakeResult r;
-    //   if (bakes.take(r) && knockLimitKey(build, *sim) == r.key) applyKnockLimit(build, r, error);   // each frame
+    //   bakes.takeAndApply(build, error);                  // each frame
     enum class KnockBakeState
     {
         NoTable,      // the program has no knock-limit table
-        Current,      // the build's table is baked and its key is the build's
+        Current,      // the build's tables are baked and their keys are the build's
         Waiting,      // stale: a bake is asked, waiting for the edits to rest
-        Baking,       // stale: being baked
-        Ready,        // baked: take() has it
+        Baking,       // stale: being baked (stage() says which)
+        Ready,        // baked: take() or takeAndApply() has it
         Failed,       // the bake failed (error())
     };
 
     const char* knockBakeStateName(KnockBakeState state) noexcept;   // "no table", "baked", "baking" ...
 
-    class KnockBakeService
+    struct CalibrationBakeOptions
+    {
+        KnockBakeOptions spark;
+        CamBakeOptions cam;
+        bool bakeCam = true;           // the intake cam too (where the program and the build have a phaser to bake)
+        double debounceSeconds = 1.5;
+    };
+
+    struct CalibrationBakeResult
+    {
+        bool hasSpark = false;
+        KnockBakeResult spark;         // the last spark baked (after the cam, when the cam was baked)
+        bool hasCam = false;
+        CamBakeResult cam;
+    };
+
+    class CalibrationBakeService
     {
     public:
-        explicit KnockBakeService(std::shared_ptr<Sim> sim, KnockBakeOptions options = {}, double debounceSeconds = 1.5);
-        ~KnockBakeService();
-        KnockBakeService(const KnockBakeService&) = delete;
-        KnockBakeService& operator=(const KnockBakeService&) = delete;
+        explicit CalibrationBakeService(std::shared_ptr<Sim> sim, CalibrationBakeOptions options = {});
+        virtual ~CalibrationBakeService();
+        CalibrationBakeService(const CalibrationBakeService&) = delete;
+        CalibrationBakeService& operator=(const CalibrationBakeService&) = delete;
 
         // ---- the UI thread ---------------------------------------------------------------------------------------
         KnockBakeState consider(Build& build);
+        // What is done, applied to `build` (the cam, then the spark, each while its key is the build's). True when
+        // something was applied; false when nothing was ready, or (with `error`) a table did not fit.
+        bool takeAndApply(Build& build, std::string& error);
+        bool take(CalibrationBakeResult& out);
+        // The spark alone (KnockBakeService's): false when nothing is ready or the bake held a cam (use takeAndApply).
         bool take(KnockBakeResult& out);
         KnockBakeState state() const;
+        std::string stage() const;     // "spark map", "cam", "spark map again"; empty when not baking
         std::string error() const;
-        // Moves when the state changes.
+        // Moves when the state or the stage changes.
         std::uint64_t revision() const noexcept { return revision_.load(); }
 
     private:
         void coordinator();
         void setState(KnockBakeState s);   // under mutex_
+        bool camWanted(const Build& build) const;
 
         std::shared_ptr<Sim> sim_;
-        KnockBakeOptions options_;
-        double debounce_ = 1.5;
+        CalibrationBakeOptions options_;
         std::thread thread_;
         mutable std::mutex mutex_;
         std::condition_variable wake_;
         bool stop_ = false;
         bool asked_ = false;               // a bake of json_ waits to start
         std::string json_;                 // the build asked, saved
-        std::int64_t key_ = -1;            // its key
+        std::int64_t sparkKey_ = -1;       // its keys
+        std::int64_t camKey_ = -1;
         std::chrono::steady_clock::time_point due_{};
         std::atomic<bool> cancel_{false};
         std::atomic<std::uint64_t> revision_{0};
         KnockBakeState state_ = KnockBakeState::NoTable;
+        std::string stage_;
         bool ready_ = false;
-        KnockBakeResult done_;
+        CalibrationBakeResult done_;
         std::string error_;
+    };
+
+    // The spark table alone (U1's ServiceBake, take(KnockBakeResult&)): a CalibrationBakeService without the cam.
+    class KnockBakeService : public CalibrationBakeService
+    {
+    public:
+        explicit KnockBakeService(std::shared_ptr<Sim> sim, KnockBakeOptions options = {}, double debounceSeconds = 1.5);
     };
 } // namespace tee

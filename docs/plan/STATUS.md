@@ -37,6 +37,42 @@
 
 ## Landed
 
+- **23:52 the lead's check-in; `main` fast-forwarded at 23:31** from 40be51d2 to 09c1fb4e: it holds everything the
+  owner reported (the cam and VVT, the hum, the airy balance on Tailpipe) and X-028, the key-on ring, the wastegate's
+  limit cycle, the automatics' upshift on spinning tyres, the shift's spark ramp, the DI cooling at the cited 14 K.
+  Basis at the move: Linux at a37728d9 and macOS at 007416ef each red on one listen case that L had restated
+  (59b95981, 4273188b, both in 09c1fb4e); macOS built at 007416ef with one host commit after it. **Main's own run on
+  09c1fb4e (45510675759): Linux and macOS built, 537 of 538 pass**; the one red on both is card I's new
+  `launch.automatic` (LaunchTest.cpp:198: brake-torqued 3.104 s against 3.072 from idle with traction control off,
+  bound 0.01): on a grip-limited launch "no slower" is not a law: restated by the lead (within a tenth of a second
+  without traction control; unchanged with it), pushed. Windows still running. **Since 23:17.** *The turbo four as
+  the EA888 gen 3* (P's 86079c1 for table K: the two-stage exhaust from gen 2's SSP 922903, its durations read at
+  1 mm because the page's own large lobe says so; intake phaser 60; exhaust phaser 30 judgement, 42 from the
+  sibling EA855 after K; each basis in the build's notes) with N1's baked intake map reads, by N3: 189 / 218 / 300 /
+  351 / 283 N m at 1500 / 1800 / 2500 / 4000 / 6200 (from 139 / 144 / 265 / 368 / 276; the maker's 350 to 4400 and
+  about 250 at 6200): it now breathes cleanly (residual 3 to 4 %, dpOverlap about 0), 4000 meets the curve, and what
+  is short below 2500 is spool. N3's ranking closed: the intake phase at boosted low speed (the bake: +30 % at 1814
+  on the old lobe, 137 to 178), then spool (N2), the short lobe +3 %, the exhaust's retard nothing, knock nothing
+  (14 N m), the exhaust's heat nothing (G's probe); the one figure that would move the low end further, gen 3's
+  exhaust cam's parked timing, is unpublished and is not to be set from N3's best cell (327 to 332 N m at 1500 to
+  1800 on a 0.40 turbine with the exhaust closing 30 degrees earlier). *The compressor's map is the root* (N2): on
+  the model's one map family the surge line lies under the engine's operating line at low speed: a surge cap
+  (built, held as a patch) holds the diesels' target near zero and would cost the turbo four 12 % at 2500; no one
+  match holds both ends. Ruled: the map's width and its low-flow efficiency from published maps (a research agent
+  of the lead's is reading them into numbers), then the cap on the corrected map; the back-pressure gate pushed
+  alone; the four boost and diesel cases stay marked. *The cam bake* (N1): half steps, rows either side of a stage
+  change (7471609c), a key carrying the stage and the spark's key (c7236d05); the V12 baked: 2040 rpm 440 to 497
+  N m, 3600 rpm 366 to 546 (auto asked 47.5 degrees into 9 degrees of knock retard); the turbo four's cell scatter
+  was the wastegate's limit cycle and is gone; BAKED_CAMS on for table K; ruled (c): no feedback rule on the
+  overlap, the auto rule stays the fallback, `tel.valve.dpOverlap` ships (U2: VALVES says BACK-FILLS or SCAVENGES,
+  51d5911a), the bake becomes a background service with C; no exhaust-direction field. *Sound*: L: Rear is right
+  physically and darker than the reference's REAR by design (the bay shaded, the ground's notch): ruled: every
+  build opens on Tailpipe (the Spec's default; P dropped the 32 stated cameras); the two listen cases restated on a
+  rev's typical peak with 2 dB margins; the fan through Tailpipe measured by the lead (+0.9 to +2.4 dB in the mids)
+  and D cleared to bring back the fan cooling the radiator. *Host*: C: the predicted curve depended on the
+  machine's core count (c0498ad5: fixed shares, bit-equal on 1 to 3 workers; 3 kept); D's 4.68e-310 was a dangling
+  reference through the test library (998af7c9, accessors ref-qualified); D's and X's bit-equality for X-028 did
+  not use that form and X re-ran it (0 of 1312). X-027 and X-028 closed; `Known.h` holds X-016.
 - **23:17 the lead's check-in; `main` not moved (40be51d2)**: the newest finished fast jobs (Linux and macOS at
   609198db, run 45503965919) have four reds, each fixed or marked at the tip (host.sim.cases: C's de49e456; the
   listen quick case at Side: L's 59b95981; diesel.brakes and diesel.turbo: marked in 4c253094 on G's finding); main

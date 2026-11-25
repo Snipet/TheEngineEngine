@@ -31,6 +31,7 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tee
@@ -103,8 +104,13 @@ namespace tee::test
         Series during(double from, double to) const;
         bool empty() const noexcept { return values_.empty(); }
         std::size_t size() const noexcept { return values_.size(); }
-        const std::vector<double>& times() const noexcept { return times_; }
-        const std::vector<double>& values() const noexcept { return values_; }
+        // A named Series hands out a reference; a temporary one (run.tel("engine.speed").values()) its vector itself,
+        // so `const auto& v = run.tel(...).values();` holds the values and not a reference into a Series gone (D read
+        // a freed block's bytes so, some 4.68e-310 in its first element)
+        const std::vector<double>& times() const& noexcept { return times_; }
+        const std::vector<double>& values() const& noexcept { return values_; }
+        std::vector<double> times() && noexcept { return std::move(times_); }
+        std::vector<double> values() && noexcept { return std::move(values_); }
 
         double max() const noexcept;
         double min() const noexcept;
@@ -138,18 +144,24 @@ namespace tee::test
         double firingHz(double from = -1.0, double to = -1.0) const;
 
         // The host's numbers after the last block (load, the guard's trips, ...), and its words for a trip.
-        const HostStats& host() const noexcept { return result_.host; }
-        const std::string& stopReason() const noexcept { return result_.stopReason; }
+        // (as Series': a temporary Run's by value, a named one's by reference)
+        const HostStats& host() const& noexcept { return result_.host; }
+        HostStats host() && noexcept { return result_.host; }
+        const std::string& stopReason() const& noexcept { return result_.stopReason; }
+        std::string stopReason() && noexcept { return std::move(result_.stopReason); }
         // How many times real time the run went (simulated seconds over wall seconds).
         double speed() const noexcept;
-        const RunResult& result() const noexcept { return result_; }
+        const RunResult& result() const& noexcept { return result_; }
+        RunResult result() && noexcept { return std::move(result_); }
         // An error the run met (a build that could not be read, an event that names nothing); empty when none.
-        const std::string& error() const noexcept { return error_; }
+        const std::string& error() const& noexcept { return error_; }
+        std::string error() && noexcept { return std::move(error_); }
         bool ok() const noexcept { return error_.empty(); }
 
         // The build as the run ended (a test reads the Spec back), and the session log when it was kept (log()).
         const Build* build() const noexcept { return build_.get(); }
-        const std::vector<LogEvent>& log() const noexcept { return log_; }
+        const std::vector<LogEvent>& log() const& noexcept { return log_; }
+        std::vector<LogEvent> log() && noexcept { return std::move(log_); }
 
     private:
         friend class ::tee::test::Scenario;
