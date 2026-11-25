@@ -64,7 +64,9 @@ CROSS = {"name": "Stages: where the high cam passes the low (rpm)", "range": [55
                    "engine 5500-5700 rpm\") and an S2000 owner's \"torque curve intersection to 5800-5900\" (S2KI, a "
                    "forum, a search snippet); measured by report.py: tee-dyno --predict from 3000 to 8500 rpm every 250 "
                    "with each stage held (valve.stageSpeed 1100 rad/s: the low stage throughout; 100: the high), the "
-                   "first speed where the high stage's torque passes the low's, interpolated; past 8500 reads 8500"}
+                   "first speed where the high stage's torque passes the low's, interpolated; past 8500 reads 8500. "
+                   "NOTE: the build's low stage is judgement (no source) and its high lobe an aggregator's, so a miss "
+                   "may be the card's as much as the model's"}
 CROSS_SLUGS = ("two-stage-cam-20",)
 
 
