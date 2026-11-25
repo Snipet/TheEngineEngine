@@ -37,6 +37,50 @@
 
 ## Landed
 
+- **09:13 (25 Nov) GO to P for the next `main`'s bake, at tip 6bac7c78** (read by the lead on the branch:
+  `kCamBakeVersion` 3, `kKnockBakeVersion` 4). C's predictor mean is in (1db8dcd2: a settled point is the mean of its
+  settled cycles, at least six, with `PredictPoint::torqueSe` and `settledCycles`; the economy four's cam row at 4786
+  rpm reads 134.7, 135.4, 136.9 N m where the two-cycle mean read 135.0, 134.0, 136.8). Since `main` (5548dcf8) sim/
+  differs only by `spec/boost.fm` (seqRpm visible), host/ by the bake and the predictor, tools/ not at all. **sim/,
+  host/ and tools/ are frozen** from the bake's start (N1, N2, C, D2, U1 told); all pushes freeze once P's content is
+  up; `main` moves only on a Linux and macOS green commit whose three directories the lead has diffed against P's bake
+  sha. **Ruled for N2, the governed diesel's compressor (b), measured and unpushed:** the torque-peak speed is the
+  build's stated field from the maker's sheet (P's section 20, 973f943c: the X15 kind "peak torque starting at 950
+  rpm", the 6.7 at 1700, the 2.0 TDI from 1750); no judgement factor on the derived default. N2's table, predictions
+  written first: the tractor's inducer 83.2 to 76.8 mm sized at 1000 rpm along the whole climb (the 83.2 wheel
+  surges on the way up near PR 1.9); 1100 rpm goes from 1910 N m surging to 2722 steady, 1300 and 1900 within 2 %;
+  **1000 rpm pulses 17 to 75 kPa** where it was a steady hole at 13 (the real engine holds from 950: a turbine-side
+  finding). (b) waits for N2's nozzle sensitivity on that wheel; if 1000 still pulses, the two builds state 1100
+  (inside the makers' 950 to 1150), marked as chosen for that reason. (a), the surge guard, stays held: it neither
+  causes nor cures the pulse (N2's measurement). One agent's readings; the lead has not re-measured them.
+
+- **08:53 (25 Nov) the lead's check-in; `main` at 5548dcf8, green on all three platforms** (its own run 45572861796:
+  540 of 540 on each, packed; the steward). The branch is green on Linux and macOS at 5b4b2e7. **On the branch since
+  `main` moved** (each after the whole default tier): C's 300 rpm default margin for the predictor (bda6a728;
+  kKnockBakeVersion 3; the DYNO ribbon's top point no longer at the limiter: 128, 274 and 387 N m where it drew -36,
+  -81 and -155) and the tractor lug case on the predictor's honesty; N1's cam bake cures (fab9ae4c: the knock gate
+  out, the tie rule, limited points as missing; kCamBakeVersion 2; 540 of 540); N2's `seqRpm` visible with the
+  rotary's 4500 stated by P (500cb1a9: the rising hunt at 4250 cured on the build as it ships; both join cases read
+  the build's own file, unmarked); U1's and U4's limited points as dim rings and out of the peaks, the cam page
+  saying when its table is being baked, cells still knocking marked; C's host timing check alone and serial; D2's
+  note that its truck's BSFC is flattered by the reference turbo. **Table L, final** (P's 5b3aa404; three columns on
+  one simulator): K's content 116 of 847 missed, the seat-held class rule 118, the shipped 1 mm-held and baked cards
+  120; no invariant failing in any; the 1 mm anchor brings back the V12's and VR6's peak-power speeds, three
+  over-sharp curves and two torques and costs the V10's and V12's idle manifolds (0.46 and 0.61 bar against 0.30 to
+  0.44): the trade it was ruled on, recorded. **Found by N1 and ruled**: the predictor reports an unknocked point as
+  the mean of its last two cycles, and the engine's own cycle-to-cycle scatter (0.5 to 0.8 % a cycle on the economy
+  four at 4786, as the model's sigma gives) is the "half per cent a point": a 2 % zigzag between adjacent cam
+  positions that vanishes over the settled cycles (134.7, 135.9, 137.0, 137.8, 138.0 N m). C: the predictor reports
+  the mean of a point's settled cycles with its standard error; N1: each bake cell the mean of its last 8 cycles,
+  the tie floor its own error, no row giving up more than 1 % to smoothing (kCamBakeVersion 3; the economy four's
+  differing rows 6 to 2, the V6's 4 to 1, the flat-plane's 1 to 1). **P's next bake waits for those two** (about
+  70 to 80 minutes from 08:34), so that the builds are baked once: then the gate, the whole default tier, the proof,
+  the sha, and the next `main` by the same rule as the last (frozen directories, diffed). *A false alarm, closed*:
+  C's "nine cases fail at -j8" was last night's LastTestsFailed.log; the steward could not reproduce it and only one
+  of the nine reads a clock. *N2 next*: the tractor's (b) on P's matching source (section 18 has a first figure for
+  the exhaust-to-intake pressure ratio), the rotary's weak joined pair, the run-down (wrong in shape at both ends
+  against a measured K27: the bearing has no oil state).
+
 - **08:02 (25 Nov) `main` moved e7e58973 to 5548dcf8**, fast-forward. Run 45569559847: Linux 540 of 540, macOS 540 of
   540 (the lead checked the run's jobs; Windows still in flight; main's own run follows). Its sim/, host/ and tools/
   are identical to 32320974, the commit P's bake was made on (0 lines, diffed by the lead). **What it holds over

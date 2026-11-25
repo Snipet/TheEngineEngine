@@ -9,6 +9,8 @@
 #include "tee/EnginePlayer.h"
 
 #include <chrono>
+#include <fstream>
+#include <iterator>
 #include <limits>
 #include <set>
 #include <thread>
@@ -489,6 +491,13 @@ TEST_CASE("a default predicted curve ends clear of the rev limiter: no point lim
             CHECK(p.valid);
             CHECK_FALSE(p.limited);
             CHECK(p.torque > 0.0);
+            // a settled point is the mean of its settled cycles, six at least, its standard error inside the floor
+            if (p.settled && !p.knockLimited && !p.boostHunting)
+            {
+                CAPTURE(p.settledCycles, p.torqueSe);
+                CHECK(p.settledCycles >= 6);
+                CHECK(p.torqueSe < 0.005 * p.torque);
+            }
         }
     }
 }
@@ -1197,4 +1206,261 @@ TEST_CASE("a diesel has no spark table to bake: the calibration reads current, a
     else
         CHECK(bakes.stage() != "spark map");   // a phaser: its cam baked, never a spark map
     CHECK(build.get("ecu.maps.knockLimitAuto") == knockAuto);   // the spark table left as it was
+}
+
+namespace
+{
+    // A copy of sim/ in a scratch folder with one text replaced (the planted change), removed with the guard
+    struct PlantedSim
+    {
+        std::filesystem::path dir;
+        PlantedSim(const std::filesystem::path& root, const char* name, const char* file, const std::string& from,
+                   const std::string& to)
+        {
+            dir = root / name;
+            std::filesystem::remove_all(dir);
+            std::filesystem::copy(simDir(), dir, std::filesystem::copy_options::recursive);
+            const std::filesystem::path path = dir / file;
+            std::ifstream in(path, std::ios::binary);
+            std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            in.close();
+            const std::size_t at = text.find(from);
+            REQUIRE(at != std::string::npos);
+            REQUIRE(text.find(from, at + 1) == std::string::npos);
+            text.replace(at, from.size(), to);
+            std::ofstream out(path, std::ios::binary | std::ios::trunc);
+            out << text;
+        }
+    };
+
+    struct ScratchFolder
+    {
+        std::filesystem::path dir;
+        explicit ScratchFolder(const char* name)
+            : dir(std::filesystem::temp_directory_path() / (std::string(name) + "-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())))
+        {
+            std::filesystem::create_directories(dir);
+        }
+        ~ScratchFolder()
+        {
+            std::error_code ec;
+            std::filesystem::remove_all(dir, ec);
+        }
+    };
+
+    // Runs the service on `build` until it has something to take (or `seconds`); the states it went through
+    std::set<KnockBakeState> bakeUntilReady(CalibrationBakeService& service, Build& build, double seconds)
+    {
+        std::set<KnockBakeState> seen;
+        seen.insert(service.consider(build));
+        const auto until = std::chrono::steady_clock::now() + std::chrono::duration<double>(seconds);
+        while (std::chrono::steady_clock::now() < until)
+        {
+            const KnockBakeState s = service.state();
+            seen.insert(s);
+            if (std::getenv("TEE_TRACE_BAKE") != nullptr)   // each state and stage as it comes
+                if (static std::string last; last != std::string(knockBakeStateName(s)) + service.stage())
+                {
+                    last = std::string(knockBakeStateName(s)) + service.stage();
+                    std::printf("  bake: %s %s\n", knockBakeStateName(s), service.stage().c_str());
+                }
+            if (s == KnockBakeState::Ready || s == KnockBakeState::Failed || s == KnockBakeState::Current)
+                break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        return seen;
+    }
+} // namespace
+
+TEST_CASE("the verified reuse: a table baked under another program is checked, not baked, when the change cannot reach "
+          "it; a change that moves it is baked again",
+          "[engine][sim][bake][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/economy-four-15.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        SKIP("the program has no knock-limit table yet");
+    unbaked(build);
+    const std::string unbakedJson = build.save();
+
+    ScratchFolder scratch("tee-reuse");
+    CalibrationBakeOptions options;
+    options.debounceSeconds = 0.0;
+    options.bakeCam = true;    // the cam's check too: its full-load row and a warm idle
+    options.spark.pedals = {1.0};
+    options.spark.speeds = 4;
+    options.cacheDirectory = scratch.dir / "cache";
+    options.idleScenarios = std::filesystem::path(TEE_SOURCE_DIR) / "content/validation/scenarios";
+
+    // baked on today's program: a cache entry with its fields key and its check set
+    std::vector<std::pair<std::string, std::vector<double>>> table;
+    {
+        CalibrationBakeService service(sim, options);
+        const auto seen = bakeUntilReady(service, build, 300.0);
+        REQUIRE(service.state() == KnockBakeState::Ready);
+        CHECK(seen.count(KnockBakeState::Baking) == 1);
+        REQUIRE(service.takeAndApply(build, error));
+        CHECK(knockLimitCurrent(build, *sim));
+        CHECK(intakeCamCurrent(build, *sim));
+        CHECK_FALSE(service.lastWasChecked());
+        BakedFields last;
+        REQUIRE(service.lastSpark(last));
+        CHECK(last.fieldsKey == knockLimitFieldsKey(build));
+        CHECK(last.check.speeds.size() == 4);
+        table = last.fields;
+    }
+
+    // a change the dyno cannot see (the listener's speed of sound): the table checked and taken, re-keyed, in seconds
+    {
+        PlantedSim planted(scratch.dir, "sim-listener", "listen/scene.fm", "const float c = 343.2f;",
+                           "const float c = 343.0f;");
+        const auto other = compiled(planted.dir, {}, error);
+        INFO(error);
+        REQUIRE(other != nullptr);
+        REQUIRE(other->sourceHash() != sim->sourceHash());
+        Build again(other->fields());
+        REQUIRE(again.load(build.save(), BuildPart::Whole, warnings, error));
+        CHECK_FALSE(knockLimitCurrent(again, *other));   // the exact key is the program's: stale
+        CHECK(knockLimitFieldsKey(again) == knockLimitFieldsKey(build));
+        CalibrationBakeService service(other, options);
+        const auto t0 = std::chrono::steady_clock::now();
+        const auto seen = bakeUntilReady(service, again, 120.0);
+        const double wall = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        REQUIRE(service.state() == KnockBakeState::Ready);
+        CHECK(seen.count(KnockBakeState::Checking) == 1);
+        REQUIRE(service.takeAndApply(again, error));
+        CHECK(service.lastWasChecked());
+        CHECK(knockLimitCurrent(again, *other));
+        CHECK(intakeCamCurrent(again, *other));   // the cam checked too (its row and the warm idle)
+        CHECK(seen.count(KnockBakeState::Baking) == 0);
+        BakedFields last;
+        REQUIRE(service.lastSpark(last));
+        CHECK(last.checked);
+        for (const auto& [path, values] : table)
+            if (path != "ecu.maps.knockLimitKey")
+            {
+                INFO(path);
+                CHECK(again.values(again.fieldOf(path)) == values);   // the same table, not another bake
+            }
+        std::printf("the verified reuse: a listener-only change checked in %.1f s\n", wall);
+    }
+
+    // a change that moves knock (the octane index's K, 0 to 0.5: the motor octane counts): checked, disagrees, baked
+    {
+        PlantedSim planted(scratch.dir, "sim-octane", "combustion/fuels.fm", "const float kOctaneK = 0.0f;",
+                           "const float kOctaneK = 0.5f;");
+        const auto other = compiled(planted.dir, {}, error);
+        INFO(error);
+        REQUIRE(other != nullptr);
+        Build again(other->fields());
+        REQUIRE(again.load(unbakedJson, BuildPart::Whole, warnings, error));
+        CalibrationBakeService service(other, options);
+        const auto seen = bakeUntilReady(service, again, 300.0);
+        REQUIRE(service.state() == KnockBakeState::Ready);
+        CHECK(seen.count(KnockBakeState::Checking) == 1);
+        CHECK(seen.count(KnockBakeState::Baking) == 1);   // after the check disagreed
+        REQUIRE(service.takeAndApply(again, error));
+        CHECK_FALSE(service.lastWasChecked());
+        CHECK(knockLimitCurrent(again, *other));
+        BakedFields last;
+        REQUIRE(service.lastSpark(last));
+        CHECK_FALSE(last.checked);
+        CHECK(again.values(again.fieldOf("ecu.maps.knockLimit")) != table.front().second);   // another table
+    }
+}
+
+TEST_CASE("the verified reuse on one program: a cached table whose exact key misses is checked and taken; one whose "
+          "check set disagrees is baked",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/economy-four-15.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        SKIP("the program has no knock-limit table yet");
+    unbaked(build);
+    const std::string unbakedJson = build.save();
+    ScratchFolder scratch("tee-reuse1");
+    CalibrationBakeOptions options;
+    options.debounceSeconds = 0.0;
+    options.bakeCam = false;
+    options.spark.pedals = {1.0};
+    options.spark.speeds = 4;
+    options.cacheDirectory = scratch.dir / "cache";
+
+    std::int64_t key = 0;
+    {
+        CalibrationBakeService service(sim, options);
+        bakeUntilReady(service, build, 120.0);
+        REQUIRE(service.takeAndApply(build, error));
+        key = knockLimitKey(build, *sim);
+    }
+    // the entry moved to another key, as if baked under another program: the exact key misses, the fields key finds it
+    const std::filesystem::path entry = options.cacheDirectory / ("spark-" + std::to_string(key) + ".json");
+    REQUIRE(std::filesystem::exists(entry));
+    const auto rekey = [&](double torqueFactor) {
+        // (the entry as cacheWrite writes it: one line of JSON, "key":N and "torque":[...] in it once each)
+        std::ifstream in(entry, std::ios::binary);
+        std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        in.close();
+        const std::string oldKey = "\"key\":" + std::to_string(key);
+        const std::size_t k = text.find(oldKey);
+        REQUIRE(k != std::string::npos);
+        text.replace(k, oldKey.size(), "\"key\":" + std::to_string(key + 1));
+        const std::size_t t0 = text.find("\"torque\":[");
+        REQUIRE(t0 != std::string::npos);
+        const std::size_t from = t0 + 10, to = text.find(']', from);
+        std::string numbers = text.substr(from, to - from), scaled;
+        for (std::size_t at = 0; at <= numbers.size();)
+        {
+            const std::size_t comma = std::min(numbers.find(',', at), numbers.size());
+            char value[64];
+            std::snprintf(value, sizeof value, "%.17g", std::stod(numbers.substr(at, comma - at)) * torqueFactor);
+            scaled += (scaled.empty() ? "" : ",") + std::string(value);
+            at = comma + 1;
+        }
+        text.replace(from, to - from, scaled);
+        std::filesystem::remove(entry);
+        std::ofstream(options.cacheDirectory / ("spark-" + std::to_string(key + 1) + ".json"), std::ios::binary) << text;
+    };
+    rekey(1.0);
+    {
+        Build again(sim->fields());
+        REQUIRE(again.load(unbakedJson, BuildPart::Whole, warnings, error));
+        CalibrationBakeService service(sim, options);
+        const auto seen = bakeUntilReady(service, again, 60.0);
+        CHECK(seen.count(KnockBakeState::Checking) == 1);
+        CHECK(seen.count(KnockBakeState::Baking) == 0);
+        REQUIRE(service.takeAndApply(again, error));
+        CHECK(service.lastWasChecked());
+        CHECK(knockLimitCurrent(again, *sim));
+        CHECK(std::filesystem::exists(entry));   // kept again under this program's key
+    }
+    // the stored check moved 2 % (more than the floor): the candidate disagrees, and the stage is baked
+    std::filesystem::remove(options.cacheDirectory / ("spark-" + std::to_string(key + 1) + ".json"));
+    rekey(1.02);
+    {
+        Build again(sim->fields());
+        REQUIRE(again.load(unbakedJson, BuildPart::Whole, warnings, error));
+        CalibrationBakeService service(sim, options);
+        const auto seen = bakeUntilReady(service, again, 120.0);
+        CHECK(seen.count(KnockBakeState::Checking) == 1);
+        CHECK(seen.count(KnockBakeState::Baking) == 1);
+        REQUIRE(service.takeAndApply(again, error));
+        CHECK_FALSE(service.lastWasChecked());
+        CHECK(knockLimitCurrent(again, *sim));
+    }
 }

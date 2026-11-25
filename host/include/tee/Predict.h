@@ -107,10 +107,14 @@ namespace tee
     struct PredictPoint
     {
         double speed = 0.0;           // rad/s, where it was held
-        double torque = 0.0;          // N m, the mean over the last two cycles
+        // N m. A settled point: the mean of its settled cycles (Predict.cpp: settledMean); a knock-limited or boost-hunting
+        // one: the mean over its last two windows; one that did not settle: the mean of its last windows' worth
+        double torque = 0.0;
+        double torqueSe = 0.0;        // N m, its standard error (a window's point: half its two windows' difference)
+        int settledCycles = 0;        // the cycles in that mean (0: not settled)
         double power = 0.0;           // W
         int cycles = 0;               // cycles run there
-        bool settled = false;         // two cycles agreed within the tolerance
+        bool settled = false;         // it stopped by its rule (two cycles agreed, no trend over six; or its windows agreed)
         // False when the simulator found its engine diverged during the point (FLAG_FAULT: put at rest afresh): its
         // torque and power are NaN, not to be plotted, and the curve counts it (PredictCurve::faults).
         bool valid = true;
