@@ -309,7 +309,7 @@
         card.update("engine", &engine, stage);
         CHECK(card.isOpen() && item.shown() && item.shownFields() == tee::ui::PartCard::kFields);
         const funkgui::Rect r = item.bounds();
-        CHECK(r.x >= 224.0f && r.right() <= stage.right() && r.y >= stage.y && r.bottom() <= stage.bottom());
+        CHECK(r.x >= 256.0f && r.right() == stage.right() - 8.0f && r.y >= stage.y && r.bottom() <= stage.bottom());
         CHECK(r.h < 400.0f);
         host.tick(2);
         funkgui::Rect row, value;
@@ -318,7 +318,7 @@
         // Near the stage's right edge: to the part's left.
         card.afterPress("engine", "engine", "engine", { 700, 600 });   // the part already selected, pressed again
         card.update("engine", &engine, stage);
-        CHECK(card.isOpen() && item.bounds().right() <= 676.0f && item.bounds().bottom() <= stage.bottom());
+        CHECK(card.isOpen() && item.bounds().x == stage.x + 8.0f && item.bounds().bottom() <= stage.bottom());
         // A press on nothing (the selection kept, no part under the pointer) closes it.
         card.afterPress("engine", "engine", "", { 400, 400 });
         CHECK(!card.isOpen() && !item.shown());
