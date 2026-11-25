@@ -37,6 +37,23 @@
 
 ## Landed
 
+- **09:13 (25 Nov) GO to P for the next `main`'s bake, at tip 6bac7c78** (read by the lead on the branch:
+  `kCamBakeVersion` 3, `kKnockBakeVersion` 4). C's predictor mean is in (1db8dcd2: a settled point is the mean of its
+  settled cycles, at least six, with `PredictPoint::torqueSe` and `settledCycles`; the economy four's cam row at 4786
+  rpm reads 134.7, 135.4, 136.9 N m where the two-cycle mean read 135.0, 134.0, 136.8). Since `main` (5548dcf8) sim/
+  differs only by `spec/boost.fm` (seqRpm visible), host/ by the bake and the predictor, tools/ not at all. **sim/,
+  host/ and tools/ are frozen** from the bake's start (N1, N2, C, D2, U1 told); all pushes freeze once P's content is
+  up; `main` moves only on a Linux and macOS green commit whose three directories the lead has diffed against P's bake
+  sha. **Ruled for N2, the governed diesel's compressor (b), measured and unpushed:** the torque-peak speed is the
+  build's stated field from the maker's sheet (P's section 20, 973f943c: the X15 kind "peak torque starting at 950
+  rpm", the 6.7 at 1700, the 2.0 TDI from 1750); no judgement factor on the derived default. N2's table, predictions
+  written first: the tractor's inducer 83.2 to 76.8 mm sized at 1000 rpm along the whole climb (the 83.2 wheel
+  surges on the way up near PR 1.9); 1100 rpm goes from 1910 N m surging to 2722 steady, 1300 and 1900 within 2 %;
+  **1000 rpm pulses 17 to 75 kPa** where it was a steady hole at 13 (the real engine holds from 950: a turbine-side
+  finding). (b) waits for N2's nozzle sensitivity on that wheel; if 1000 still pulses, the two builds state 1100
+  (inside the makers' 950 to 1150), marked as chosen for that reason. (a), the surge guard, stays held: it neither
+  causes nor cures the pulse (N2's measurement). One agent's readings; the lead has not re-measured them.
+
 - **08:53 (25 Nov) the lead's check-in; `main` at 5548dcf8, green on all three platforms** (its own run 45572861796:
   540 of 540 on each, packed; the steward). The branch is green on Linux and macOS at 5b4b2e7. **On the branch since
   `main` moved** (each after the whole default tier): C's 300 rpm default margin for the predictor (bda6a728;
