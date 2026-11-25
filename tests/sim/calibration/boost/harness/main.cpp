@@ -5,6 +5,7 @@
 //
 //   tee-calib-boost --build content/builds/archetypes/turbo-four-20-gdi.json --rpm 2000,3500,5000,6500
 //                   [--settle 6] [--measure 1] [--heat-settle] [--set boost.model=0 ...] [--hold path=value ...] [--sim DIR]
+//                   [--take-up] [--from RPM]
 //
 // Output: one line a speed, key=value, then a table. Means over cycles, never a waveform (the engine is chaotic).
 #include "common/Paths.h"
@@ -70,6 +71,7 @@ int main(int argc, char** argv)
     std::string simFlag, buildFile, value;
     std::vector<double> rpms = {2000, 3500, 5000, 6500};
     double settle = 6.0, measure = 1.0, warmup = 8.0;
+    double fromRpm = -1.0;     // (--from RPM: warmed up and loaded there, then the windows at --rpm's speeds)
     bool takeUp = false;       // (--take-up: the throttle opens as the windows begin: the spool from the take-up)
     bool heatSettle = false;   // (--heat-settle: at each speed, 1 s in, the exhaust's and the intercooler's heat settled)
     std::vector<std::pair<std::string, double>> sets;
@@ -106,6 +108,11 @@ int main(int argc, char** argv)
         if (args.is("--measure") && args.value(value))
         {
             measure = std::strtod(value.c_str(), nullptr);
+            continue;
+        }
+        if (args.is("--from") && args.value(value))
+        {
+            fromRpm = std::strtod(value.c_str(), nullptr);
             continue;
         }
         if (args.is("--warmup") && args.value(value))
@@ -211,7 +218,7 @@ int main(int argc, char** argv)
     std::vector<float> left(512), right(512);
     tee::SimControls c;
     c.mode = 2;
-    c.dynoSpeed = static_cast<float>(rpms.front() * 0.10471976);
+    c.dynoSpeed = static_cast<float>((fromRpm > 0.0 ? fromRpm : rpms.front()) * 0.10471976);
     c.ignition = 1;                  // (the key on first, then to start: card C's 8098b36)
     c.throttle = 0.0f;
     c.scopeOn = 0;                   // (on only while measuring)
@@ -318,6 +325,23 @@ int main(int argc, char** argv)
         std::printf("\n");
         std::fflush(stdout);
         table.push_back(row);
+    }
+    // (the boost's time to 90 % of where it ends: the windows' end times against the mean of the last fifth of them,
+    // from the first window's start; a report, for a spool read against a change: --from or --take-up)
+    if (table.size() >= 5 && table.front().count("boost.pressure") != 0)
+    {
+        const std::size_t tail = std::max<std::size_t>(1, table.size() / 5);
+        double end = 0.0;
+        for (std::size_t i = table.size() - tail; i < table.size(); ++i)
+            end += table[i].at("boost.pressure") / static_cast<double>(tail);
+        double t90 = -1.0;
+        for (std::size_t i = 0; i < table.size(); ++i)
+            if (table[i].at("boost.pressure") >= 0.9 * end)
+            {
+                t90 = static_cast<double>(i + 1) * (settle + measure);
+                break;
+            }
+        std::printf("t90 boost=%.1f kPa t90=%.2f s\n", end / 1000.0, t90);
     }
 
     // the summary: kPa absolute unless said
