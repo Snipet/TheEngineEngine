@@ -995,7 +995,7 @@ TEST_CASE("a prediction asked while a calibration bake runs goes first: its time
     bo.bakeCam = false;
     bo.spark.predict.threads = 2;
     CalibrationBakeService bakes(sim, bo);
-    bakes.yieldTo(&predict);
+    bakes.yieldTo(predict);
     bakes.consider(turbo);
     const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(30);
     while (bakes.state() != KnockBakeState::Baking && std::chrono::steady_clock::now() < until)
@@ -1007,5 +1007,12 @@ TEST_CASE("a prediction asked while a calibration bake runs goes first: its time
     std::printf("predicted curve alone %.2f s, with a calibration bake running (yielding) %.2f s\n", alone, during);
     // the bake waits between its points: the curve waits at most for the points under way (some 0.3 s each)
     CHECK(during <= 2.5 * alone + 1.0);
-    bakes.yieldTo(nullptr);
+    // the PredictService may go first (a reload that makes it again): the bake holds its flag, not the service
+    {
+        PredictService other(sim, po);
+        bakes.yieldTo(other);
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));   // the bake, past points, reads a flag still valid
+    CHECK(bakes.state() != KnockBakeState::Failed);
+    bakes.stopYielding();
 }

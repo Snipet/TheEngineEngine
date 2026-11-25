@@ -283,8 +283,11 @@ namespace tee
         };
         Progress progress() const;
         // While `predict` is busy (the ribbon's curve wanted), the bake waits between its points, so the curve a person
-        // waits for has the workers (nullptr: never). The service must outlive this one, or be set to nullptr first.
-        void yieldTo(const PredictService* predict) noexcept { yieldTo_.store(predict); }
+        // waits for has the workers. What is kept is the service's busy flag, shared (PredictService::busyFlag): it
+        // stays valid when the PredictService goes (a reload that makes it again) and reads false then, so no order of
+        // destruction is wrong. Call it again for a new PredictService; stopYielding() to yield to none.
+        void yieldTo(const PredictService& predict);
+        void stopYielding();
         // The spark table last applied by takeAndApply, kept for TUNE: its table cells still knocking after the
         // corrections (by [speed][load], as KnockBakeResult::stillKnocking), whether baked here or taken from the cache.
         bool lastSpark(BakedFields& out) const;
@@ -314,7 +317,7 @@ namespace tee
         KnockBakeState state_ = KnockBakeState::NoTable;
         std::string stage_;
         std::atomic<int> done_points_{0}, total_points_{0};
-        std::atomic<const PredictService*> yieldTo_{nullptr};
+        std::shared_ptr<const std::atomic<bool>> yieldTo_;   // under mutex_
         bool haveLast_ = false;
         BakedFields last_;
         bool ready_ = false;

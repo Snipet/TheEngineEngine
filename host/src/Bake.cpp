@@ -1246,6 +1246,18 @@ namespace tee
         return {done, std::max(done, total_points_.load())};
     }
 
+    void CalibrationBakeService::yieldTo(const PredictService& predict)
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        yieldTo_ = predict.busyFlag();
+    }
+
+    void CalibrationBakeService::stopYielding()
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        yieldTo_.reset();
+    }
+
     bool CalibrationBakeService::lastSpark(BakedFields& out) const
     {
         const std::lock_guard<std::mutex> lock(mutex_);
@@ -1306,13 +1318,13 @@ namespace tee
             const auto onPoint = [this] {
                 ++done_points_;
                 ++revision_;
-                while (!cancel_.load())
+                std::shared_ptr<const std::atomic<bool>> busy;
                 {
-                    const PredictService* p = yieldTo_.load();
-                    if (p == nullptr || !p->busy())
-                        break;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                    const std::lock_guard<std::mutex> guard(mutex_);
+                    busy = yieldTo_;
                 }
+                while (busy && !cancel_.load() && busy->load())
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
             };
             KnockBakeOptions spark = options_.spark;
             spark.predict.onPoint = onPoint;
