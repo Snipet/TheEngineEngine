@@ -72,3 +72,92 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // The instant a bake's tables go into use on a running engine (the lead's question, 01:33): first.json baked, then
+    // both tables set aside again on a running SimHost (the build attached, as the application's is), settled at idle
+    // and at a held 3000 rpm part load, and both Auto switches turned off: the commanded and actual intake phase, the
+    // spark and knock's retard printed every block around that instant. Prints only (nightly).
+    BUILD_TEST(bakeJump, "build.bake.jump.pictures")
+    {
+        std::vector<std::string> warnings;
+        std::string error;
+        CHECK_MSG(rig.build->loadFile(std::filesystem::path(TEE_UI_BUILDS_DIR) / "first.json", tee::BuildPart::Whole, warnings, error), error);
+        {
+            tee::ui::ServiceBake bake(rig.sim, *rig.build);
+            const auto t0 = std::chrono::steady_clock::now();
+            while (bake.state() != "baked" && std::chrono::steady_clock::now() - t0 < std::chrono::seconds(400))
+            {
+                bake.tick();
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+            std::printf("  baked: %s after %.0f s\n", bake.state().c_str(),
+                        std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
+        }
+        const int kla = rig.doc->find("ecu.maps.knockLimitAuto"), cia = rig.doc->find("ecu.maps.camInAuto");
+        CHECK(kla >= 0 && cia >= 0);
+        const auto autos = [&](double v) {
+            rig.doc->beginGesture();
+            rig.doc->set(kla, v);
+            rig.doc->set(cia, v);
+            rig.doc->endGesture();
+        };
+        autos(1.0);   // set aside, as after an edit
+        tee::SimHost host;
+        tee::LoadOptions lo;
+        lo.worker = false;
+        CHECK_MSG(host.attach(rig.sim, lo, error), error);
+        if (!host.loaded())
+            return 0;
+        host.prepare(lo.sampleRate, 512);
+        rig.build->attach(&host);
+        const tee::Fields& fields = rig.sim->fields();
+        const char* names[] = { "engine.speed", "ecu.advance", "ecu.knockRetard", "valve.inPhaseTarget", "valve.inPhase", "ecu.knockTable", "engine.manifold", "engine.throttle" };
+        std::vector<const tee::FieldInfo*> tel;
+        for (const char* n : names)
+            tel.push_back(fields.find(std::string("tel.") + n));
+        std::vector<float> l(512), r(512);
+        tee::SimControls ctl;
+        double t = 0.0;
+        const auto run = [&](double seconds, double printFrom, double printEvery) {
+            double next = printFrom;
+            for (double end = t + seconds; t < end; t += 512.0 / lo.sampleRate)
+            {
+                host.setControls(ctl);
+                host.process(l.data(), r.data(), 512);
+                host.service();
+                if (printEvery > 0.0 && t >= next)
+                {
+                    next = t + printEvery;
+                    tee::TelemetryFrame f;
+                    host.telemetry(f);
+                    std::printf("    %7.3f s", t);
+                    for (std::size_t i = 0; i < tel.size(); ++i)
+                    {
+                        const double v = tel[i] != nullptr ? f.get(*tel[i]) : std::nan("");
+                        std::printf("  %s %.2f", names[i], i == 0 ? v * 30.0 / 3.14159265358979 : v);
+                    }
+                    std::printf("\n");
+                }
+            }
+        };
+        ctl.ignition = 2;
+        run(1.5, 0.0, 0.0);
+        ctl.ignition = 1;
+        std::printf("  -- idle, tables set aside; at the flip both Auto switches go off (tables in use)\n");
+        run(8.0, t + 7.6, 0.05);
+        autos(0.0);
+        std::printf("  -- flipped at %.3f s\n", t);
+        run(1.0, t, 0.025);
+        std::printf("  -- 3000 rpm held by the bench's driver (ctl.holdSpeed, the pedal his), tables set aside again\n");
+        autos(1.0);
+        ctl.holdSpeed = static_cast<float>(3000.0 * 3.14159265358979 / 30.0);
+        run(8.0, t + 7.6, 0.05);
+        autos(0.0);
+        std::printf("  -- flipped at %.3f s\n", t);
+        run(1.0, t, 0.025);
+        rig.build->attach(nullptr);
+        return 0;
+    }
+}
