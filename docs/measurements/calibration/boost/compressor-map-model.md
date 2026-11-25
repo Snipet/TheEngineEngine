@@ -292,3 +292,16 @@ proportional 0.5 (a limit cycle at 4500, 113 to 143 kPa) and 0.25 / 0.15 (the ke
 its gate needing more opening than a +-0.2 integral gives); the duty let go more than 10 % over the target (the turbo
 four then settled 7 % over its target). The nine diesel take-ups are unchanged (their variable vanes keep the plain
 PI); F's wastegate case unmarked (100.0 kPa at 3500).
+
+**The loop's remaining overshoot** (recorded, not chased; the tip at 362cd47c, first.json's tip-in against its 120 kPa:
+peak over the target, time above +5 %, time to within 5 % from below):
+
+| rpm | the matched wheel | the IS20's wheel (first.json as P placed it) |
+|---|---|---|
+| 2500 | +6 %, 0.3 s, 7.2 s | +7 %, 0.3 s, 4.3 s |
+| 3500 | +9 %, 0.1 s, 2.4 s | +10 %, 0.4 s, 2.0 s |
+| 4500 | +7 %, 0.6 s, 0.6 s | +13 %, 1.4 s, 0.5 s |
+
+The stated wheel spools harder and arrives sooner (4.3 s against 7.2 at 2500), and overshoots a little more at 4500. A
+reasoned improvement, for after the join and not tuned by hand: a feed-forward that knows the boost's rate as it
+arrives (the gate opened ahead of the target by the rise's own momentum).

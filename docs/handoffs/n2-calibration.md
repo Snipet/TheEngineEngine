@@ -31,7 +31,8 @@ temperature. Marked findings: the VGT limit at its open stop, the wastegate over
 
 **Cost**: sizing at apply time; cut, limit, guard, warnings: compares every 16 samples (tee-bench not run).
 
-**Listen** (nobody here can hear): the tractor at 1300 and the pickup at 1600, full load (far more boost); the
+**Listen** (nobody here can hear): a boosted engine after the key is off (its turbo heard running down, some 20 s:
+new); first.json's tip-in at 2500-4500 (one rise, at most a small bump); the tractor at 1300 and the pickup at 1600, full load (far more boost); the
 rotary at 4250 (its join's surge); the 2 L four at full load 5000-6500 rpm; a tip-in at 5000 rpm; the over-boost cut
 (gateDiameter 0.018, ecu.overBoost 150000, full load 5300 rpm): a rhythmic fuel cut; the kei's taper at 6000-7600;
 the twin six: two whines at one pitch; the truck's VGT tip-in at 1300 rpm: no surge chuff once spooled; a throttle
