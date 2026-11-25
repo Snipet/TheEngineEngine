@@ -20,6 +20,10 @@ type a number. In all three:
 - The keyboard: one Tab stop for the column, Up and Down between fields, a digit types, Left and Right nudge.
 - Hover help stays, each row's own, with its range and default.
 
+**Chosen (25 Nov, the owner: "As recommended")**: Rows goes into the application (`RowsPage`, the frame's hook:
+`docs/ui-kit.md` "Rows in the frame"), the card on the picture is added to it (`PartCard`, "The card on the picture:
+the second hook"), and Dials is dropped. The pictures below are the design harness's, before the frame's hook.
+
 ## The three
 
 1. **Rows** (`rows.*`). One field a row: its name, its value and unit, and a thin bar of where it sits in its range

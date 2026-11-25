@@ -42,6 +42,13 @@
 #include "heat2.fm"
 #include "buildspec.fm"
 
+// The least bore of an exhaust pipe a person or a build may state (0 still means derived): 10 mm. The smallest road
+// exhausts, 50 cc scooters' and mopeds', run some 16 to 19 mm headers (judgement from typical parts, no single source),
+// so 10 mm is under any real engine's pipe. A stated bore under it is raised to it and the telemetry says which
+// (tel.exhaust.boreRaised). Not a solver's bound: X-038's and X-029's builds run finite from 5 mm (2 mm still
+// diverges on X-029's rotary); the floor is the part's, with that margin under it (G, 25 Nov, the lead's option 2)
+const float kPipeBoreFloor = 0.010f;
+
 enum
 {
     XB_SCOPE = 64,
@@ -917,12 +924,12 @@ module XBuild
             for (int i = 0; i < nPorts; ++i)
             {
                 lSum += sp->primLen[i] > 0.0f ? sp->primLen[i] : eng.hdr * hk;
-                dSum += sp->primD[i] > 0.0f ? sp->primD[i] : dHead;
+                dSum += pipeBore(sp->primD[i]) > 0.0f ? pipeBore(sp->primD[i]) : dHead;
                 n += 1;
             }
             if (n > 0)
                 heat.kind(XH_PRIM, meanOf(lSum, n, sp->primLen[0] > 0.0f ? sp->primLen[0] : eng.hdr * hk),
-                          meanOf(dSum, n, sp->primD[0] > 0.0f ? sp->primD[0] : dHead), (float)nPorts);
+                          meanOf(dSum, n, pipeBore(sp->primD[0]) > 0.0f ? pipeBore(sp->primD[0]) : dHead), (float)nPorts);
             int n1 = 0;
             int n2 = 0;
             float l1 = 0.0f;
@@ -938,7 +945,7 @@ module XBuild
                 if (colOn[c] == 0)
                     continue;
                 const float l = sp->colLen[c] > 0.0f ? sp->colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f);
-                const float dd = sp->colD[c] > 0.0f ? sp->colD[c] : (nColOn == 1 ? eng.pipeD : 0.922f * eng.pipeD);
+                const float dd = pipeBore(sp->colD[c]) > 0.0f ? pipeBore(sp->colD[c]) : (nColOn == 1 ? eng.pipeD : 0.922f * eng.pipeD);
                 if (colFed[c] != 0)
                 {
                     if (n2 == 0)
@@ -989,9 +996,9 @@ module XBuild
                     continue;
                 nOn += 1;
                 const float lms = sp->mainLen[s] > 0.0f ? sp->mainLen[s] : eng.mainLen * pk;
-                const float dms = sp->mainD[s] > 0.0f ? sp->mainD[s] : eng.pipeD;
+                const float dms = pipeBore(sp->mainD[s]) > 0.0f ? pipeBore(sp->mainD[s]) : eng.pipeD;
                 const float lts = sp->tailLen[s] > 0.0f ? sp->tailLen[s] : (eng.bike > 0.5f ? 0.10f : 0.40f);
-                const float dts = sp->tailD[s] > 0.0f ? sp->tailD[s] : eng.tailD;
+                const float dts = pipeBore(sp->tailD[s]) > 0.0f ? pipeBore(sp->tailD[s]) : eng.tailD;
                 if (nOn == 1)
                 {
                     lm0 = lms;
@@ -1068,7 +1075,7 @@ module XBuild
             const float own = 1.0f + sp->primSpread * (float)((i * 7) % 5 - 2) / 2.0f;
             // (a length given is the length built, with the differences; the layout's has its banks' factor)
             const float len = sp->primLen[i] > 0.0f ? sp->primLen[i] * own : eng.hdr * hk * own * (b == 1 ? eng.hdrBank1 : 1.0f);
-            const float dH = sp->primD[i] > 0.0f ? sp->primD[i] : dHead;
+            const float dH = pipeBore(sp->primD[i]) > 0.0f ? pipeBore(sp->primD[i]) : dHead;
             const float aH = 0.785398f * dH * dH;
             Duct* p = &net.d[XD_PRIM + i];
             int last = XD_PRIM + i;
@@ -1128,8 +1135,8 @@ module XBuild
             if (firstCol < 0)
                 firstCol = c;
             float aSec = nColOn == 1 ? aPipe0 : 0.85f * aPipe0;
-            if (sp->colD[c] > 0.0f)
-                aSec = 0.785398f * sp->colD[c] * sp->colD[c];
+            if (pipeBore(sp->colD[c]) > 0.0f)
+                aSec = 0.785398f * pipeBore(sp->colD[c]) * pipeBore(sp->colD[c]);
             const int direct = colTo[c] < 2 && (eng.housing[c] < 0 || eng.housing[c] >= 8) ? 1 : 0;
             const float aS = direct != 0 ? aSec * turbK : aSec;
             Duct* p = &net.d[XD_COLL + c];
@@ -1163,9 +1170,9 @@ module XBuild
         {
             if (sideOn[s] == 0)
                 continue;
-            const float dPipe = sp->mainD[s] > 0.0f ? sp->mainD[s] : eng.pipeD;
+            const float dPipe = pipeBore(sp->mainD[s]) > 0.0f ? pipeBore(sp->mainD[s]) : eng.pipeD;
             const float aPipe = 0.785398f * dPipe * dPipe;
-            const float dTail = sp->tailD[s] > 0.0f ? sp->tailD[s] : eng.tailD;
+            const float dTail = pipeBore(sp->tailD[s]) > 0.0f ? pipeBore(sp->tailD[s]) : eng.tailD;
             const float aTail = 0.785398f * dTail * dTail;
             // the main pipe and its converter: the monolith's narrow channels' walls take the highs, about as the root
             // of the frequency (some 2.5 dB at 1 kHz, 5 at 4 kHz, 7.5 at the top each way), and their broadband
@@ -1245,7 +1252,7 @@ module XBuild
                 // a quarter-wave stub: a closed side branch a quarter of the note's wavelength long. (Its length in the
                 // model is the acoustic one: a plane-wave junction has no end correction, so the tee's, some 0.3 of the
                 // bore, is in it; a real stub for this note is that much shorter.)
-                const float dS = sp->resD[s] > 0.0f ? sp->resD[s] : dPipe;
+                const float dS = pipeBore(sp->resD[s]) > 0.0f ? pipeBore(sp->resD[s]) : dPipe;
                 const float aS = 0.785398f * dS * dS;
                 Duct* st = &net.d[slot(s, XO_STUB)];
                 const float ls = fmaxf(cP / (4.0f * sp->resHz[s]), 0.03f);
@@ -1258,7 +1265,7 @@ module XBuild
                 // at its end (0.12 m, well under a quarter wave at its note, so it is a volume). The neck in the model
                 // is Leff long: a plane-wave junction has no end correction, so the two ends' (0.85 r each) are in it,
                 // and a real neck for this note is that much shorter. (Built shorter by them, it rang 1.3 times high.)
-                const float dn = sp->resD[s] > 0.0f ? sp->resD[s] : 0.5f * dPipe;
+                const float dn = pipeBore(sp->resD[s]) > 0.0f ? pipeBore(sp->resD[s]) : 0.5f * dPipe;
                 const float an = 0.785398f * dn * dn;
                 const float v = sp->resVol[s];
                 const float w = 6.28318531f * sp->resHz[s];
@@ -1504,7 +1511,7 @@ module XBuild
             // transmission glides with its travel; its edge's loss K 0.5 on the bypass's speed)
             if (byp[s] != 0)
             {
-                const float db = sp->bypassD > 0.0f ? sp->bypassD : dPipe;
+                const float db = pipeBore(sp->bypassD) > 0.0f ? pipeBore(sp->bypassD) : dPipe;
                 const float ab = 0.785398f * db * db;
                 Duct* bp = &net.d[slot(s, XO_BYP)];
                 float lb = 0.5f;
@@ -1552,11 +1559,11 @@ module XBuild
         // the H: a pipe between the sides, sharp-edged at both ends
         if (crossK == 1)
         {
-            const float dP0 = sp->mainD[0] > 0.0f ? sp->mainD[0] : eng.pipeD;
+            const float dP0 = pipeBore(sp->mainD[0]) > 0.0f ? pipeBore(sp->mainD[0]) : eng.pipeD;
             const float aP0 = 0.785398f * dP0 * dP0;
             float xa = fmaxf(eng.smXp, 0.001f);
-            if (sp->crossD > 0.0f)
-                xa = sp->crossD * sp->crossD / (dP0 * dP0);
+            if (pipeBore(sp->crossD) > 0.0f)
+                xa = pipeBore(sp->crossD) * pipeBore(sp->crossD) / (dP0 * dP0);
             Duct* x = &net.d[XD_CROSS];
             x->set(sp->crossLen, dP0 * sqrtf(xa), xa * aP0, cP, rate);
             x->extra(0.0f, 0.960f, rate);
@@ -2016,14 +2023,19 @@ module XBuild
                 {
                     const float dp = net.jP[jCol[bankCol[k]]] - pTurb;
                     pVar[k] += kMean * (dp * dp - pVar[k]);
-                    // the gas's speed through it: half its branches' flows, over the collector's pipe's area
-                    const int j = jCol[bankCol[k]];
+                    // the gas's speed through it as the blowdowns drive it: the flow its ports let in (what the
+                    // valves let out, the engine's alone), over the collector's pipe's area, never past the gas's speed
+                    // of sound (a flow chokes there). Not the junction's own flows: a bang's expansion and the waves it
+                    // leaves ringing would stir the next one's flame, a loop the pipes' linear waves let run past sound
+                    // (G's finding, 25 Nov: 2000 to 3000 m/s on a spark-cut limiter)
                     float qs = 0.0f;
-                    for (int i = 0; i < net.jN[j]; ++i)
-                        qs += fabsf(net.bQ[j * XN_BR + i]);
+                    for (int i = 0; i < net.np; ++i)
+                        if (portTo[i] == bankCol[k])
+                            qs += fmaxf(net.portQ[i], 0.0f);
                     const int sct = bangSect();
                     const float dia = fmaxf(heat.dia[sct], 0.01f);
-                    const float u = 0.5f * qs / (0.7853982f * dia * dia) + mach[sct] * sqrtf(1.33f * 287.0f * fmaxf(heat.tGas[sct], 300.0f));
+                    const float cS = sqrtf(1.33f * 287.0f * fmaxf(heat.tGas[sct], 300.0f));
+                    const float u = fminf(qs / (0.7853982f * dia * dia * fmaxf(heat.br[sct], 1.0f)) + mach[sct] * cS, cS);
                     uHold[k] = fmaxf(u, uHold[k] * kHold);
                 }
         float qi = 0.0f;
@@ -2146,6 +2158,65 @@ module XBuild
                 r = 1;
         }
         return l != 0 && r != 0 ? 2 : 1;
+    }
+
+    // ---- bores a person or a build states (X-038) ----
+
+    // A stated bore: 0 is derived (the caller's default); a value under kPipeBoreFloor is not used, the floor is
+    // (bit for bit for every bore 0 or at or above it)
+    float pipeBore(float d)
+    {
+        return d > 0.0f && d < kPipeBoreFloor ? kPipeBoreFloor : d;
+    }
+
+    // Which stated bores sit under the floor (raised to it), for the telemetry: a bit a kind (1 primary, 2 collector,
+    // 4 main pipe, 8 crossover, 16 resonator, 32 bypass, 64 tailpipe), and how many bores in all
+    int boresRaised(int* count)
+    {
+        int m = 0;
+        int n = 0;
+        for (int i = 0; i < MAX_PORTS; ++i)
+            if (sp->primD[i] > 0.0f && sp->primD[i] < kPipeBoreFloor)
+            {
+                m |= 1;
+                n += 1;
+            }
+        for (int c = 0; c < MAX_COLLECTORS; ++c)
+            if (sp->colD[c] > 0.0f && sp->colD[c] < kPipeBoreFloor)
+            {
+                m |= 2;
+                n += 1;
+            }
+        for (int k = 0; k < MAX_SIDES; ++k)
+        {
+            if (sp->mainD[k] > 0.0f && sp->mainD[k] < kPipeBoreFloor)
+            {
+                m |= 4;
+                n += 1;
+            }
+            if (sp->resD[k] > 0.0f && sp->resD[k] < kPipeBoreFloor)
+            {
+                m |= 16;
+                n += 1;
+            }
+            if (sp->tailD[k] > 0.0f && sp->tailD[k] < kPipeBoreFloor)
+            {
+                m |= 64;
+                n += 1;
+            }
+        }
+        if (sp->crossD > 0.0f && sp->crossD < kPipeBoreFloor)
+        {
+            m |= 8;
+            n += 1;
+        }
+        if (sp->bypassD > 0.0f && sp->bypassD < kPipeBoreFloor)
+        {
+            m |= 32;
+            n += 1;
+        }
+        *count = n;
+        return m;
     }
 
     // ---- exhaust.bang 1: the bangs as heat released in the collector's gas ----

@@ -30,7 +30,7 @@ namespace tee::input
     inline constexpr int kButtonSplitter = 16, kButtonRange = 32, kButtonEngineBrake = 64;
 
     // Who holds an action: each source lets go of only what it pressed.
-    enum class Source : std::uint8_t { keyboard, gamepad, panel, script, count };
+    enum class Source : std::uint8_t { keyboard, gamepad, panel, script, wheel, count };
 
     // Seconds for a pedal's whole travel, down and back.
     struct Easing
@@ -85,6 +85,11 @@ namespace tee::input
         // A wheel's clutch pedal (0 up, 1 on the floor): the pedal is at least this. Let go with release(gamepad).
         void setAnalogClutch(float clutch);
 
+        // A racing wheel's pedals (input/g29/G29Input.h), 0 up to 1 on the floor: each pedal is at least its own, beside
+        // a gamepad's (neither overwrites the other). Its steering is not the car's (a straight line). Let go with
+        // release(wheel).
+        void setWheel(float throttle, float brake, float clutch);
+
         // The Panel's throttle and brake strips: while held, the pedal is at least value.
         void setStrip(float value, bool held);
         void setBrakeStrip(float value, bool held);
@@ -124,6 +129,7 @@ namespace tee::input
         ControlsFrame frame_{};
         float throttle_ = 0, brake_ = 0, clutch_ = 0, handbrake_ = 0;                // the keys' eased pedals
         float padThrottle_ = 0, padBrake_ = 0, padSteer_ = 0, padClutch_ = 0;
+        float wheelThrottle_ = 0, wheelBrake_ = 0, wheelClutch_ = 0;
         float strip_ = 0, brakeStrip_ = 0;
         float clutchStrip_ = 0, handbrakeStrip_ = 0;
         bool stripHeld_ = false, brakeStripHeld_ = false, clutchStripHeld_ = false, handbrakeStripHeld_ = false;

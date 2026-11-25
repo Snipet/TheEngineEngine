@@ -1,0 +1,203 @@
+diff --git a/host/include/tee/Bake.h b/host/include/tee/Bake.h
+index d0307638..50737be1 100644
+--- a/host/include/tee/Bake.h
++++ b/host/include/tee/Bake.h
+@@ -105,8 +105,9 @@ namespace tee
+     // calibration's order, spark then cam then spark again, ends). A 31-bit number, as spec.ecu.maps.camInKey holds it.
+     // The cam bake's own rules' version, in its key: a map baked by older rules reads stale (2: no knock gate, the
+     // choice on knock-limited torque; ties inside a point's floor to the neighbours' choice. 3: a cell's torque the
+-    // mean of its last cycles, the floor its own standard error; the smoothing capped at 1 % of a row's best)
+-    constexpr int kCamBakeVersion = 3;
++    // mean of its last cycles, the floor its own standard error; the smoothing capped at 1 % of a row's best. 4: a point
++    // read as an upward sweep reaches it, a latched state let down first: PredictPoint::latched)
++    constexpr int kCamBakeVersion = 4;
+     std::int64_t intakeCamKey(const Build& build, const Sim& sim);
+     // The same fields without the program (CalibrationBakeService's verified reuse: a map baked for these fields under
+     // another program, a candidate to be checked, never current by itself)
+@@ -209,7 +210,8 @@ namespace tee
+     //   5  pedals 0.15 and 0.08 below 0.25, run where 0.25 still knocks: a low speed's row measured down to a load that
+     //      does not knock, not copied flat from the lowest knocking cell (the V12's 1000 rpm row read 23.2 deg down to
+     //      0.2 atm, its idle at -2 deg of spark: N1's find); and spec.fuel.octane in the knock and cam keys (when not 0)
+-    inline constexpr int kKnockBakeVersion = 5;
++    //   6  a two-stage cam's points under its switch reached as an upward sweep (N1's letDown on FLAG_LATCHED)
++    inline constexpr int kKnockBakeVersion = 6;
+ 
+     // The fields that move the knock limit (card N2's list): the engine's compression, displacement, bore and stroke,
+     // cylinders and layout; the fuel's kind, grade and model, and its octane number when not 0; the boost section;
+diff --git a/host/include/tee/Predict.h b/host/include/tee/Predict.h
+index e24503cc..dbfc2db0 100644
+--- a/host/include/tee/Predict.h
++++ b/host/include/tee/Predict.h
+@@ -129,6 +129,9 @@ namespace tee
+         // The rev limiter (tel.engine.flags' FLAG_LIMITER; a diesel's governor) acted in a counted cycle: the torque is
+         // the cut's, no measure of the engine. Still valid (valid is a fault's), but a bake treats it as missing.
+         bool limited = false;
++        // A state the program says an upward sweep would not hold at this speed (tel.engine.flags' FLAG_LATCHED: a
++        // two-stage cam's second stage under its switch) stayed through the point though it was let down and read again
++        bool latched = false;
+         std::vector<double> history;  // each cycle's mean torque there, in order (the first after a change of speed)
+     };
+ 
+diff --git a/host/src/Predict.cpp b/host/src/Predict.cpp
+index c6edf297..b578a2ba 100644
+--- a/host/src/Predict.cpp
++++ b/host/src/Predict.cpp
+@@ -290,8 +290,61 @@ namespace tee
+                 }
+             }
+ 
+-            // One point: held at `speed`, cycle after cycle until two agree or the most are run.
++            // FLAG_LATCHED (8) in tel.engine.flags: a state is held that an upward sweep would not hold at this speed (a
++            // hysteresis: a two-stage cam's second stage under its up switch)
++            bool latched() const
++            {
++                return hasFlags_ && (static_cast<long>(instance_->read(flagsH_)) & 8) != 0;
++            }
++
++            // A point is read as an upward sweep reaches it (a published full-load curve's way). A part with hysteresis
++            // holds the state of the way the rig came: a two-stage cam's second stage, reached from a point above, or
++            // switched in as the absorber's loop carried the speed over the up switch on a step up (a critically damped
++            // loop overshoots a step in its set speed by some 13 % of the step: 430 to 601 rad/s peaks near 624). Latched,
++            // the speed is let down at 100 rad/s^2 until the program no longer says so (at most 2 s), then brought back
++            // up at 100 rad/s^2 (some 950 rpm a second, a dyno's sweep: judgement), which the loop follows within a rad/s.
++            // Card N1, 25 Nov: P's 13 N m notch at 5740 rpm on the two-stage was this. A build that never latches is
++            // untouched, bit for bit
++            void letDown(double speed)
++            {
++                const double dt = static_cast<double>(options_.block) / options_.sampleRate;
++                const double rate = 100.0;   // rad/s^2
++                double w = speed;
++                long k = 0;
++                for (; k < std::lround(2.0 / dt) && latched() && w > 0.5 * speed; ++k)
++                {
++                    if (options_.warm && k % 64 == 0)
++                        warm();   // held as the warm-up and the points hold it
++                    w -= rate * dt;
++                    step(w, options_.block);
++                }
++                for (; w < speed; ++k)
++                {
++                    if (options_.warm && k % 64 == 0)
++                        warm();
++                    w = std::min(speed, w + rate * dt);
++                    step(w, options_.block);
++                }
++            }
++
++            // One point: held at `speed`, as an upward sweep reaches it (letDown): latched as it begins, or as it ends (the
++            // step into it carried it over a switch), it is let down and read again, once; still latched, it says so
+             PredictPoint point(double speed, const std::atomic<bool>* cancel)
++            {
++                if (latched())
++                    letDown(speed);
++                PredictPoint p = measure(speed, cancel);
++                if (p.valid && latched())
++                {
++                    letDown(speed);
++                    p = measure(speed, cancel);
++                    p.latched = latched();
++                }
++                return p;
++            }
++
++            // One point's measure: held at `speed`, cycle after cycle until two agree or the most are run.
++            PredictPoint measure(double speed, const std::atomic<bool>* cancel)
+             {
+                 PredictPoint p;
+                 p.speed = speed;
+diff --git a/sim/engine.fm b/sim/engine.fm
+index c74a0952..584a11b0 100644
+--- a/sim/engine.fm
++++ b/sim/engine.fm
+@@ -1862,7 +1862,8 @@ module Engine
+         tel.engine.coolant = heat.tCool;
+         tel.engine.oilPressure = heat.pOil;
+         tel.engine.flags = (ecu.limiting || comb.droop < 0.95f ? FLAG_LIMITER : 0)
+-                           + (ecu.fuelCut && ecu.state == 2 ? FLAG_FUEL_CUT : 0) + (faultNow != 0 ? FLAG_FAULT : 0);
++                           + (ecu.fuelCut && ecu.state == 2 ? FLAG_FUEL_CUT : 0) + (faultNow != 0 ? FLAG_FAULT : 0)
++                           + (vt.latched(crank.omega) != 0 ? FLAG_LATCHED : 0);
+         tel.engine.cycle = showCycle;
+         tel.engine.crank = crank.theta;
+         mechanicsTelemetry();
+diff --git a/sim/spec/telemetry.fm b/sim/spec/telemetry.fm
+index 4a817f34..15e8bfab 100644
+--- a/sim/spec/telemetry.fm
++++ b/sim/spec/telemetry.fm
+@@ -18,6 +18,8 @@ enum
+     FLAG_FUEL_CUT = 2,     // the fuel is cut while it runs (the limiter, the overrun, a shift)
+     FLAG_FAULT = 4,        // this call found the crank's state not finite or absurd and put the engine at rest afresh
+                            // (Engine::guard): a fault, for the host's guard to treat as one
++    FLAG_LATCHED = 8,      // a state is held that an upward sweep would not hold at this speed (a hysteresis: a two-stage
++                           // cam's second stage under its up switch): a dyno's held point approaches from below
+ };
+ 
+ module EngineTel
+diff --git a/sim/valvetrain/valvetrain.fm b/sim/valvetrain/valvetrain.fm
+index dae095e4..09860efa 100644
+--- a/sim/valvetrain/valvetrain.fm
++++ b/sim/valvetrain/valvetrain.fm
+@@ -201,6 +201,14 @@ module Valvetrain
+     // ---- each sample: cylinder c at its angle a (degrees in the cycle) and the pressure across it, its intake port's
+     // over its exhaust port's (Pa): kept over the overlap's crank angles the schedule would ask (lab.ovFrom to ovTo,
+     // four-strokes) ----
++    // 1 while a state is held that an upward sweep would not hold at this crank speed (rad/s): the second stage under
++    // its up switch, kept there by the hysteresis (FLAG_LATCHED in tel.engine.flags; a dyno reads it to approach a held
++    // point from below)
++    int latched(float omega)
++    {
++        return model != 0 && lab.stagesOn != 0 && lab.stageWant == 1 && omega < lab.stageUp ? 1 : 0;
++    }
++
+     void overlapSample(float a, float dp)
+     {
+         if (cycNow == 720.0f && a >= lab.ovFrom && a <= lab.ovTo)
+diff --git a/tests/host/EngineTest.cpp b/tests/host/EngineTest.cpp
+index 0ea30743..45a7318b 100644
+--- a/tests/host/EngineTest.cpp
++++ b/tests/host/EngineTest.cpp
+@@ -523,6 +523,45 @@ TEST_CASE("predicted points are the stepped dyno's settled torque within 3 %: th
+     predictedMatchesSteps("turbo-four-20-gdi.json", {423.8, 542.9}, 0.03);
+ }
+ 
++// The two-stage's switch holds its stage across its hysteresis band (valvetrain/lab.fm: up over 612.6 rad/s, down under
++// 581.2), so a predicted point in the band read the stage of the way the rig came to it: on the tip of 25 Nov the
++// 5740 rpm point, reached from 6827 rpm (or stepped up from 4110 with the absorber's loop carrying it over the switch),
++// read stage B at 181.3 N m between 194.5 and 202.5: P's 13 N m notch. Read as an upward sweep reaches it (the program's
++// FLAG_LATCHED let down), stage A, 192.6 (the stepped dyno, upward: 190.3). Every point under the switch reads A and
++// every one over it B, whatever the order the rigs take them in (card N1)
++TEST_CASE("a two-stage cam's predicted points read the stage an upward sweep reaches them in: none latched in the band",
++          "[engine][sim][predict]")
++{
++    if (!haveSim())
++        SKIP("sim/engine.fm is not there yet");
++    std::string error;
++    const auto sim = compiled(simDir(), {}, error);
++    REQUIRE(sim != nullptr);
++    Build build(sim->fields());
++    std::vector<std::string> warnings;
++    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/two-stage-cam-20.json",
++                           BuildPart::Whole, warnings, error));
++    const double up = build.get("valve.stageSpeed");
++    PredictOptions options;
++    options.from = 89.0;      // P's rows' range
++    options.to = 942.5;
++    options.fields = {"tel.valve.stage"};
++    PredictCurve curve;
++    REQUIRE(predictCurve(sim, build, options, curve, error));
++    int band = 0;
++    for (const PredictPoint& p : curve.points)
++    {
++        if (!p.valid || p.limited)
++            continue;
++        REQUIRE(p.fields.size() == 1);
++        CAPTURE(p.speed * 30.0 / 3.14159265358979, p.torque, p.fields[0]);
++        CHECK(p.fields[0] == (p.speed > up ? 1.0 : 0.0));
++        CHECK_FALSE(p.latched);   // FLAG_LATCHED let down: none stays
++        band += p.speed < up && p.speed > up - build.get("valve.stageHyst") ? 1 : 0;
++    }
++    CHECK(band >= 1);   // a point in the band, where the way it came decides
++}
++
+ TEST_CASE("the knock limit's key moves with what moves the knock limit, and not with the air or the person's timing",
+           "[engine][sim][bake]")
+ {

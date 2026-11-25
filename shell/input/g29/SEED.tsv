@@ -1,0 +1,9 @@
+# our path	TestingPlayground's path	commit	sha256 of the file as it was there (docs/reference/testingplayground-wheel/README.md)
+shell/input/g29/G29.h	Source/plugin/WheelMap.h (the MIDI taken out: the state read a frame at a time)	47bac40327ed9e8e59928500de9f3beb63fe8636	e8d2cbad0cb6e83d2e372e404a0d39040723456c834c802d79ffe714462c1c77
+shell/input/g29/G29.cpp	Source/plugin/WheelMap.cpp (the MIDI taken out)	47bac40327ed9e8e59928500de9f3beb63fe8636	7a034d9f0c869686a1d3be639c13b7971b2c23c0443171a573b9d469606486e7
+shell/input/g29/G29Driver.h	Source/plugin/WheelDriver.h (the MIDI, its flush and rate taken out)	47bac40327ed9e8e59928500de9f3beb63fe8636	be00f1e21c7297320e9f58158a3698dacaaa06bc029273788b0741e44b8cad16
+shell/input/g29/G29Driver.cpp	Source/plugin/WheelDriver.cpp (the MIDI, its flush and rate taken out)	47bac40327ed9e8e59928500de9f3beb63fe8636	47ac50899336f8a14c209fcb47eaf8ab4506a9ee93fcd13f1a4404fba3c59fce
+shell/input/g29/RacingWheel.h	Source/plugin/standalone/RacingWheel.h (Hooks without send; state(), reading(), pump())	47bac40327ed9e8e59928500de9f3beb63fe8636	acf44f9476584f486cd3c3ea45f290f97b22c911d5e7a7ed95d7c8196f0daf19
+shell/input/g29/RacingWheelMac.cpp	Source/plugin/standalone/RacingWheel.cpp (the flush timer and send taken out)	47bac40327ed9e8e59928500de9f3beb63fe8636	a2650f468276f8db6184901768861a2a38202fd3004ed124a51471bb028bfb44
+shell/input/g29/RacingWheelNone.cpp	Source/plugin/standalone/RacingWheelNone.cpp	47bac40327ed9e8e59928500de9f3beb63fe8636	ae8730aa57d14ec8d4a274c6aea06e105a3920521b7d5a8fb1f6386d0c4941af
+tests/shell/G29Test.cpp	Tools/probes/plugin/wheel.cpp (its KIND, COMMANDS, LIGHTS, map and DRIVER cases, Catch2, without MIDI)	47bac40327ed9e8e59928500de9f3beb63fe8636	2055155822d04a0ce78f8c112e87d88ff214072effc67833e43634283ffff6f9

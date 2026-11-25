@@ -9,7 +9,7 @@
 add_executable(TheEngineEngine MACOSX_BUNDLE "${CMAKE_CURRENT_LIST_DIR}/Main.cpp"
                                              "${CMAKE_CURRENT_LIST_DIR}/WindowCommands.cpp"
                                              "${CMAKE_CURRENT_LIST_DIR}/InputProbe.cpp")
-target_link_libraries(TheEngineEngine PRIVATE FunkGui::core FunkGui::gpu FunkGui::desktop Tee::shell_sdl
+target_link_libraries(TheEngineEngine PRIVATE FunkGui::core FunkGui::gpu FunkGui::desktop Tee::shell_sdl Tee::shell_wheel
                                               Tee::shell_settings)
 tee_app_gui(TheEngineEngine)
 funkgui_compile_shaders(TheEngineEngine)
@@ -41,4 +41,13 @@ if(APPLE)
             "$<TARGET_BUNDLE_DIR:TheEngineEngine>"
     COMMENT "sim/ and content/ into TheEngineEngine.app, and its ad-hoc signature"
     VERBATIM)
+endif()
+
+# tee-wheel-dump (app/WheelDump.cpp): a connected Logitech G29's HID elements and their live values beside what
+# shell/input/g29/G29.h's table makes of them, for checking the table on a wheel (docs/controls.md). macOS only (IOKit).
+# Built with the application (not EXCLUDE_FROM_ALL) so that CI's macOS build compiles it; never installed or packed.
+if(APPLE)
+  add_executable(tee-wheel-dump "${CMAKE_CURRENT_LIST_DIR}/WheelDump.cpp")
+  target_link_libraries(tee-wheel-dump PRIVATE Tee::shell_core "-framework IOKit" "-framework CoreFoundation")
+  tee_target_defaults(tee-wheel-dump)
 endif()

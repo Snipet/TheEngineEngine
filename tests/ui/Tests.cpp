@@ -25,6 +25,8 @@
 #include "kit/bind/Binding.h"
 #include "kit/inspect/FieldInspector.h"
 #include "kit/inspect/Outline.h"
+#include "kit/inspect/PartCard.h"
+#include "kit/inspect/RowsPage.h"
 #include "kit/bind/Fields.h"
 #include "kit/bind/Units.h"
 #include "kit/widgets/Basic.h"

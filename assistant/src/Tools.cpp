@@ -290,10 +290,16 @@ namespace tee::assistant
         // rule on every platform: a disk that tells cases apart and one that does not behave alike, and a library
         // copied from one to the other never collides silently). Two listed names that differ only in case: refused,
         // ambiguous. Non-ASCII bytes compare as they are (no Unicode folding or normalisation is attempted).
-        bool resolveBuild(const files::BuildLibrary& library, const std::string& asked, std::string& found, std::string& why)
+        //
+        // The names are the library's whole builds (BuildLibrary::wholeBuilds: GARAGE's rule, the test suite's fixtures
+        // and the parts never among them), folder-qualified below the top ("archetypes/flat-plane-v8-45"). Only a
+        // listed name is ever handed to the library, in the listing's own spelling: what Claude typed never becomes a
+        // path.
+        bool resolveBuild(const files::BuildLibrary& library, const Fields& fields, const std::string& asked,
+                          std::string& found, std::string& why)
         {
             std::vector<std::string> matches;
-            for (const files::BuildSummary& b : library.list())
+            for (const files::WholeBuild& b : library.wholeBuilds(fields))
                 if (lower(b.name) == lower(asked))
                     matches.push_back(b.name);
             if (matches.empty())
@@ -333,12 +339,38 @@ namespace tee::assistant
         return files::BuildLibrary::validName(name, why);
     }
 
+    bool listedBuildName(const std::string& name, std::string& why)
+    {
+        if (name.empty() || name.size() > 200)
+        {
+            why = "a build's name is 1 to 200 characters, as list_builds gives it";
+            return false;
+        }
+        if (name.find("..") != std::string::npos || name.front() == '/' || name.front() == '.' || name.front() == '~'
+            || name.back() == '/' || name.find("//") != std::string::npos)
+        {
+            why = "a build's name is a name as list_builds gives it, not a path";
+            return false;
+        }
+        for (const char c : name)
+            if (c == '\\' || c == ':' || static_cast<unsigned char>(c) < 32 || c == 127)
+            {
+                why = "a build's name is a name as list_builds gives it, not a path";
+                return false;
+            }
+        return true;
+    }
+
     // ---- the table ---------------------------------------------------------------------------------------------------
 
     Tools::Tools(Host host) : host_(std::move(host))
     {
         const json none = object(json::object());
-        const json name = {{"type", "string"}, {"maxLength", 64}, {"description", "A build's name, as list_builds gives it"}};
+        const json name = {{"type", "string"}, {"maxLength", 64}, {"description", "A new build's name: plain, without a folder"}};
+        const json listed = {{"type", "string"},
+                             {"maxLength", 200},
+                             {"description", "A build's name exactly as list_builds gives it, its folder included "
+                                             "(\"v8\", \"archetypes/flat-plane-v8-45\"); letter case does not matter"}};
         infos_ = {
             {"get_status", "Status",
              "The build open in the app (its name, whether it has unsaved changes), whether the engine plays, and a "
@@ -353,8 +385,9 @@ namespace tee::assistant
              "fields' paths, labels and values, numbers in SI, switches as true or false, choices by name.",
              object({{"section", {{"type", "string"}, {"maxLength", 64}}}}), true},
             {"list_builds", "List the builds",
-             "The builds in the app's library by name: the shipped ones and the owner's own, with their layout, "
-             "displacement (m^3) and boost.",
+             "The whole builds in the app's library, as its GARAGE lists them: the shipped ones (those in a folder, "
+             "such as the archetypes, named with it: \"archetypes/flat-plane-v8-45\") and the owner's own, with their "
+             "layout, displacement (m^3) and boost. Parts (cams, exhausts) are not builds and are not listed.",
              none, true},
             {"set_fields", "Change fields",
              "Sets fields of the open build, all or none: one undo step in the app. Numbers in SI within the field's "
@@ -370,9 +403,10 @@ namespace tee::assistant
                     {"changes"}),
              false},
             {"load_build", "Load a build",
-             "Opens a build of the library by name in place of the one open. When the open build has unsaved changes the "
-             "owner is asked in the app first.",
-             object({{"name", name}}, {"name"}), false},
+             "Opens a whole build of the library, by its name as list_builds gives it (with its folder when it has "
+             "one), in place of the one open. When the open build has unsaved changes the owner is asked in the app "
+             "first.",
+             object({{"name", listed}}, {"name"}), false},
             {"save_build_as", "Save as a new build",
              "Saves the open build in the owner's library under a new name. A name that is already a build's is refused: "
              "nothing is overwritten.",
@@ -532,10 +566,13 @@ namespace tee::assistant
         return job(
             [this]() -> std::optional<Reply> {
                 json list = json::array();
-                for (const files::BuildSummary& s : host_.library.list())
+                for (const files::WholeBuild& w : host_.library.wholeBuilds(host_.document.build().fields()))
                 {
-                    json e = {{"name", s.name}, {"own", s.user}};
-                    if (!s.title.empty() && s.title != s.name)
+                    files::BuildSummary s;
+                    if (!files::readSummary(w.file, s))
+                        continue;
+                    json e = {{"name", w.name}, {"own", w.user}};
+                    if (!s.title.empty() && s.title != s.name && s.title != w.name)
                         e["title"] = s.title;
                     if (!s.layout.empty())
                         e["layout"] = s.layout;
@@ -670,7 +707,7 @@ namespace tee::assistant
     {
         const std::string name = a["name"].get<std::string>();
         std::string why;
-        if (!safeBuildName(name, why))
+        if (!listedBuildName(name, why))
             return error(why);
         struct Asked
         {
@@ -685,7 +722,7 @@ namespace tee::assistant
             std::vector<std::string> warnings;
             std::string err;
             if (!host_.library.load(host_.document, name, warnings, err))
-                return Reply::failed("the build \"" + name + "\" could not be read; nothing was loaded");
+                return Reply::failed("the build \"" + name + "\" could not be read; nothing was loaded");   // (err may name a file: never shown)
             json out = {{"loaded", name}, {"undoStep", host_.document.build().undoStep()}};
             if (!warnings.empty())
                 out["warnings"] = warnings.size();
@@ -694,7 +731,7 @@ namespace tee::assistant
         Result first = job(
             [this, name, asked, load, chosen]() -> std::optional<Reply> {
                 std::string found, whyNot;
-                if (!resolveBuild(host_.library, name, found, whyNot))
+                if (!resolveBuild(host_.library, host_.document.build().fields(), name, found, whyNot))
                     return Reply::failed(whyNot);
                 *chosen = found;
                 files::BuildSummary s;

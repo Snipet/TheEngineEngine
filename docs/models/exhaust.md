@@ -506,8 +506,8 @@ chambers (wave 2, from these parts).
 
 ## Bangs: heat released in the pipe
 
-`spec.exhaust.bang` (the builder only): **Carved** (the default until the owner has heard both) is the reference's
-pulse and crackle; **Burned in the pipe** releases a burn's heat in its bank's collector gas. The owner heard the carved pops as
+`spec.exhaust.bang` (the builder only): **Burned in the pipe** (the default since the owner heard both, 25 Nov)
+releases a burn's heat in its bank's collector gas. The owner heard the carved pops as
 artificial (25 Nov). The inventory found the cause: on first.json's fuel-cut limiter the account lit 25 to 50 bangs a
 second, nearly all at its 30 kPa ceiling, each with the same click tail.
 
@@ -551,7 +551,76 @@ second, nearly all at its 30 kPa ceiling, each with the same click tail.
 - **The account's side** (`sim/ecu/overrun.fm`, `sim/combustion/combustion.fm`: card N1's seam, 991a00d3 to
   682ba1fe, from docs/handoffs/g-exhaust.md, "The pops' seam") feeds it under `ecu.model` 1. Charges are kept by
   cylinder until their exhaust valve opens; premixed slugs are lit by their own flame or by the bank's held blowdown
-  while still flammable. The default stays Carved until the owner has heard the clips (the lead's ruling, 25 Nov); the
-  reference ECU's dice (`ecu.model` 0) fire the carved pulse under either setting.
+  while still flammable. **Carved** is the reference's pulse and crackle, kept as the choice. The reference ECU's
+  dice (`ecu.model` 0) fire the carved pulse under either setting. The owner heard Carved and Burned of the same runs
+  and chose Burned ("sounds better"), so it is the default from 25 Nov. Under it the telemetry's `flame` is a burn in
+  the collectors, not the crackle.
 - Cost: one Wiebe step per burn alight, about 8 ns while one burns; nothing otherwise. `exhaust.model` 0 never reads
   it (the engine identity test passes with `bang` at its default).
+
+## Stated bores: the least, 10 mm (X-038, X-029)
+
+Every pipe bore a person or a build can state (`primD`, `colD`, `mainD`, `crossD`, `resD`, `bypassD`, `tailD`) takes
+0 to mean derived. A stated bore under **10 mm** is not used: the builder raises it to 10 mm (`XBuild::pipeBore`, at
+every read site). `tel.exhaust.boreRaised` says which kinds were raised, a bit a kind (1 primary, 2 collector, 4 main
+pipe, 8 crossover, 16 resonator, 32 bypass, 64 tailpipe), and `tel.exhaust.boresRaised` how many; they are ready for
+the EXHAUST workspace's warning. Every bore at 0, or at or above the floor, is bit for bit as before.
+
+- **The floor is the part's, not the solver's.** The smallest road exhausts, on 50 cc scooters and mopeds, run some 16
+  to 19 mm headers (judgement from typical parts; no single source), so 10 mm sits under any real engine's pipe.
+- **The solver's own limit, measured** (each finding's reproduction, tee-fuzz at its seed for 10 s, the tiny bore
+  raised to the floor shown):
+
+  | build | as found | 2 mm | 5 mm | 10 mm |
+  |---|---|---|---|---|
+  | X-038, a 0.011 mm primary (seed 298) | the guard at 0.41 s | ok | ok | ok |
+  | X-038, a 0.072 mm tailpipe (seed 167) | the guard at 0.26 s | ok | ok | ok |
+  | X-029, a rotary's 0.62 mm primary (seed 245) | the guard at 0.31 s | the guard at 0.30 s | ok | ok |
+
+  The limit lies between 2 and 5 mm on these three cases; this is not a sweep. The 10 mm floor stands at twice that
+  margin. With the floor in, all three run as found: 1.47, 1.33 and 0.56 R.
+- **In content/**, only X's finding builds state a bore under the floor: x029 and the two x038 builds (X-040's runner
+  is the intake's, not this floor). A person's saved build under it loads and plays with the bore raised, and the
+  telemetry says so.
+- **Refusal at input** (the loader and the inspector refusing a value in (0, floor), as they refuse one out of its
+  range) is the next window's, card C's. The FMinus compiler is the owner's and not ours to change, so it adds no new
+  `fminus::` attribute: the rule lives in the host (a table beside the Spec's lint in host/src/Fields.cpp) or in an
+  attribute namespace the compiler already passes through.
+- The intake's twin (X-040: runner 8 mm, snorkel 10 mm, the same rule) waits for a card whose paths hold
+  sim/intake/intake.fm.
+
+## Design note for N2: the back pressure after a turbine (25 Nov; a note, nothing built)
+
+**What sets it.** Downstream of a turbine the builder has the downpipe, the converter, the main pipes, the muffler and
+the tail. Its mean pressure at the downpipe's head over the air outside (`XBuild::pConv`, a 0.2 s mean of the head
+junction) follows from two kinds of loss:
+- **Turbulent losses** (the junctions' sudden expansions and contractions, the muffler's passages, the tail's exit):
+  each is K ρu²/2 = K ρQ²/(2A²). For a given mass flow ṁ that is ∝ ṁ² T / p, since ρ = p/(RT).
+- **Laminar losses** (a converter's substrate: its many fine channels; the reference's restriction in the pipes):
+  ∝ μ(T) Q. That is the volume flow, so ∝ ṁ T / p, and more as μ rises with T.
+
+So Δp ≈ a·Q + b·ρQ² with Q the volume flow at the gas's own state: two terms, not one. A purely quadratic K
+misses the low-flow end.
+
+**Measured on first.json** (the 2.0 turbo four; engine dyno; throttle 0.3, 0.6 and 1.0 at 2000 to 6500 rpm; 3 s
+each; BangTest's `measure` case):
+- The downpipe head runs 4.6 to 35.2 kPa over the air, and the muffler's inlet 2.9 to 23.1 kPa.
+- The main pipe's gas is 700 to 1110 K. ṁ is 0.039 to 0.107 kg/s, estimated from the ports' volume flow at the head's
+  pressure and the main pipe's temperature, so it is approximate.
+- A two-term fit, a = 1.06e5 Pa per m³/s and b = 3.63e5 Pa per (kg/m³)(m³/s)², **first.json's alone** (another build's
+  chain gives other values), gives an rms error of 2.2 kPa over the estimated mass flows above. It is
+  worst at the lowest flow: 4.6 measured against 8.9 fitted.
+- A quadratic alone gives 4.8 kPa rms.
+
+**What I'd recommend** (judgement):
+1. In the running engine, a turbine on the builder needs no formula. Its housing's node already sees the downpipe's
+   pressure through the network (XJ_HOUSE into the main pipe). The back pressure there is the pipes' own, at the
+   gas's temperature, with its pulses.
+2. For N2's off-line work (a map's match, a bake), where the turbine needs a quasi-static outlet pressure:
+   - use the two-term form, Δp = a·Q + b·ρQ², with a and b fitted per build from a short dyno sweep of `pConv`;
+   - or read `pConv` from the running exhaust at the operating point, which is what the bake's runs would do anyway.
+   - A single constant or a quadratic alone will be wrong by a few kPa across the map. That is some 2 to 4 % of a
+     turbine's expansion ratio at high load: small, but systematic.
+3. Not measured: a diesel's or a twin-turbo's chain, a hot-film or particulate filter (none is modelled), and how much
+   of the head's mean is the converter's alone. A per-element breakdown needs the junctions' losses read one by one,
+   which I can do if N2 wants it.
