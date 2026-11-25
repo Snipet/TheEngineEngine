@@ -186,3 +186,10 @@ sheet will include every registered workspace.
   through `FrameServices::saveKey` and forgets it here, taken or not; REMOVE, CLOSE, Escape. The owner's yes/no dialog
   for SessionParts::ask is not built yet. Tests: frame.desktop, frame.chat (a stand-in chat), build.chat (card A's
   ChatView over a made-up port: nothing is talked to).
+- The assistant's questions to the owner (card A's `SessionParts::ask`, the lead's ask 25 Nov): `std::future<bool>
+  AppFrame::ask(question, yes, no)`, from any thread; the frame shows one at a time on its tick (ui/app/AskDialog.h)
+  with the asker's words for yes and no (none: YES, NO). The safe answer has the focus; Escape and Enter on it answer
+  no; nothing answers yes by itself; every key is the dialog's while it is open; a frame that goes answers what is left
+  no. app/Offline.cpp passes the Session an `ask` that reaches the frame while it lives (cleared before it goes: no),
+  with LOAD and KEEP for card A's load over unsaved changes. The chat is mounted in a ChatSlot made with the frame, so
+  the key dialog and the question draw over it. Test: frame.ask.

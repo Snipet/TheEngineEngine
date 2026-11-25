@@ -315,6 +315,41 @@ namespace tee::ui
         tryFirstClose_ = &make<Button>("Close", [this] { closeTryFirst(); });
         keyButton_ = &make<Button>("Key", [this] { openKeyDialog(); });   // the chat's header: its key dialog
         keyButton_->setPlace({}, false);
+        // The chat's place (mountChat fills it), then the key dialog and the assistant's question over everything.
+        {
+            auto slot = std::make_unique<ChatSlot>();
+            chatSlot_ = slot.get();
+            add(std::move(slot));
+            KeyDialog::Hooks h;
+            h.save = [this](std::string typed, std::string& why) {
+                if (!services_.saveKey)
+                {
+                    why = "this window cannot keep a key";
+                    return false;
+                }
+                return services_.saveKey(std::move(typed), why);
+            };
+            h.mask = [this] { return services_.keyMask ? services_.keyMask() : std::string(); };
+            h.remove = [this](std::string& why) {
+                if (!services_.removeKey)
+                {
+                    why = "this window cannot remove a key";
+                    return false;
+                }
+                return services_.removeKey(why);
+            };
+            h.clipboard = [this] { return host() != nullptr ? host()->clipboardText() : std::string(); };
+            h.closed = [this] {
+                arrange();
+                setFocus(-1);
+            };
+            auto dialog = std::make_unique<KeyDialog>(nextId(), std::move(h));
+            keyDialog_ = dialog.get();
+            keyDialogIndex_ = add(std::move(dialog));
+            auto asking = std::make_unique<AskDialog>(nextId());
+            askDialog_ = asking.get();
+            askIndex_ = add(std::move(asking));
+        }
         writeHelp();
 
         unitsSeen_ = units_.revision();
@@ -415,6 +450,16 @@ namespace tee::ui
 
     AppFrame::~AppFrame()
     {
+        // A question not answered: no (nothing lost), so its asker does not wait out its limit.
+        closing_ = true;
+        if (askOpen())
+            askDialog_->answer(false);
+        {
+            const std::lock_guard<std::mutex> lock(askMutex_);
+            for (Question& q : asks_)
+                q.answer->set_value(false);
+            asks_.clear();
+        }
         // The pages and workspaces go before the context and the sources they read.
         pages_.clear();
         workspaces_.clear();
@@ -765,38 +810,47 @@ namespace tee::ui
     Widget& AppFrame::mountChat(std::unique_ptr<Widget> chat)
     {
         Widget& w = *chat;
-        add(std::move(chat));
         chat_ = &w;
         chat_->setPlace({}, false);
-        // The key dialog after the chat: drawn over everything, the first to take a press.
-        KeyDialog::Hooks h;
-        h.save = [this](std::string typed, std::string& why) {
-            if (!services_.saveKey)
-            {
-                why = "this window cannot keep a key";
-                return false;
-            }
-            return services_.saveKey(std::move(typed), why);
-        };
-        h.mask = [this] { return services_.keyMask ? services_.keyMask() : std::string(); };
-        h.remove = [this](std::string& why) {
-            if (!services_.removeKey)
-            {
-                why = "this window cannot remove a key";
-                return false;
-            }
-            return services_.removeKey(why);
-        };
-        h.clipboard = [this] { return host() != nullptr ? host()->clipboardText() : std::string(); };
-        h.closed = [this] {
-            arrange();
-            setFocus(-1);
-        };
-        auto dialog = std::make_unique<KeyDialog>(nextId(), std::move(h));
-        keyDialog_ = dialog.get();
-        keyDialogIndex_ = add(std::move(dialog));
+        chatSlot_->set(std::move(chat));
         arrange();
         return w;
+    }
+
+    std::future<bool> AppFrame::ask(std::string question, std::string yes, std::string no)
+    {
+        auto answer = std::make_shared<std::promise<bool>>();
+        std::future<bool> f = answer->get_future();
+        {
+            const std::lock_guard<std::mutex> lock(askMutex_);
+            asks_.push_back({ std::move(question), std::move(yes), std::move(no), std::move(answer) });
+        }
+        return f;
+    }
+
+    void AppFrame::nextQuestion()
+    {
+        if (askOpen() || keyDialogOpen())
+            return;
+        Question q;
+        {
+            const std::lock_guard<std::mutex> lock(askMutex_);
+            if (asks_.empty())
+                return;
+            q = std::move(asks_.front());
+            asks_.pop_front();
+        }
+        askDialog_->open(std::move(q.text), std::move(q.yes), std::move(q.no), [this, answer = q.answer](bool yes) {
+            answer->set_value(yes);
+            if (closing_)
+                return;
+            arrange();
+            setFocus(-1);
+            dirty_ = true;
+        });
+        arrange();
+        setFocus(askIndex_);
+        dirty_ = true;
     }
 
     void AppFrame::openChat(bool on)
@@ -826,7 +880,7 @@ namespace tee::ui
 
     void AppFrame::openKeyDialog()
     {
-        if (keyDialog_ == nullptr)
+        if (keyDialog_ == nullptr || chat_ == nullptr || askOpen())
             return;
         keyDialog_->open();
         arrange();
@@ -1047,9 +1101,9 @@ namespace tee::ui
         // The chat in the column, KEY in its header; the key dialog over the whole window while it is open.
         if (chat_ != nullptr)
             chat_->setPlace(chatRect(), chatOpen_);
-        keyButton_->setPlace({ insp.right() - 58.0f, insp.y + 6.0f, 48.0f, 22.0f }, chatOpen_ && keyDialog_ != nullptr);
-        if (keyDialog_ != nullptr)
-            keyDialog_->setPlace({ 0.0f, 0.0f, w, static_cast<float>(height()) }, keyDialog_->isOpen());
+        keyButton_->setPlace({ insp.right() - 58.0f, insp.y + 6.0f, 48.0f, 22.0f }, chatOpen_);
+        keyDialog_->setPlace({ 0.0f, 0.0f, w, static_cast<float>(height()) }, keyDialog_->isOpen());
+        askDialog_->setPlace({ 0.0f, 0.0f, w, static_cast<float>(height()) }, askDialog_->isOpen());
 
         // The cockpit, left to right: START, the mode, the rpm bar; from the right: the pedals, the readouts.
         const funkgui::Rect c = cockpitRect();
@@ -1333,6 +1387,7 @@ namespace tee::ui
     // ---- time, input, unchanged frames ------------------------------------------------------------------------------
     void AppFrame::tick(float dt)
     {
+        nextQuestion();   // the assistant's next question, once nothing else is asking
         dyno_->tick(dt);
 #ifdef TEE_UI_HAS_LIBRARY
         if (ctx_->library != nullptr)
@@ -1472,6 +1527,8 @@ namespace tee::ui
         dirty_ = true;
         // The key dialog takes every key while it is open; an item that takes all keys (the chat's message box) has
         // them first, the frame's undo only what it leaves.
+        if (askOpen())
+            return askDialog_->type(e);
         if (keyDialogOpen())
             return keyDialog_->type(e);
         if (focus() >= 0 && item(focus()).takesAllKeys() && Board::key(e))

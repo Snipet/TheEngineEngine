@@ -1189,3 +1189,74 @@ namespace
         return 0;
     }
 }
+
+#include <thread>
+
+namespace
+{
+    using namespace tee::test::views;
+    using tee::ui::AppFrame;
+
+    bool ready(std::future<bool>& f) { return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready; }
+
+    // The assistant's question to the owner (card A's SessionParts::ask; the lead's ask, 25 Nov): asked from another
+    // thread, shown on the frame's tick with the asker's words (LOAD, KEEP), the safe answer (KEEP) with the focus;
+    // Escape and Enter on it answer no, a press on LOAD (or Tab then Enter) yes; one question at a time, the next once
+    // the first is answered; every key the dialog's while it is open; a frame that goes answers what is left no.
+    VIEW_TEST(testFrameAsk, "frame.ask")
+    {
+        const std::string load = "Claude asks to load \"Hot cam\". The open build, \"Demo V8\", has unsaved changes, which "
+                                 "would be lost. Load it?";
+        std::future<bool> first, second, third;
+        {
+            FrameRig rig(1100, 700, 2.0f, 4.6, true, true);
+            AppFrame& f = *rig.frame;
+            std::thread worker([&] {
+                first = f.ask(load, "Load", "Keep");
+                second = f.ask("Claude asks to save this build as \"Demo V8 (2)\". Save it?");
+            });
+            worker.join();
+            CHECK(!f.askOpen());   // shown on the frame's tick, not from the asker's thread
+            rig.host->tick(5);
+            CHECK(f.askOpen() && f.askDialog()->question() == load && !f.askDialog()->focusOnYes());
+            golden("frame.ask", *rig.host);
+            // Every key is the dialog's: Ctrl-Z does not undo the build behind it.
+            funkgui::KeyEvent z;
+            z.key = funkgui::Key::character;
+            z.ch = U'z';
+            z.mods.ctrl = true;
+            CHECK(f.key(z) && f.askOpen() && !ready(first));
+            // Enter presses KEEP (the focus): no. Nothing answers yes by itself.
+            funkgui::KeyEvent enter;
+            enter.key = funkgui::Key::enter;
+            f.key(enter);
+            CHECK(ready(first) && first.get() == false);
+            rig.host->tick(5);
+            CHECK(f.askOpen() && f.askDialog()->question().find("save this build") != std::string::npos);
+            CHECK(boundsOf(*rig.host, "Yes", funkgui::A11yRole::button).w > 0.0f);   // no words given: YES and NO
+            CHECK(clickOn(*rig.host, "Yes") && ready(second) && second.get() == true && !f.askOpen());
+            // Escape is no; Tab then Enter is yes.
+            third = f.ask(load, "Load", "Keep");
+            rig.host->tick(5);
+            funkgui::KeyEvent esc;
+            esc.key = funkgui::Key::escape;
+            f.key(esc);
+            CHECK(ready(third) && third.get() == false);
+            std::future<bool> fourth = f.ask(load, "Load", "Keep");
+            rig.host->tick(5);
+            funkgui::KeyEvent tab;
+            tab.key = funkgui::Key::tab;
+            f.key(tab);
+            CHECK(f.askDialog()->focusOnYes());
+            f.key(enter);
+            CHECK(ready(fourth) && fourth.get() == true);
+            // Two left when the frame goes: both answered no.
+            first = f.ask(load, "Load", "Keep");
+            second = f.ask(load, "Load", "Keep");
+            rig.host->tick(5);
+            CHECK(f.askOpen() && !ready(first) && !ready(second));
+        }
+        CHECK(ready(first) && first.get() == false && ready(second) && second.get() == false);
+        return 0;
+    }
+}

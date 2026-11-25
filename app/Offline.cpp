@@ -46,6 +46,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <future>
+#include <mutex>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -145,7 +147,8 @@ namespace tee::app
                              Presets::userDirectory()),
                       assistant({file, library, [&sim]() -> SimHost* { return sim.ready() ? &sim.host() : nullptr; },
                                  [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); },
-                                 [this] { return frames.load() / 60.0; }, nullptr, nullptr, {}})
+                                 [this] { return frames.load() / 60.0; }, [this](const std::string& q) { return askOwner(q); },
+                                 nullptr, {}})
                 {
                 }
                 ui::BuildDoc doc;
@@ -163,6 +166,23 @@ namespace tee::app
                 // closes its inbox before the document and the library it acts on go. No question can be put to the
                 // owner yet (`ask` null until U1's dialog): a load over unsaved changes is refused, never silent.
                 std::atomic<double> frames{0.0};   // (read by the link's worker: a turn's clock)
+                // The owner's yes or no (SessionParts::ask): the frame's dialog (AppFrame::ask, U1's) while the frame
+                // lives; set once it is made, cleared before it goes (Shown::panelGoing). Without it: no.
+                std::mutex askMutex;
+                ui::AppFrame* asker = nullptr;
+                std::future<bool> askOwner(const std::string& question)
+                {
+                    const std::lock_guard<std::mutex> lock(askMutex);
+                    if (asker == nullptr)
+                    {
+                        std::promise<bool> no;
+                        no.set_value(false);
+                        return no.get_future();
+                    }
+                    // card A's load over unsaved changes answers LOAD or KEEP; any other question YES or NO
+                    const bool load = question.rfind("Claude asks to load", 0) == 0;
+                    return asker->ask(question, load ? "Load" : "", load ? "Keep" : "");
+                }
                 assistant::Session assistant;
             };
             // the bakes' cache (card C's, keyed by the program's source and the build): a person's window, or a run that
@@ -262,6 +282,14 @@ namespace tee::app
             std::unique_ptr<ui::AppFrame> frame =
                 ui::makeAppFrame(kept->doc, kept->units, player, std::move(frameServices), &kept->dyno, &kept->scope);
             frame->setLibrary(&kept->garage);
+            {
+                const std::lock_guard<std::mutex> lock(kept->askMutex);
+                kept->asker = frame.get();
+            }
+            shown.panelGoing = [kept] {
+                const std::lock_guard<std::mutex> lock(kept->askMutex);
+                kept->asker = nullptr;
+            };
            #if defined(TEE_HAS_CHAT_VIEW)
             // The key chat: card A's panel on the Session's port, in the frame's column (closed at first); its "Add a
             // key" opens the frame's key dialog.

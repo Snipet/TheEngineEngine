@@ -28,6 +28,7 @@
 // and lets every other key through unless a text field has the caret.
 #pragma once
 
+#include "app/AskDialog.h"
 #include "app/Cockpit.h"
 #include "app/KeyDialog.h"
 #include "app/LoadMeter.h"
@@ -43,8 +44,11 @@
 #include <tee/app/Sources.h>
 
 #include <algorithm>
+#include <deque>
 #include <functional>
+#include <future>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -132,6 +136,14 @@ namespace tee::ui
         void openKeyDialog();
         bool keyDialogOpen() const noexcept { return keyDialog_ != nullptr && keyDialog_->isOpen(); }
         KeyDialog* keyDialog() const noexcept { return keyDialog_; }
+
+        // A question the assistant puts to the owner (card A's SessionParts::ask): from any thread. The frame shows one
+        // at a time (the next once the one open is answered and no key dialog is open), with the asker's words for yes
+        // and no (none: YES and NO); the future answers true for yes. NO, Escape, and a frame that goes before it is
+        // answered: false (nothing is lost by a question unanswered).
+        std::future<bool> ask(std::string question, std::string yes = {}, std::string no = {});
+        bool askOpen() const noexcept { return askDialog_ != nullptr && askDialog_->isOpen(); }
+        AskDialog* askDialog() const noexcept { return askDialog_; }
         bool ribbonFolded() const noexcept { return folded_; }
         void foldRibbon(bool folded);
 
@@ -234,6 +246,19 @@ namespace tee::ui
         void setDesktop(bool on);
         // the key chat
         Widget* chat_ = nullptr;
+        ChatSlot* chatSlot_ = nullptr;   // made before the dialogs: they draw over the chat
+        // the assistant's questions (ask): queued from any thread, shown on the frame's
+        struct Question
+        {
+            std::string text, yes, no;
+            std::shared_ptr<std::promise<bool>> answer;
+        };
+        std::mutex askMutex_;
+        std::deque<Question> asks_;
+        AskDialog* askDialog_ = nullptr;
+        int askIndex_ = -1;
+        void nextQuestion();
+        bool closing_ = false;           // the destructor runs: an answer given now lays nothing out
         KeyDialog* keyDialog_ = nullptr;
         int keyDialogIndex_ = -1;
         Button *chatButton_ = nullptr, *keyButton_ = nullptr;
