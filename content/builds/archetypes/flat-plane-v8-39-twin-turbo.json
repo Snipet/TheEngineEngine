@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Flat-plane 3.9 L V8, twin turbo",
-  "notes": "A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "V8 flat-plane",
@@ -72,11 +72,11 @@
       "dEx": 0.028,
       "train": "Finger",
       "inDurSeat": 252,
-      "inDur1mm": 220,
+      "inDur1mm": 214.0,
       "inLift": 0.0105,
       "inCentre": 128.0,
       "exDurSeat": 248,
-      "exDur1mm": 216,
+      "exDur1mm": 210.0,
       "exLift": 0.01,
       "exCentre": 112,
       "inPhaseRange": 40,
@@ -177,14 +177,14 @@
             [
               0.0,
               0.0,
-              25.0,
-              25.0
+              39.99987030029297,
+              39.99987030029297
             ],
             [
               0.0,
               0.0,
-              5.0,
-              5.0
+              30.636886596679688,
+              30.636886596679688
             ],
             [
               0.0,
@@ -207,8 +207,8 @@
             [
               0.0,
               0.0,
-              20.0,
-              20.0
+              15.0,
+              15.0
             ]
           ]
         }

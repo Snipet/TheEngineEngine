@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Kei 660 cc triple turbo",
-  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
+  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule (section 8 of the judgement sources).",
   "spec": {
     "engine": {
       "layout": "Inline 3",
@@ -51,11 +51,11 @@
       "dEx": 0.021,
       "train": "Bucket",
       "inDurSeat": 240,
-      "inDur1mm": 208,
+      "inDur1mm": 204.0,
       "inLift": 0.0075,
       "inCentre": 110,
       "exDurSeat": 236,
-      "exDur1mm": 204,
+      "exDur1mm": 200.0,
       "exLift": 0.007,
       "exCentre": 112,
       "springRate": 25000.0,

@@ -15,6 +15,9 @@
       "blowOffKind": "Recirculating",
       "scrolls": "Twin scroll",
       "icEffect": 0.75,
+      "compInducer": 0.0425,
+      "compExducer": 0.054,
+      "turbWheel": 0.05,
       "icFlow": 0.267,
       "chargeVolume": 0.004
     }

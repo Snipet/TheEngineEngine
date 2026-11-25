@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.2 L straight six, high-revving",
-  "notes": "A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, 8000 rpm (the S54 kind: 252 kW at 7900 rpm, 365 N m at 4900; makers' figures, from memory, firm to 5 %). Rear drive, six-speed manual. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, 8000 rpm (the S54 kind: 252 kW at 7900 rpm, 365 N m at 4900; makers' figures, from memory, firm to 5 %). Rear drive, six-speed manual. Its cams: the S54's (BMW training manuals ST041 and ST609: 12 mm lift, spreads intake 70 to 130 and exhaust 83 to 128 crank degrees, ranges 60 and 45, the intake resting at 130); the 260 deg durations read from a row whose height is not stated (taken as the seat); the exhaust resting at 128, the lead's reading of BMW's \"Exhaust Camshaft = Advance (83\u00ba spread angle)\", which is doubted. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -62,14 +62,14 @@
       "dIn": 0.035,
       "dEx": 0.0305,
       "train": "Bucket",
-      "inDurSeat": 264,
-      "inDur1mm": 236,
-      "inLift": 0.011800000000000001,
-      "inCentre": 126.0,
+      "inDurSeat": 260,
+      "inDur1mm": 224.0,
+      "inLift": 0.012,
+      "inCentre": 130.0,
       "exDurSeat": 260,
-      "exDur1mm": 232,
-      "exLift": 0.011,
-      "exCentre": 110,
+      "exDur1mm": 224.0,
+      "exLift": 0.012,
+      "exCentre": 128,
       "inPhaseRange": 60,
       "exPhaseRange": 45,
       "portIn": 1.65,
@@ -141,8 +141,20 @@
             [
               0.0,
               0.0,
-              50.0,
-              50.0
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              40.0,
+              40.0
+            ],
+            [
+              0.0,
+              0.0,
+              40.0,
+              40.0
             ],
             [
               0.0,
@@ -153,8 +165,14 @@
             [
               0.0,
               0.0,
-              40.0,
-              40.0
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              30.0,
+              30.0
             ],
             [
               0.0,
@@ -165,26 +183,8 @@
             [
               0.0,
               0.0,
-              15.0,
-              15.0
-            ],
-            [
-              0.0,
-              0.0,
-              40.0,
-              40.0
-            ],
-            [
-              0.0,
-              0.0,
-              40.0,
-              40.0
-            ],
-            [
-              0.0,
-              0.0,
-              40.0,
-              40.0
+              5.0,
+              5.0
             ]
           ]
         }

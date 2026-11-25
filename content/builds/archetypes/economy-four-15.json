@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.5 L economy four",
-  "notes": "A 1.5 L naturally aspirated four of a compact car: 75 x 84.7 mm (1497 cc), 11:1, an intake cam phaser (engines of the kind: 80 to 96 kW at 6000 to 6600 rpm, 140 to 155 N m at 4300; makers' figures). Through a CVT. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 1.5 L naturally aspirated four of a compact car: 75 x 84.7 mm (1497 cc), 11:1, an intake cam phaser (engines of the kind: 80 to 96 kW at 6000 to 6600 rpm, 140 to 155 N m at 4300; makers' figures). Through a CVT. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -55,11 +55,11 @@
       "dEx": 0.0235,
       "train": "Finger",
       "inDurSeat": 232,
-      "inDur1mm": 200,
+      "inDur1mm": 194.0,
       "inLift": 0.0083,
       "inCentre": 132.0,
       "exDurSeat": 228,
-      "exDur1mm": 196,
+      "exDur1mm": 190.0,
       "exLift": 0.0078,
       "exCentre": 112,
       "inPhaseRange": 40,
@@ -130,18 +130,18 @@
             [
               0.0,
               0.0,
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
               20.0,
               20.0
             ],
             [
               0.0,
               0.0,
-              20.0,
-              20.0
-            ],
-            [
-              0.0,
-              0.0,
               30.0,
               30.0
             ],
@@ -154,20 +154,20 @@
             [
               0.0,
               0.0,
+              35.0,
+              35.0
+            ],
+            [
+              0.0,
+              0.0,
+              35.0,
+              35.0
+            ],
+            [
+              0.0,
+              0.0,
               30.0,
               30.0
-            ],
-            [
-              0.0,
-              0.0,
-              40.0,
-              40.0
-            ],
-            [
-              0.0,
-              0.0,
-              40.0,
-              40.0
             ],
             [
               0.0,

@@ -377,6 +377,10 @@ arch(slug="turbo-four-20-gdi", runner=0.3, name="2.0 L turbo four, direct inject
      stages=dict(inDurSeatB=240, inDur1mmB=208, inLiftB=0.0107, inCentreB=110,
                  exDurSeatB=247, exDur1mmB=215, exLiftB=0.010, exCentreB=115.5, stageSpeed=round(3100 * RPM, 1)),
      boost=dict(kind="Turbo", target=1.2, spring=0.6, scrolls="Twin scroll"), direct=True, grade="Premium (91)",
+     # the IS20's wheels with table L (the lead, 04:11; N2's measurement against a written prediction, 6410dbf7): the
+     # compressor 42.5 / 54.0 mm, the turbine about 50 mm; the A/Rs left matched (none found); basis rebuilders and a
+     # blog, about +-1 mm, no maker's figure (docs/measurements/validation/2026-11-24-2314-ea888-gen3-sources.md)
+     is20=dict(compInducer=0.0425, compExducer=0.054, turbWheel=0.050),
      boostTaper=[(1500, 120), (4500, 120), (5300, 105), (6000, 85), (6500, 75), (7000, 70)],
      car="hot-hatch-dct", timing="Chain",
      notes="The 2.0 L EA888 generation 3 of the Mk7 Golf GTI: 82.5 x 92.8 mm (1984 cc), 9.6:1, direct and port "
@@ -388,7 +392,8 @@ arch(slug="turbo-four-20-gdi", runner=0.3, name="2.0 L turbo four, direct inject
            "2.0 TSI's; the exhaust phaser's 42 deg is the EA855 2.5 TFSI's (SSP 920273: gen 3's own and its parked timing "
            "not published); the boost taper (1.2 bar to 4500 rpm, 0.7 by 7000) is "
            "judgement, its top end agreeing with an owner's stock log (81 kPa at 6048 rpm: carworklog.com); the "
-           "turbine's size is the model's default until N2 reads published maps. Front drive, six-speed dual clutch.",
+           "turbo's wheels are the IS20's as rebuilders and a blog give them (compressor 42.5 / 54.0 mm, turbine about "
+           "50 mm, about 1 mm either way; no maker's figure), its A/Rs matched (none found). Front drive, six-speed dual clutch.",
      balance2=True)
 arch(slug="v6-35-na", intake=dict(runnerLength=0.50, runnerLength2=0.30, runnerSwitch=4000 * RPM), name="3.5 L V6", geo="ref-09-v6-60", layout="V6", bore=94.0, stroke=83.0, rod=152.0,
      cr=10.8, valves=4, dIn=35.0, dEx=29.0, cam=(240, 208, 10.2, 110, 236, 204, 9.4, 112), train="Finger",
@@ -580,7 +585,14 @@ for _a in A:
 # (docs/measurements/2026-11-25-0032-judgement-sources.md, section 8).
 # Off until N1 has reported what it does (the lead, 01:24: a report, not a gate); on for table L's content.
 # TEE_CAM_RULE=1 turns it on for a trial run.
-CAM_RULE = os.environ.get("TEE_CAM_RULE") == "1"
+CAM_RULE = os.environ.get("TEE_CAM_RULE") != "0"   # every card with table L (the lead, 04:09: the surge cap dropped)
+# Table L (the lead, 04:07): on for the naturally aspirated archetypes now; the boosted wait for the surge cap's ruling
+# (TEE_CAM_RULE=1 turns them on too). TEE_CAM_RULE=0 turns it off everywhere (table K's content, for the twin).
+CAM_RULE_NA = os.environ.get("TEE_CAM_RULE") != "0"
+
+
+def rule_on(a):
+    return CAM_RULE or (CAM_RULE_NA and "boost" not in a)
 FLANK = {"Bucket": 18.0, "Finger": 19.0, "Rocker": 19.0, "Pushrod": 20.0}
 SEAT_M, ONE_M, INCH = 0.0001524, 0.001, 0.0254
 
@@ -619,7 +631,7 @@ def tappet_card(adv, d50, lift_mm, ratio, fat=0.5):
 def card(a):
     """The cam fields after the rule: (inSeat, in1mm, exSeat, ex1mm) and the stage B's, with how each was had."""
     di, d1, li, ci, de, d1e, le, ce = a["cam"]
-    if not CAM_RULE:
+    if not rule_on(a):
         return di, d1, de, d1e, None
     f = FLANK[a["train"]]
     own = a.get("camOwn", {})
@@ -646,7 +658,7 @@ TORQUE_PEAK = {k: v[3] for k, v in _val.T.items()}
 
 # ---- writing them ------------------------------------------------------------------------------------------------
 def build(a):
-    if CAM_RULE and "camCard" in a:
+    if rule_on(a) and "camCard" in a:
         # an engine's own card replacing the generator's (table L's content: the lead, 01:33)
         a = dict(a, **a["camCard"])
         a["notes"] = a["notes"] + " " + a["camCard"]["cardNote"]
@@ -702,7 +714,7 @@ def build(a):
             v.update(a["stages"])
             # stage B by the same rule, keeping the height it has a source for
             fl, own = FLANK[a["train"]], a.get("camOwn", {})
-            for side in (("in", "ex") if CAM_RULE else ()):
+            for side in (("in", "ex") if rule_on(a) else ()):
                 if own.get(side + "B") == "1mm":
                     v[side + "DurSeatB"] = v[side + "Dur1mmB"] + 2 * fl
                 else:
@@ -776,6 +788,9 @@ def build(a):
             if a.get("gateDiameter"):
                 bo["gateDiameter"] = a["gateDiameter"]
             bo["icEffect"] = 0.75
+            if a.get("is20") and CAM_RULE:
+                # a turbo's own wheels (table L's content): metres, the A/Rs matched
+                bo.update(a["is20"])
         # the intercooler sized for the engine's air and the charge pipes for its size (N2, 19:55: the defaults, 0.25
         # kg/s and 5 L, suit 2 to 3 L); the pipes twice the swept volume, 1 to 20 L
         # (from the engine's own hardware, never its power row: the air it swallows at its limiter, VE 0.9, at its
@@ -879,7 +894,7 @@ def build(a):
         hc = EXHAUST_CLASS[a["slug"]]
         notes += (" Its exhaust: %s, the primaries %.2f times the layout's length: the class the real engine carries "
                   "(recalled), its length JUDGEMENT." % (HEADER[hc][1], math.exp(0.9808293 * (HEADER[hc][0] - 0.5))))
-    if "cam" in a and CAM_RULE:
+    if "cam" in a and rule_on(a):
         notes += " Its cams' second duration: %s (section 8 of the judgement sources)." % card(a)[4]
     if a["slug"] in CAMS:
         notes += " Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py)."

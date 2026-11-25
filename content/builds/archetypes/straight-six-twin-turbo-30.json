@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.0 L straight six, twin turbo",
-  "notes": "A modern 3 L twin-turbo straight six with direct injection: 84 x 89.6 mm (2979 cc), 10.2:1, four valves, both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar (cylinders 1-3 and 4-6 each into its own collector and turbo, a dual exhaust). Production engines of this kind make 250 to 340 kW and 450 to 600 N m (makers' figures). In a rear-drive sports sedan with a seven-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A modern 3 L twin-turbo straight six with direct injection: 84 x 89.6 mm (2979 cc), 10.2:1, four valves, both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar (cylinders 1-3 and 4-6 each into its own collector and turbo, a dual exhaust). Production engines of this kind make 250 to 340 kW and 450 to 600 N m (makers' figures). In a rear-drive sports sedan with a seven-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -63,11 +63,11 @@
       "dEx": 0.028,
       "train": "Finger",
       "inDurSeat": 252,
-      "inDur1mm": 220,
+      "inDur1mm": 214.0,
       "inLift": 0.009699999999999999,
       "inCentre": 125.0,
       "exDurSeat": 252,
-      "exDur1mm": 220,
+      "exDur1mm": 214.0,
       "exLift": 0.009699999999999999,
       "exCentre": 105,
       "inPhaseRange": 70,
@@ -166,26 +166,26 @@
             [
               0.0,
               0.0,
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              49.369815826416016,
+              49.369815826416016
+            ],
+            [
+              0.0,
+              0.0,
               40.0,
               40.0
             ],
             [
               0.0,
               0.0,
-              45.0,
-              45.0
-            ],
-            [
-              0.0,
-              0.0,
-              39.433876037597656,
-              39.433876037597656
-            ],
-            [
-              0.0,
-              0.0,
-              25.0,
-              25.0
+              20.0,
+              20.0
             ],
             [
               0.0,
@@ -196,14 +196,14 @@
             [
               0.0,
               0.0,
-              10.0,
-              10.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              10.0,
-              10.0
+              20.0,
+              20.0
             ],
             [
               0.0,
