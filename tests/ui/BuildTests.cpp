@@ -394,8 +394,10 @@ int main(int argc, char** argv)
     if (reverse)
         std::reverse(order.begin(), order.end());
     bool found = false, first = true;
+    // A ".pictures" case (a long one that only shows, nightly) runs by its name alone.
+    const auto pictures = [](const std::string& n) { return n.size() > 9 && n.compare(n.size() - 9, 9, ".pictures") == 0; };
     for (const auto& t : order)
-        if (name == "all" || reverse || name == t.first)
+        if (((name == "all" || reverse) && !pictures(t.first)) || name == t.first)
         {
             found = true;
             if (!first)

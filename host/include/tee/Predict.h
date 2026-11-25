@@ -34,6 +34,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -95,6 +96,9 @@ namespace tee
         // (PredictPoint::boostHunting). The turbo four at 6700 rpm: its last-two-cycles torque never settled in 10 s.
         double boostHuntSeconds = 1.5;
         std::size_t cacheSize = 64;   // curves kept by key
+        // Called on a worker's thread after each point (so: thread-safe), before the next: a bake counts its progress
+        // by it and waits there while the ribbon's curve is wanted (CalibrationBakeService::yieldTo). Not in the key.
+        std::function<void()> onPoint;
     };
 
     struct PredictPoint

@@ -47,3 +47,46 @@ flow). At PR 2 the surge flow is 0.38 of the full choke flow (the truck: 0.386 a
 replaced by the agent's table: published truck and diesel wheels put the surge line at PR 2 nearer 0.25 to 0.30 of
 choke, and a ported shroud lower still. If the table confirms it, the knee (phiK), the surge locus (0.8) and the
 choke's growth with speed (the 1.2 saturation) are the three constants that move.
+
+## The map corrected from the published maps (written before the runs)
+
+Changed, and only these (the lead's ruling): the knee phiK = (0.45 + 0.2 (M - 1)) x (A/R / 0.6)^-0.3, between 0.2
+and 0.7 (was 0.5 x the A/R factor at every speed), and the choke flow growing with the tip Mach number to 1.63, the tip
+limit's (was 1.2). Read by a mirror of the map in published-compressor-maps.md's terms (choke at the right end of
+each ratio's line, surge on the flag's locus 0.8 phiK):
+
+| PR | surge/choke (was) | published middle (range) | island/choke (was) | published | choke at the ratio / its largest (was) | published |
+|---|---|---|---|---|---|---|
+| 1.5 | 0.24 (0.31) | 0.24 (0.22-0.26) | 0.53 (0.61) | 0.51-0.61 | 0.90 (1.00) | 0.69-0.92 |
+| 2.0 | 0.29 (0.38) | 0.30 (0.26-0.34) | 0.56 (0.70) | 0.62-0.76 | 1.00 (0.99) | 0.91-0.94 |
+| 2.5 | 0.36 (0.42) | 0.37 (0.32-0.42) | 0.64 (0.74) | 0.62-0.91 | 0.96 (0.95) | 0.98-1 |
+| 3.0 | 0.44 (0.45) | 0.44 (0.41-0.47) | 0.72 (0.78) | 0.75-0.78 | 0.90 (0.88) | ~1 |
+
+The island at 2.0 and 3.0 sits a little left of the published (0.56 against 0.62 or more; 0.72 against 0.75): left
+alone, as the ruling said. The efficiency 0.1 of choke right of surge reads 0.70-0.72 in these terms against the
+small wheels' 61-69 % (a different reading from the 0.64-0.66 above, which took it at the surge point): left alone.
+No map was published for a 2 L diesel's VGT compressor; it takes these ranges.
+
+**Prediction, the truck at 1300 rpm** (D2's case; written before the run): on the old map the surge flow at PR 1.45
+to 2 is 0.31 to 0.39 kg/s and the engine passes about 0.18 kg/s per unit of ratio, 0.26 to 0.35 kg/s: left of surge,
+so two states. On the corrected map the surge flow there is 0.22 to 0.30 kg/s: the engine's line right of it. I
+expect one state, from 800 and from 2000 within 5 % of each other, at or above the upper branch's 45 kPa and 1440 N m
+(about 45 to 60 kPa); not the old map's 209 kPa, which the closed exhaust took away, not the map.
+
+**Measured** (the prediction failed): the truck at 1300 keeps two states, 28.3 / 62.1 kPa (map only) and 25.6 / 58.6
+(map and the sizing kept at the design point's tip speed), against 24.8 / 45.1 on the present tree. The full-load
+tables (turbo four 1500-6200, 2.0 common-rail 1800-4000, three trees) are in the message to the lead and in
+map-and-sizing.patch's companion below; the change itself is held, uncommitted in sim/, as
+`map-and-sizing.patch` in this directory until the lead rules on (a) the sizing and (b) the knee's dynamic surge.
+
+| turbo four, N m / charge kPa g | 1500 | 1800 | 2500 | 4000 | 6200 |
+|---|---|---|---|---|---|
+| present tree | 213 / 14 | 227 / 20 | 305 / 75 | 366 / 124 | 289 / 88 |
+| map only | 231 / 21 | 257 / 33 | 394 / 123 | 367 / 124 | 290 / 88 |
+| map and sizing | 222 / 17 | 239 / 25 | 319 / 86 | 366 / 124 | 289 / 88 |
+
+| 2.0 common-rail, N m / charge kPa g | 1800 | 2500 | 4000 |
+|---|---|---|---|
+| present tree | 164 / 17 | 336 / 172 | 289 / 173 |
+| map only | 172 / 21 | 337 / 171 | 288 / 171 |
+| map and sizing | 168 / 19 | 332 / 172 | 290 / 174 |

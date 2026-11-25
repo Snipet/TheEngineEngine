@@ -37,6 +37,49 @@
 
 ## Landed
 
+- **01:35 (25 Nov) a correction to 01:30, and what `main` now waits for.** *The lead's acceptance of the map's surge
+  line may have been of the wrong line*: N2 says the model goes unstable wherever a speed line rises with flow, which
+  is everything left of the knee `phiK`, while the figures checked (0.24 / 0.29 / 0.36 / 0.44 of choke) may be the
+  flag's locus at 0.8 `phiK`. If so the model's real line is at 0.30 / 0.36 / 0.45 / 0.55, above the published ranges
+  at every ratio. Not measured yet; N2 is to say which locus the figures are and measure where the model surges.
+  Ruled: the knee's place is part of the surge line's place and is settled before the commit; one commit (the map, the
+  sizing kept, the knee if it moves, the cap tried after), so that table L and the baked maps are re-made once. A
+  thought given to N2 to test: the truck's two states may be static (an engine's swallowing line crossing a rising
+  characteristic twice), in which case the low state exists only because the model lets a compressor sit left of its
+  peak. *N2's three trees* (turbo four at 1500 / 1800 / 2500 / 4000 / 6200, N m): head 213 / 227 / 305 / 366 / 289;
+  the map alone 231 / 257 / 394 / 367 / 290; the map with the sizing kept 222 / 239 / 319 / 366 / 289. The map alone
+  reaches the target at 2500 only by building a wheel a fifth smaller, so the engine's low end is the turbo's size:
+  hardware a build should state from a source (P asked for the IS20's wheel dimensions; nothing sized from the 350).
+  The 2.0 common-rail at 1800 gains nothing on either tree (turbine inlet 127 kPa absolute: spool). *`main` now also
+  waits for C's fix to the background bake*: U1 watched a real bake (0101e7f4): at load the DYNO ribbon reads "no
+  curve yet" for 31 to 35 s on 4 cores because the bake holds the workers ahead of the predictor, and every content
+  build bakes again at each launch (about 110 s, up to six workers) since all are stale against the program and
+  nothing keeps a result between launches. Asked of C, in order: the predictor ahead of the bake; a cache by key in a
+  folder the app gives; done and total per stage; the cells still knocking served. The owner was told, and that
+  `main` moves sooner if they say so. *Rulings*: the 7.0 takes the LS7's own cam card for table L (basis: search
+  snippets, the page refused, not read), shown three ways in the twin; N1 to size whether the low-lift reverse-flow
+  coefficient alone could carry the residual gap, as a diagnostic and no change.
+- **01:30 (25 Nov) between check-ins; `main` stays at 09c1fb4e.** The first run on a commit holding every one of
+  tonight's fixes is in flight on Linux and macOS (45525224026 at fc554da; the ten commits checked as ancestors by the
+  lead: 4e1c813b, 62657c07, 1ab6affe, fd6ed014, f0512a25, ee603c37, 576c1c6e, 68e683f1, a18f1bd4, f4cf2b39). The runs
+  before it (483886d, 2f86a47) were red on ui.build alone, the phaser range held as a constant, which f4cf2b39 ends.
+  *The compressor map* (N2, measured, not committed): knee `phiK = (0.45 + 0.2 (M - 1))` x the A/R factor, the choke
+  growing to tip Mach 1.63. The lead checked it against `published-compressor-maps.md`: surge over choke 0.24 / 0.29 /
+  0.36 / 0.44 at ratios 1.5 / 2 / 2.5 / 3, inside the published ranges at each; the efficiency ridge inside at 1.5 and
+  2.5 and **left of every published map at 2.0 (0.56 against 0.62 to 0.76) and 3.0 (0.72 against 0.75 to 0.78)**, to
+  be moved if one constant does it without touching the surge line, else written down as open. **N2's prediction
+  failed**: the truck at 1300 rpm still has two states (28.3 kPa / 1202 N m from 800, 62.1 kPa / 1661 N m from 2000;
+  one state at 45 to 60 was predicted), so the map's shape is not the whole cause; the lead asked for the loop's terms
+  at the low state (fuel on the smoke limit or not, turbine against compressor power, the point against surge) before
+  another guess. **Ruled: the sizing keeps its meaning.** F's rule set the full choke at 1.15 x the design flow; with
+  the full choke now at Mach 1.63 that leaves a turbo near a ratio of 2 with 0.94 of its own design flow at its design
+  speed, so the rule is restated as the choke at the design point's own tip speed. Nothing commits until the 2.0 at
+  1800, the turbo four at five speeds (three columns), F's cases with no bound moved, the boost and diesel tiers, the
+  nine take-ups and the truck again are shown. *The cam cards' class rule* (P's af2debe5, off until table L; N1's
+  rows): residual share V10 0.399 to 0.371, V12 0.488 to 0.447, 7.0 0.476 to 0.491; the overhead-cam mid-range up to
+  +12 %, the tops 1 to 3 % down: a sourced correction that closes about a tenth of the gap to the measured 0.20 to
+  0.27, so N3-16 stays open on the reverse-flow coefficient. U1's 0101e7f4: the background bake says "baked" once
+  applied, with a test that watches a real bake.
 - **01:11 (25 Nov) the lead's check-in; `main` stays at 09c1fb4e.** No Linux and macOS job is green outright on a
   commit holding tonight's fixes: macOS at 2f86a47 (run 45521139814) is red on one case, ui.build's
   ValvesFirstTests.cpp:70, which held first.json's exhaust phaser as the constant 30 where P's cited 42 now stands
