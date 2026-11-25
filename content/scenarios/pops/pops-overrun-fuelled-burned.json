@@ -1,0 +1,83 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "pops-overrun-fuelled-burned",
+  "description": "In neutral, the overrun fuelled (a quarter of its firings, 30 degrees late): three blips to about 6000 rpm and lifts. Bangs: Burned in the pipe. (G's, for the listening pack)",
+  "seconds": 10.5,
+  "events": [
+    {
+      "t": 0.0,
+      "spec": {
+        "env.temperature": 300,
+        "ecu.overrun.fuel": 0.25,
+        "ecu.overrun.retard": 30,
+        "exhaust.bang": 1
+      },
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 3.0,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 3.5,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 5.5,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 6.0,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 8.0,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 8.5,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    }
+  ]
+}

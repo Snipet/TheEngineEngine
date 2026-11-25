@@ -1180,17 +1180,113 @@ now waits on the process and writes fresh logs. B's Linux push went out without 
 them, did the work. A hold sent into a running turn is not read until that turn ends: the lead now breaks in
 (priority now) on any session that may be mid-push.
 
+## 25 Nov 23:25 UTC: `main` AT b557c4a1; the bake's report and soak; the next window's list
+
+**`main` moved, fast-forward, 43006034 to b557c4a11ef924a805b95a6f79ab223ac9cd7b9c** at 23:25:03 UTC. CI run
+45718145430 on that commit, read by the lead job by job: Linux 604 of 604, macOS 603 of 603, Windows green; it
+contains the bake abadfb4b and its trees are the bake's (`sim` 94c3c479, `host` 80df52e0, `tools` 50b8ac3a).
+
+**The red that held it, and its cure (B):** `shell.app.cases` on macOS alone, three runs of three. B's print at the
+miss: "no question after 0.034 s, 1 frames; the call: an error {"error":"the owner said no; nothing was
+loaded"}; the frame: its ask dialog made; the document: v8, unsaved changes; the engine: ready". Cause:
+`app::Shown`'s destructor calls `panelGoing`, which clears the frame's asker; the rig move-assigned a `Shown` from
+a temporary; libstdc++ and MSVC leave a moved-from `std::function` empty, libc++ keeps a small one, so on macOS
+the temporary's destructor ran the hook and unhooked the live frame. The application itself constructs its
+`Shown` in place (Main.cpp), so its dialog should work on a Mac; nobody here can run one. Cure b557c4a1: the hook
+is a type whose move empties its source on every library, with a case that pins it. The lead's first guess (the
+Apple-only WHEEL branch) was wrong; B refuted it by reading.
+
+**P's report on the bake (Table P): 113 of 847 missed** (30 of 204 cited), against 112. In: the 2.0's boost; the
+tractor's lug and take-up (the diesel package's wheel); the two-stage's peak torque (211 N m); the 6.2's speed
+of peak torque; the 2.0's speed of peak torque once read where its held plateau begins (2145 rpm; the arg-max
+of a flat line read 3491 to 3824). Out: the 2.0's "Torque at 1750 rpm", 244.8 N m against 304 to 336 (VW's 320);
+the 3.5 TT pickup's peak torque 623 against 630; the rally five's speed of peak torque; the kei's header gas
+1111 K; the two-stage's crossing (now the sustained crossing, 6539 rpm; the first tie read 3102) and its
+sharpest point. **Re-timing alone** (the ten boosted builds, 60 s runs read over the last 30 s, dyno steps held
+20 s): 111 missed on the old timing, 114 on the new, same content; three rows crossed an edge, all out; every
+re-timed build's header gas rose 2 to 5 % (the 10 s runs had not soaked the pipe). **The two-stage's notch is
+still there, about 17 N m, and is no longer a misread:** 192.9 at 5705 on stage A, 176.6 at 5879 on stage B,
+195.2 at 6052: the cam switches about 100 rpm before the high lobe overtakes the low, and the high stage trades
+the lead within 5 N m from 5750 to 6500 and is ragged at 3000 to 3500 (193, 193, 166). P's prediction (under
+3 N m) was wrong and is said so.
+
+**The bake's soak (223f4301): 213 of 221** (215 of 219 at 0f677370). X-029, X-038 and X-040 retire (the bores'
+floors: all four fuzz shards pass). Red, by owner, each diagnosed the same evening:
+- **Burned in the pipe on a spark-cut limiter (the rally five): the bangs' mean pressure is overstated.** Port
+  7.54 bar, turbine inlet 8.94, manifold 3.51 against 3.84 / 4.72 / 2.41 under Carved; `valve.dpWave` -350 kPa
+  against the ±300 kPa bound (N1's probe). G: the burn's heat enters as volume at the cold gas's density, so the
+  mass flow is overstated by about the temperature ratio; and the turbine's books do not see the heat. The click
+  at 8.74 s there is the lift's own blowdown front (it exists under Carved, 0.31 against 0.55), not a bang.
+- **The large diesel with `engine.custom` and `boost.model`:** turbine inlet 6.31 bar against 3.13 at steady full
+  load, vanes wide open, brake off: the turbine's match ignores the custom engine (X-035's family).
+- host.sim.nightly, EngineTest.cpp:930 and :1038 (C: most likely the tests' assumption about tables reading
+  Current); the VGT one-state full form (N2's known red, unmoved: 163.1 kPa, 2549 N m); the turbo six's clicks
+  (X-032's kind; one new shard, one already red at 0f677370); the large diesel's dyno DC 0.0051 against 0.005
+  (X-036's kind).
+N1 keeps the ±300 kPa bound on `dpWave`: it caught two real faults on its first night.
+
+**THE NEXT WINDOW, in the order the lead would take it (owners; each a prediction before a measurement):**
+1. G with N2: the burn's heat released as hot gas, and the turbine seeing it; then re-measure the rally five on
+   its limiter (port, manifold, `dpWave`, the click) before any bound moves. The default stays Burned.
+2. The integrator: the starting state that differs between "written after init" (every load in the
+   application) and "initialised over it": the diff of every field right after start; then #337's paired form.
+3. N2 with the integrator: the turbine's match under `engine.custom` (the large diesel; X-035's family).
+4. N1: the two-stage's switch against its curves' crossing (is 5850 rpm cited or chosen?); the high stage ragged
+   at 3000 to 3500 and trading the lead from 5750 to 6500.
+5. N2: the rotary's joined pair, rule (c), the turbine's rated match, the 2.0 at 1750 (G's back-pressure fit).
+6. The steward: X-030 (the dog cut: the cut's kind as a choice once G's account books its charge), X-031,
+   X-032 (the turbo six's unsettled start and idle), X-036.
+7. C: its two nightly host cases (tests, at any time); the stepped dyno's approach from below; refusal of a
+   bore at input by a rule in the host (no new `fminus::` attribute).
+8. The integrator: the dyno loop's 13.5 % step overshoot (a PI's zero), weighed against C's ramp.
+9. L: X-039's check restated with N2's inlet solve; the V8's dense bangs under the exposure rule (4.5 dB).
+10. P: the gas rows' timing (the pipe's soak) as a rule for every build; the fixtures out of content/ with X,
+    N1 and the integrator.
+11. M: the voices' cost on first.json (0.24 R against 0.08).
+Outside sim/ (open at any time): B: the wheel on Windows (SDL 3.4's HIDAPI Logitech driver), the owner's first
+run on a real G29; U1 / J2: the part card from the keyboard, a raised bore's warning in EXHAUST and AIR, the
+small dials' numbers if the owner asks; card A: nothing owed.
+
+## Card D, for the next window (25 Nov 22:05 UTC; the lead's ruling)
+
+1. **First: a state differs at the start between "written after init" and "initialised over it" (first.json).** The
+   first route is what the application does every time a person loads a build, so a stale field there is a real fault,
+   however small. Measured on the baked tables at 5 to 6 s: with the same cylinder bias draws written on both routes
+   they still part by 0.06 to 1.6 %, and with the same bias and the same states of both engine noise streams
+   (noise.rs, ex.noise.rs) by 1.37 / 0.09 / -1.46 %. Next: the diff of every field right after start between the two
+   routes; pair them on what differs; anything one route sets and the other does not is a finding in the init order,
+   to the lead before any bound moves. Then core :680 bounds the paired difference by its measure (keeping the exact
+   check of every model switch and tq[0] == tq[2]); its bound today (f6c5d1ba: 2.5 % against a measured 2.4 % spread
+   of fourteen inits) is thin.
+2. The engine dyno's absorber loop overshoots a step by some 13 % (a PI's zero at zeta 1): to measure and weigh against
+   C's ramped approach (docs/handoffs/d-mechanics.md).
+3. The clutch's latch (87629688, on `main` after this bake): nothing open; the bike's form is B2's
+   (docs/handoffs/patches/d-bike-synced.patch).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 22:05 UTC: THE BAKE IS ON THE BRANCH at 223f4301** (abadfb4b). `sim/`, `host/` and `tools/` STAY
-  CLOSED: `main` first. The trees: `sim` 94c3c479, `host` 80df52e0, `tools` 50b8ac3a.
-- **`main`** is at 43006034 and moves, fast-forward, to the first commit that (a) contains abadfb4b, (b) has
-  those three trees, and (c) is green on Linux, macOS and Windows. Today that needs the macOS red in
-  `shell.app.cases` (B; perhaps card A) understood and cured.
-- **Open now:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, docs. Push rule as before (one green whole
-  default tier on a merged state, then merge a moved tip and push, saying what was not in the run; run
-  `scripts/lint.sh` before pushing: it is CI's first step on Linux).
-- **U1** pushes only a pure fast-forward of a tested state: it tells the lead when ready; the lead collects a
-  "holding" from every pusher (breaking into running turns), then names the tip.
-- **After `main`:** the fixtures out of content/ (X, N1, the integrator, P); then the lead opens the next window
-  here with its list (the integrator's starting state first).
+- **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
+- **25 Nov 23:27 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items of the list in
+  the section above, and nothing else. From the first push under those trees the branch's baked tables are
+  stale until the next bake; `main` stays the stable build.
+- **Order under `sim/` (each waits for the one before to be on the branch where their files meet; say early what
+  will not make the window):**
+  1. G, then N2: the burn's heat as hot gas; the turbine seeing it; the rally five on its limiter re-measured.
+  2. the integrator: the starting state that differs between the two init routes; #337's paired form.
+  3. N2 with the integrator: the turbine's match under `engine.custom`.
+  4. N1: the two-stage's switch against its crossing; the ragged high stage.
+  5. the steward: X-032 (the turbo six's start and idle), X-031, X-036; X-030 after G's item 1.
+  6. C (`host/`): the stepped dyno's approach from below; refusal of a bore at input by a rule in the host.
+  7. N2: the rotary's pair, rule (c), the rated match (a design first, to the lead, before any number).
+  8. the integrator: the dyno loop's step overshoot, after C's item 6.
+  9. L: X-039's check with N2's inlet solve; the V8's dense bangs, after G's item 1.
+  10. M: the voices' cost on first.json (measure and report first).
+- **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
+  red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
+  default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
+  `scripts/lint.sh` before pushing; wait on the tier's process, not on a line in a reused log; a refusal of a
+  session's permission check is never worked around.
+- **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
+  baked tables), docs. **U1** pushes only a pure fast-forward of a tested state: it tells the lead; the lead
+  collects a "holding" from every pusher (breaking into running turns), then names the tip.
+- **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**

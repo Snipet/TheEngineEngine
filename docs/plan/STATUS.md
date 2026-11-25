@@ -43,6 +43,17 @@
 
 ## Landed
 
+- **25 Nov 23:25 UTC: `main` at b557c4a1** (from 43006034, fast-forward; Linux 604 of 604, macOS 603 of 603,
+  Windows green; every build re-baked, knock 6 and cam 4; Table P 113 of 847 missed). New in `main`: the diesel
+  package (the compressor map fitted to the cited maps, the torque ceiling, the engine brake retuned); the
+  clutch's latch and the bike's; bangs Burned in the pipe by default, with the auto level's rule for them; the
+  bores' floors; the fan's tone; the predictor reading a point as an upward sweep reaches it; the Logitech G29
+  on macOS and Linux (pedals, clutch, paddles, the H shifter, the PS button, five shift lights, the spring, the
+  WHEEL row, the button mapping, `tee-wheel-dump`, the input probe: never yet run on a wheel; none on Windows);
+  the assistant's list of every whole build and its LOAD / KEEP dialog; DRIVE's dials with numbers clear of
+  the needle; Rows as the inspector with the part card. Known and written in the queue: on a spark-cut limiter
+  the burned bangs' pressure is overstated (the rally five); the 2.0 at 1750 rpm 24 % under VW's 320; the
+  rotary above its join; the two-stage's switch 100 rpm before its curves cross; the bake's soak 213 of 221.
 - **25 Nov 22:05 UTC: the bake is on the branch at 223f4301** (abadfb4b; not in `main`). Every build re-baked
   (knock 6, cam 4): 28 knock tables, 14 cam maps, 31 builds gated warm and cold, five proofs. With it on the
   branch since `main`: the diesel package; the clutch's latch; bangs Burned in the pipe by default with the
