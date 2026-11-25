@@ -133,7 +133,7 @@
     TEST(testInspectKeys, "inspect.keys")
     {
         InspectRig rig(tee::ui::FieldInspector::Style::rows);
-        typeKeys(rig.host, "tab down down");             // engine.layout, engine.cylinders
+        typeKeys(rig.host, "tab down down down");        // the heading ENGINE, engine.layout, engine.cylinders
         CHECK(rig.col->focusedField() == rig.f("engine.cylinders"));
         typeKeys(rig.host, "4 enter");
         CHECK(rig.value("engine.cylinders") == 4.0);
@@ -161,27 +161,156 @@
         return 0;
     }
 
-    // Design 2: a dial turned up and down (one step), its value typed on a click; design 3's card: a few fields, a
-    // title, its height from what it holds.
-    TEST(testInspectDials, "inspect.dials")
+    // The card (Style::list, setCard): a few fields under a title, no filter, its height from what it holds; a value
+    // typed in it is kept or refused as in the rows.
+    TEST(testInspectCard, "inspect.card")
     {
-        InspectRig rig(tee::ui::FieldInspector::Style::dials, { "boost" });
-        funkgui::Rect row, value;
-        const int steps = rig.doc.steps();
-        CHECK(rig.col->fieldRect(rig.f("boost.size"), row, value));
-        const float fy = value.y - 30.0f;                 // the face sits over the typed box
-        rig.host.drag(value.centreX(), fy, value.centreX(), fy - 50.0f, 10);   // 200 px the whole travel
-        CHECK_NEAR(rig.value("boost.size"), 0.75, 1e-3);
-        CHECK(rig.doc.steps() == steps + 1);
-        rig.host.click(value.centreX(), value.centreY());
-        CHECK(rig.col->typing());
-        typeKeys(rig.host, "4 0 enter");                 // a fraction typed in percent
-        CHECK_NEAR(rig.value("boost.size"), 0.40, 1e-9);
-        // The card.
+        InspectRig rig(tee::ui::FieldInspector::Style::rows, { "boost" });
         tee::ui::FieldInspector& card = rig.board.make<tee::ui::FieldInspector>(rig.doc, rig.units, tee::ui::FieldInspector::Style::list);
         card.setOutline(tee::ui::outlineOf(rig.doc, { rig.f("boost.level"), rig.f("boost.size"), rig.f("boost.blowOff") }));
         card.setCard("Turbo", "4 FIELDS HERE; ALL IN THE LIST");
         card.setPlace({ 380, 40, 300, 2000 }, true);
         CHECK(card.contentHeight() < 200.0f && card.shownFields() == 3);
+        CHECK(card.filterRect().isEmpty() && card.changedRect().isEmpty());
+        card.setPlace({ 380, 40, 300, 34.0f + 26.0f + card.contentHeight() }, true);
+        rig.host.tick(2);
+        funkgui::Rect row, value;
+        CHECK(card.fieldRect(rig.f("boost.size"), row, value));
+        rig.host.click(value.centreX(), value.centreY());
+        CHECK(card.typing());
+        typeKeys(rig.host, "4 0 enter");                 // a fraction typed in percent
+        CHECK_NEAR(rig.value("boost.size"), 0.40, 1e-9);
+        rig.host.click(value.centreX(), value.centreY());
+        typeKeys(rig.host, "1 4 0 enter");
+        CHECK(card.typing() && card.refusal().find("Out of range") == 0);
+        CHECK_NEAR(rig.value("boost.size"), 0.40, 1e-9);
+        typeKeys(rig.host, "escape /");                  // the card has no filter
+        CHECK(card.filter().empty());
+        return 0;
+    }
+
+    // RowsPage, the frame's pane: over a page the frame built (a page of a table alone stays as it is); its fields and
+    // tables; the keyboard through headings, fields and tables (Enter on a table asks the frame to open its page); the
+    // filter across the workspace; Tab past it leaves (the frame's turn).
+    TEST(testInspectPage, "inspect.page")
+    {
+        const tee::ui::MemoryDoc spec{ tee::test::mockFields() };
+        PageRig rig(tee::ui::pageGui(spec, tee::ui::sectionFields(spec, "boost"), "boost"), 1100, 700);
+        PageRig table(tee::ui::pageGui(spec, { spec.find("boost.duty") }, {}), 1100, 700);
+        CHECK(tee::ui::RowsPage::over(*table.page, table.doc, table.units) == nullptr);
+        std::unique_ptr<tee::ui::RowsPage> rows = tee::ui::RowsPage::over(*rig.page, rig.doc, rig.units);
+        CHECK(rows != nullptr);
+        CHECK(rows->width() == 1100 && rows->height() == 700);
+        CHECK(rows->fields().size() == tee::ui::sectionFields(rig.doc, "boost").size());
+        CHECK(rows->tables().size() == 1 && rows->tables()[0].fields == std::vector<int>{ rig.doc.find("boost.duty") });
+        std::vector<int> all;
+        for (int f = 0; f < rig.doc.count(); ++f)
+            all.push_back(f);
+        rows->setSearchable(all);
+        std::vector<std::string> opened;
+        rows->setOnTable([&](const tee::ui::RowsPage::Table& t) { opened.push_back(t.title); });
+        funkgui::HeadlessHost host(*rows, 0, 1.0f);
+        rows->place(1100, 700, { 760, 100, 340, 560 });
+        host.tick(2);
+        tee::ui::FieldInspector& col = rows->rows();
+        CHECK(col.bounds().x == 760.0f && col.bounds().w == 340.0f && col.shown());
+        // The keyboard: Tab to the rows, Down through a heading, its fields and the table; Enter on the table opens it.
+        typeKeys(host, "tab");
+        CHECK(rows->focus() == 0);
+        using Kind = tee::ui::FieldInspector::Row::Kind;
+        const auto kindAt = [&] { return col.rows()[static_cast<std::size_t>(col.focusedRow())].kind; };
+        int fieldsSeen = 0;
+        for (int i = 0; i < 40 && (col.focusedRow() < 0 || kindAt() != Kind::table); ++i)
+        {
+            typeKeys(host, "down");
+            fieldsSeen += col.focusedField() >= 0 ? 1 : 0;
+        }
+        CHECK(col.focusedRow() >= 0 && kindAt() == Kind::table && fieldsSeen >= 3);
+        typeKeys(host, "return");
+        CHECK_MSG(opened.size() == 1 && opened[0] == "Duty", std::to_string(opened.size()));
+        // A heading folds on Enter, and opens again.
+        const std::size_t before = col.rows().size();
+        for (int i = 0; i < 40 && kindAt() != Kind::heading; ++i)
+            typeKeys(host, "up");
+        CHECK(kindAt() == Kind::heading);
+        typeKeys(host, "return");
+        CHECK(col.rows().size() < before);
+        typeKeys(host, "return");
+        CHECK(col.rows().size() == before);
+        // The filter: '/' and a word finds a field of another page (another section); Down goes to it.
+        typeKeys(host, "/ s p a r k");
+        CHECK(col.filter() == "spark");
+        bool spark = false;
+        for (const auto& r : col.rows())
+            spark = spark || r.kind == tee::ui::FieldInspector::Row::Kind::table;
+        CHECK(spark);                                    // ecu.spark: a table, on no page of this one's
+        typeKeys(host, "return return");
+        CHECK(opened.size() == 2 && opened[1] == "Spark advance");
+        typeKeys(host, "escape");
+        CHECK(col.filter().empty() && col.rows().size() == before);
+        // A value typed is refused out of range, the range said; the draw key moves with it.
+        const std::uint64_t key = rows->drawKey();
+        funkgui::Rect row, value;
+        CHECK(col.fieldRect(rig.doc.find("boost.level"), row, value));
+        host.click(value.centreX(), value.centreY());
+        typeKeys(host, "9 0 0 return");
+        CHECK(col.refusal() == "Out of range: 0.0 to 200.0 kPa" && rows->drawKey() != key);
+        typeKeys(host, "escape");
+        // Tab past the rows leaves the board (a pane: the frame's turn).
+        funkgui::KeyEvent tab;
+        tab.key = funkgui::Key::tab;
+        CHECK(!rows->key(tab));
+        return 0;
+    }
+
+    // The card on the picture (PartCard): a press that chooses a part opens the card beside it with the part's first
+    // fields, inside the stage; a press on nothing closes it, as does another selection; the part pressed again opens
+    // it again; its title from the path.
+    TEST(testInspectPartCard, "inspect.partcard")
+    {
+        CHECK(tee::ui::PartCard::titleOf("engine.cylinder[2]") == "CYLINDER 3");
+        CHECK(tee::ui::PartCard::titleOf("exhaust.header") == "HEADER");
+        CHECK(tee::ui::PartCard::titleOf("exhaust.tailPipe") == "TAIL PIPE");
+        tee::ui::MemoryDoc doc{ tee::test::mockFields() };
+        tee::ui::Units units;
+        tee::ui::Board board{ 1100, 700 };
+        funkgui::HeadlessHost host{ board, 0, 1.0f };
+        tee::ui::FieldInspector& item = board.make<tee::ui::FieldInspector>(doc, units, tee::ui::FieldInspector::Style::list);
+        tee::ui::PartCard card(item);
+        CHECK(!item.shown() && !card.isOpen());
+        const funkgui::Rect stage{ 64, 48, 696, 574 };
+        const tee::ui::Outline engine = tee::ui::outlineOf(doc, tee::ui::sectionFields(doc, "engine"));
+        const std::size_t all = tee::ui::fieldsOf(engine).size();
+        CHECK(all > static_cast<std::size_t>(tee::ui::PartCard::kFields));
+        // A part chosen at (200, 300): the card to its right, inside the stage, six fields, the rest counted.
+        card.afterPress("", "engine", "engine", { 200, 300 });
+        CHECK(!card.isOpen());                           // not until the pages are made
+        card.update("engine", &engine, stage);
+        CHECK(card.isOpen() && item.shown() && item.shownFields() == tee::ui::PartCard::kFields);
+        const funkgui::Rect r = item.bounds();
+        CHECK(r.x >= 224.0f && r.right() <= stage.right() && r.y >= stage.y && r.bottom() <= stage.bottom());
+        CHECK(r.h < 400.0f);
+        host.tick(2);
+        funkgui::Rect row, value;
+        const int first = tee::ui::fieldsOf(engine).front();
+        CHECK(item.fieldRect(first, row, value) && r.contains({ value.centreX(), value.centreY() }));
+        // Near the stage's right edge: to the part's left.
+        card.afterPress("engine", "engine", "engine", { 700, 600 });   // the part already selected, pressed again
+        card.update("engine", &engine, stage);
+        CHECK(card.isOpen() && item.bounds().right() <= 676.0f && item.bounds().bottom() <= stage.bottom());
+        // A press on nothing (the selection kept, no part under the pointer) closes it.
+        card.afterPress("engine", "engine", "", { 400, 400 });
+        CHECK(!card.isOpen() && !item.shown());
+        // Another selection than the card's closes it.
+        card.afterPress("", "engine", "engine", { 200, 300 });
+        card.update("engine", &engine, stage);
+        CHECK(card.isOpen());
+        card.update("boost", nullptr, stage);
+        CHECK(!card.isOpen());
+        // A part with no fields: no card.
+        card.afterPress("", "engine", "engine", { 200, 300 });
+        const tee::ui::Outline none;
+        card.update("engine", &none, stage);
+        CHECK(!card.isOpen());
         return 0;
     }

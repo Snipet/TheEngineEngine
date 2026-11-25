@@ -5,10 +5,7 @@
 //
 //   build.inspect.list.pictures   the workspaces' inspector pages and what each holds (a probe; prints only)
 //   build.inspect.pictures        the pictures for the owner, under out/ui/inspect/ (named below)
-//   build.inspect.rows            design 1 over the real Spec: typing refuses out of range and keeps in range (one
-//                                 undo step), the filter finds across the workspace, CHANGED, folding
-//   build.inspect.dials           design 2: a dial turned and a value typed, each one undo step; headings stay put
-//   build.inspect.card            design 3: a part chosen on the stage brings its card beside it; the column lists all
+// The owner picked Rows (and the card next); Dials, design 2, is dropped from the kit and from these pictures.
 #include "build/BuildKit.h"
 
 #include "Png.h"
@@ -30,8 +27,8 @@ namespace
     using tee::ui::FieldInspector;
     using tee::ui::OutlineEntry;
 
-    enum class Design { rows, dials, picture };
-    const char* nameOf(Design d) { return d == Design::rows ? "rows" : d == Design::dials ? "dials" : "picture"; }
+    enum class Design { rows, picture };
+    const char* nameOf(Design d) { return d == Design::rows ? "rows" : "picture"; }
 
     // The frame as it ships, with a design over its inspector column.
     class Overlay final : public tee::ui::Board
@@ -40,9 +37,8 @@ namespace
         Overlay(tee::ui::AppFrame& frame, tee::ui::FieldDoc& doc, const tee::ui::Units& units, Design design, int w, int h)
             : Board(w, h, 1100, 700), frame_(frame), doc_(doc), design_(design)
         {
-            column_ = &make<FieldInspector>(doc, units, design == Design::rows    ? FieldInspector::Style::rows
-                                                        : design == Design::dials ? FieldInspector::Style::dials
-                                                                                  : FieldInspector::Style::list);
+            column_ = &make<FieldInspector>(doc, units, design == Design::rows ? FieldInspector::Style::rows
+                                                                               : FieldInspector::Style::list);
             if (design == Design::picture)
             {
                 card_ = &make<FieldInspector>(doc, units, FieldInspector::Style::list);
@@ -292,7 +288,7 @@ namespace
         const Page pages[] = { { "engine", "ENGINE 1", "engine" }, { "tune", "FUEL", "fuel" }, { "exhaust", "EXHAUST 1", "exhaust" },
                                { "tune", "ECU 1", "choices" } };
         const std::pair<int, int> sizes[] = { { 1100, 700 }, { 1600, 1000 } };
-        for (const Design d : { Design::rows, Design::dials })
+        for (const Design d : { Design::rows })
             for (const auto& [w, h] : sizes)
                 for (const Page& p : pages)
                 {

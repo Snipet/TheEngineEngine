@@ -204,4 +204,8 @@ namespace tee::assistant
     // Whether `name` may be a build's name here: what BuildLibrary::validName takes, and no separator of any system,
     // no "..", no leading dot, no drive, no control character, at most 64 bytes. The tools take nothing else.
     bool safeBuildName(const std::string& name, std::string& why);
+    // Whether `name` may be asked for as a listed build (load_build): 1 to 200 bytes, "/" only between folders, no "..",
+    // no leading dot or tilde, no backslash, drive or control character. Only a name the library's wholeBuilds() lists
+    // is then handed to the library, in the listing's spelling.
+    bool listedBuildName(const std::string& name, std::string& why);
 }
