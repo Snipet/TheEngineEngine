@@ -171,7 +171,6 @@ module BoostMachine
     float bovLift;
     float bpLimit;      // a variable nozzle's limit on the pressure before the turbine over the boost (absolute)
     float bpOpen[BOOST_TURBOS];  // the limit's opening of the vanes, each turbo
-    float surgeOpen[BOOST_TURBOS];  // the surge guard's opening of the vanes, each turbo
     float bovAt;        // the blow-off valve's opening the air sees: bovLift followed every sample by two 1 ms stages
     float bovMid;
     float kAt;          // that following's step a sample
@@ -342,7 +341,6 @@ module BoostMachine
             turb[t].vanesAt = 1.0f;
             turb[t].vanesMid = 1.0f;
             bpOpen[t] = 0.0f;
-            surgeOpen[t] = 0.0f;
             gateMass[t] = 0.0f;
             gateTemp[t] = tOut;
         }
@@ -1317,31 +1315,16 @@ module BoostMachine
                     const float r3 = house[hh].p / fmaxf(v2.p, 1000.0f);
                     bpOpen[t] = fminf(fmaxf(bpOpen[t] + d16 * 3.0f * (r3 - bpLimit), 0.0f), 1.0f);
                     v = fmaxf(v, turb[t].vaneMin + bpOpen[t]);
-                    // (the surge guard, gain-reversal protection: vanes shut past the compressor's surge line make
-                    // less boost, not more: it cannot deliver, the engine's air and the diesel's smoke-limited fuel fall
-                    // and the turbine's energy with them, a second steady state below the first: card D2's 15 L truck
-                    // at 1300 rpm stood at 98 kPa and 882 N m with its vanes at 0.47, surging two thirds of the time,
-                    // against 209 kPa and 1945 N m at 0.9. While the compressor surges, an integral opens the vanes at
-                    // 1 a second and gives back a tenth of that while it does not: the vanes settle where it surges
-                    // some 9 % of the time, just off the surge line (with the exhaust's mean flow closed, G's
-                    // 8bb2c80f, 0.3 left them on it and the truck's spool hunted 140 to 187 kPa for 2 s; 2 a second
-                    // put the 15 L tractor at 1000 rpm off its boost). Judgement, as the limit above is: a maker's
-                    // vane map keeps its own margin)
-                    const float phiS = comp[t].mdot / fmaxf(comp[t].mc, 1.0e-5f);
-                    // (only the loop's own surge counts: with the pedal down (the plenum not under the throttle's
-                    // vacuum, as the assist's test) and the boost short of what is asked; a lift's surge on a closed
-                    // throttle is the blow-off valve's matter, and then the guard only gives back)
-                    const int surging = (comp[t].mdot < 0.0f || (phiS < 0.9f * comp[t].phiK && comp[t].pr > 1.15f)) &&
-                                                pPlenum > 0.85f * pOut && boost < want
-                                            ? 1
-                                            : 0;
-                    surgeOpen[t] = fminf(fmaxf(surgeOpen[t] + d16 * 1.0f * (surging != 0 ? 1.0f : -0.1f), 0.0f), 1.0f);
-                    v = fmaxf(v, turb[t].vaneMin + surgeOpen[t]);
+                    // (no surge guard (the lead's ruling, 25 Nov): the vanes were opened while the compressor sat left
+                    // of its flag, to rescue card D2's 15 L truck from a second state at 1300 rpm; that state was the
+                    // fixture's own breathing (fresh VE 0.35 on the reference cam dial, falling as shut vanes raised
+                    // p3), not the compressor's surge: with real valve events it has none, and the guard pinned the
+                    // vanes open on three shipped builds at their low speeds, 25 to 40 % of the torque
+                    // (truck-valve-events.md, guard-candidates.md). The surge flag stays a reading, U3's oversize warning)
                 }
                 else
                 {
                     bpOpen[t] = 0.0f;
-                    surgeOpen[t] = 0.0f;
                 }
                 v = fminf(fmaxf(v, turb[t].vaneMin), 1.0f);
                 turb[t].vanes += (v - turb[t].vanes) * (1.0f - expf(-d16 / 0.05f));
