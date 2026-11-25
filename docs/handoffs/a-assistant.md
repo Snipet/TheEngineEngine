@@ -41,3 +41,17 @@ here:** macOS (CI only), Claude Desktop, the API. MCP versions and the manifest'
    `~/Library/Logs/Claude/mcp*.log`.
 3. The key chat, once U1 has mounted its panel and key dialog: save your key (Keychain; macOS asks once), ask the same,
    stop a long answer with Escape; Keychain Access shows "TheEngineEngine" and no file holds the key.
+
+**MCP's revisions (read 25 Nov).** tee-mcp speaks the handshake revisions (2024-11-05 to 2025-11-25: `initialize`, then
+`notifications/initialized`). MCP's current revision, 2026-07-28, has no handshake: a client puts its version in each
+request's `_meta` and may probe with `server/discover` first. To that probe tee-mcp answers JSON-RPC -32601 (Method
+not found), which the 2026-07-28 stdio rules read as "a legacy server": a client of both eras then falls back to
+`initialize`, and works. A client of 2026-07-28 alone fails (the revision's own compatibility table says so). Which
+kind Claude Desktop is, only the owner's try shows; the log (step 4) says which method it sent first.
+
+**Gatekeeper (macOS).** tee-mcp is not notarised. Built on the owner's own Mac it carries the linker's ad-hoc
+signature and no quarantine flag, so Claude Desktop starts it without a prompt (expected, not yet seen). A `.mcpb`
+downloaded from CI carries the browser's quarantine flag: Claude Desktop's start of tee-mcp is then refused ("cannot be
+opened because Apple cannot check it for malicious software"). Allow it once, before installing, with
+`xattr -d com.apple.quarantine TheEngineEngine.mcpb`, or after the refusal in System Settings, Privacy & Security,
+"Open Anyway". The bundle's signing is the steward's.
