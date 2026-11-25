@@ -39,8 +39,9 @@
 # The soak tier (the [nightly] tests, ctest --preset nightly, about 95 minutes on Linux) runs only when asked, so
 # that each soak result belongs to a named commit, not to whichever tip was current when the last soak ended
 # (docs/plan/01-rules.md section 3):
-#   a push          soaks nothing, unless its head commit's message says [soak] (Linux) or [soak-all] (all three);
-#                   the content agent's baked push, the candidate for main, says [soak]
+#   a push          soaks nothing, unless one of the commits it brings says [soak] (Linux) or [soak-all] (all
+#                   three): every commit's message is read, so a merge at the head no longer hides the tag; the
+#                   content agent's baked push, the candidate for main, says [soak]
 #   by hand         tier: fast (the default), soak, or both, on the platforms named
 #   each night      03:23 UTC, the integration branch's tip, Linux (a schedule runs main's copy of this file, so the
 #                   build job checks out claude/awesome-gates-ntdb58 for it)
@@ -64,6 +65,8 @@
 #   TheEngineEngine-macos-arm64   TheEngineEngine-macos-arm64.tar.gz (a zip loses the executable bit): the same with
 #                                 TheEngineEngine.app, signed ad hoc, sim/ and content/ in its Resources
 #   TheEngineEngine-linux-x64     TheEngineEngine-linux-x64.tar.gz: the same with the executable
+# and from macOS and Linux TheEngineEngine-mcpb-<platform>: TheEngineEngine.mcpb, the Claude Desktop extension (card
+# A's tee-mcpb: manifest.json and server/tee-mcp), checked before it is kept;
 # and, from every platform, TheEngineEngine-listen-<platform>: the reference and the simulator started, revved and
 # stopped by tee-headless, as WAV files and pictures, and what the window's own run on the runner said and drew (Linux: on
 # Xvfb with Mesa's software Vulkan, which must work; macOS and Windows: reported, and no reason to fail the job).
@@ -117,8 +120,9 @@ jobs:
           ONLY: ${{ inputs.platforms || (github.event_name == 'schedule' && 'linux-x64') || 'all' }}
           TIER: ${{ inputs.tier || 'fast' }}
           EVENT: ${{ github.event_name }}
-          # (the head commit's message, by the environment, never pasted into the script)
-          MESSAGE: ${{ github.event.head_commit.message }}
+          # (the messages of every commit the push brings, by the environment, never pasted into the script: a merge
+          # at the head keeps the [soak] of a commit beneath it)
+          MESSAGE: ${{ join(github.event.commits.*.message, ' ') }} ${{ github.event.head_commit.message }}
           REF: ${{ github.ref }}
           ALL: >-
             [
@@ -390,7 +394,10 @@ jobs:
         id: app
         if: matrix.tier == 'fast'
         run: |
-          build() { cmake --build build-app --target TheEngineEngine tee-headless --parallel ${{ matrix.jobs }}; }
+          # (and on macOS and Linux the Claude Desktop extension, assistant/CMakeLists.txt's tee-mcpb)
+          targets=(TheEngineEngine tee-headless)
+          [ "$RUNNER_OS" = Windows ] || targets+=(tee-mcpb)
+          build() { cmake --build build-app --target "${targets[@]}" --parallel ${{ matrix.jobs }}; }
           rc=0
           build || rc=$?
           if [ $rc -ne 0 ]; then
@@ -501,6 +508,40 @@ jobs:
         with:
           name: ${{ steps.pack-app.outputs.name }}
           path: ${{ steps.pack-app.outputs.path }}
+          retention-days: 30
+          if-no-files-found: error
+
+      # The Claude Desktop extension (card A, assistant/CMakeLists.txt's tee-mcpb; macOS and Linux): a zip of
+      # manifest.json and server/tee-mcp, which Claude Desktop installs with a double click. Checked here: the manifest
+      # parses as JSON and names server/tee-mcp, the server is executable in the zip, and on macOS it carries a
+      # signature (ad hoc, the linker's on arm64) and the application's bundle still verifies beside it.
+      - name: Check the Claude Desktop extension
+        id: mcpb
+        if: matrix.tier == 'fast' && runner.os != 'Windows' && steps.pack-app.outcome == 'success'
+        run: |
+          mcpb=build-app/TheEngineEngine.mcpb
+          [ -f "$mcpb" ] || { echo "::error::no $mcpb: the tee-mcpb target did not build it"; exit 1; }
+          x="$RUNNER_TEMP/mcpb"; rm -rf "$x"; mkdir -p "$x"
+          (cd "$x" && unzip -q "$GITHUB_WORKSPACE/$mcpb")
+          zipinfo "$mcpb"
+          python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); assert m["server"]["entry_point"] == "server/tee-mcp", m["server"]; print("manifest:", m["name"], m["version"], m["compatibility"])' "$x/manifest.json" \
+            || { echo "::error::the extension's manifest.json is not valid JSON or does not name server/tee-mcp"; exit 1; }
+          [ -x "$x/server/tee-mcp" ] || { echo "::error::server/tee-mcp is not executable in the extension"; exit 1; }
+          if [ "$RUNNER_OS" = macOS ]; then
+            codesign -dv "$x/server/tee-mcp" 2>&1 | grep -E 'Signature|flags|Identifier' \
+              || { echo "::error::server/tee-mcp carries no signature: macOS on arm64 will not run it"; exit 1; }
+            codesign --verify --strict --verbose=2 "$x/server/tee-mcp"
+            codesign --verify --deep --strict --verbose=2 "${{ steps.pack-app.outputs.dir }}/TheEngineEngine.app" \
+              || echo "::warning::codesign does not verify TheEngineEngine.app with the extension beside it"
+          fi
+          echo "path=$GITHUB_WORKSPACE/$mcpb" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the Claude Desktop extension
+        if: matrix.tier == 'fast' && steps.mcpb.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: TheEngineEngine-mcpb-${{ matrix.platform }}
+          path: ${{ steps.mcpb.outputs.path }}
           retention-days: 30
           if-no-files-found: error
 
