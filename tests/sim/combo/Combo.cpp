@@ -454,6 +454,55 @@ namespace combo
         return step;
     }
 
+    double stepExcess(const tee::test::Run& run, double from, double to, double* atOut, double* periodOut)
+    {
+        const auto l = run.left().during(from, to), r = run.right().during(from, to);
+        const bool left = l.largestStep() >= r.largestStep();
+        const auto& ch = left ? l : r;
+        const double at = from + largestStepTime(ch.samples(), ch.rate());
+        const double hz = run.firingHz(std::max(0.0, at - 0.25), at + 0.25);
+        if (atOut != nullptr)
+            *atOut = at;
+        if (!(hz > 1.0))
+            return -1.0;
+        const double T = 1.0 / hz;
+        if (periodOut != nullptr)
+            *periodOut = T;
+        const auto whole = left ? run.left() : run.right();
+        auto stepIn = [&](double centre) {
+            const double a = centre - 0.5 * T, b = centre + 0.5 * T;
+            if (a < from || b > to)
+                return -1.0;
+            return whole.during(a, b).largestStep();
+        };
+        const double own = stepIn(at);
+        std::vector<double> around;
+        for (int k = 1; k <= 4; ++k)
+            for (double c : {at - k * T, at + k * T})
+                if (const double x = stepIn(c); x > 0.0)
+                    around.push_back(x);
+        if (around.size() < 4 || !(own > 0.0))
+            return -1.0;
+        std::sort(around.begin(), around.end());
+        const std::size_t m = around.size() / 2;
+        const double median = around.size() % 2 != 0 ? around[m] : 0.5 * (around[m - 1] + around[m]);
+        return own / std::max(median, 1e-9);
+    }
+
+    double referenceExcess(const std::string& build, Kind kind)
+    {
+        static std::map<std::pair<std::string, int>, double>* cache = new std::map<std::pair<std::string, int>, double>();
+        const auto key = std::make_pair(build, static_cast<int>(kind));
+        if (auto it = cache->find(key); it != cache->end())
+            return it->second;
+        Times tm;
+        const tee::test::Run r = scenario(kind, build, 0u, tm).run(tm.end);
+        const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+        const double e = stepExcess(r, from, to);
+        (*cache)[key] = e;
+        return e;
+    }
+
     namespace
     {
         double gCostOfR = 0.0;
@@ -567,6 +616,7 @@ namespace combo
         // custom engine's, by piston speed) moves where the limiter cuts, and the cut's steps with it (the turbo six
         // reaches 17 at 8100 rpm against the reference's 11 at 7100); a click proper is 30 to 100.
         v.stepMax = std::max(run.left().during(from, to).largestStep(), run.right().during(from, to).largestStep());
+        v.stepExcess = stepExcess(run, from, to, &v.stepAt, &v.firingPeriod);
         const double clickBound = std::max(tee::test::clickLimit, 2.0 * refStep);
         if (v.stepMax > clickBound)
         {

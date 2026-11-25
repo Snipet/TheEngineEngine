@@ -91,6 +91,13 @@ namespace combo
         double dcMax = 0.0;         // the running stretch's mean, as a magnitude
         double idle = 0.0;          // rad/s, mean over the idle stretch
         double revMax = 0.0;        // rad/s
+        // The step's excess over its neighbouring firing periods (measured beside stepMax, judged by nothing yet: the
+        // lead's 17:07 ask): the worst step's own measure in one firing period about it, over the median of the same
+        // measure in the periods t +- kT, k = 1 to 4. A pulse train at the firing rate reads about 1; a click its
+        // neighbours lack reads well above. -1 where the engine does not fire (no period).
+        double stepExcess = -1.0;
+        double stepAt = 0.0;        // seconds: where the worst step is
+        double firingPeriod = 0.0;  // seconds, at stepAt
         double costR = 0.0;         // wall time a simulated second over the reference's (costOfR)
         double coreShare = 0.0;     // wall seconds a simulated second (a core's share at the run's rate)
     };
@@ -100,6 +107,10 @@ namespace combo
     // The reference's (every switch off) largest step while running, on a build through a scenario: measured once a
     // process and kept.
     double referenceStep(const std::string& build, Kind kind);
+    // The reference's own excess (Verdict::stepExcess) on a build through a scenario, measured once a process
+    double referenceExcess(const std::string& build, Kind kind);
+    // The excess of the worst step of [from, to] over its neighbouring firing periods (Verdict::stepExcess)
+    double stepExcess(const tee::test::Run& run, double from, double to, double* at = nullptr, double* period = nullptr);
     // The bang rule's baseline (cuts that send fuel to the pipe, the new ECU's): the largest step of three reference
     // copies with ecu.pops at 0.3, 0.01 K apart in the air (one run of a chaotic engine is no bound: 11.9 to 20.5 measured).
     double referenceStepWithPops(const std::string& build, Kind kind);
