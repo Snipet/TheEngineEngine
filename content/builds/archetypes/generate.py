@@ -456,19 +456,26 @@ arch(slug="big-bore-70-pushrod-v8", runner=0.4, name="7.0 L pushrod V8, dry sump
      # its head's port quality from the LS7's own sheet (the lead, 02:11; held 02:12 until N1 says which form of the
      # port limit stands): RLD Performance's bench, stock GM CNC LS7 ports, 28 in H2O, 2.20/1.61 valves, shaped entry,
      # stub pipe: 315/207 cfm at 0.500 in, 348/219 at 0.600 (measured, third party; sources section 12). The value is
-     # set so the model's bench meets the sheet at its highest lifts, once the form is settled: NOT YET IN
+     # set by N1 (02:20, the lead 02:18) on the model's bench, min(q A0, 0.73 curtain), the sheet's own valves at 28 in,
+     # least squares on the relative error from 0.300 to 0.600 in: portIn 1.44 (model over sheet +0.2, +7.5, 0.0, -2.8,
+     # -5.6 % at 0.300, 0.400, 0.500, 0.550, 0.600 in), portEx 1.68 (+3.1, +4.3, +0.6, -1.7, -3.3 %). The model's port
+     # limit (tanh) is flatter than the sheet past a quarter of the valve's diameter: balanced over 0.300 to 0.600 in it
+     # over-reads at 0.400 in by up to 7.5 % and under-reads at 0.600 in by up to 5.6 %; q is re-read for every card if
+     # the limit's form changes
      # the LS7's own cam for table L (the lead, 01:33), applied with CAM_RULE: GM 12638426, 211/230 deg at 0.050 in
      # tappet lift, 0.593/0.588 in valve lift on the LS7's 1.8 rockers, 121 deg lobe separation (a forum's 120): search
      # snippets of Chevrolet Performance's listing; the page itself refused (403); not read. The seats 26 deg a side
      # beyond the 0.050 in figure (JUDGEMENT inside the cited hydraulic rollers' 23 to 29.5); the intake centreline 112
      # (JUDGEMENT, not found), the exhaust's 130 by the separation
-     camCard=dict(cam=(263, 211, 15.06, 112, 282, 230, 14.94, 130),
+     camCard=dict(cam=(263, 211, 15.06, 112, 282, 230, 14.94, 130), portQ=(1.44, 1.68),
                   tappet=dict(ratio=1.8, ratioBasis="the LS7's 1.8, search snippets of Chevrolet Performance's "
                               "listing, the page not read", inAdv=263, in50=211, exAdv=282, ex50=230),
                   cardNote="Its cam: the LS7's (GM 12638426: 211/230 deg at 0.050 in, 0.593/0.588 in lift on 1.8 "
                            "rockers, 121 deg lobe separation; from search snippets of Chevrolet Performance's listing, "
                            "the page itself refused and not read); the seats 26 deg a side beyond the 0.050 in figure "
-                           "and the intake centreline 112 JUDGEMENT."),
+                           "and the intake centreline 112 JUDGEMENT. Its head's port quality 1.44 / 1.68 from the LS7 head's flow "
+                           "sheet (RLD Performance's bench, 28 in H2O: measured, third party), balanced from 0.300 to "
+                           "0.600 in lift; the model's port limit over-reads that head by up to 7.5 % at 0.400 in."),
      friction="Roller", grade="Premium (91)", car="front-engine-sports", timing="Chain", lifters="Hydraulic",
      notes="A 7.0 L small-block-sized pushrod V8 with titanium intake valves and a dry sump: 104.8 x 101.6 mm "
            "(7011 cc), 11:1, 7000 rpm (the LS7 kind: 377 kW at 6300 rpm, 637 N m at 4800; gmauthority.com). "
@@ -671,6 +678,9 @@ def build(a):
         # four-valve 1.35/1.5 (the default), high-output four-valve 1.65/1.8, race 1.75/1.9
         if a.get("ports"):
             v["portIn"], v["portEx"] = PORTS[a["ports"]]
+        if a.get("portQ"):
+            # a head's own port quality from its own flow sheet (table L's content)
+            v["portIn"], v["portEx"] = a["portQ"]
         if a["slug"] in SPRINGS:
             k, f0 = SPRINGS[a["slug"]]
             m = 1.5 if "stages" in a else 1.0
