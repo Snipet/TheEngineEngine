@@ -22,6 +22,8 @@ ported from one of these gets a SEED.tsv row from the table below (`docs/plan/01
 | `Source/plugin/standalone/RacingWheelNone.cpp.txt` | `Source/plugin/standalone/RacingWheelNone.cpp` | `ae8730aa57d14ec8d4a274c6aea06e105a3920521b7d5a8fb1f6386d0c4941af` |
 | `Tools/probes/plugin/wheel.cpp.txt` | `Tools/probes/plugin/wheel.cpp` | `2055155822d04a0ce78f8c112e87d88ff214072effc67833e43634283ffff6f9` |
 | `Tools/wheel-dump/main.cpp.txt` | `Tools/wheel-dump/main.cpp` | `a0a3cc3b446ad65ea6c17f614a5c8e380bbbef8f7d419c6a7b52bfd3a7617d91` |
+| `Source/plugin/WheelEvdev.cpp.txt` | `Source/plugin/WheelEvdev.cpp` | `70aae4ed98850fed35e8dd12e0b87280dd82fbe4fffed183f76dcd7089316db2` |
+| `Tools/probes/plugin/linux.cpp.txt` | `Tools/probes/plugin/linux.cpp` | `9894297f299630cbfa2db340977dab07630573f23ef90abb81563f3bb17eaa95` |
 
 Excerpts (not whole files, so no sha256):
 

@@ -38,7 +38,7 @@ namespace tee::ui::dash
               "The oil's temperature in the sump; the red band from 130 C" },
             { "Water", "engine.coolant", Quantity::temperature, 313.15, 403.15, kWaterHot, 0,
               "The coolant's temperature leaving the head; the red band from 110 C" },
-            { "Exhaust", "exhaust.portTemperature", Quantity::temperature, 473.15, 1373.15, kExhaustHot, 0,
+            { "Exhaust", "exhaust.portTemperature", Quantity::temperature, 273.15, 1373.15, kExhaustHot, 0,
               "The exhaust gas at the port: its mass mean, hotter than a thermocouple reads; the red band from 1050 C" },
             { "Lambda", "ecu.lambda", Quantity::ratio, 0.6, 1.4, kNaN, 2,
               "The air-fuel ratio over stoichiometric, as the wide-band sensor in the collector reads it: under 1 rich, "
@@ -112,24 +112,40 @@ namespace tee::ui::dash
 
     const Dial& dial(int i) { return kDialTable[std::clamp(i, 0, kDials - 1)]; }
 
-    Scale roundScale(double lo, double hi, int maxSteps, bool even)
+    Scale roundScale(double lo, double hi, int minSteps, int maxSteps)
     {
         if (!(hi > lo) || !fin(lo) || !fin(hi))
             return { lo, hi, std::max(1, maxSteps) };
-        const double span = hi - lo, raw = span / std::max(1, maxSteps);
-        double mag = std::pow(10.0, std::floor(std::log10(raw)));
-        for (int tries = 0; tries < 8; ++tries, mag *= 10.0)
+        // Every round step (1, 2, 2.5 or 5 times a power of ten) whose ends on steps cover [lo, hi] in minSteps to
+        // maxSteps steps. Of those the real range fills to three quarters at least, an even count first (a step at the
+        // top: the one number a small face has room for), then the least excess, then the fewer steps; none that full:
+        // the least excess.
+        const double span = hi - lo;
+        Scale best{ lo, hi, 0 };
+        const auto better = [span](const Scale& a, const Scale& b) {   // a before b
+            const bool fa = span / (a.hi - a.lo) >= 0.75 - 1e-9, fb = span / (b.hi - b.lo) >= 0.75 - 1e-9;
+            if (fa != fb)
+                return fa;
+            if (fa && (a.steps % 2 == 0) != (b.steps % 2 == 0))
+                return a.steps % 2 == 0;
+            if (std::fabs((a.hi - a.lo) - (b.hi - b.lo)) > 1e-9 * span)
+                return a.hi - a.lo < b.hi - b.lo;
+            return a.steps < b.steps;
+        };
+        const double mag0 = std::pow(10.0, std::floor(std::log10(span / std::max(1, maxSteps))) - 1.0);
+        for (double mag = mag0; mag <= mag0 * 1000.0; mag *= 10.0)
             for (const double m : { 1.0, 2.0, 2.5, 5.0 })
             {
                 const double step = m * mag;
                 const double a = std::floor(lo / step + 1e-9) * step, b = std::ceil(hi / step - 1e-9) * step;
                 const int n = static_cast<int>(std::lround((b - a) / step));
-                if (n <= maxSteps && !(even && n % 2 != 0))
-                    return { a, b, std::max(1, n) };
-                if (even && n % 2 != 0 && n + 1 <= maxSteps)   // one step more at the top: an even count
-                    return { a, b + step, n + 1 };
+                if (n < minSteps || n > maxSteps)
+                    continue;
+                const Scale c{ a, b, n };
+                if (best.steps == 0 || better(c, best))
+                    best = c;
             }
-        return { lo, hi, std::max(1, maxSteps) };
+        return best.steps > 0 ? best : Scale{ lo, hi, std::max(1, maxSteps) };
     }
 
     Values Values::read(const Live& live)
