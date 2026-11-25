@@ -1,38 +1,39 @@
-# Card A: the assistant (Claude in the app). Hand-off, A1 and A2 (25 Nov)
+# Card A: the assistant. Hand-off, A1 and A2 (25 Nov)
 
-Branch `claude/awesome-gates-ntdb58`. Plan: [w3-a-assistant.md](../plan/w3-a-assistant.md), detail:
+Branch `claude/awesome-gates-ntdb58`; plan [w3-a-assistant.md](../plan/w3-a-assistant.md), detail
 [w3-a-detailed.md](../plan/w3-a-detailed.md). **Never run against Claude Desktop** until the owner has tried the steps
-below on their Mac; nobody in the fleet can.
+below on their Mac: nobody in the fleet can.
 
-**Done (tests/assistant, `assistant.sim` one process ~20 s CPU, and the inbox cases discovered):**
-- A1, the inbox and the tools: `Inbox` (bounded, never blocks the worker, abandoned jobs never run, close answers all);
-  nine tools (`get_status`, `describe_field`, `get_build`, `list_builds`, `set_fields`, `load_build`, `save_build_as`,
-  `predict_curve`, `run_dyno`); `Turn` limits (24 calls, 300 s, 32 KB, 256 KB: judgement) and one driver at a time.
-  Proved on a real simulator, document and library at 60 simulated frames a second: a batch is one undo step; out of
-  range refused with the stored value; hidden, rev, ctl, tel, scope unreachable; no path in or out; load over unsaved
-  changes asks; save-as never overwrites (any case, shipped too); a batch waits for a held knob; the curves yield to the
-  ribbon's and the bake's and never deadlock.
-- A2, Claude Desktop's path: `tee-mcp` (the MCP server, stdio JSON-RPC, nlohmann/json only), `McpLink` (the app's end:
-  private folder 0700, peer's user checked, calls in order as Claude Desktop's turns, cancel), `Cards` (a card a change,
-  its Undo live only while its step is on top), `Session` (what the app holds), `TheEngineEngine.mcpb` (target
-  `tee-mcpb`). Proved end to end with the real bridge as a child process: initialize, tools/list with honest
-  annotations, a change with its card and Undo, a cancel never answered, the switch off and on (list_changed), another
-  user's peer closed unanswered, a folder open to others refused, a second app refused, shutdown mid-call in < 2 s.
+**Done** (tests/assistant: `assistant.sim`, one process, ~25 s CPU; the inbox cases discovered; shell's settings test):
+- A1: `Inbox` (bounded, never blocks a worker; an abandoned job never runs; close answers all); nine tools; `Turn`
+  limits (24 calls, 300 s, 32 KB, 256 KB: judgement); one driver at a time; the curves yield to the ribbon and the bake.
+  On a real simulator, document and library at 60 simulated frames a second: a batch is one undo step; out of range
+  refused with the stored value; hidden, rev, ctl, tel, scope unreachable; no path in or out; a load over unsaved
+  changes asks (refused with no one to ask); save-as never overwrites; a batch waits for a held knob.
+- A2: `tee-mcp` (the MCP server), `McpLink` (0700 folder, each peer's user checked, calls in order, cancel), `Cards`
+  (Undo live only while its step is on top), `Session`, `TheEngineEngine.mcpb` (target `tee-mcpb`). End to end with
+  the real bridge as a child process: initialize, honest annotations, a change with its card and Undo, a cancel never
+  answered, switch off/on (list_changed), another user's peer, an open folder and a second app refused, shutdown
+  mid-call under 2 s. Switch off (the default) costs nothing: no thread, no socket, no folder.
+- Wiring (the lead's yes, 11:58): `Kept` (app/Offline.cpp) holds the `Session`, destroyed first, drained by the frame
+  with the app's busy flag; app/Main.cpp turns the link on when settings say `"allowClaudeDesktop": true` (never in a
+  machine's run) and puts Claude Desktop's line on the status line; shell/settings has the key (default false).
 
-**Not done:** the frame's wiring (app/Offline.cpp `Kept`, app/Main.cpp, app/CMakeLists.txt: B's, sent to the lead); the
-switch's place in the settings file (B); the switch, the cards with Undo and the owner's question dialog in the
-frame (U1); A3 (the key chat), not started. Windows: no link (the switch refuses, in words).
+**What Claude Desktop can do today, and what the owner sees.** Read the build, its fields, the library; change scalar
+fields (each batch one step the app's Undo takes back); load a build only when the open one is saved; save under a new
+name; run the two curves on a copy. The owner sees the dials move, the title's star, and the status line "Claude
+Desktop connected, N changes" ("working: set_fields" during a call). No card is drawn until U1's strip lands.
 
-**Changes outside my paths:** `host/` Build step ids (e260d2b, ruled yes, held for the freeze); the root CMake line
-(in d97da7b, ruled yes); the wiring above.
+**Not done:** U1's switch row, cards strip and yes/no dialog (after the push); A3 (the key chat); Windows (no link).
+**Outside my paths:** host/ Build step ids (e260d2b); the root CMake line; the wiring above; all ruled yes.
+**Not run here:** macOS (CI only) and Claude Desktop. The MCP protocol versions and the manifest's shape are
+TestingPlayground's at 47bac40.
 
-**Not run here:** macOS (CI builds it: `getpeereid`, `$TMPDIR`, `SO_NOSIGPIPE` paths); Claude Desktop itself. The MCP
-protocol versions and the `.mcpb` manifest's shape are TestingPlayground's at 47bac40, which Claude Desktop has run.
-
-**For the owner, once the wiring is in (macOS):**
-1. Build (`cmake --workflow --preset dev-verify`); `build-dev/TheEngineEngine.mcpb` is the extension.
-2. Double-click it (or Claude Desktop, Settings, Extensions, install from file); Claude Desktop lists TheEngineEngine.
-3. Open TheEngineEngine, turn on "Allow Claude Desktop". Ask Claude: "What engine is open?", then "Raise the idle a
-   little", and see the card with its Undo; Undo it. Ask it to load another build with unsaved changes: the app asks you.
-4. Turn the switch off: Claude says the app is not reachable. Report what Claude Desktop's MCP log
-   (`~/Library/Logs/Claude/mcp*.log`) says if anything fails.
+**For the owner (macOS):**
+1. Build the target `tee-mcpb`; the extension is `build-dev/TheEngineEngine.mcpb`. Double-click it to install.
+2. Until the app has its switch, set `"allowClaudeDesktop": true` by hand in
+   `~/Library/Application Support/TheEngineEngine/settings.json`, then open TheEngineEngine (its console says
+   "Claude Desktop: allowed").
+3. Ask Claude "What engine is open?", then "Raise the idle a little": the dial moves, the status line counts it, the
+   app's Undo takes it back. Set the key back to false and reopen: Claude says the app is not reachable.
+4. If anything fails, send `~/Library/Logs/Claude/mcp*.log`.

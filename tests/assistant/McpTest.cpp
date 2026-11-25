@@ -362,4 +362,64 @@ TEST_CASE("assistant: shutting down with a call waiting on the frame cancels it 
     session.reset();
 }
 
+namespace
+{
+    int threadsOfThisProcess()
+    {
+        std::error_code ec;
+        int n = 0;
+        for (auto it = fs::directory_iterator("/proc/self/task", ec); !ec && it != fs::directory_iterator(); it.increment(ec))
+            ++n;
+        return n;   // 0 where there is no /proc (macOS): the check below is then the folder's alone
+    }
+}
+
+TEST_CASE("assistant: the switch off is the shipped default and costs nothing: no thread, no socket, no folder",
+          "[assistant][sharedsim]")
+{
+    const fs::path dir = fs::path(TEE_SOURCE_DIR) / "out" / "assistant" / "link-never";
+    std::error_code ec;
+    fs::remove_all(dir, ec);
+    Rig rig("mcp-never");
+    rig.inbox.close();   // (the rig's own inbox is not used here)
+    const int before = threadsOfThisProcess();
+    {
+        // as the app's frame makes it (app/Offline.cpp, Kept), the switch off
+        Session session(SessionParts{*rig.file, *rig.library, [&]() -> SimHost* { return &rig.sim->host(); },
+                                     [&] { return rig.sim->host().sim(); }, [&] { return rig.clock; }, nullptr, nullptr,
+                                     McpLinkOptions{dir.string(), -1, "0.1.0"}});
+        for (int i = 0; i < 30; ++i)
+        {
+            session.frame(false);
+            rig.sim->frame();
+        }
+        CHECK_FALSE(session.desktopAllowed());
+        CHECK(session.statusNote().empty());
+        CHECK(threadsOfThisProcess() == before);
+        CHECK_FALSE(fs::exists(dir));
+        // turned on and off again: everything it made is gone
+        std::string why;
+        REQUIRE(session.allowDesktop(true, why));
+        CHECK(session.statusNote() == "Claude Desktop allowed");
+        CHECK(fs::exists(wire::socketIn(dir.string())));
+        REQUIRE(session.allowDesktop(false, why));
+        CHECK_FALSE(fs::exists(wire::socketIn(dir.string())));
+        CHECK(threadsOfThisProcess() == before);
+    }
+    // and a load over unsaved changes, with no one to ask (the frame's dialog not drawn yet): refused, never silent
+    {
+        Rig asked("mcp-noask");
+        Tools tools(Host{asked.inbox, *asked.file, *asked.library, [&]() -> SimHost* { return &asked.sim->host(); },
+                         [&] { return asked.sim->host().sim(); }, [&] { return asked.clock; }, nullptr, Limits{}, nullptr});
+        const auto fields = asked.settable(1);
+        asked.build().set(fields[0].first->path, fields[0].second);
+        REQUIRE(asked.file->dirty());
+        const std::uint64_t hash = asked.build().hash();
+        const Result r = asked.whileFrames([&] { return tools.call("load_build", {{"name", "v8"}}); });
+        CHECK(r.isError);
+        CHECK(r.value["error"].get<std::string>().find("cannot be asked") != std::string::npos);
+        CHECK(asked.build().hash() == hash);
+    }
+}
+
 #endif

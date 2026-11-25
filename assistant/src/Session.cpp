@@ -34,6 +34,21 @@ namespace tee::assistant
         return link_->start(why);
     }
 
+    std::string Session::statusNote() const
+    {
+        const McpLink::View v = link_->view();
+        if (!v.listening)
+            return {};
+        if (v.running)
+            return "Claude Desktop working: " + v.tool;
+        if (v.connections == 0)
+            return "Claude Desktop allowed";
+        std::size_t changes = 0;
+        for (const Card& c : cards_.list())
+            changes += c.undone ? 0 : 1;
+        return "Claude Desktop connected, " + std::to_string(changes) + (changes == 1 ? " change" : " changes");
+    }
+
     void Session::stop()
     {
         if (stopped_)
