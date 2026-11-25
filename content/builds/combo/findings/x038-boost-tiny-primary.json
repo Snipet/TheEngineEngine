@@ -1,0 +1,16 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-038 (boost.model 1, a 0.011 mm primary)",
+  "notes": "Package X's finding X-038 (2026-11-25), reduced from random seed 298 (stable draws, 10 s): boost.model 1 with the first primary 0.011 mm across diverges at once and the guard restarts it: tee-fuzz --build <this> --seed 298 --seconds 10",
+  "spec": {
+    "boost": {
+      "model": 1
+    },
+    "exhaust": {
+      "primD": [
+        1.09679123e-05
+      ]
+    }
+  }
+}

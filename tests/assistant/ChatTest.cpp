@@ -629,6 +629,17 @@ TEST_CASE("assistant: the chat's turn limits, one driver at a time, an empty rep
         CHECK_FALSE(noKey2.send("Hello.", why));
         CHECK(why.find("key") != std::string::npos);
         CHECK(t.count() == 0);
+        // a build with no transport or no key store (Windows in this version): says so in the platform's words
+        ChatOptions o;
+        o.noTransportWhy = "the chat by API key is for macOS and Linux in this version";
+        Chat windows(*rig.tools, d, nullptr, [] { return std::string(); }, "x", [] { return 0.0; }, o);
+        CHECK_FALSE(windows.ready(why));
+        CHECK(why == o.noTransportWhy);
+        ChatOptions k;
+        k.noKeyStoreWhy = "this build has no system key store";
+        Chat noStore(*rig.tools, d, &t, [] { return std::string(); }, "x", [] { return 0.0; }, k);
+        CHECK_FALSE(noStore.ready(why));
+        CHECK(why == k.noKeyStoreWhy);
     }
 }
 

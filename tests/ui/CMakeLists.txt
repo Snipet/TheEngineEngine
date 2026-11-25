@@ -109,6 +109,10 @@ if(TARGET tee_ui_build)
   add_executable(tee-ui-build-tests BuildTests.cpp build/BuildKit.h ${_tee_build_test_sources})
   target_include_directories(tee-ui-build-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
   target_link_libraries(tee-ui-build-tests PRIVATE tee_ui_build tee_ui_test_funkgui)
+  # card A's key chat panel, mounted in the frame (build.chat), where it is built (assistant/ is added after ui/:
+  # resolved when the build is generated)
+  target_link_libraries(tee-ui-build-tests PRIVATE $<TARGET_NAME_IF_EXISTS:tee_assistant_view>)
+  target_compile_definitions(tee-ui-build-tests PRIVATE $<$<TARGET_EXISTS:tee_assistant_view>:TEE_HAS_CHAT_VIEW=1>)
   tee_ui_warnings(tee-ui-build-tests)
   target_compile_definitions(tee-ui-build-tests PRIVATE
     "TEE_UI_SIM_DIR=\"${TEE_UI_REPO}/sim\""

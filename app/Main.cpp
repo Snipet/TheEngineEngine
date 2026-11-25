@@ -54,6 +54,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <cstdint>
 #include <cstdio>
@@ -509,6 +510,7 @@ namespace
             shown.window->tryFirstDone = [&now] { now.tryFirstSeen = true; };
             shown.window->coldStart = [&now] { return now.coldStart; };
             shown.window->setColdStart = [&now](bool cold) { now.coldStart = cold; };
+            shown.window->desktopChosen = [&now](bool on) { now.allowClaudeDesktop = on; };
         }
         std::string why;
         if (!host.open(why))
@@ -719,6 +721,9 @@ namespace
 
 int main(int argc, char** argv)
 {
+#if !defined(_WIN32)
+    std::signal(SIGPIPE, SIG_IGN);   // a peer gone (Claude Desktop's bridge) is an error, never the app's end
+#endif
     tee::app::Options options;
     std::string why;
     if (!tee::app::parseOptions(argc, argv, options, why))

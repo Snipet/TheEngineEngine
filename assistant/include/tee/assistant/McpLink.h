@@ -89,10 +89,13 @@ namespace tee::assistant
         void remember(const Job& job, const Result& r);
 
         Tools& tools_;
-        Drivers& drivers_;
+#if !defined(_WIN32)
+        Drivers& drivers_;               // (the link's state: macOS and Linux; a Windows build carries none of it)
+#endif
         Cards& cards_;
         std::function<double()> clock_;
         Options options_;
+#if !defined(_WIN32)
         std::string dir_, path_;
         int listen_ = -1;
         int wake_[2] = {-1, -1};
@@ -104,6 +107,7 @@ namespace tee::assistant
         std::deque<Job> jobs_;
         std::shared_ptr<Job> running_;   // the call running (jobMutex_)
         bool workerStop_ = false;
+#endif
 
         mutable std::mutex viewMutex_;
         View view_;
