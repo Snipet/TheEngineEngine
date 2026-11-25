@@ -480,3 +480,28 @@ upstream of the turbo. Asked of D2 (09:58): the cylinder's energy ledger at that
 in the code falls toward the smoke limit. **(b) holds where it is until that is in.** Asked of N2 meanwhile: the
 rule's own evaluation against the model's phi, knee and tip Mach at that cell (the rule promised a margin near 0.99
 of the knee; N2's outside estimate reads 0.88).
+
+## Found 25 Nov 10:04 (D2; code read by the lead): the reference's idle spark trim scales a governed diesel's heat on the dyno
+
+`sim/ecu/ecu.fm:209`: `trim = rpmAvg < idleRpm + 450 ? clamp(1 + 1.6 (idleRpm - rpmAvg)/1000, 0.55, 1.35) : 1`.
+Driven (drive != 0) with the pedal open it is clamped to 1 or more; on the dyno and the bench (drive == 0) it is
+not. `chargeDiesel` multiplies every diesel charge's heat by it (`sim/combustion/combustion.fm`, `q = ... *
+ecu->trim`). So a governed diesel held on the dyno below its ECU idle + 450 rpm at full pedal burns about half the
+fuel its rack lets through, and `tel.ecu.fuelFlow` over-reads by the same factor.
+
+D2's ledger, tractor as shipped, per cylinder-cycle: 1000 rpm: reported injected 6365 J, charged and released 3330 J
+(every burn lit, none unburned), brake 1336 J (638 N m): **40.1 % on what burned**, port 728 K. 1300 rpm: 13853
+reported, 13206 released, brake 43.4 %, port 921 K. Nothing burns badly: the 22 % brake efficiency the lead computed
+from N2's cells is 40 % on half the fuel. Second confirmation: C's holds had the tractor's "knife's edge" at about
+1060 rpm, a step at idleRpm + 450 seen from outside.
+
+**One fault upstream of the turbo:** the tractor's hole below about 1100 on the dyno, the take-up held at 1100,
+"the turbine cannot hold 1000" (half the exhaust energy; T3 673 K) and probably the vane guard's pulse there.
+
+**Ruled:** under the metered governor `chargeDiesel` does not multiply by `ecu->trim` (gated on `diesel.metered`;
+the reference to the bit; a diesel on the reference's lever unchanged). D2 prepares it locally with its test (books
+against telemetry within 5 %), the before-and-after table (tractor 800 to 1300, take-up, pickup, 2.0, truck), warm
+idles, and the whole default tier; **pushed on the lead's word after `main` has moved** on P's bake. Then N2's
+low-speed cells, P's take-up and table L's low diesel points are read again, and (b) and the guard are judged on
+the engine as it then is. **Open, asked of D2 as a read:** whether the same trim cuts a petrol's full-pedal torque
+on the dyno below idle + 450, and which predictor points or table L rows sit in that band.
