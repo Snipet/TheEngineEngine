@@ -169,11 +169,7 @@ TEST_CASE("boost: in steady state the turbine's power is the compressor's and th
     }
 }
 
-// (marked [!mayfail] by N2 on a finding: on the corrected compressor map's matching the turbo four first reaches its
-// 100 kPa at 3500 rpm, where the loop's integral gathers through the long climb (0.86 at 1.5 s) and the boost overshoots
-// to 129 kPa at 3 s and settles on 100 only after some 8 s; read over the fifth second, 105.7 kPa. An overboost spike at
-// the speed where the turbo comes onto its target: the loop's tuning against the new plant; to the lead)
-TEST_CASE("boost: the wastegate holds a target across speeds, and its spring holds its own pressure", "[boost][turbo][!mayfail]")
+TEST_CASE("boost: the wastegate holds a target across speeds, and its spring holds its own pressure", "[boost][turbo]")
 {
     const double target = 100000.0;
     int held = 0;
