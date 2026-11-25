@@ -45,6 +45,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     s.lastBuild = "builds/my v8.json";
     s.tryFirstSeen = true;
     s.coldStart = true;
+    s.allowClaudeDesktop = true;
     s.audioQuality = "economy";
     s.recentBuilds = { "builds/my v8.json", "C:\\Users\\me\\a diesel.json" };
     s.windowWidth = 1280;
@@ -73,6 +74,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     CHECK(l.settings.lastBuild == s.lastBuild);
     CHECK(l.settings.tryFirstSeen);
     CHECK(l.settings.coldStart);
+    CHECK(l.settings.allowClaudeDesktop);
     CHECK(l.settings.recentBuilds == s.recentBuilds);
     CHECK(l.settings.audioQuality == "economy");
     CHECK(l.settings.windowWidth == 1280);
@@ -88,6 +90,7 @@ TEST_CASE("shell: no settings file, and one that says little, give the defaults"
     CHECK(none.settings.audioBuffer == 256);
     CHECK(none.settings.bindings.size() == input::defaultBindings().size());
     CHECK(none.settings.driver.autoClutch);
+    CHECK_FALSE(none.settings.allowClaudeDesktop);   // off unless the owner turned it on
 
     write(dir / "settings.json", R"({"format": "tee-settings", "version": 1, "audio": {"buffer": 128}, "unknown": [1, 2]})");
     const settings::Loaded some = settings::load(dir / "settings.json");
@@ -97,6 +100,7 @@ TEST_CASE("shell: no settings file, and one that says little, give the defaults"
     CHECK(some.settings.audioRate == 0);
     CHECK(some.settings.bindings.size() == input::defaultBindings().size());
     CHECK(some.settings.units == settings::Units::metric);
+    CHECK_FALSE(some.settings.allowClaudeDesktop);
 }
 
 TEST_CASE("shell: a settings file that is not ours is moved aside and the defaults used", "[shell][settings]")

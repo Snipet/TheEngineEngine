@@ -393,7 +393,19 @@ module Combustion
         if (e1)
         {
             const int b = lay->topo == 0 ? 0 : lay->bank[ci];
-            ecu->one.account.add(b, outFuel, outAir);
+            if (pop[0].burnPipe != 0)
+            {
+                // Burned in the pipe (overrun.fm): the charge held by its cylinder until its exhaust opens, its fuel
+                // that never burned here split from the rest: a cut or misfired charge's whole fuel, an overrun charge's
+                // late remainder (its fuel less the mixture's own leftover); a lit charge's leftover is unmixed
+                const bool litC = f1 ? one.lit : firing == CHARGE_BURN;
+                const float unb = f1 && one.lit ? one.mix.unburned : 0.0f;
+                const float late = firing == CHARGE_FUEL_CUT ? 0.0f
+                                   : (!litC ? outFuel : (firing == CHARGE_OVERRUN ? fmaxf(outFuel - unb, 0.0f) : 0.0f));
+                ecu->one.account.hold(ci, outFuel, outAir, late, dilution[ci], kFuelAfr[fuelRow(fuel->grade)]);
+            }
+            else
+                ecu->one.account.add(b, outFuel, outAir);
         }
         cy->qTot = q;
         cy->lateFuel = 0;
@@ -455,12 +467,28 @@ module Combustion
         // stoichiometric petrol flame reaches; a late spark's pops are this, the flame burning on in the header). Card
         // N1 measured H9's fuelled overrun (30 degrees retarded): every fired charge still burning at its opening, while
         // its gas then read 650 to 1050 K and the hold fell to 530 to 690 K between them
+        if (ecu->model1())
+            ecu->one.account.pipe = pop[0].burnPipe;
         if (cy->evoNow)
         {
             const int b = lay->topo == 0 ? 0 : (lay->bank[c] == 1 ? 1 : 0);
-            ecu->blow[b] = fmaxf(ecu->blow[b], cy->burnAt >= 0.0f && cy->qTot > 0.0f ? fmaxf(cy->t, 2000.0f) : cy->t);
+            const int own = cy->burnAt >= 0.0f && cy->qTot > 0.0f ? 1 : 0;
+            ecu->blow[b] = fmaxf(ecu->blow[b], own != 0 ? fmaxf(cy->t, 2000.0f) : cy->t);
             if (lay->topo == 0)
                 ecu->blow[1] = ecu->blow[0];
+            // Burned in the pipe: what this charge let out reaches the pipe now, and its blowdown may light what waits
+            if (ecu->model1() && pop[0].burnPipe != 0)
+            {
+                FuelAccount* acct = &ecu->one.account;
+                // (what lights a waiting slug: the hottest gas it meets, this blowdown's or the bank's recent one held, as
+                // the account's store has always read it: under a hard spark cut no charge fires for a while, and the
+                // pipe's gas from the last fired ones still lights what follows them)
+                acct->release(c, b, cy->m, cy->t, ecu->blow[b], own, 0.5f + 0.5f * nz->rnd());
+                const float lhv = kFuelLhv[fuelRow(fuel->grade)];
+                for (int e = 0; e < acct->nOut; ++e)
+                    pop[b].burnEvent(acct->outFuel[e] * lhv, acct->outFuel[e], acct->outMass[e], acct->outT[e],
+                                     acct->outPhi[e], acct->outXb[e], BURN_PREMIXED, acct->outOwn[e]);
+            }
         }
         if (c == 0)
         {
