@@ -599,6 +599,12 @@ CAM_RULE_NA = os.environ.get("TEE_CAM_RULE") != "0"
 
 
 def rule_on(a):
+    # never on a diesel's card (the lead, 05:55): the rule's sources are petrol cams (Kelford's catalogue, Kent's, the
+    # pushrod catalogues), nothing in them covers a diesel's lobe; on the 6.7 pickup it took the 1 mm duration from 196 to
+    # 188 deg and the build could no longer reach its own limiter (2861 rpm against 2982 to 3167). The diesels keep their
+    # K figures.
+    if a.get("diesel"):
+        return False
     return CAM_RULE or (CAM_RULE_NA and "boost" not in a)
 FLANK = {"Bucket": 18.0, "Finger": 19.0, "Rocker": 19.0, "Pushrod": 20.0}
 SEAT_M, ONE_M, INCH = 0.0001524, 0.001, 0.0254

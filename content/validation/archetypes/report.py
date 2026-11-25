@@ -134,10 +134,10 @@ def lug(pts, lug_pts=None):
     speed (rpm) where the torque first reaches 0.98 of the peak. `lug_pts`: the curve's own points from 1100 to 1300
     rpm (card C, 04:24: the tractor's spool turns on a knife-edge near 1060 rpm, so the band is read on points of its
     own, never interpolated across 1040 to 1080)."""
-    c = [(w / RPM, q) for w, q, _ in pts]
+    c = [(p[0] / RPM, p[1]) for p in pts]
     peak = max(q for _, q in c)
     if lug_pts:
-        b = [(w / RPM, q) for w, q, _ in lug_pts]
+        b = [(p[0] / RPM, p[1]) for p in lug_pts]
         top = max(peak, max(q for _, q in b))
         merged = sorted(dict(c + b).items())
         return min(q for _, q in b) / top, _first(merged, top)
@@ -376,9 +376,11 @@ def curve(bin_dir, slug, out_dir, build_path, plan, tag="curve"):
     pts = []
     with open(path) as f:
         for line in f:   # the printed table: rpm, torque N m, power kW, cycles, settled
-            m = re.match(r"\s+(\d+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+\d+\s+\w+", line)
+            m = re.match(r"\s+(\d+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+\d+\s+(\w+)", line)
             if m:
-                pts.append((float(m.group(1)) * RPM, float(m.group(2)), float(m.group(3)) * 1000.0))
+                # (the fourth: settled; the lead's ruling, 05:55: a row never passes on a point flagged unsettled)
+                pts.append((float(m.group(1)) * RPM, float(m.group(2)), float(m.group(3)) * 1000.0,
+                            m.group(4) == "yes"))
     return sorted(pts)
 
 
@@ -397,6 +399,12 @@ def smoothed(rows, pts):
           for i in range(1, len(pts) - 1)]
     tq = max(sm, key=lambda p: p[1])
     pw = max(sm, key=lambda p: p[2])
+    # a peak read off a point flagged unsettled, or beside one, is not a pass (the lead, 05:55)
+    loose = set()
+    for name, best in (("torque", tq), ("power", pw)):
+        i = [p[0] for p in pts].index(best[0])
+        if not all(len(p) < 4 or p[3] for p in pts[i - 1:i + 2]):
+            loose.add(name)
     # the tooth is looked for where a dyno's curve is drawn: from 1500 rpm (the full-load points near idle swing
     # widely: the start of a curve, not its shape)
     band = [p for p in pts if p[0] >= 1500.0 * RPM]
@@ -408,6 +416,8 @@ def smoothed(rows, pts):
         if t["name"] in vals and "dyno" in t and "steps" not in t["dyno"]:
             v = vals[t["name"]]
             st = "pass" if t["range"][0] <= v <= t["range"][1] else "FAIL"
+            if ("torque" if "torque" in t["name"] else "power") in loose:
+                st = "unsettled"
         out.append((t, v, st))
     t = {"name": "The curve's sharpest point", "range": [0, 5], "unit": "%",
          "source": "a real engine's full-load curve has no tooth: the largest excess of any point of the predicted curve "
@@ -422,6 +432,7 @@ def main():
     ap.add_argument("--from", dest="src", default=os.path.join(ROOT, "out", "validation-archetypes"))
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--existing", action="store_true", help="only the archetypes whose tables are in --from already")
+    ap.add_argument("--only", default=None, help="comma-separated slugs: only these archetypes")
     ap.add_argument("--out", default=os.path.join(ROOT, "docs", "manual", "validation.md"))
     ap.add_argument("--sim", default=None, help="the simulator's directory (a worktree pinned at a commit)")
     ap.add_argument("--content", default=None, help="another content/ to run tee-validate on (its builds)")
@@ -432,6 +443,8 @@ def main():
     SIM = a.sim
     os.makedirs(a.src, exist_ok=True)
     slugs = sorted(f[:-5] for f in os.listdir(HERE) if f.endswith(".json"))
+    if a.only:
+        slugs = [s for s in slugs if s in a.only.split(",")]
     if a.existing:
         slugs = [s for s in slugs if os.path.exists(os.path.join(a.src, s + ".txt"))]
     docs = {s: json.load(open(os.path.join(HERE, s + ".json"))) for s in slugs}
@@ -467,10 +480,20 @@ def main():
                 band_ = curve(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]),
                               {"from": 1100 * RPM, "to": 1300 * RPM}, tag="lug")
                 sh, fr = lug(pts_, band_)
-                results[s_].append((LUG, sh, "pass" if LUG["range"][0] <= sh <= LUG["range"][1] else "FAIL"))
-                results[s_].append((LUG_FROM, fr, "pass" if LUG_FROM["range"][0] <= fr <= LUG_FROM["range"][1]
-                                    else "FAIL"))
                 tp, ts, st_ = takeup(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), peak)
+                loose = [round(p[0] / RPM) for p in band_ if len(p) > 3 and not p[3]]
+                lug_row, from_row = LUG, LUG_FROM
+                if loose:
+                    # the band's points flagged unsettled (the lead, 05:55): the share reads the held engine at 1100 rpm
+                    # (the take-up's settled torque) where that is lower, and the plateau's start is not read
+                    sh = min(sh, st_ / peak)
+                    lug_row = dict(LUG, source=LUG["source"] + "; the curve's points at %s rpm flagged unsettled: read "
+                                   "with the engine held at 1100 rpm for 34 s, %.0f N m" % (", ".join(map(str, loose)), st_))
+                    from_row = dict(LUG_FROM, source=LUG_FROM["source"] + "; the curve's points at %s rpm flagged "
+                                    "unsettled: not read" % ", ".join(map(str, loose)))
+                results[s_].append((lug_row, sh, "pass" if LUG["range"][0] <= sh <= LUG["range"][1] else "FAIL"))
+                results[s_].append((from_row, fr, "unsettled" if loose else
+                                    "pass" if LUG_FROM["range"][0] <= fr <= LUG_FROM["range"][1] else "FAIL"))
                 row = dict(TAKEUP, source=TAKEUP["source"] + "; read: to 90 %% of settled %.2f s, settled %.0f N m = "
                            "%.0f %% of the peak %.0f; the climb from 800 to 1300 rpm at full load (N2's take-up tool, 19 to 20 s on 25 Nov) not measured here"
                            % (ts, st_, 100.0 * st_ / peak, peak))

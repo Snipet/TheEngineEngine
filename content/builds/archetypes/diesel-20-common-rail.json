@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Diesel 2.0 L common rail",
-  "notes": "A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance shafts. In a front-drive family car, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources).",
+  "notes": "A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance shafts. In a front-drive family car, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -56,11 +56,11 @@
       "dEx": 0.024,
       "train": "Finger",
       "inDurSeat": 228,
-      "inDur1mm": 190.0,
+      "inDur1mm": 196,
       "inLift": 0.008,
       "inCentre": 112,
       "exDurSeat": 228,
-      "exDur1mm": 190.0,
+      "exDur1mm": 196,
       "exLift": 0.008,
       "exCentre": 112,
       "springRate": 25000.0,
