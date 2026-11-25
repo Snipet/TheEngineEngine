@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -16,17 +18,60 @@ using tee::EnginePlayer;
 
 namespace
 {
+    // The engine on one player a process, as tests/sim/ecu/Sim.h keeps it: the first Engine compiles it and keeps it
+    // (never deleted: a static owning a compiled program is destroyed after the JIT at exit on macOS); each later one
+    // resets it (every Spec and Controls field at its default, Engine::init again: core's "a kept player reset is a
+    // fresh player, to the bit" proves it), which saves a compile of sim/ a case. An Engine made while another is
+    // alive gets a fresh player of its own; TEE_SIM_FRESH=1 gives every Engine a fresh one (to tell a reset's fault
+    // from the model's).
     struct Engine
     {
-        std::unique_ptr<EnginePlayer> player;
+        EnginePlayer* player = nullptr;   // the kept player or owned_
         std::vector<float> l = std::vector<float>(512);
         std::vector<float> r = std::vector<float>(512);
 
         Engine()
         {
-            player = tee::test::enginePlayer(48000.0);
+            static EnginePlayer* kept = nullptr;
+            static const bool fresh = std::getenv("TEE_SIM_FRESH") != nullptr;
+            if (!fresh && !keptInUse())
+            {
+                if (kept == nullptr)
+                    kept = tee::test::enginePlayer(48000.0).release();
+                else
+                    kept->reset(48000.0);
+                player = kept;
+                keptInUse() = true;
+                usesKept_ = true;
+            }
+            else
+            {
+                owned_ = tee::test::enginePlayer(48000.0);
+                player = owned_.get();
+            }
             player->setSpecDefaults();
         }
+
+        Engine(const Engine&) = delete;
+        Engine& operator=(const Engine&) = delete;
+
+        ~Engine()
+        {
+            if (usesKept_)
+                keptInUse() = false;
+        }
+
+    private:
+        static bool& keptInUse()
+        {
+            static bool inUse = false;
+            return inUse;
+        }
+
+        std::unique_ptr<EnginePlayer> owned_;
+        bool usesKept_ = false;
+
+    public:
 
         void spec(const std::string& path, double v)
         {

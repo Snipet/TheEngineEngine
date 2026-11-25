@@ -340,7 +340,14 @@ arch(slug="diesel-20-common-rail", governor=(4000, 130000), runner=0.3, name="Di
      notes="A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines "
            "of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance "
            "shafts. In a front-drive family car, six-speed manual.", balance2=True)
-arch(slug="tractor-15-inline-six", governor=(1900, 108000), runner=0.4, name="Highway tractor 15 L", geo="ref-10-inline-6", layout="Inline 6",
+arch(slug="tractor-15-inline-six", governor=(1900, 108000),
+     # its full-load fuel curve (D2's, the lead's ruling 04:52; ecu.fuelCurveRpm / fuelCurveMg, e43e228b): mg a stroke a
+     # cylinder against rpm, from the class's cited torque (2779 N m at 1000 rpm held to 1400, 451 kW at 1800 and 2100:
+     # its notes' cummins.com and international.com) through the build's own 8.34 N m a mg (measured at 1300 rpm on its
+     # flat line, 2253 N m on 270 mg), so the curve absorbs the model's efficiency and BSFC is what still checks it;
+     # 75 % of the peak at 700 and 88 % at 800 JUDGEMENT; the plateau trimmed from 333 to 326 mg to meet the cited 2779
+     # (it overshot to 2837 at 1300: a calibration, inside that framing)
+     fuelCurve=[(700, 250), (800, 293), (1000, 326), (1400, 326), (1800, 287), (2100, 246)], runner=0.4, name="Highway tractor 15 L", geo="ref-10-inline-6", layout="Inline 6",
      bore=137.0, stroke=169.0, rod=262.0, cr=17.0, valves=4, dIn=46.0, dEx=43.0,
      cam=(232, 200, 14.0, 112, 232, 200, 13.0, 112), train="Rocker", redline=2250, idle=700, diesel=True,
      boost=dict(kind="Turbo", target=2.6, spring=2.0, vanes=True), car="tractor", timing="Gears",
@@ -825,6 +832,10 @@ def build(a):
         t["governor"] = "Electronic"
         t["ratedSpeed"] = round(rated * RPM, 1)
         t["fuelBoost"] = fuel_boost
+        if a.get("fuelCurve"):
+            pairs = a["fuelCurve"] + [(0, 0)] * (8 - len(a["fuelCurve"]))
+            t["fuelCurveRpm"] = [float(r) for r, _ in pairs]
+            t["fuelCurveMg"] = [float(m) for _, m in pairs]
         # its limit is the governor's high idle, the rated speed plus its droop (0.06): the limiter and the redline there
         e["redlineSpeed"] = round(rated * 1.06 * RPM, 3)
         t["limiter.speed"] = e["redlineSpeed"]
@@ -894,6 +905,11 @@ def build(a):
         hc = EXHAUST_CLASS[a["slug"]]
         notes += (" Its exhaust: %s, the primaries %.2f times the layout's length: the class the real engine carries "
                   "(recalled), its length JUDGEMENT." % (HEADER[hc][1], math.exp(0.9808293 * (HEADER[hc][0] - 0.5))))
+    if a.get("fuelCurve"):
+        notes += (" Its full-load fuel curve (mg a stroke a cylinder): %s, set from its class's cited torque through "
+                  "its own 8.34 N m a mg (D2's), so its torque and power rows are SET BY THE FUEL CURVE, not checks of "
+                  "the model; its plateau trimmed from 333 to 326 mg to meet the cited 2779 N m."
+                  % ", ".join("%d at %d rpm" % (m, r) for r, m in a["fuelCurve"]))
     if "cam" in a and rule_on(a):
         notes += " Its cams' second duration: %s (section 8 of the judgement sources)." % card(a)[4]
     if a["slug"] in CAMS:

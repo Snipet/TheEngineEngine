@@ -224,6 +224,16 @@ module EcuSpec
         [[ui::quantity("pressure")]] [[ui::help("The most back pressure its spring lets the flap hold, over the air")]];
     float exBrakeLeak [[fminus::range(0.005, 0.5)]] [[fminus::default(0.03)]] [[ui::label("Exhaust brake leak")]]
         [[ui::quantity("fraction")]] [[ui::help("The closed flap's open area over the pipe's")]];    // (card N2, for card H: ecu.model 1 only)
+    // (card D2: the full-load fuel curve: fuel a stroke at full rack against speed, in the fuel's own units, so a maker's
+    // injected-quantity table fills it directly. Points used where their mg is above 0; linear between, held outside;
+    // none set: fuelBoost's flat line (the reference's numbers to the bit). The over-fuel allowance and the boost
+    // compensator still act on it. Where a build derives it from torque, its notes say so, with the source and the
+    // conversion assumed)
+    float fuelCurveRpm [[fminus::range(0, 6000)]] [[fminus::default(0)]] [[ui::label("Full-load fuel: speed")]]
+        [[ui::group("Full-load fuel")]] [[ui::unit("rpm")]] [[ui::help("The curve's speeds, rising")]] [8];
+    float fuelCurveMg [[fminus::range(0, 2000)]] [[fminus::default(0)]] [[ui::label("Full-load fuel: a stroke")]]
+        [[ui::group("Full-load fuel")]] [[ui::unit("mg")]]
+        [[ui::help("Fuel a stroke at full rack at each speed, a cylinder; empty: the flat line set by Pump set for boost")]] [8];
     float overBoost [[fminus::range(-1, 400000)]] [[fminus::default(0)]] [[ui::label("Over-boost cut")]]
         [[ui::quantity("pressure")]]
         [[ui::help("The fuel is cut while the boost stays over this for 1 s, until it falls under 85 % of it (over the air). 0: the boost machine's own over-boost level, 1.3 times its target or spring (turbos); -1: never")]];

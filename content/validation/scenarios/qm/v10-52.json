@@ -2,7 +2,7 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "qm-v10-52",
-  "description": "Card P's drag run for \"V10 5.2 L\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; the upshifts where the next gear's wheel torque is the greater (from the predicted curve); the revs held at the green (the brake held, the pedal floored 1.5 s before, the launch button held); the tyres warm, in their window (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
+  "description": "Card P's drag run for \"V10 5.2 L\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; the upshifts where the next gear's wheel torque is the greater (from the predicted curve); the revs held at the green (the brake held, the pedal floored 1.5 s before, the launch button held); the tyres at the air's temperature (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
   "seconds": 50,
   "warm": true,
   "events": [
@@ -79,25 +79,25 @@
       }
     },
     {
-      "t": 13.857,
+      "t": 13.537,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 14.508,
+      "t": 14.252,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 16.012,
+      "t": 15.948,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 18.209,
+      "t": 18.38,
       "press": [
         "shiftUp"
       ]
@@ -111,6 +111,5 @@
       "audio": "peak",
       "<=": 1
     }
-  ],
-  "warmTyres": true
+  ]
 }

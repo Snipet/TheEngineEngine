@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Truck 15 L six, 36 t",
-  "notes": "Card D2. A highway tractor and loaded trailer, 36 t: a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a three-stage compression-release brake and an exhaust flap (both off at their switches); an eighteen-speed (Eaton RTLO-18918B: the lever, the splitter and the range; ctl.lever 1-4, 5 the L slot, buttons 16 and 32) on 295/75R22.5 tyres, 3.55 axle. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades.",
+  "notes": "Card D2. A highway tractor and loaded trailer, 36 t: a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a three-stage compression-release brake and an exhaust flap (both off at their switches); an eighteen-speed (Eaton RTLO-18918B: the lever, the splitter and the range; ctl.lever 1-4, 5 the L slot, buttons 16 and 32) on 295/75R22.5 tyres, 3.55 axle. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades. Its full-load fuel curve (ecu.fuelCurveRpm/Mg, mg a stroke at full rack): the class's cited 2779 N m at 1000 rpm (a 15 L six's top rating, cummins.com) held to 1400 and 451 kW at 1800 and 2100 (cited), 75 and 88 % of the peak at 700 and 800 (judgement), each turned to fuel by this build's own model torque a milligram, 8.94 N m/mg (measured at 1600 rpm, fuel-limited, 25 Nov): so its torque and power against speed are set by the curve, not evidence. Below some 1600 rpm the reference turbo's 140 kPa does not carry that fuel: the compensator holds lambda 1.30 there (air-limited; the curve's low points not showing).",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -48,7 +48,27 @@
       "brakeSwitch": "Off",
       "exhaustBrake": "Flap",
       "fuelBoost": 140000,
-      "ratedSpeed": 219.9
+      "ratedSpeed": 219.9,
+      "fuelCurveRpm": [
+        700,
+        800,
+        1000,
+        1400,
+        1800,
+        2100,
+        0,
+        0
+      ],
+      "fuelCurveMg": [
+        233,
+        274,
+        311,
+        311,
+        268,
+        229,
+        0,
+        0
+      ]
     },
     "car": {
       "kind": "Truck",

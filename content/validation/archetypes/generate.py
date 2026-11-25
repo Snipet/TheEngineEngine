@@ -44,6 +44,11 @@ FITTED = {s_: _PORTS for s_ in ("big-block-74-pushrod-v8", "small-block-57-carb"
                                  "vr6-28", "flat-plane-v8-45", "v10-52", "v12-65", "straight-six-32-high-rev",
                                  "two-stage-cam-20", "flat-plane-v8-39-twin-turbo", "inline-five-turbo-rally")}
 FITTED["kei-660-triple-turbo"] = "its boost taper was measured by N2 to meet the class's power cap"
+# builds whose power and torque are SET by a stated full-load fuel curve (the lead, 04:52; D2's): those rows are no check
+# of the model and are left out of the counts (basis "set"); BSFC and the rest check it
+SET = {"tractor-15-inline-six": "its full-load fuel curve sets them (D2's, from the class's cited torque through the "
+                                "build's own 8.34 N m a mg): SET BY THE FUEL CURVE, out of the counts"}
+SET_ROWS = ("Peak power", "Peak torque", "Speed at peak power", "Speed at peak torque")
 FITTED_ROWS = ("Peak power", "Peak torque", "Speed at peak power", "Speed at peak torque", "Boost at its target",
                "Volumetric efficiency at its torque peak", "Volumetric efficiency low down")
 
@@ -222,6 +227,9 @@ def targets(slug, b):
             k["basis"] = "cited" if name.startswith("Invariant") else BASIS[name]
         # a row its build was fitted to is judgement, whatever its source (the lead, 20:52: so the cited count is not
         # flattered while the part is replaced)
+        if slug in SET and name in SET_ROWS:
+            k["basis"] = "set"
+            k["source"] = k["source"] + "; " + SET[slug]
         if name == "Idle manifold pressure":
             k["basis"] = IDLE_MAP[slug][2]
         if slug in FITTED and name in FITTED_ROWS:
