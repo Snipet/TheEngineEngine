@@ -156,6 +156,14 @@ T = {
     "pushrod-v6-38": ((140, 160), (5000, 5400), (300, 330), (3800, 4200), (600, 750), 0, "makers' figures of the 1990s, firm"),
     "flat-plane-v8-39-twin-turbo": ((450, 535), (7500, 8000), (760, 805), (3000, 5750), (800, 1000), 5000, "makers' figures, firm"),
 }
+# table L's content (the lead, 02:12), with the builds' CAM_RULE: the hot hatch of the 4A-GE kind whole, its bands the
+# 4A-GE's (moved from 85-120 kW at 6500-7600 and 140-155 N m at 5000-7100, which spanned the B16A too)
+CAM_RULE = os.environ.get("TEE_CAM_RULE") == "1"
+if CAM_RULE:
+    T["hot-hatch-16-16v"] = ((91, 103), (6600, 7200), (142, 147), (5200, 6000), (800, 950), 0,
+                             "the 4A-GE's makers' figures, looked up")
+    CITED["hot-hatch-16-16v"] = ("en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at "
+                                 "5200-6000)")
 
 HEYWOOD = "Heywood, Internal Combustion Engine Fundamentals"
 

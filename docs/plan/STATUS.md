@@ -37,6 +37,20 @@
 
 ## Landed
 
+- **02:11 (25 Nov) a ruling withdrawn; the bake's wiring in; `main` still at 09c1fb4e.** *Withdrawn: the lead's
+  01:49 ruling that N1 commit the seat passage's frustum.* Held before the push when a two-stage test's crossing
+  moved 950 rpm; P's flow sheets (dbb23107) refute it (real heads pass 0.70 to 0.85 of the curtain at 0.100 to 0.200
+  in; the frustum cannot exceed 0.707). Dropped unpushed, with the idle figures the owner was shown on it. The tip's
+  low-lift area sits on a production LS7 head's sheet within 0.03. N3-16 as it now stands is in the queue: the flows
+  are honest, the one engine on its own cam card agrees with its own idle manifold (the 7.0 on the LS7's: 38.9
+  against 38), and the misses are on cards of judgement (the hot hatch to take the 4A-GE's timing if it is that
+  engine; the V12 a recorded miss). *The wiring*: U1's 1cfb5a6e and B's 02553ee2 (merged 78cdd2f5): the ribbon's
+  curve 4.3 s after load with a bake running (31 to 35 s before), a second launch "baked" in 1.5 s from the cache,
+  "Baking the cam 23 of 42" in the top bar. Run 45529977919 at 78cdd2f5 has Linux and macOS in progress: `main` moves
+  on their green. *New and open*: the two-stage build's high stage never out-pulls its low one below 7500, so its
+  change at 6000 is an 8 % dip (queue); the F20C's own changeover is 5850 (cited; into the card for table L). *N2*:
+  nothing committed; the knee's real place still to come.
+
 - **01:49 (25 Nov) the lead's check-in; `main` stays at 09c1fb4e; fc554da is green on Linux and macOS.** Run
   45525224026 at fc554da: 541 of 541 on both, the first green on a commit holding all ten of tonight's fixes (the
   steward's report; the lead's first gate). **Main waits one commit more**: the app's wiring of C's bake changes. C:

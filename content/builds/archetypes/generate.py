@@ -219,6 +219,15 @@ arch(slug="rotary-twin-na-side-port", clutchTorque=350.0, rotaryCam=0.15, rotary
 arch(slug="hot-hatch-16-16v", runner=0.35, convK=18.0, name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
      bore=81.0, stroke=77.4, rod=134.0, cr=10.4, valves=4, dIn=31.0, dEx=27.0,
      cam=(256, 224, 9.6, 108, 248, 216, 8.8, 110), train="Bucket", redline=7200, idle=850,
+     # table L (the lead, 02:12): the 4A-GE kind whole, applied with CAM_RULE. Its 81 x 77.0 mm (1587 cc) and the big-port
+     # engine's 9.4:1 (en.wikipedia.org/wiki/Toyota_AE86, "bore x stroke: 81.00 x 77.00 mm", 9.4:1 for the big port;
+     # the later small port 10.3); its cam as found (no Toyota document): 240 deg, IVO 9 BTDC / IVC 51 ABDC, EVO 51
+     # BBDC / EVC 9 ATDC, centres 111 / 111, 7.56 mm (ae86resource, club4ag.com: enthusiast references; "240 gross
+     # duration" an aeu86.org forum post), the height not stated: taken as the seat, the 1 mm by the bucket rule
+     camCard=dict(stroke=77.0, cr=9.4, cam=(240, 204, 7.56, 111, 240, 204, 7.56, 111),
+                  cardNote="Of the 4A-GE kind (big port): 81 x 77.0 mm (1587 cc), 9.4:1 (Wikipedia's AE86), its cam 240 "
+                           "deg on 111/111 centres and 7.56 mm (enthusiast references and a forum, no Toyota document; "
+                           "the height not stated, taken as the seat). Its rod length is still the generator's."),
      car="hot-hatch-light", timing="Toothed belt",
      notes="A light front-drive hatch with a twin-cam 16-valve 1.6: 81 x 77.4 mm (1595 cc), 10.4:1; engines of the "
            "kind made 85 to 118 kW at 6500 to 7600 rpm and 140 to 160 N m (makers' figures of the 1980s and 90s).")
@@ -444,6 +453,10 @@ arch(slug="four-cam-v8-50", runner=0.35, name="Four-cam 5.0 L V8", geo="ref-12-v
 arch(slug="big-bore-70-pushrod-v8", runner=0.4, name="7.0 L pushrod V8, dry sump", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=104.8, stroke=101.6, rod=158.0, cr=11.0, valves=2, dIn=56.0, dEx=41.0,
      cam=(282, 230, 15.0, 112, 288, 234, 14.0, 116), train="Pushrod", redline=7000, idle=750,
+     # its head's port quality from the LS7's own sheet (the lead, 02:11; held 02:12 until N1 says which form of the
+     # port limit stands): RLD Performance's bench, stock GM CNC LS7 ports, 28 in H2O, 2.20/1.61 valves, shaped entry,
+     # stub pipe: 315/207 cfm at 0.500 in, 348/219 at 0.600 (measured, third party; sources section 12). The value is
+     # set so the model's bench meets the sheet at its highest lifts, once the form is settled: NOT YET IN
      # the LS7's own cam for table L (the lead, 01:33), applied with CAM_RULE: GM 12638426, 211/230 deg at 0.050 in
      # tappet lift, 0.593/0.588 in valve lift on the LS7's 1.8 rockers, 121 deg lobe separation (a forum's 120): search
      # snippets of Chevrolet Performance's listing; the page itself refused (403); not read. The seats 26 deg a side
