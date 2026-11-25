@@ -252,6 +252,18 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
     CHECK(high.kw < 550.0);
 }
 
+TEST_CASE("diesel brake: where the vanes wide open cannot hold the shaft, the brake gives up cylinders and brings it back under its limit", "[diesel][brake][turbo]")
+{
+    // The brake's last hand (heavy.fm vaneCommand (c)): on the package's wheel it never acts, the vanes hold the shaft.
+    // A compressor wheel too small for the brake's flow (64 mm against the rule's 69.8, its limit higher with it) lets the
+    // brake drive the shaft past 0.985 of its limit with the vanes wide (1.048 at 1.1 s, 25 Nov): the brake drops
+    // cylinders, and the shaft stands under the limit once it has. No test hook: a mismatched build's physics
+    const VgtBrake b = vgtBrake(3, 0.064, 2000.0, 12.0);
+    CHECK(b.shaftMost > 0.985 * b.omegaMax);   // (it is reached: the case tests the cut, not the vanes)
+    CHECK(b.cylMin < 6.0);
+    CHECK(b.shaftLate < b.omegaMax);
+}
+
 TEST_CASE("diesel brake, full: the variable-vane brake holds the shaft's limit at 1500, 2000 and 2400 rpm", "[diesel][brake][turbo][nightly]")
 {
     // 25 s on High at each speed, the wheel N2's rule picks: the shaft at or under its limit over the whole
