@@ -291,6 +291,13 @@ arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L"
      # stage's), switched at 6000 rpm (the DC5's: honda.co.jp factbook)
      stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246, exLiftB=0.01214,
                  stageSpeed=6000 * RPM),
+     # table L (the lead, 02:06), applied with CAM_RULE: the switch at the F20C's own 5850 rpm (Honda: the 1999 S2000
+     # fact book, honda.co.jp, "5,850rpm～9,000rpm ... ハイバルブタイミング域"; global.honda's F20C page; American Honda's
+     # 2001 powertrain release, "a relatively low 5850 rpm"); the high stage stays the K20A's, borrowed
+     camCard=dict(stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246,
+                              exLiftB=0.01214, stageSpeed=5850 * RPM),
+                  cardNote="Its switch at the F20C's own 5850 rpm (Honda's S2000 fact book and its 2001 powertrain "
+                           "release); its high stage still the K20A's, borrowed."),
      grade="Premium (91)", car="roadster", timing="Chain", lifters="Solid",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
            "(the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the "
