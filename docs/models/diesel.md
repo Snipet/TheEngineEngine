@@ -202,7 +202,7 @@ study (Appl. Sci. 2019, doi 10.3390/app9102032), unread.
 | Other builds | V8 truck 3125 N m / 536 kW; mechanical classic 2170 / 436; tuned pickup 1214 / 228; marine V12 3423 / 593 | |
 | Compression brake, 2000 rpm, stages 0/1/2/3 (reference turbo) | 63 / 115 / 180 / 254 kW; with the flap 311 | 15 L Jakes rated ~450 kW at 2100 (Jacobs, makers' brochures) |
 | Same, High, 1200 / 1600 / 2000 rpm | 118 / 182 / 254 kW | rising with speed, as published curves |
-| VGT brake, matched turbo, G's network, High, 2000 rpm | 346 kW; manifold 282 kPa over a second; shaft settled 11,090, at most 11,714 rad/s (omegaMax 11,932) | matched VGT brakes 2.5-4 bar (recalled, not cited) |
+| VGT brake, N2's matched turbo, G's network, High, 2000 rpm, after a climb, warm | 365 kW; manifold 319 kPa over a second; shaft at most 9,673 rad/s (omegaMax 10,149), vanes 0.68 | matched VGT brakes 2.5-4 bar (recalled, not cited) |
 | Bark against motoring | harmonics 2-10 of 100 Hz ~25 dB over the bins between | |
 | Exhaust flap, 2000 rpm | stand-in 3.0 bar, 131 kW; G's butterfly 358 kPa, 146 kW (open 63) | makers' 2.5-4 bar; 110-190 kW |
 | Droop line (both governors) | rack 1.00 / 0.50 / 0.00 at rated, half way, high idle | |

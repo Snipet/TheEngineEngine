@@ -64,6 +64,16 @@ module Boost
     int haveSpec;
     int seenSettle;     // spec.boost.heatSettle as last acted on
     BoostMachine mach;
+
+    // A turbo's shaft still turning (boost.model 1): the engine stopped, it runs down for some seconds and is heard
+    // whistling down; while it turns the simulation keeps stepping (engine.fm's audible())
+    bool spinning()
+    {
+        for (int t = 0; t < BOOST_TURBOS; ++t)
+            if (mach.shaft[t].omega > 50.0f)
+                return true;
+        return false;
+    }
     int mapRev;         // the map's lines last copied to the Scope
     float crankTorque;  // N m the machine takes from the crank (model 1), as of the last sample
 

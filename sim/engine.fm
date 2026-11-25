@@ -1527,7 +1527,7 @@ module Engine
     bool audible()
     {
         return ecu.state != 0 || quiet < (0.4f + 2.2f * set.room + 0.3f) * rate || (set.drive != 0 && car.moving())
-               || (spec.voices.model != 0 && ex.busy());
+               || (spec.voices.model != 0 && ex.busy()) || (spec.boost.model != 0 && boost.spinning());
     }
 
     void init(float hostRate)

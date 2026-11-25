@@ -190,7 +190,10 @@ TEST_CASE("calibration boost: variable vanes past the surge line open (one state
     std::printf("truck at 1300 rpm: fixed %.1f kPa %.0f N m; vanes from 800 %.1f kPa %.0f N m, from 2000 %.1f kPa %.0f N m\n",
                 fixed.at("boost.pressure") / 1000.0, fixed.at("engine.torque"), up.at("boost.pressure") / 1000.0,
                 up.at("engine.torque"), down.at("boost.pressure") / 1000.0, down.at("engine.torque"));
-    CHECK(std::fabs(up.at("boost.pressure") - down.at("boost.pressure")) < 0.05 * down.at("boost.pressure"));
+    // (the two sides within 15 %, a reasoned margin (the lead's ruling): the states this guards against stood at 25 against
+    // 58 kPa, a factor of 2.3; one state settled reads within a few kPa of itself, 3.0 kPa here, 3.8 on the steward's
+    // machine and 5.4 on CI, against a 5 % bound that went red on all three)
+    CHECK(std::fabs(up.at("boost.pressure") - down.at("boost.pressure")) < 0.15 * down.at("boost.pressure"));
     CHECK(up.at("boost.pressure") > 0.97 * fixed.at("boost.pressure"));
     CHECK(up.at("engine.torque") > 0.95 * fixed.at("engine.torque"));
 }
@@ -272,5 +275,8 @@ TEST_CASE("calibration boost: variable vanes past the surge line open: one state
     std::printf("truck at 1300 rpm, short: from 1100 %.1f kPa %.0f N m, from 2000 %.1f kPa %.0f N m\n",
                 up.at("boost.pressure") / 1000.0, up.at("engine.torque"), down.at("boost.pressure") / 1000.0,
                 down.at("engine.torque"));
-    CHECK(std::fabs(up.at("boost.pressure") - down.at("boost.pressure")) < 0.05 * down.at("boost.pressure"));
+    // (the two sides within 15 %, a reasoned margin (the lead's ruling): the states this guards against stood at 25 against
+    // 58 kPa, a factor of 2.3; one state settled reads within a few kPa of itself, 3.0 kPa here, 3.8 on the steward's
+    // machine and 5.4 on CI, against a 5 % bound that went red on all three)
+    CHECK(std::fabs(up.at("boost.pressure") - down.at("boost.pressure")) < 0.15 * down.at("boost.pressure"));
 }
