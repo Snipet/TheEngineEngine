@@ -255,6 +255,27 @@ known, as the exhaust walls' is: with the lag made instant (a scratch copy of th
 with no hold and 690.6 to 691.6 out to 2 s, against the settled step's 689. When the program can settle it, as
 `spec.exhaust.heatSettle` settles the exhaust, the hold goes back to 0 and the ribbon gets its time back.
 
+Whether a predicted point depends on the way the rig came to it (measured 25 Nov on 1db8dcd2's mean of settled cycles,
+by a probe case not kept: one share, so each point's path is fixed; six points on three builds without stages). Each
+point reached from below (`{low, T}`), from above (`{low, T, high}`: after 640 rad/s), and both again held 3 s at
+least. Torque in N m; `se` is the point's own standard error (`PredictPoint::torqueSe`):
+
+| build | rpm | below | above | below, 3 s | above, 3 s | spread |
+|---|---|---|---|---|---|---|
+| economy-four-15 | 4786 | 136.03 (se 0.65) | 136.22 | 136.41 | 137.35 | 0.97 % |
+| economy-four-15 | 3275 | 145.73 (se 0.23) | 145.37 | 145.31 | 145.99 | 0.46 % |
+| v6-35-na | 4086 | 312.80 (se 0.59) | 311.81 | 312.60 | 313.32 | 0.48 % |
+| v6-35-na | 3314 | 331.18 (se 0.92) | 332.33 | 333.55 | 332.01 | 0.72 % |
+| turbo-four-20-gdi (knock-limited) | 4047 | 357.24 (se 0.08) | 357.55 | 357.04 | 357.82 | 0.22 % |
+| turbo-four-20-gdi (knock-limited, hunting) | 3247 | 343.90 (se 1.69) | 340.33 | 343.90 | 343.67 | 1.04 % |
+
+On these six points the spread is one to two of the point's standard errors, and no direction repeats (neither from
+above nor the longer hold reads consistently higher or lower). That is what was measured; it is not a proof for every
+build and speed. A part with hysteresis is different, and is handled: the two-stage cam's switch holds its stage
+across a band, so a point in the band read the stage of the way it came (13 N m at 5740 rpm, card N1's find). The
+predictor now reaches every point as an upward sweep does where the program says a part can latch
+(`tel.engine.hysteresis`, `tel.engine.latched`; `PredictPoint::approachForced` when it would not let go).
+
 ## A session log: `tee-session`, version 1
 
 Every control change and every Spec write that reached the simulator, each at the sample it took effect (card C,
