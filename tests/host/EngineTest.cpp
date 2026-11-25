@@ -902,7 +902,10 @@ TEST_CASE("the knock limit's corrections: a cell whose mean retard was over 12 d
     if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
         SKIP("the program has no knock-limit table yet");
     KnockBakeOptions options;
-    options.speeds = 8;       // (2686 rpm among them: N2's 2450)
+    // the speeds where the six's retard sits at its ceiling (N2's proof: 2450 rpm), pinned: on a grid between the idle
+    // and the redline they moved with the top speed's margin (300 rpm since bda6a728), and the largest mean fell to 11.2
+    options.predict.speeds = {2200.0 * M_PI / 30.0, 2450.0 * M_PI / 30.0, 2686.0 * M_PI / 30.0, 3000.0 * M_PI / 30.0};
+    options.speeds = 4;
     options.pedals = {1.0};
     options.boostSteps = 1;   // the build's own level: where the retard sits at its ceiling
     KnockBakeResult r;
