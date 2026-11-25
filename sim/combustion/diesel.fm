@@ -36,7 +36,9 @@ module DieselFields
     int metered;
     float fuelFull;
     float afcPhi;
-    float phiAsked;     // what the rack asked, as an equivalence ratio of the air there
+    float phiAsked;     // what the rack asked, as an equivalence ratio of the air there (after the compensator's cap)
+    float capShare;     // the share of the rack's ask the compensator let through (1: none taken): tel.ecu.fuelFlow's
+    float phiBurned;    // the equivalence ratio that burned, the last charge's: tel.ecu.lambda's on the reference's ECU
     // card D2's: the last charge's ignition delay (degrees), and the start of combustion's cycle-to-cycle spread, a
     // standard deviation, a degree of it (fuel.model 1: chargeDiesel adds socSpread x delay x a gauss to the start). A
     // diesel's ignition delay is not the same every cycle, and the longer it is the more it varies (cyclic variation
@@ -65,6 +67,8 @@ module DieselFields
         fuelFull = 0.0f;
         afcPhi = 0.0f;
         phiAsked = 0.0f;
+        capShare = 1.0f;
+        phiBurned = 0.0f;
         delayDeg = 0.0f;
         socSpread = 0.150f;
     }
@@ -76,15 +80,21 @@ module DieselFields
     {
         const float fuel = fmaxf(rack, 0.0f) * fuelFull * (1.0f + fminf(fmaxf(overFuel, 0.0f), 0.4f));
         float phi = fuel * 14.5f / fmaxf(air, 1.0e-7f);
+        const float raw = phi;
         if (afcPhi > 0.0f)
             phi = fminf(phi, afcPhi);
         phiAsked = phi;
+        capShare = raw > 1.0e-6f ? phi / raw : 1.0f;
         const float x = fmaxf(phi - 0.6f, 0.0f) / 0.3f;
         smoke = fminf(4.0f * x * x, 10.0f);
         if (phi <= 0.85f)
+        {
+            phiBurned = phi;
             return phi;
+        }
         const float e = expf(-(phi - 0.85f) / 0.15f);
-        return 0.85f + 0.15f * (1.0f - e);
+        phiBurned = 0.85f + 0.15f * (1.0f - e);
+        return phiBurned;
     }
 
     // The equivalence ratio at the lever (0 to 1): the reference's 0.75 lever at no allowance

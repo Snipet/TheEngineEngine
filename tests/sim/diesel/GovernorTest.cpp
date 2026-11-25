@@ -72,3 +72,33 @@ TEST_CASE("diesel governor: a mechanical governor's idle hunts, an electronic on
     CHECK(spread[1] > 2.0 * spread[2]);
     CHECK(spread[2] < 25.0);
 }
+
+TEST_CASE("diesel governor: the boost compensator caps the fuel; the telemetry reads what is injected and its lambda", "[diesel][governor]")
+{
+    // Floored at 1300 rpm two seconds into the reference turbo's climb the rack is full and the air a little short
+    // (the rack asks some phi 1.0): with the compensator (ecu.afc 0.8) the fuel injected is capped at an equivalence
+    // ratio of 0.8, lambda 1.25; with it removed (0, the tuner's stop) the rack's whole ask goes in and what burns levels
+    // toward phi 1 (measured 25 Nov: 16.3 against 20.2 g/s; lambda 1.25 against 1.11). tel.ecu.fuelFlow is the fuel
+    // injected (it read the rack's ask before 25 Nov), tel.ecu.lambda the charge's on the reference's ECU (it read 0)
+    double flow[2] = {0.0, 0.0}, lambda[2] = {0.0, 0.0};
+    int k = 0;
+    for (double afc : {0.8, 0.0})
+    {
+        Engine e("truck-15l-six");
+        e.spec("ecu.afc", afc);
+        e.start();
+        e.dyno(1300.0, 1.0f);
+        REQUIRE(e.run(2.0));
+        CHECK(e.tel("ecu.rack") > 0.99);
+        flow[k] = e.mean("ecu.fuelFlow", 0.2);
+        lambda[k] = e.mean("ecu.lambda", 0.2);
+        ++k;
+    }
+    std::printf("floored at 1300 rpm, 2 s in: with the compensator %.2f g/s, lambda %.2f; without it %.2f g/s, lambda %.2f\n",
+                flow[0] * 1000.0, lambda[0], flow[1] * 1000.0, lambda[1]);
+    CHECK(flow[0] < 0.9 * flow[1]);
+    CHECK(lambda[0] > 1.2);
+    CHECK(lambda[0] < 1.3);
+    CHECK(lambda[1] > 0.95);
+    CHECK(lambda[1] < 1.2);
+}
