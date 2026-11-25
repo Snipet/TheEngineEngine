@@ -14,7 +14,8 @@ add_library(tee_assistant STATIC
   src/Cards.cpp
   src/McpLink.cpp
   src/Session.cpp
-  src/Transport.cpp)
+  src/Transport.cpp
+  src/Chat.cpp)
 add_library(Tee::assistant ALIAS tee_assistant)
 tee_target_defaults(tee_assistant)
 target_include_directories(tee_assistant PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

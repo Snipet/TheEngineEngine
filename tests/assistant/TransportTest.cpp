@@ -23,7 +23,7 @@ TEST_CASE("assistant: only https, or plain http to this machine, is ever asked",
     }
 }
 
-#if defined(TEE_TEST_CURL)
+#if defined(TEE_TEST_CURL) && !defined(_WIN32)   // (POSIX sockets: macOS and Linux)
 
  #include <arpa/inet.h>
  #include <netinet/in.h>
