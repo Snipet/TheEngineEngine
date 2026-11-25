@@ -60,7 +60,7 @@ TEST_CASE("predicted points are the stand-in's torque law, between its idle and 
     REQUIRE(curve.points.size() == 12);
     const double idle = build.get("engine.idle");
     CHECK(std::fabs(curve.points.front().speed - std::max(idle, 1000.0 * 3.14159265358979 / 30.0)) < 1e-6);
-    CHECK(std::fabs(curve.points.back().speed - (700.0 - 100.0 * 3.14159265358979 / 30.0)) < 1e-3);
+    CHECK(std::fabs(curve.points.back().speed - (700.0 - 300.0 * 3.14159265358979 / 30.0)) < 1e-3);
     for (const PredictPoint& p : curve.points)
     {
         CHECK(p.settled);

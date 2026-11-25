@@ -598,6 +598,7 @@ namespace tee::ui
             const double excess = (boost - 160e3) / 40e3;
             const bool knocks = excess > 0.0 && rpm >= 4500.0;
             const double lo = knocks ? 1.0 + 6.0 * std::min(1.0, excess) * (rpm - 4500.0) / 2500.0 : 0.0;
+            c.limited.push_back(rpm > kLimiter ? 1 : 0);   // the limiter's points (card C's PredictPoint::limited)
             c.knock.push_back(knocks ? 1 : 0);
             c.retardMin.push_back(lo);
             c.retardMax.push_back(knocks ? lo + 4.0 : 0.0);

@@ -405,15 +405,30 @@ namespace tee::ui
                                bool dots) {
             xs.clear();
             ys.clear();
+            // The limiter's points (the cut's torque, no measure) are not joined: a dim ring each, the line between the
+            // others only.
+            const auto flush = [&] {
+                if (xs.size() >= 2)
+                    c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), width, ink);
+                xs.clear();
+                ys.clear();
+            };
             for (std::size_t i = 0; i < d.speed.size() && i < v.size(); ++i)
             {
-                xs.push_back(a.x + a.w * static_cast<float>((d.speed[i] - x0) / (x1 - x0)));
-                ys.push_back(a.bottom() - a.h * static_cast<float>(std::clamp(v[i] / top, 0.0, 1.0)));
+                const float px = a.x + a.w * static_cast<float>((d.speed[i] - x0) / (x1 - x0));
+                const float py = a.bottom() - a.h * static_cast<float>(std::clamp(v[i] / top, 0.0, 1.0));
+                if (d.limitedAt(i))
+                {
+                    flush();
+                    c.disc(px, py, 2.5f, look::kClear, 1.0f, p.dim);
+                    continue;
+                }
+                xs.push_back(px);
+                ys.push_back(py);
+                if (dots && i % 4 == 0)   // power's dot every fourth point (by the curve's own count)
+                    c.disc(px, py, 2.5f, ink);
             }
-            if (xs.size() >= 2)
-                c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), width, ink);
-            for (std::size_t i = 0; dots && i < xs.size(); i += 4)
-                c.disc(xs[i], ys[i], 2.5f, ink);
+            flush();
         };
         const funkgui::Canvas::ClipScope clip(c, a.expanded(2.0f));
         if (!was.empty())
