@@ -450,13 +450,24 @@ module BoostMachine
         const float p3Design = 1.247f * prDesign * pOut;
         const float tDesign = dsl != 0 ? 900.0f : 1150.0f;
         mMatch = fmaxf(vd * nDesign / 120.0f * 1.204f * prDesign * 0.9f, 0.01f);
+        // (the sizing rule's wording under the corrected map, the lead's ruling, not a new constant: F's rule is that
+        // the choke is 1.15 x the design flow (F's judgement, unchanged), meaning the choke the wheel has at its design
+        // speed. Under the old map the full choke came at a tip Mach of 1.2, so the full choke was that; the choke now
+        // grows to the tip limit's 1.63 (compressor.fm, published-compressor-maps.md), and a turbo near a ratio of 2
+        // has 0.82 of the full there: the rule as written left its choke at 1.15 x 0.82 = 0.94 of its own design flow.
+        // So the 1.15 is read at the design ratio's tip speed, the operating point taken on the island (phiB, 0.61 of
+        // the way to choke: tau 0.865 of the knee's, tauK = 0.45 x 0.4 M^2 against the air's):
+        // docs/measurements/calibration/boost/compressor-map-model.md)
+        const float tauD = expf(logf(prDesign) / 3.5f) - 1.0f;
+        const float machD = fminf(sqrtf(tauD / (0.865f * 0.18f)), 1.63f);
+        const float chokeAt = 0.3f + 0.7f * machD / 1.63f;
         const float share = layout == BOOST_TWIN ? 0.5f : (layout == BOOST_QUAD ? 0.25f : (layout == BOOST_SEQUENTIAL ? 0.5f : 1.0f));
         for (int t = 0; t < BOOST_TURBOS; ++t)
         {
             // (a compound pair's high-pressure stage meets air already compressed some 1.6 times: a smaller wheel)
             const float mt = mMatch * share * s->size * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
             const float wide = expf(0.25f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
-            const float aAnn = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide);
+            const float aAnn = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide * chokeAt);
             float dInd = s->compInducer > 0.0f ? s->compInducer : 2.0f * sqrtf(aAnn / (0.91f * 3.14159265f));
             float dEx = s->compExducer > 0.0f ? s->compExducer : dInd / 0.7416f;
             if (sc == 3 && s->compExducer <= 0.0f)
@@ -470,7 +481,7 @@ module BoostMachine
             if (t == 0)
                 compFlowHas = 0.0f;
             if (t < turbos && !(layout == BOOST_COMPOUND && t == 0))
-                compFlowHas += 0.45f * 1.204f * 343.2f * wide * 0.91f * 3.14159265f * 0.25f * dInd * dInd;
+                compFlowHas += 0.45f * 1.204f * 343.2f * wide * chokeAt * 0.91f * 3.14159265f * 0.25f * dInd * dInd;
             const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
             const float rc = 0.6f * dT;
             float aNoz = 0.0f;
