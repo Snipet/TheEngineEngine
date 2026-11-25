@@ -441,3 +441,67 @@ wheels: torque and boost with the 1 s spread at 1000 / 1100 / 1300 / 1900, p3/p2
 command, and whether the build models EGR there. One patent's 0.90 to 0.93 (no EGR) is the only source; P found no
 second. Then: if 1000 holds on 76.8, (b) and the nozzle go in at the maker's point; if not, the tractor and truck
 state 1100, marked. Pushed only after the next `main`, on the lead's word.
+
+## Ruled 25 Nov 09:40: the nozzle factor stays; the vane surge guard is the defect (N2's nozzle-sensitivity.md, 44878e30)
+
+One agent's table, read by the lead on the branch, not re-measured. **The nozzle's inlet factor stays 1.247:** one
+source (a patent's estimate), no cure for 1000 rpm, an effect only at rated (BSFC 190 to 183, take-up slower).
+**The vane surge guard** (opens the vanes on the surge flag) pins on the 80.6 mm wheel (657 N m at 1000 against 873
+with its gain at 0) and cycles at 1 Hz on the 76.8 (775 pulsing 17 to 75 kPa against 947 at 73 kPa steady): the
+cap's self-reference again, and no cure in principle, because at one engine speed the swallowing line and the surge
+line both run toward the origin. A real VGT has a vane map and a matched wheel, not a surge detector. So "state 1100
+on the tractor and truck" is withdrawn; **(b) goes in at the makers' speeds together with the guard's removal** if
+N2's next table holds (tractor, truck, 2.0 common rail at 36.9 mm with its rated cell, the pickup; the flags in every
+cell; the default-tier cases that name the guard). A wheel too big then surges and says so (U3's oversize warning).
+Asked from the same runs: the turbo's energy ledger at the tractor's 1000 cell (by the lead's unchecked arithmetic
+73 kPa should need p3/p2 near 1.03 at eta_c 0.65, eta_t 0.60, T3 900 K; the model needs 1.40), and why the engine
+sits at phi/knee 0.88 where the rule's flow law put it near 0.99. Before any push: a second measurement of the key
+cells by another agent, and `main` moved.
+
+## 25 Nov 09:58: the guard stays (the lead's 09:40 ruling withdrawn); the hole below 1100 may be the burn, not the turbo
+
+N2's vane-guard-off.md (37da9aa3; one agent's, read by the lead on the branch). **The truck refutes "remove the
+guard":** with its opening gain at 0 the vanes shut to their stop and the compressor surges about 70 % of the time
+(1300: 408 N m at 31 kPa against 2199 at 169 with the guard; TurboTest:88 and :108 fail). The same guard makes the
+holes elsewhere (tractor 900: 637 against 845; 1000: 775 pulsing against 947 steady; pickup 1300: 576 against 810;
+the 2.0 at 1750 and 2000). Neither keeping nor removing it gives the right engine. It stays; its replacement (a vane
+floor by speed, N2's suggestion, or a limit on the boost target by measured flow) is open, table first.
+
+**The turbo's ledger at the tractor's 1000 cell (N2, guard off):** eta_t 0.66, eta_c 0.54 to 0.57, vanes 0.63,
+0.208 kg/s, p3 244, p4 106, p2 175 kPa, **T3 673 K**. The short term is T3 (a factor 0.75 against 900 K), then the
+compressor's efficiency.
+
+**The lead's arithmetic from N2's cells (unconfirmed, with D2 to read the code):** at 1000 rpm and 14 kPa the tractor
+makes 657 N m at BSFC 398 to 404 on fuel smoke-limited at lambda 1.30: about 0.89 g of fuel a cycle, 38 kJ, for 8.3
+kJ of brake work: brake efficiency 22 % where about 40 is expected, with a cold exhaust where 900 K or more is. Low
+work and a cold exhaust together mean the fuel's heat is not arriving (the burn at the smoke limit, or the walls).
+If so the hole below 1100, the 7.9 s take-up, "the turbine cannot hold 1000" and the guard's pulse are one fault
+upstream of the turbo. Asked of D2 (09:58): the cylinder's energy ledger at that cell with 1300 beside it, and what
+in the code falls toward the smoke limit. **(b) holds where it is until that is in.** Asked of N2 meanwhile: the
+rule's own evaluation against the model's phi, knee and tip Mach at that cell (the rule promised a margin near 0.99
+of the knee; N2's outside estimate reads 0.88).
+
+## Found 25 Nov 10:04 (D2; code read by the lead): the reference's idle spark trim scales a governed diesel's heat on the dyno
+
+`sim/ecu/ecu.fm:209`: `trim = rpmAvg < idleRpm + 450 ? clamp(1 + 1.6 (idleRpm - rpmAvg)/1000, 0.55, 1.35) : 1`.
+Driven (drive != 0) with the pedal open it is clamped to 1 or more; on the dyno and the bench (drive == 0) it is
+not. `chargeDiesel` multiplies every diesel charge's heat by it (`sim/combustion/combustion.fm`, `q = ... *
+ecu->trim`). So a governed diesel held on the dyno below its ECU idle + 450 rpm at full pedal burns about half the
+fuel its rack lets through, and `tel.ecu.fuelFlow` over-reads by the same factor.
+
+D2's ledger, tractor as shipped, per cylinder-cycle: 1000 rpm: reported injected 6365 J, charged and released 3330 J
+(every burn lit, none unburned), brake 1336 J (638 N m): **40.1 % on what burned**, port 728 K. 1300 rpm: 13853
+reported, 13206 released, brake 43.4 %, port 921 K. Nothing burns badly: the 22 % brake efficiency the lead computed
+from N2's cells is 40 % on half the fuel. Second confirmation: C's holds had the tractor's "knife's edge" at about
+1060 rpm, a step at idleRpm + 450 seen from outside.
+
+**One fault upstream of the turbo:** the tractor's hole below about 1100 on the dyno, the take-up held at 1100,
+"the turbine cannot hold 1000" (half the exhaust energy; T3 673 K) and probably the vane guard's pulse there.
+
+**Ruled:** under the metered governor `chargeDiesel` does not multiply by `ecu->trim` (gated on `diesel.metered`;
+the reference to the bit; a diesel on the reference's lever unchanged). D2 prepares it locally with its test (books
+against telemetry within 5 %), the before-and-after table (tractor 800 to 1300, take-up, pickup, 2.0, truck), warm
+idles, and the whole default tier; **pushed on the lead's word after `main` has moved** on P's bake. Then N2's
+low-speed cells, P's take-up and table L's low diesel points are read again, and (b) and the guard are judged on
+the engine as it then is. **Open, asked of D2 as a read:** whether the same trim cuts a petrol's full-pedal torque
+on the dyno below idle + 450, and which predictor points or table L rows sit in that band.
