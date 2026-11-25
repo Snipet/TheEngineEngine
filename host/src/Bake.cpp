@@ -187,6 +187,29 @@ namespace tee
             const double m = manAt < p.fields.size() ? p.fields[manAt] : nan;
             return p.knockRetard + (table.on ? table.at(p.speed, m) : 0.0);
         };
+        // A cell's torque and its standard error (the lead's ruling, 25 Nov, card N1's measure): an unknocked point is
+        // reported as the mean of its last two cycles, and the cycle-to-cycle scatter (the heat's sigma, 0.5 to 0.8 % a
+        // cycle on the economy four at 4786 rpm) gives that mean some +-0.5 %, so neighbouring cells zigzagged by up to
+        // 2 % and the peak hopped (30 / 35 / 40 degrees 135.0 / 134.0 / 136.8). The mean of its last `cycles` counted
+        // cycles (PredictPoint::history) is smooth there (134.7 to 138.0 over 25 to 45 degrees); its standard error is the
+        // cell's own floor. A knock-limited or boost-hunting point keeps the predictor's mean over whole windows (no
+        // error: the row's constant floor stands). A fault or a limiter point is missing
+        const auto cellOf = [&](const PredictPoint& p, double& se) {
+            se = nan;
+            if (!p.valid || p.limited)
+                return nan;
+            const std::size_t n = static_cast<std::size_t>(std::max(options.cycles, 0));
+            if (p.knockLimited || p.boostHunting || n < 3 || p.history.size() < n + 2)
+                return p.torque;
+            double sum = 0.0, sq = 0.0;
+            for (std::size_t i = p.history.size() - n; i < p.history.size(); ++i)
+                sum += p.history[i];
+            const double mean = sum / static_cast<double>(n);
+            for (std::size_t i = p.history.size() - n; i < p.history.size(); ++i)
+                sq += (p.history[i] - mean) * (p.history[i] - mean);
+            se = std::sqrt(sq / static_cast<double>(n - 1) / static_cast<double>(n));
+            return mean;
+        };
         // (a point on the rev limiter, PredictPoint::limited, card C's: its torque is no measure, so a missing cell,
         // as a fault's, wherever the bake reads one)
         const double step = std::max(options.step, 1.0);
@@ -213,13 +236,16 @@ namespace tee
             if (result.speeds.empty())
                 for (const PredictPoint& p : curve.points)
                     result.speeds.push_back(p.speed);
-            std::vector<double> torque, knock;
+            std::vector<double> torque, knock, se;
             for (const PredictPoint& p : curve.points)
             {
-                torque.push_back(p.valid && !p.limited ? p.torque : std::numeric_limits<double>::quiet_NaN());
+                double e = 0.0;
+                torque.push_back(cellOf(p, e));
+                se.push_back(e);
                 knock.push_back(givenUp(p));
             }
             result.torque.push_back(std::move(torque));
+            result.torqueSe.push_back(std::move(se));
             result.knock.push_back(std::move(knock));
         }
 
@@ -238,7 +264,8 @@ namespace tee
         };
         // a row at `speed` measured at every advance, inserted in order (the stage's rows)
         auto insertRows = [&](const std::vector<double>& at) {
-            std::vector<std::vector<double>> tAt(result.advances.size()), kAt(result.advances.size());
+            std::vector<std::vector<double>> tAt(result.advances.size()), kAt(result.advances.size()),
+                sAt(result.advances.size());
             for (std::size_t a = 0; a < result.advances.size(); ++a)
             {
                 PredictCurve curve;
@@ -246,7 +273,9 @@ namespace tee
                     return false;
                 for (const PredictPoint& p : curve.points)
                 {
-                    tAt[a].push_back(p.valid && !p.limited ? p.torque : nan);
+                    double e = 0.0;
+                    tAt[a].push_back(cellOf(p, e));
+                    sAt[a].push_back(e);
                     kAt[a].push_back(givenUp(p));
                 }
             }
@@ -259,6 +288,7 @@ namespace tee
                 for (std::size_t a = 0; a < result.advances.size(); ++a)
                 {
                     result.torque[a].insert(result.torque[a].begin() + static_cast<std::ptrdiff_t>(pos), tAt[a][k]);
+                    result.torqueSe[a].insert(result.torqueSe[a].begin() + static_cast<std::ptrdiff_t>(pos), sAt[a][k]);
                     result.knock[a].insert(result.knock[a].begin() + static_cast<std::ptrdiff_t>(pos), kAt[a][k]);
                 }
             }
@@ -328,7 +358,8 @@ namespace tee
                     probes.push_back({result.speeds[s] + f * (result.speeds[s + 1] - result.speeds[s]), f, s});
                     at.push_back(probes.back().speed);
                 }
-            std::vector<std::vector<double>> tAt(result.advances.size()), kAt(result.advances.size());
+            std::vector<std::vector<double>> tAt(result.advances.size()), kAt(result.advances.size()),
+                sAt(result.advances.size());
             for (std::size_t a = 0; a < result.advances.size(); ++a)
             {
                 if (cancel != nullptr && cancel->load())
@@ -349,7 +380,9 @@ namespace tee
                     return false;
                 for (const PredictPoint& p : curve.points)
                 {
-                    tAt[a].push_back(p.valid && !p.limited ? p.torque : std::numeric_limits<double>::quiet_NaN());
+                    double e = 0.0;
+                    tAt[a].push_back(cellOf(p, e));
+                    sAt[a].push_back(e);
                     kAt[a].push_back(givenUp(p));
                 }
             }
@@ -401,6 +434,7 @@ namespace tee
                 for (std::size_t a = 0; a < result.advances.size(); ++a)
                 {
                     result.torque[a].insert(result.torque[a].begin() + static_cast<std::ptrdiff_t>(pos), tAt[a][ad.k]);
+                    result.torqueSe[a].insert(result.torqueSe[a].begin() + static_cast<std::ptrdiff_t>(pos), sAt[a][ad.k]);
                     result.knock[a].insert(result.knock[a].begin() + static_cast<std::ptrdiff_t>(pos), kAt[a][ad.k]);
                 }
                 result.best.insert(result.best.begin() + static_cast<std::ptrdiff_t>(pos), ad.best);
@@ -441,10 +475,11 @@ namespace tee
                 PredictCurve curve;
                 if (!heldCurve(c, at, curve))
                     return false;
-                std::vector<double> torque(result.speeds.size(), nan), knock(result.speeds.size(), nan);
+                std::vector<double> torque(result.speeds.size(), nan), knock(result.speeds.size(), nan),
+                    se(result.speeds.size(), nan);
                 for (std::size_t k = 0; k < curve.points.size() && k < where.size(); ++k)
                 {
-                    torque[where[k]] = curve.points[k].valid && !curve.points[k].limited ? curve.points[k].torque : nan;
+                    torque[where[k]] = cellOf(curve.points[k], se[where[k]]);
                     knock[where[k]] = givenUp(curve.points[k]);
                 }
                 std::size_t pos = 0;
@@ -452,6 +487,7 @@ namespace tee
                     ++pos;
                 result.advances.insert(result.advances.begin() + static_cast<std::ptrdiff_t>(pos), c);
                 result.torque.insert(result.torque.begin() + static_cast<std::ptrdiff_t>(pos), std::move(torque));
+                result.torqueSe.insert(result.torqueSe.begin() + static_cast<std::ptrdiff_t>(pos), std::move(se));
                 result.knock.insert(result.knock.begin() + static_cast<std::ptrdiff_t>(pos), std::move(knock));
                 result.halfSteps += static_cast<int>(at.size());
             }
@@ -493,26 +529,40 @@ namespace tee
             auto ok = [&](std::size_t a, std::size_t s) {
                 return std::isfinite(result.torque[a][s]);
             };
-            // each speed's best among the cells allowed, and a cell's torque as the path weighs it: the best's, inside
-            // the floor of it
-            std::vector<double> rowBest(ns, bad);
+            // each speed's best among the cells allowed and its floor: twice the best cell's standard error where it
+            // has one (its own cycles' scatter), else `floor` of it. A cell's torque as the path weighs it: the best's,
+            // inside the floor of it. And no row gives up more than capLoss of its own best for the smoothing (the
+            // lead's ruling, 25 Nov: at 1757 rpm the step cost took 25 degrees' 124.1 down to 35 degrees' 123.1 on knock
+            // control, 20 degrees' 124.3 to 40's 122.1 on the table; the cost had no ceiling)
+            std::vector<double> rowBest(ns, bad), rowFloor(ns, 0.0);
             for (std::size_t s = 0; s < ns; ++s)
+            {
+                std::size_t at = na;
                 for (std::size_t a = 0; a < na; ++a)
-                    if (ok(a, s))
-                        rowBest[s] = std::fmax(rowBest[s], result.torque[a][s]);
+                    if (ok(a, s) && (at == na || result.torque[a][s] > rowBest[s]))
+                        rowBest[s] = result.torque[a][s], at = a;
+                if (at == na)
+                    continue;
+                const double se = at < result.torqueSe.size() && s < result.torqueSe[at].size() ? result.torqueSe[at][s]
+                                                                                                    : std::nan("");
+                rowFloor[s] = std::isfinite(se) ? 2.0 * se : options.floor * rowBest[s];
+            }
+            auto allowed = [&](std::size_t a, std::size_t s) {
+                return ok(a, s) && (options.capLoss <= 0.0 || result.torque[a][s] >= (1.0 - options.capLoss) * rowBest[s]);
+            };
             auto weigh = [&](std::size_t a, std::size_t s) {
                 const double t = result.torque[a][s];
-                return options.floor > 0.0 && t >= (1.0 - options.floor) * rowBest[s] ? rowBest[s] : t;
+                return t >= rowBest[s] - rowFloor[s] ? rowBest[s] : t;
             };
             std::vector<std::vector<double>> score(ns, std::vector<double>(na, bad));
             std::vector<std::vector<std::size_t>> from(ns, std::vector<std::size_t>(na, 0));
             for (std::size_t a = 0; a < na; ++a)
-                if (ok(a, 0))
+                if (allowed(a, 0))
                     score[0][a] = weigh(a, 0);
             for (std::size_t s = 1; s < ns; ++s)
                 for (std::size_t a = 0; a < na; ++a)
                 {
-                    if (!ok(a, s))
+                    if (!allowed(a, s))
                         continue;
                     for (std::size_t b = 0; b < na; ++b)
                     {

@@ -1286,3 +1286,48 @@ TEST_CASE("probe: the intake stroke at one speed", "[.probe-fill]")
     std::printf("  bottom to closing, a cycle: in %.2f mg, back out %.2f mg\n", 1e6 * fwd / (nI), 1e6 * back / (nI));
     SUCCEED();
 }
+
+// The cam bake's proof (C's, after fab9ae4c; card N1's rules of 25 Nov): a build's cam baked on knock control alone and
+// on its own fresh spark table, each by the old rules (a cell the predictor's two-cycle mean, a constant floor, no cap)
+// and by the new (the mean of its last cycles, its own standard error the floor, the smoothing capped at 1 % of a
+// row's best). Each row: rpm, then advance/N m for the four. PROBE_BUILD (an archetype's slug).
+TEST_CASE("probe: the cam bake's proof, old rules against new", "[.probe-bakeproof]")
+{
+    const std::string slug = std::getenv("PROBE_BUILD") ? std::getenv("PROBE_BUILD") : "economy-four-15";
+    std::string errors;
+    const auto sim = tee::Sim::compile(std::filesystem::path(TEE_SOURCE_DIR) / "sim", {}, errors);
+    REQUIRE(sim != nullptr);
+    tee::Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json"),
+                           tee::BuildPart::Whole, warnings, errors));
+    build.set("ecu.maps.knockLimitAuto", 1.0);
+    build.set("ecu.maps.camInAuto", 1.0);
+    tee::KnockBakeOptions ko;
+    tee::KnockBakeResult kr;
+    REQUIRE(tee::bakeKnockLimit(sim, build, ko, kr, errors));
+    tee::Build tabled(build.fields());
+    REQUIRE(tabled.load(build.save(), tee::BuildPart::Whole, warnings, errors));
+    REQUIRE(tee::applyKnockLimit(tabled, kr, errors));
+    tee::CamBakeOptions oldRules, newRules;
+    oldRules.cycles = 0;
+    oldRules.capLoss = 0.0;
+    tee::CamBakeResult r[4];
+    REQUIRE(tee::bakeIntakeCam(sim, build, oldRules, r[0], errors));
+    REQUIRE(tee::bakeIntakeCam(sim, tabled, oldRules, r[1], errors));
+    REQUIRE(tee::bakeIntakeCam(sim, build, newRules, r[2], errors));
+    REQUIRE(tee::bakeIntakeCam(sim, tabled, newRules, r[3], errors));
+    std::printf("%s: rpm | old: control, table | new: control, table (advance/N m)\n", slug.c_str());
+    int oldDiff = 0, newDiff = 0;
+    for (std::size_t s = 0; s < r[0].speeds.size() && s < r[2].speeds.size(); ++s)
+    {
+        std::printf("  %5.0f |", r[0].speeds[s] * 30.0 / M_PI);
+        for (int k = 0; k < 4; ++k)
+            std::printf(" %4.1f/%6.1f%s", r[k].best[s], r[k].bestTorque[s], k == 1 ? " |" : "");
+        std::printf("\n");
+        oldDiff += r[0].best[s] != r[1].best[s];
+        newDiff += r[2].best[s] != r[3].best[s];
+    }
+    std::printf("  rows where control and table differ: old %d, new %d of %zu\n", oldDiff, newDiff, r[0].speeds.size());
+    SUCCEED();
+}
