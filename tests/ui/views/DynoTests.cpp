@@ -539,4 +539,51 @@ namespace tee::test::u4
 {
     // The text check, for the other U4 test files.
     std::vector<std::string> textClashesOf(const funkgui::PrimList& list, float w, float h) { return textClashes(list, w, h); }
+
+    // The fuel (TUNE's control; the demo's fields from TUNE's hook): a change of grade with the curve it moves names the
+    // predicted curve and the one before the last edit each with its fuel; a run carries the fuel it ran on in its name,
+    // so runs on two fuels stay held side by side.
+    VIEW_TEST(testDynoFuel, "dyno.fuel")
+    {
+        StageRig rig(tee::ui::makeDynoWorkspace, 1100, 700, 1.0f, 4.6, tee::ui::DemoHooks::of({ "tune" }));
+        auto& doc = rig.demo.doc;
+        const int grade = doc.find("fuel.grade"), comp = doc.find("engine.compression");
+        CHECK(grade >= 0 && comp >= 0);
+        const auto wait = [&rig] {
+            for (int i = 0; i < 600; ++i)
+            {
+                rig.demo.engine.tick(1.0f / 60.0f);
+                rig.host->tick(1);
+            }
+            rig.settle();
+        };
+        wait();
+        CHECK_MSG(tee::ui::dynoRowName(*rig.ws, -2) == "Predicted", tee::ui::dynoRowName(*rig.ws, -2));
+        // A run on Premium.
+        const funkgui::Rect start = tee::ui::dynoControl(*rig.ws, "start");
+        rig.host->click(start.centreX(), start.centreY());
+        wait();
+        CHECK_MSG(tee::ui::dynoRowName(*rig.ws, 0) == "Engine 1, Premium (91)", tee::ui::dynoRowName(*rig.ws, 0));
+        // Regular, with the compression the demo's curve answers to (the demo does not model the fuel).
+        doc.beginGesture();
+        doc.set(grade, 0.0);
+        doc.set(comp, doc.get(comp) - 1.0);
+        doc.endGesture();
+        wait();
+        CHECK_MSG(tee::ui::dynoRowName(*rig.ws, -2) == "Predicted, Regular (87)", tee::ui::dynoRowName(*rig.ws, -2));
+        CHECK_MSG(tee::ui::dynoRowName(*rig.ws, -1) == "Before, Premium (91)", tee::ui::dynoRowName(*rig.ws, -1));
+        rig.host->click(start.centreX(), start.centreY());
+        wait();
+        CHECK_MSG(tee::ui::dynoRowName(*rig.ws, 1) == "Engine 2, Regular (87)", tee::ui::dynoRowName(*rig.ws, 1));
+        picture("dyno.fuel", *rig.host);
+        for (const std::string& clash : tee::test::u4::textClashesOf(rig.host->draw(), 1100.0f, 700.0f))
+            CHECK_MSG(false, clash);
+        // An edit that is not the fuel: the plain words again.
+        doc.beginGesture();
+        doc.set(comp, doc.get(comp) + 0.5);
+        doc.endGesture();
+        wait();
+        CHECK_MSG(tee::ui::dynoRowName(*rig.ws, -1) == "Before last edit", tee::ui::dynoRowName(*rig.ws, -1));
+        return 0;
+    }
 }

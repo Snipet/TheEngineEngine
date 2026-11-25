@@ -6,6 +6,7 @@
 
 #include "views/tune/Tune.h"
 #include "views/tune/TuneDemo.h"
+#include "views/tune/Fuel.h"
 
 namespace tee::test::u4
 {
@@ -13,6 +14,9 @@ namespace tee::test::u4
 }
 
 #include <funkgui/core/Theme.h>
+
+#include <fstream>
+#include <iterator>
 
 namespace
 {
@@ -134,12 +138,12 @@ namespace
         tee::ui::tunedemo::fillDocument(rig.demo.doc);
         rig.settle();
         auto& sel = rig.demo.selection;
-        rig.host->click(100.0f, 60.0f);                  // the first row: spark advance
+        rig.host->click(100.0f, 126.0f);                 // the first row: spark advance (under the fuel's band)
         CHECK_MSG(sel.path() == "ecu.spark", sel.path());
         const std::string page = rig.ws->inspectorPage();
         const std::vector<int> fields = tee::ui::fieldsOfGui(rig.demo.doc, page);
         CHECK_MSG(fields.size() == 1 && fields[0] == rig.demo.doc.find("ecu.spark"), page);
-        rig.host->click(100.0f, 104.0f);                 // lambda: the second map the demo has, with its formula switch
+        rig.host->click(100.0f, 170.0f);                 // lambda: the second map the demo has, with its formula switch
         CHECK_MSG(sel.path() == "ecu.maps.lambda", sel.path());
         {
             const std::string lp = rig.ws->inspectorPage();
@@ -156,12 +160,14 @@ namespace
         doc.set(autoF, 0.0);
         doc.endGesture();
         rig.settle();
-        rig.host->click(100.0f, 224.0f);                 // wastegate duty, the fifth (after the intake cam, the knock limit)
+        rig.host->click(100.0f, 290.0f);                 // wastegate duty, the fifth (after the intake cam, the knock limit)
         CHECK_MSG(sel.path() == "boost.duty", sel.path());
         // The lamps, at the traces' right under the knock by cylinder: the limiter first.
         rig.host->click(1100.0f - 16.0f - 12.0f - 150.0f, 700.0f - 16.0f - 210.0f + 30.0f + 46.0f + 10.0f);
         CHECK_MSG(sel.path() == "ecu.limiter", sel.path());
         CHECK(rig.ws->inspectorPage().empty());          // the frame's generated page of that prefix
+        rig.host->click(600.0f, 60.0f);                  // the fuel's band, off its buttons: the grade
+        CHECK_MSG(sel.path() == "fuel.grade", sel.path());
         return 0;
     }
 
@@ -281,6 +287,118 @@ namespace
         state = "baked";
         rig.settle();
         CHECK(rig.ws->drawKey() != k1);
+        return 0;
+    }
+
+    // The simulator's own source, as the application serves it (FrameServices::simSource): this checkout's sim/.
+    std::string simSource(const std::string& file)
+    {
+        std::ifstream in(std::string(TEE_VIEW_GOLDEN_DIR) + "/../../../../sim/" + file, std::ios::binary);
+        return in ? std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()) : std::string();
+    }
+    bool has(const std::string& text, const std::string& part) { return text.find(part) != std::string::npos; }
+
+    // The fuel (sim/spec/fuel.fm's grade): stepped in TUNE's band, one step of undo; its octane numbers from the
+    // simulator's table (sim/combustion/fuels.fm, read through simSource; never typed in); the knock-limit table shown
+    // after a change, the bake's state said and then what the re-baked table gives; a diesel without octane; the
+    // untested grades marked; the reference burn said to ignore it; no table served: dashes.
+    VIEW_TEST(testTuneFuel, "tune.fuel")
+    {
+        StageRig rig(tee::ui::makeTuneWorkspace, 1100, 700, 1.0f, 4.6);
+        auto& doc = rig.demo.doc;
+        const int grade = doc.find("fuel.grade"), model = doc.find("fuel.model");
+        CHECK(grade >= 0 && model >= 0);
+        // Not served: the grade by name, no number.
+        rig.settle();
+        std::string t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Premium (91) | AKI -   RON -   MON -") && has(t, "not read"), t);
+        // Served: the table's numbers (Premium: RON 96, MON 86 in fuels.fm; AKI their mean).
+        tee::ui::FrameServices svc;
+        std::string state = "baked";
+        svc.simSource = simSource;
+        svc.sparkMap = [&state] { return state; };
+        rig.demo.ctx.services = &svc;
+        rig.settle();
+        t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Premium (91) | AKI 91   RON 96   MON 86 | Against Regular (87), the end gas waits 1.20 times"), t);
+        picture("tune.fuel", *rig.host);
+        for (const std::string& clash : tee::test::u4::textClashesOf(rig.host->draw(), 1100.0f, 700.0f))
+            CHECK_MSG(false, clash);
+        // Next: Race (one gesture), the knock-limit table shown, its bake said.
+        const int steps = doc.steps();
+        const funkgui::Rect next = tee::ui::tuneFuelButton(*rig.ws, 1);
+        CHECK(!next.isEmpty());
+        rig.host->click(next.centreX(), next.centreY());
+        state = "baking spark map 3 of 9";
+        rig.settle();
+        CHECK(std::lround(doc.get(grade)) == 3);
+        CHECK(doc.steps() == steps + 1);
+        CHECK(tee::ui::tuneShownMap(*rig.ws) == 7);
+        t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Race | AKI 100   RON 104   MON 96 | Premium (91) to Race: the knock-limit table re-bakes (baking spark map 3 of 9)."), t);
+        picture("tune.fuel.baking", *rig.host);
+        // The bake lands: the table (baked before at 4 deg everywhere, now 3 off boost and 1 on it) in degrees.
+        const int kl = doc.find("ecu.maps.knockLimit"), kla = doc.find("ecu.maps.knockLimitAuto");
+        tee::ui::Map16 m;
+        m.nx = 2;
+        m.ny = 2;
+        m.x[0] = 100.0;
+        m.x[1] = 600.0;
+        m.y[0] = 0.5;
+        m.y[1] = 1.8;
+        m.z[0][0] = m.z[0][1] = m.z[1][0] = m.z[1][1] = 4.0;
+        doc.beginGesture();
+        doc.set(grade, 2.0);                 // back to Premium with a baked table, then Race again
+        doc.setMap(kl, m);
+        doc.set(kla, 0.0);
+        doc.endGesture();
+        rig.settle();
+        rig.host->click(next.centreX(), next.centreY());
+        rig.settle();
+        CHECK(has(tee::ui::tuneFuelText(*rig.ws), "re-bakes"));
+        m.z[0][0] = m.z[0][1] = 3.0;
+        m.z[1][0] = m.z[1][1] = 1.0;
+        doc.beginGesture();
+        doc.setMap(kl, m);
+        doc.endGesture();
+        state = "baked";
+        rig.settle();
+        t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Premium (91) to Race: 1.0 deg more advance off boost, 3.0 deg more advance on boost"), t);
+        picture("tune.fuel.baked", *rig.host);
+        for (const std::string& clash : tee::test::u4::textClashesOf(rig.host->draw(), 1100.0f, 700.0f))
+            CHECK_MSG(false, clash);
+        // Up to the untested grades: marked; past the end, nothing moves.
+        for (int i = 0; i < 6; ++i)
+        {
+            rig.host->click(next.centreX(), next.centreY());
+            rig.settle();
+        }
+        CHECK(std::lround(doc.get(grade)) == 8);   // Diesel (6) stepped over
+        t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Hydrogen (untested) |") && has(t, "Untested: nothing has run this fuel"), t);
+        // A diesel: its own fuel, no octane, no stepping.
+        doc.beginGesture();
+        doc.set(grade, 6.0);
+        doc.endGesture();
+        rig.settle();
+        t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Diesel | No octane: lit by compression | A diesel's knock is its premixed burn"), t);
+        CHECK(tee::ui::tuneFuelButton(*rig.ws, 1).isEmpty() && tee::ui::tuneFuelButton(*rig.ws, -1).isEmpty());
+        picture("tune.fuel.diesel", *rig.host);
+        // The reference burn: the grade not read, said so.
+        doc.beginGesture();
+        doc.set(grade, 0.0);
+        doc.set(model, 0.0);
+        doc.endGesture();
+        rig.settle();
+        CHECK(has(tee::ui::tuneFuelText(*rig.ws), "The reference burn does not read the grade"));
+        // The table's reader on the simulator's file itself: every grade a row, the diesel none, two untested.
+        const tee::ui::fuel::Table table = tee::ui::fuel::parse(simSource("combustion/fuels.fm"), simSource("combustion/knock.fm"));
+        CHECK(table.rows.size() == 9);
+        CHECK(std::isnan(table.aki(6)) && table.rows[6].compression);
+        CHECK(table.rows[7].untested && table.rows[8].untested && !table.rows[2].untested);
+        CHECK(table.exponent > 3.0 && table.exponent < 4.0);
         return 0;
     }
 }

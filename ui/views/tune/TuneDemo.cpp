@@ -1,6 +1,7 @@
 // ui/views/tune/TuneDemo.cpp: TUNE's own demo data (U1's hook, ui/app/Demo.h): a lambda map with its formula switch,
 // as the integrated Spec has (ecu.maps.*), and the ECU's live values the demo lacks (lambda asked and sensed, the
-// knock count and each cylinder's retard, the load, the ECU's flags), as functions of the script.
+// knock count and each cylinder's retard, the load, the ECU's flags), as functions of the script; the fuel's model
+// and grade (no octane: that is the simulator's table's).
 #include "app/Demo.h"
 #include "views/dyno/Chart.h"
 
@@ -64,6 +65,25 @@ namespace tee::ui
             ka.path = "ecu.maps.knockLimitAuto";
             ka.label = "Knock limit: not baked";
             x.fields->push_back(ka);
+            // The fuel as the integrated Spec has it (sim/spec/fuel.fm): the combustion model on Fuels, the grade
+            // Premium; the octane numbers are not here (TUNE reads them from the simulator's table).
+            FieldInfo fm;
+            fm.path = "fuel.model";
+            fm.kind = FieldKind::choice;
+            fm.max = 1.0;
+            fm.def = 1.0;
+            fm.label = "Combustion model";
+            fm.group = "Fuel";
+            fm.choices = { "Reference", "Fuels" };
+            x.fields->push_back(fm);
+            FieldInfo fg = fm;
+            fg.path = "fuel.grade";
+            fg.max = 8.0;
+            fg.def = 2.0;
+            fg.label = "Fuel";
+            fg.choices = { "Regular (87)", "Midgrade (89)", "Premium (91)", "Race", "E85", "Methanol", "Diesel",
+                           "Propane (untested)", "Hydrogen (untested)" };
+            x.fields->push_back(fg);
         }
         if (x.engine == nullptr)
             return;

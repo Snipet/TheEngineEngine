@@ -741,8 +741,14 @@ namespace tee::ui
         return {};
     }
 
-    GuiPanel::Options FieldPage::withBinding(Options o, FieldDoc& doc, const Units& units, TelemetrySource& telemetry)
+    GuiPanel::Options FieldPage::withBinding(Options o, FieldDoc& doc, const Units& units, TelemetrySource& telemetry,
+                                             const FieldParams& params)
     {
+        // U1: hover help: a parameter's field's ui::help (the FieldParams base is made before the GuiPanel base).
+        if (!o.help)
+            o.help = [&doc, &params](int i) {
+                return i >= 0 && i < params.count() ? doc.info(params.field(i)).help : std::string();
+            };
         if (!o.widget)
             o.widget = [&doc, &units, &telemetry](const GuiNode& n, uint32_t id) { return fieldWidget(n, id, doc, units, telemetry); };
         if (!o.autoPage)
@@ -755,7 +761,7 @@ namespace tee::ui
 
     FieldPage::FieldPage(FieldDoc& doc, const Units& units, TelemetrySource& telemetry, Sources files, Options options)
         : detail::FieldPageParams(doc, units, fieldsOf(doc, files)),
-          GuiPanel(std::move(files), fieldParams, telemetry, withBinding(std::move(options), doc, units, telemetry))
+          GuiPanel(std::move(files), fieldParams, telemetry, withBinding(std::move(options), doc, units, telemetry, fieldParams))
     {
         // An array's element past its extent: the reader says there is no such parameter; say why.
         for (const SourceFile& f : GuiPanel::files())

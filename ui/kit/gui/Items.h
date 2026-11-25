@@ -75,6 +75,9 @@ namespace tee::ui
         // J2: where its owner puts it and whether it is shown (a widget a .gui element places: GuiPanel::Options::widget;
         // the application's frame). An item that places itself ignores it.
         virtual void setPlace(const funkgui::Rect& /*bounds*/, bool /*shown*/) {}
+        // U1: hover help (Tooltip.h): its title and sentence of help and the rect it describes; false: none (the
+        // default). A Board shows it after a short rest of the pointer or the keyboard's focus.
+        virtual bool help(std::string& /*title*/, std::string& /*body*/, funkgui::Rect& /*anchor*/) const { return false; }
     };
 
     // A draw key's mix (Item::drawKey, Panel::needsDraw): FNV-1a over what is added, in order.

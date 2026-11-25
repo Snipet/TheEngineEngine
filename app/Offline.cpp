@@ -25,6 +25,7 @@
                   // the interface package's (ui/): the frame, its document over a tee::Build
  #include "kit/bind/Units.h"
  #include "kit/bind/host/BuildDoc.h"
+ #include "views/drive/Dash.h"          // DRIVE's dash style, a line of the interface's settings text
  #include "tee/Build.h"
 #endif
 
@@ -41,6 +42,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -145,6 +148,7 @@ namespace tee::app
                 files::BuildFile file;
                 files::BuildLibrary library;
                 GarageLibrary garage;             // GARAGE's (U5's Library), over `file`: after it, so destroyed first
+                int driveStyle = 0;               // DRIVE's dash (views/drive/Dash.h), kept with the units' choices
             };
             // the bakes' cache (card C's, keyed by the program's source and the build): a person's window, or a run that
             // names one (TEE_CACHE_DIR); not a machine's run otherwise, whose timings would hang on what an earlier left
@@ -163,18 +167,25 @@ namespace tee::app
             shown.library = &kept->library;
             if (!o.unitChoices.empty())
             {
-                std::string notes;
-                kept->units.load(o.unitChoices, notes);
+                std::string notes, choices = o.unitChoices;
+                kept->driveStyle = std::max(0, ui::dash::takeStyle(choices));
+                kept->units.load(choices, notes);
                 if (!notes.empty())
                     std::fprintf(stderr, "settings: units: %s\n", notes.c_str());
             }
-            shown.unitChoices = [kept] { return kept->units.save(); };
+            shown.unitChoices = [kept] { return kept->units.save() + ui::dash::styleLine(kept->driveStyle); };
             ui::FrameServices frameServices = ui::buildServices(
                 engine.sim->build(), content.empty() ? content : content / "builds", Presets::userDirectory(), services);
             addShellServices(frameServices, *engine.sim, controls);
             addFileServices(frameServices, kept->file, kept->library);
             frameServices.sparkMap = [kept] { return kept->bake.state(); };
+            frameServices.driveStyle = [kept] { return kept->driveStyle; };
+            frameServices.setDriveStyle = [kept](int s) { kept->driveStyle = s; };
             frameServices.stillKnocking = [kept] { return kept->bake.stillKnocking(); };
+            frameServices.simSource = [dir = engine.simDir](const std::string& file) {
+                std::ifstream in(dir / file, std::ios::binary);
+                return dir.empty() || !in ? std::string() : std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+            };
             shown.frame = [kept] { kept->bake.tick(); };
             if (window)
             {

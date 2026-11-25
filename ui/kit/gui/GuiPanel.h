@@ -23,6 +23,8 @@
 // UI thread only.
 #pragma once
 
+#include "kit/gui/Tooltip.h"
+
 #include "kit/gui/DisplayItem.h"
 #include "kit/gui/GuiView.h"
 #include "kit/gui/Items.h"
@@ -88,6 +90,9 @@ namespace tee::ui
             // picture is the same in a build with a GPU layer (the shaders built and registered: the software
             // rasteriser then draws FunkGui's own placeholder) and in one without.
             bool shaders = true;
+            // U1: hover help (Tooltip.h): a parameter's sentence of help (by its index in the ParamSource; "" or none:
+            // its tooltip says its label, unit, range and default alone).
+            std::function<std::string(int param)> help;
         };
         static constexpr const char* kShadersOff = "shaders are off for this panel: each draws as a placeholder";
 
@@ -98,6 +103,8 @@ namespace tee::ui
         // What the .gui reader said ("panel.gui:12:5: note: ..."), a line each; "" when it took everything.
         const std::string& notes() const noexcept { return notes_; }
         const PanelSpec& spec() const noexcept { return spec_; }
+        // U1: the hover help shown now (shown() false: none).
+        const Tooltip& tooltip() const noexcept { return tip_; }
         const Controls& controls() const noexcept { return controls_; }
         GuiView& view() noexcept { return view_; }
         const GuiView& view() const noexcept { return view_; }
@@ -180,6 +187,8 @@ namespace tee::ui
         void scrollBy(float dx, float dy);
         void placeWidgets();
         bool isWidget(std::size_t item) const noexcept;
+        void showHelp(int item);                         // U1: the tooltip for a control item (Options::help)
+        static std::string helpFacts(const ParamInfo& info);
 
         static constexpr uint32_t kA11yStride = 64;      // item i's ids are kA11yStride * (i + 1) + 0..63
         mutable std::size_t idItems_ = static_cast<std::size_t>(-1);
@@ -214,5 +223,6 @@ namespace tee::ui
         bool barPress_ = false;                          // a scroll bar's thumb is held
         bool dirty_ = true;
         uint32_t revision_ = 1;
+        Tooltip tip_;                                    // U1: hover help
     };
 }
