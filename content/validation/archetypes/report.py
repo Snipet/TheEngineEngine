@@ -105,7 +105,7 @@ def crossing(bin_dir, slug, out_dir, build_path):
 TAKEUP = {"name": "Take-up: 90 % of peak torque after the pedal, at a lug (s)", "range": [0, 5], "unit": "s",
           "basis": "cited",
           "source": "the lead's ruling (03:11, D2's reading 03:13): held at 1100 rpm on the dyno (a loaded truck's speed "
-                    "barely moves in the seconds the makers quote), the pedal floored from none at 6 s, the time to 90 %% "
+                    "barely moves in the seconds the makers quote), the pedal from a fifth (light load) to the floor at 6 s, the time to 90 %% "
                     "of the build's own peak torque (its predicted curve's top). The makers' claims: Detroit's DD15 spec "
                     "sheet \"90%% peak torque in 1.5 seconds\", \"At just over 1100 RPM\"; the older engines' \"four "
                     "seconds\" (the S60, TRUCKiNG Info 2007) and competitors' \"up to 4.4 seconds\" (Detroit's "
@@ -380,7 +380,7 @@ def main():
                 peak = max(p[1] for p in curve(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), plan_))
                 tp, ts, st_ = takeup(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), peak)
                 row = dict(TAKEUP, source=TAKEUP["source"] + "; read: to 90 %% of settled %.2f s, settled %.0f N m = "
-                           "%.0f %% of the peak %.0f; the climb from 800 rpm (N2's take-up tool) not measured here"
+                           "%.0f %% of the peak %.0f; the climb from 800 to 1300 rpm at full load (N2's take-up tool, 19 to 20 s on 25 Nov) not measured here"
                            % (ts, st_, 100.0 * st_ / peak, peak))
                 results[s_].append((row, tp, "pass" if TAKEUP["range"][0] <= tp <= TAKEUP["range"][1] else "FAIL"))
         if s_ in CROSS_SLUGS and results[s_] is not None:
