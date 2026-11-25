@@ -157,6 +157,7 @@ namespace tee::settings
             { "tryFirstSeen", s.tryFirstSeen },
             { "coldStart", s.coldStart },
             { "wheelOn", s.wheelOn },
+            { "wheelButtons", s.wheelButtons },
             { "allowClaudeDesktop", s.allowClaudeDesktop },
             { "window", { { "width", s.windowWidth }, { "height", s.windowHeight } } },
         };
@@ -242,6 +243,8 @@ namespace tee::settings
             return bad("cold start flag");
         if (!flag(root, "wheelOn", s.wheelOn))
             return bad("racing wheel flag");
+        if (!text(root, "wheelButtons", s.wheelButtons))
+            return bad("racing wheel buttons");
         if (!flag(root, "allowClaudeDesktop", s.allowClaudeDesktop))
             return bad("Claude Desktop switch");
         if (const auto recent = root.find("recentBuilds"); recent != root.end())

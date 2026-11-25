@@ -471,3 +471,105 @@ TEST_CASE("g29: its state into the driver: the pedals beside a gamepad's, paddle
     CHECK_THAT(f4.throttle, WithinAbs(0.2, 1e-6));
     CHECK(f4.clutch == 0.0f);
 }
+
+TEST_CASE("g29: the buttons' bindings: the defaults, kept and read back, a bad pair left out", "[shell][input][g29]")
+{
+    const wh::Buttons d = wh::defaultButtons();
+    CHECK(wh::saveButtons(d) == "4=shiftup,5=shiftdown,17=start");
+    std::string notes;
+    CHECK(wh::loadButtons("", notes) == d);
+    CHECK(wh::loadButtons(wh::saveButtons(d), notes) == d);
+    CHECK(notes.empty());
+
+    const wh::Buttons b = wh::loadButtons("0=splitter,99=range,3=gear1,x=neutral,2=handbrake,,21=enginebrake", notes);
+    REQUIRE(b.size() == 3);
+    CHECK(b[0] == wh::Binding{ 0, Action::splitter });
+    CHECK(b[1] == wh::Binding{ 2, Action::handbrake });
+    CHECK(b[2] == wh::Binding{ 21, Action::engineBrake });
+    CHECK(notes.find("99=range") != std::string::npos);            // outside the mask
+    CHECK(notes.find("3=gear1") != std::string::npos);             // not a button's (the shifter's)
+    CHECK(notes.find("x=neutral") != std::string::npos);
+    CHECK(wh::saveButtons({}).empty());
+}
+
+TEST_CASE("g29: learning a button: the next press binds it; a held one waits; it moves; time runs out",
+          "[shell][input][g29]")
+{
+    wh::Buttons buttons = wh::defaultButtons();
+    wh::ButtonLearn learn;
+    wh::State s;
+
+    // the cross held as learning begins: it is not the answer until let go and pressed again
+    s.buttons = 1u << 0;
+    learn.begin(Action::splitter, s);
+    CHECK(learn.active());
+    CHECK_FALSE(learn.watch(s, 0.1, buttons));
+    s.buttons = 0;
+    CHECK_FALSE(learn.watch(s, 0.1, buttons));
+    s.buttons = 1u << 0;
+    CHECK(learn.watch(s, 0.1, buttons));
+    CHECK_FALSE(learn.active());
+    CHECK(buttons.back() == wh::Binding{ 0, Action::splitter });
+    CHECK(buttons.size() == 4);
+
+    // the right paddle for the start key: the paddle loses shift up, and PS loses the start key
+    s.buttons = 0;
+    learn.begin(Action::start, s);
+    s.buttons = 1u << wh::kBitRightPaddle;
+    CHECK(learn.watch(s, 0.1, buttons));
+    CHECK(wh::saveButtons(buttons) == "5=shiftdown,0=splitter,4=start");
+
+    // nothing pressed: it ends with nothing after its seconds
+    s.buttons = 0;
+    learn.begin(Action::neutral, s);
+    for (int i = 0; i < 99 && learn.active(); ++i)
+        CHECK_FALSE(learn.watch(s, 0.25, buttons));
+    CHECK_FALSE(learn.active());
+    CHECK(wh::saveButtons(buttons) == "5=shiftdown,0=splitter,4=start");
+}
+
+TEST_CASE("g29: bound buttons drive their actions; a learn listening holds them back; new bindings let go",
+          "[shell][input][g29]")
+{
+    DriverSettings instant;
+    instant.handbrake.rise = instant.handbrake.fall = 0.0f;           // the handbrake follows its key at once
+    tee::input::Driver driver(instant);
+    wh::Input input;
+    const EngineSeen seen{};
+    wh::State s;
+    std::string notes;
+    input.setButtons(wh::loadButtons("0=splitter,1=handbrake", notes));
+    input.apply(s, true, driver);                                   // (the frame that takes the new bindings)
+    const int ups = driver.advance(0.01f, seen).shiftUp;
+
+    // the cross toggles the splitter at each press; the square holds the handbrake; the right paddle no longer shifts
+    s.buttons = 1u << 0 | 1u << 1 | 1u << wh::kBitRightPaddle;
+    input.apply(s, true, driver);
+    const tee::ControlsFrame& f1 = driver.advance(0.01f, seen);
+    CHECK(f1.shiftUp == ups);
+    CHECK(f1.handbrake == 1.0f);
+    CHECK(driver.latchedButtons() == kButtonSplitter);
+
+    // a learn listening: the buttons do nothing (the square's hold is let go, the cross's press is the learn's)
+    s.buttons = 0;
+    input.apply(s, true, driver, false);
+    s.buttons = 1u << 0 | 1u << 1;
+    input.apply(s, true, driver, false);
+    CHECK(driver.advance(0.01f, seen).handbrake == 0.0f);
+    CHECK(driver.latchedButtons() == kButtonSplitter);
+    // the learn over, the buttons still held count only once pressed again
+    input.apply(s, true, driver);
+    CHECK(driver.advance(0.01f, seen).handbrake == 0.0f);
+    CHECK(driver.latchedButtons() == kButtonSplitter);
+    s.buttons = 0;
+    input.apply(s, true, driver);
+    s.buttons = 1u << 0 | 1u << 1;
+    input.apply(s, true, driver);
+    CHECK(driver.advance(0.01f, seen).handbrake == 1.0f);
+    CHECK(driver.latchedButtons() == 0);
+
+    // new bindings: what the old ones held is let go at once
+    input.setButtons(wh::defaultButtons());
+    input.apply(s, true, driver);
+    CHECK(driver.advance(0.01f, seen).handbrake == 0.0f);
+}
