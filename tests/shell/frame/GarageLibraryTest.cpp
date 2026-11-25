@@ -158,6 +158,57 @@ TEST_CASE("shell: the garage's library over the builds on disk", "[shell][files]
     }
 }
 
+// The test suite's fixtures under content/builds (kFixtureFolders: combo/, the combination archetypes and the fuzzer's
+// findings, builds that diverge) are not the application's: GARAGE never lists one, and lists every shipped build it
+// listed before (the same count as the whole tree less the fixtures' own).
+TEST_CASE("shell: the garage's library lists no test fixture", "[shell][files][garage]")
+{
+    const fs::path shipped = fs::path(TEE_SOURCE_DIR) / "content" / "builds";
+    const fs::path combo = shipped / "combo";
+    const fs::path none = fs::path(TEE_SOURCE_DIR) / "out" / "shell" / "files" / "garage-none";
+    player::SimAdapter::Options o;
+    o.directory = fs::path(TEE_SOURCE_SIM_DIR);
+    std::string errors;
+    const std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors, o);
+    INFO(errors);
+    REQUIRE(sim != nullptr);
+    files::BuildFile doc(sim->build());
+    const app::GarageLibrary lib(doc, std::shared_ptr<Sim>(), shipped, none);
+    // the fixtures as the shipped directory itself: what the library read under combo/ before it was ruled out
+    const app::GarageLibrary fixtures(doc, std::shared_ptr<Sim>(), combo, none);
+    REQUIRE(fixtures.builds().size() >= 5);
+    std::size_t archetypes = 0;
+    for (const auto& b : lib.builds())
+    {
+        const std::string rel = fs::path(b.id).lexically_relative(shipped).generic_string();
+        INFO(rel);
+        CHECK(rel.rfind("combo/", 0) != 0);
+        CHECK(b.name.find("(combo)") == std::string::npos);
+        if (rel.rfind("archetypes/", 0) == 0)
+            ++archetypes;
+    }
+    // every archetype still there: as many as archetypes/ has readable builds
+    std::size_t archetypeFiles = 0;
+    for (const auto& e : fs::directory_iterator(shipped / "archetypes"))
+        if (e.path().extension() == ".json")
+            ++archetypeFiles;
+    CHECK(archetypes == archetypeFiles);
+    // and nothing else lost: the whole tree as it was read before is these plus the fixtures
+    std::size_t before = 0;
+    for (auto it = fs::recursive_directory_iterator(shipped); it != fs::recursive_directory_iterator(); ++it)
+        if (it->is_regular_file() && it->path().extension() == ".json")
+            ++before;
+    std::size_t fixtureFiles = 0;
+    for (auto it = fs::recursive_directory_iterator(combo); it != fs::recursive_directory_iterator(); ++it)
+        if (it->is_regular_file() && it->path().extension() == ".json")
+            ++fixtureFiles;
+    INFO("listed " << lib.builds().size() << ", fixtures listed alone " << fixtures.builds().size() << ", files "
+                   << before << ", fixture files " << fixtureFiles);
+    CHECK(lib.builds().size() + fixtures.builds().size() <= before);
+    CHECK(fixtures.builds().size() <= fixtureFiles);
+    CHECK(lib.builds().size() >= before - fixtureFiles - 4);   // a few shipped files may not read as builds
+}
+
 TEST_CASE("shell: the garage's library makes each whole build's curve in the background", "[shell][files][garage][nightly]")
 {
     const fs::path user = fs::path(TEE_SOURCE_DIR) / "out" / "shell" / "files" / "garage-user-curves";
