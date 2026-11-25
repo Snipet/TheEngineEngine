@@ -103,9 +103,25 @@ namespace tee::files
         fs::file_time_type modified{};
     };
 
+    // A whole build of the library by its folder-qualified name (BuildLibrary::wholeBuilds).
+    struct WholeBuild
+    {
+        std::string name;              // "default", "archetypes/flat-plane-v8-45": the path under its folder, "/"
+                                       // between folders, without .json (top-level and the user's: the file's stem)
+        fs::path file;
+        bool user = false;             // the user's own (else shipped)
+    };
+
     class BuildLibrary
     {
     public:
+        // The test suite's fixtures under the shipped folder (combo/: the combination archetypes, their pack and the
+        // fuzzer's findings, builds reduced until they diverge): never a build a person opens. The rule for which files
+        // are builds an owner can open is this class's; GARAGE (app/GarageLibrary) and the assistant read it.
+        static constexpr const char* kFixtureFolders[] = { "combo" };
+        // Whether `relative` (a path under the shipped folder) lies in a fixture folder.
+        static bool isFixture(const fs::path& relative);
+
         // `shipped` may be empty (none); `user` is made when first written to.
         BuildLibrary(fs::path shipped, fs::path user);
 
@@ -115,9 +131,17 @@ namespace tee::files
         // The whole builds (not the parts' folders): shipped first, then the user's, each by name. A user's build of
         // a shipped one's name is listed once, as the user's.
         std::vector<BuildSummary> list() const;
-        // One by name (false when there is none).
+        // Every whole build a person can open: the shipped folder's, recursively (its folders included: archetypes/,
+        // ...; the fixtures never), each by its folder-qualified name, then the user's folder's (its top, as list()).
+        // Whole against part as GARAGE decides it (readContents with `fields`: a file that says its part, or whose
+        // fields all lie in one part's sections, is that part, not listed). A user's build of a top-level shipped
+        // one's name is listed once, as the user's. Sorted by name, shipped first.
+        std::vector<WholeBuild> wholeBuilds(const Fields& fields) const;
+        // One by name: a top-level or user's name, or a folder-qualified one ("archetypes/flat-plane-v8-45"). False
+        // when there is none, or it is a fixture.
         bool summary(const std::string& name, BuildSummary& out) const;
-        // Into `file` (the open document), by name. As BuildFile::open.
+        // Into `file` (the open document), by name (as summary() takes it). As BuildFile::open. A fixture is refused,
+        // and so is a part (by readContents with the document's fields), each with the reason in words.
         bool load(BuildFile& file, const std::string& name, std::vector<std::string>& warnings, std::string& error) const;
         // The open build saved in the user's folder as `name` (its "name" set to it); the document becomes that file.
         bool save(BuildFile& file, const std::string& name, std::string& error) const;
@@ -130,7 +154,7 @@ namespace tee::files
         static bool validName(const std::string& name, std::string& why);
 
     private:
-        fs::path find(const std::string& name, bool& user) const;
+        fs::path find(const std::string& name, bool& user, std::string* why = nullptr) const;
 
         fs::path shipped_, user_;
     };

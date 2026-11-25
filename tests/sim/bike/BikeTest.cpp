@@ -306,6 +306,35 @@ TEST_CASE("bike.slipper: a clumsy downshift at speed hops or locks the rear tyre
     CHECK(slipWithout < slipWith);
 }
 
+TEST_CASE("bike.lugging: a heavy bike floored at low revs in a tall gear keeps its clutch locked once it has locked",
+          "[bike]")
+{
+    // The launch helper closes the clutch with the revs from just over idle. Lugging the cruiser in sixth at 1,300 rpm
+    // with the throttle floored, the engine sags under the load: without the latch the helper opened the clutch again
+    // as it sagged and let it slip; once it has locked in a gear it is held closed by the output's speed (the patch of
+    // card D, the lead's ruling of 25 Nov), so after the first lock the slip stays at the drive's own few tenths.
+    Rig r;
+    cruiser(r);
+    cruise(r, 6, 1300.0, 0.0);
+    r.set("throttle", 1.0);
+    double firstLock = -1.0, slipAfter = 0.0, wMin = 1e9;
+    for (int i = 0; i < 600; ++i)   // 3 s
+    {
+        r.seconds(0.005);
+        const double slip = std::fabs(r.get("bike.slipC"));
+        if (firstLock < 0.0 && slip < 0.5)
+            firstLock = i * 0.005;
+        else if (firstLock >= 0.0)
+            slipAfter = std::max(slipAfter, slip);
+        wMin = std::min(wMin, r.get("w"));
+    }
+    std::printf("lugging: first lock at %.3f s; slip after it at most %.2f rad/s; crank at least %.0f rpm, at the end "
+                "%.0f rpm; %.1f m/s\n", firstLock, slipAfter, wMin * 9.549, r.get("w") * 9.549, r.get("bike.tel.speed"));
+    REQUIRE(firstLock >= 0.0);
+    CHECK(slipAfter < 2.0);
+    CHECK(r.get("bike.tel.gear") == 6.0);
+}
+
 TEST_CASE("bike.lash: the driveline's play closes as an event each time the throttle opens and shuts", "[bike]")
 {
     Rig r;

@@ -1,0 +1,28 @@
+# Each platform's own: macOS the window in Objective-C++ and the racing wheel over IOKit; Windows and Linux *Win.cpp
+# (JUCE's window with a menu bar: nothing in it is Windows'); Windows *None.cpp (no racing wheel), Linux *Linux.cpp (the
+# racing wheel over the kernel's evdev and sysfs: plugin/WheelEvdev.h).
+if(APPLE)
+  list(FILTER FP_STANDALONE_SOURCES EXCLUDE REGEX "(Win|None|Linux)\\.cpp$")
+elseif(FP_LINUX)
+  list(FILTER FP_STANDALONE_SOURCES EXCLUDE REGEX "(\\.mm|/RacingWheel\\.cpp|/RacingWheelNone\\.cpp)$")
+else()
+  list(FILTER FP_STANDALONE_SOURCES EXCLUDE REGEX "(\\.mm|/RacingWheel\\.cpp|Linux\\.cpp)$")
+endif()
+
+    target_link_libraries(${PRODUCT_NAME}_Standalone PRIVATE fp_flags)
+    if(APPLE)
+      # The racing wheel (standalone/RacingWheel.cpp): IOKit's HID manager, the Standalone's alone.
+      target_link_libraries(${PRODUCT_NAME}_Standalone PRIVATE "-framework IOKit" "-framework CoreFoundation")
+    endif()
+
+# ---- wheel-dump: a developer's tool, outside `all` and never installed ----------------------------------------------
+# Tools/wheel-dump/: a connected Logitech G29's HID elements and their live values, beside what plugin/WheelMap.h's
+# table makes of them (README, "A racing wheel"). `cmake --build build-dev --target wheel-dump`, then
+# build-dev/wheel-dump.
+if(APPLE)
+  add_executable(wheel-dump EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/Tools/wheel-dump/main.cpp
+                                             ${FP_SOURCE_ROOT}/plugin/WheelMap.cpp)
+  target_include_directories(wheel-dump PRIVATE ${FP_SOURCE_ROOT})
+  target_link_libraries(wheel-dump PRIVATE fp_flags fp_warnings "-framework IOKit" "-framework CoreFoundation")
+endif()
+

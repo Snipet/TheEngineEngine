@@ -44,6 +44,8 @@ namespace tee::app
         std::vector<std::pair<std::string, double>> holds;   // --hold-value PATH=VALUE (a test's): held before every call
         double holdCompile = 0.0;       // --hold-compile S (tee-headless, a test's): the engine's compile is held back for
                                         // S seconds of the run (its frames drawn meanwhile), then waited for
+        double probeInput = -1.0;       // --probe-input [--probe-seconds S]: the game controllers SDL sees, and S
+                                        // seconds (60) of their changes (app/InputProbe.h); the window: -1 none
         bool cold = false;              // --cold (or the settings' coldStart): the engine starts cold, not at its working
                                         // temperatures (each new instance: at load, a device's prepare, a fault's restart)
         bool reference = false;         // --reference: the window opens no build: the simulator's defaults, every model
