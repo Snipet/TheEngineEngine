@@ -408,6 +408,19 @@ arch(slug="vr6-28", runner=0.45, name="Narrow-angle VR6 2.8 L", geo="vr6", layou
 arch(slug="straight-six-32-high-rev", name="3.2 L straight six, high-revving", geo="ref-10-inline-6",
      layout="Inline 6", bore=87.0, stroke=91.0, rod=139.0, cr=11.5, valves=4, dIn=35.0, dEx=30.5,
      cam=(264, 236, 11.8, 106, 260, 232, 11.0, 110), train="Bucket", phase=(60, 45), redline=8000, idle=850,
+     # the S54's own cams for table L (the lead, 01:55), applied with CAM_RULE: BMW ST041 and ST609 (maker's training
+     # manuals): lift 12 / 12 mm, "Camshaft Spread Angle Intake (degrees) 70 - 130 / Exhaust (degrees) 83 - 128" (crank
+     # degrees), ranges 60 and 45, "The 'default' mechanical stop position without VANOS influence is: Intake Camshaft =
+     # Retarded (130º spread angle) / Exhaust Camshaft = Advance (83º spread angle)"; a row "260/260" read as the
+     # durations (the height not stated: taken as the seat, the 1 mm by the bucket class's rule). BMW's "Advance (83º)"
+     # is doubted (an exhaust centre nearer the top is its late end): the exhaust parks at 128, the end that closes it
+     # early (the LEAD'S READING, no second BMW line found); the intake parks at 130 as BMW says
+     camCard=dict(cam=(260, 224, 12.0, 110, 260, 224, 12.0, 128), inPark=130.0,
+                  cardNote="Its cams: the S54's (BMW training manuals ST041 and ST609: 12 mm lift, spreads intake 70 "
+                           "to 130 and exhaust 83 to 128 crank degrees, ranges 60 and 45, the intake resting at 130); "
+                           "the 260 deg durations read from a row whose height is not stated (taken as the seat); the "
+                           "exhaust resting at 128, the lead's reading of BMW's \"Exhaust Camshaft = Advance (83º "
+                           "spread angle)\", which is doubted."),
      intake=dict(throttleKind="A body a runner"), grade="Premium (91)", car="coupe-six",
      timing="Chain", lifters="Solid",
      notes="A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, "
@@ -631,7 +644,7 @@ def build(a):
             # a phased intake parks late, as real phasers lock at their retarded end, and advances under load:
             # the fixed-cam centre plus 20 degrees, at most half its range (N1: the four-cam 5.0 parked at its fixed
             # centre had 38 degrees of overlap at idle and hunted 455 to 515 rpm; 20 later it idles 700, sd 6)
-            v["inCentre"] = ci + min(20.0, a["phase"][0] / 2.0)
+            v["inCentre"] = a.get("inPark", ci + min(20.0, a["phase"][0] / 2.0))
         # port quality by head (N1, from card E's calibration: q 1.35 is a stock 232 CFM small-block head; racing
         # ports flow 20 to 30 % more, Heywood fig. 6-18): two-valve wedge and pushrod heads 1.2/1.35, production
         # four-valve 1.35/1.5 (the default), high-output four-valve 1.65/1.8, race 1.75/1.9

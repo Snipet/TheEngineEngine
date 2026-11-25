@@ -96,19 +96,20 @@ CITED = {
 _MOTOR = ("MOTOR magazine, Vacuum Gauge & Transducer Testing (July 2006): \"On a normal engine, normal idle vacuum "
           "should be a steady reading between 17 and 21 in./Hg\" (warm), 30 to 44 kPa absolute at 101.3 kPa; the "
           "class figure, the engine's own not found")
+# (not the 3.2: a throttle body a runner, no plenum, as the S54's, which has no manifold sensor: its manifold reads a
+# runner's pulsing mean, not what the class figure means; not applicable, the lead 01:55)
 IDLE_MAP = {
     "economy-four-15": (20, 34, "cited", "Honda's L15 ECM/PCM data table: \"At idle speed: about 20-34 kPa (150-260 "
                         "mmHg, 6-10 in.Hg)\", warm, in neutral or park, A/C and accessories off, 750 rpm (the L15A1/A6 "
                         "page): the same class's engine"),
-    "hot-hatch-16-16v": (43, 54, "recalled", "the 4A-GE's service specification, 400 mmHg (15.75 in Hg) vacuum at 800 rpm, "
-                         "about 48 kPa absolute, as quoted in an aeu86.org forum post from Toyota's 1987 repair manual "
-                         "(the manual not read; the post also writes it 53.5 kPa absolute): 43 to 54 spans both readings "
-                         "and 5 kPa (judgement)"),
+    "hot-hatch-16-16v": (43, 53, "recalled", "the 4A-GE's service specification as quoted in an aeu86.org forum post from "
+                         "Toyota's 1987 repair manual, p. A6 (the manual not read): \"53.5 kPa (abs) = 15.75\" Hg @ 800 "
+                         "rpm idle\", one reading: 15.75 inHg is 400 mmHg (53.3 kPa) of vacuum, about 48 kPa absolute "
+                         "(the post's \"abs\" a mislabel, the lead 01:55); 48 within 5 kPa (judgement); the post does not "
+                         "say whether it is a minimum, and it MAY BE A MINIMUM vacuum (then 48 is an upper bound)"),
     "big-bore-70-pushrod-v8": (30, 44, "recalled", _MOTOR + "; a stock LS7 at 38 kPa (an HP Tuners forum post) inside it"),
-    "straight-six-32-high-rev": (30, 44, "recalled", _MOTOR + "; the S54 has no manifold sensor (BMW ST041), a forum's "
-                                 "21 in Hg (30 kPa) second-hand"),
-    "v10-52": (30, 44, "recalled", _MOTOR),
-    "v12-65": (30, 44, "recalled", _MOTOR),
+    "v10-52": (30, 44, "recalled", _MOTOR + "; no figure of the 5.2 V10's own found"),
+    "v12-65": (30, 44, "recalled", _MOTOR + "; no figure of a production NA V12's own found"),
 }
 
 # slug: published peak power (kW range, rpm range), torque (N m range, rpm range), warm idle (rpm range),

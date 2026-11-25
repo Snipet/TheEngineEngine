@@ -245,7 +245,7 @@
         44000.0
       ],
       "unit": "Pa",
-      "source": "MOTOR magazine, Vacuum Gauge & Transducer Testing (July 2006): \"On a normal engine, normal idle vacuum should be a steady reading between 17 and 21 in./Hg\" (warm), 30 to 44 kPa absolute at 101.3 kPa; the class figure, the engine's own not found",
+      "source": "MOTOR magazine, Vacuum Gauge & Transducer Testing (July 2006): \"On a normal engine, normal idle vacuum should be a steady reading between 17 and 21 in./Hg\" (warm), 30 to 44 kPa absolute at 101.3 kPa; the class figure, the engine's own not found; no figure of a production NA V12's own found",
       "basis": "recalled"
     },
     {
