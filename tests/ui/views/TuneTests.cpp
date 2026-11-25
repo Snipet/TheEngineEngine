@@ -151,7 +151,7 @@ namespace
         doc.set(autoF, 0.0);
         doc.endGesture();
         rig.settle();
-        rig.host->click(100.0f, 184.0f);                 // wastegate duty, the fourth (after the knock limit)
+        rig.host->click(100.0f, 224.0f);                 // wastegate duty, the fifth (after the intake cam, the knock limit)
         CHECK_MSG(sel.path() == "boost.duty", sel.path());
         // The lamps, at the traces' right under the knock by cylinder: the limiter first.
         rig.host->click(1100.0f - 16.0f - 12.0f - 150.0f, 700.0f - 16.0f - 210.0f + 30.0f + 46.0f + 10.0f);
@@ -240,6 +240,22 @@ namespace
         tee::ui::tuneChoose(*rig.ws, 0);                 // and it is said over the spark map too
         rig.settle();
         picture("tune.knocklimit.spark", *rig.host);
+        // The intake cam: set aside (its switch on) while the calibration bakes its cam pass, said in the same place.
+        tee::ui::tuneChoose(*rig.ws, 3);
+        state = "baking cam";
+        rig.settle();
+        CHECK(tee::ui::tuneMapEdit(*rig.ws) != nullptr);
+        const std::uint64_t k1 = rig.ws->drawKey();
+        picture("tune.knocklimit.cam", *rig.host);
+        auto& doc = rig.demo.doc;
+        const int camAuto = doc.find("ecu.maps.camInAuto");
+        CHECK(camAuto >= 0);
+        doc.beginGesture();
+        doc.set(camAuto, 0.0);                           // the bake applied: the table in use
+        doc.endGesture();
+        state = "baked";
+        rig.settle();
+        CHECK(rig.ws->drawKey() != k1);
         return 0;
     }
 }
