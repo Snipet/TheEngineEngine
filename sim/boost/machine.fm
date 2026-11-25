@@ -480,7 +480,12 @@ module BoostMachine
         // the way to choke: tau 0.865 of the knee's, tauK = 0.45 x 0.4 M^2 against the air's):
         // docs/measurements/calibration/boost/compressor-map-model.md)
         const float tauD = expf(logf(prDesign) / 3.5f) - 1.0f;
-        const float machD = fminf(sqrtf(tauD / (0.865f * 0.18f)), 1.63f);
+        // (the design ratio's tip Mach on the map's island: tau there 0.928 of the knee's (the fall 0.652, the island 0.61 of
+        // the way to choke), the knee's rise (0.608 - 0.157 (M - 1)) x 0.4 M^2, solved by iteration)
+        float machD = 1.0f;
+        for (int it = 0; it < 12; ++it)
+            machD = sqrtf(tauD / (0.928f * 0.4f * (0.608f - 0.157f * (machD - 1.0f))));
+        machD = fminf(machD, 1.63f);
         const float chokeAt = 0.3f + 0.7f * machD / 1.63f;
         const float share = layout == BOOST_TWIN ? 0.5f : (layout == BOOST_QUAD ? 0.25f : (layout == BOOST_SEQUENTIAL ? 0.5f : 1.0f));
         for (int t = 0; t < BOOST_TURBOS; ++t)
@@ -488,7 +493,7 @@ module BoostMachine
             // (a compound pair's high-pressure stage meets air already compressed some 1.6 times: a smaller wheel)
             const float mt = mMatch * share * s->size * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
             const float wide = expf(0.25f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
-            const float aRated = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide * chokeAt);
+            const float aRated = 1.15f * mt / (0.506f * 1.204f * 343.2f * wide * chokeAt);
             // (the lead's ruling (b), 25 Nov: a governed diesel's wheel also held 10 % right of the surge flag's line
             // (0.9 of the knee: compressor.fm) along the whole climb to its design ratio at its torque-peak speed
             // (BorgWarner's "10-percent or more to the right of the surge line"; Woollenweber, US 5,025,629: "matched to
@@ -500,7 +505,7 @@ module BoostMachine
             // (gamma rc - 1); THE PAGE NOT CHECKED) at the build's back-pressure limit (the tractor at 1.4, 17:1: 0.982;
             // measured 0.879 against its 0.9 x 0.982 = 0.884 at 1000 rpm, after-burn-cure.md); the charge at each
             // ratio as tCharge's; the speed line through each ratio's flag point the map's own (tau at 0.9 of the knee
-            // 0.1794 M^2: compressor.fm's rise at x = 0.9); no pulse term (0.998 measured at the boosted state))
+            // 0.9966 of the knee's rise: compressor.fm's smooth step at x = 0.9); no pulse term (0.998 measured at the boosted state))
             float aAnn = aRated;
             if (dsl != 0 && peakRpm > 0.0f && layout != BOOST_COMPOUND)
             {
@@ -515,13 +520,15 @@ module BoostMachine
                     if (pr > prDesign + 1.0e-4f)
                         break;
                     const float tau = expf(logf(pr) / 3.5f) - 1.0f;
-                    const float m = sqrtf(tau / 0.1794f);
-                    const float kn = fminf(fmaxf((0.40f + 0.178f * (fmaxf(m, 0.8f) - 1.0f)) * kArS, 0.2f), 0.7f);
+                    float m = 1.0f;
+                    for (int it = 0; it < 12; ++it)
+                        m = sqrtf(tau / (0.9966f * 0.4f * (0.608f - 0.157f * (m - 1.0f))));
+                    const float kn = fminf(fmaxf((0.349f + 0.551f * (fmaxf(m, 0.67f) - 1.0f)) * kArS, 0.15f), 0.9f);
                     // (the compressor's efficiency at the margin's own point on the map, 0.99 of the knee, not its
                     // peak (compressor.fm's efficiency()); the charge after the cooler's icEffect; the cooler's pressure
                     // drop at the engine's whole flow, icDrop at icFlow, squared: the charge as the build's own model
                     // gives it (the lead's ruling, 25 Nov; guard-removed.md))
-                    const float dm = m - 1.1f;
+                    const float dm = fmaxf(m, 0.67f) - 1.1f;
                     const float phiB = kn + 0.61f * (1.0f - kn);
                     const float dp = 0.99f * kn - phiB;
                     const float etaHere = fmaxf(s->compEta - 0.25f * dm * dm - 0.9f * dp * dp, 0.3f);
@@ -532,7 +539,7 @@ module BoostMachine
                     const float p2 = fmaxf(pr * pOut - s->icDrop * icR * icR, pOut);
                     const float flow = whole0 * (p2 / (pr * pOut)) * share * s->size;
                     const float cf = 0.3f + 0.7f * fminf(m / 1.63f, 1.0f);
-                    const float a = flow / (1.1f * 0.9f * kn * 0.45f * 1.204f * 343.2f * wide * cf);
+                    const float a = flow / (1.1f * 0.9f * kn * 0.506f * 1.204f * 343.2f * wide * cf);
                     best = fminf(best, a);
                 }
                 aAnn = fminf(aRated, best);
@@ -555,7 +562,7 @@ module BoostMachine
             if (t == 0)
                 compFlowHas = 0.0f;
             if (t < turbos && !(layout == BOOST_COMPOUND && t == 0))
-                compFlowHas += 0.45f * 1.204f * 343.2f * wide * chokeAt * 0.91f * 3.14159265f * 0.25f * dInd * dInd;
+                compFlowHas += 0.506f * 1.204f * 343.2f * wide * chokeAt * 0.91f * 3.14159265f * 0.25f * dInd * dInd;
             const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
             const float rc = 0.6f * dT;
             float aNoz = 0.0f;
