@@ -3,7 +3,7 @@
 // script reads them) and as a short table for a person.
 //
 //   BAL_BUILD=air-cooled-flat-six-36 BAL_RPM=5199 build-dev/bin/tee-tests-calibration-balance "[.balance]"
-//   (BAL_SET="engine.wallHeat=1;..." Spec writes; BAL_RAW="spec.ecu.maps.lambda.nx=1;..." any path; BAL_SIM=DIR another tree's sim/; BAL_SETTLE, BAL_MEASURE seconds; BAL_HOLD the throttle before a step to 1 at the window)
+//   (BAL_SET="engine.wallHeat=1;..." Spec writes; BAL_RAW="spec.ecu.maps.lambda.nx=1;..." any path; BAL_SIM=DIR another tree's sim/; BAL_SETTLE, BAL_MEASURE seconds; BAL_HOLD the throttle before a step to 1 at the window; BAL_BENCH=1 a free warm idle)
 #include "Balance.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -58,6 +58,8 @@ TEST_CASE("probe: an engine's air and energy books", "[.balance]")
         o.measure = std::atof(s);
     if (const char* s = std::getenv("BAL_HOLD"))
         o.hold = std::atof(s);
+    if (const char* s = std::getenv("BAL_BENCH"))
+        o.bench = std::atoi(s) != 0;
     keepPlayer(true);
     for (const std::string& slug : split(b ? b : "air-cooled-flat-six-36", ','))
         for (const std::string& rs : split(r ? r : "5199", ','))
