@@ -119,6 +119,30 @@ of full-load torque against running on knock control alone: −0.8 % at 1786 rpm
 7.2 degrees there, where control's sawtooth averages 3.7 to 4.9. That is the knock-limit bake's margin of 2 degrees over
 the mean retard, by design. If that margin is to be argued, it is card C's.
 
+**A cell is its point's settled mean (version 3).** The predictor reported an unknocked point as the mean of its
+last two cycles. With the engine's own cycle-to-cycle scatter (0.5 to 0.8 % a cycle on the economy four at 4786 rpm,
+the size the heat's sigma gives: 0.027 per cylinder-cycle times gauss()'s 0.577, averaged over four cylinders), that
+mean carried about ±0.5 %, and neighbouring cells zigzagged by up to 2 %. Over their settled cycles the same cells rise
+smoothly (134.7 to 138.0 N m from 25 to 45 degrees). So each cell is the mean of its point's last 8 counted cycles, the
+row's tie floor is twice the best cell's standard error, and no row gives up more than 1 % of its own best to the
+smoothing (at 1757 rpm the uncapped step cost gave up 0.8 to 1.8 %).
+
+**Measured** (probe `[.probe-bakeproof]`, the economy four's cam baked on knock control alone and on its own fresh spark
+table, 8 speeds): the rows where the two choices differ went from 6 (old rules) to 2 (new).
+
+| rpm | old: control | old: table | new: control | new: table |
+|---|---|---|---|---|
+| 2514 | 35 | 30 | 35 | 35 |
+| 3271 | 35 | 30 | 35 | 35 |
+| 4029 | 35 | 30 | 40 | 35 |
+| 4786 | 40 | 30 | 40 | 35 |
+| 5543 | 35 | 30 | 35 | 35 |
+| 6300 | 35 | 30 | 35 | 35 |
+
+1000 and 1757 rpm chose 35 in all four. **The two left (4029 and 4786 rpm, 40 against 35, half a step apart) are not a
+failure.** On those rows the spark table's retard moves the torque at each advance by more than a cycle's error, so the
+two bakes measure genuinely different rows. Their choices differ honestly.
+
 The bake's rules carry a version in its key (`kCamBakeVersion`, Bake.h). A map baked by older rules reads stale.
 
 ### Known limit: the schedule at the top of a high-revving engine (card N3, measured; causes.md N3-10, N3-11)

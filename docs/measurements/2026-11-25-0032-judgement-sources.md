@@ -220,3 +220,24 @@ So: the join at about 4500 rpm at full throttle (an enthusiast's measurement and
 **Run-down, measured.** Gritsenko et al., Tribology in Industry 45(3), 2023 (tribology.rs, a paper; a K27-145 truck and tractor turbo, its wheel's size not stated; a ZMZ-4062 bench, oil from its own station at 50 / 70 / 90 C and 0.1 / 0.25 / 0.4 MPa): "at n = 25,000 rpm, rundown time was (10.3-14.8) s"; "at n = 50,000 rpm ... (28.1-34.4) s"; "at n = 75,000 rpm ... (38.6-47.1) s"; longer with hotter oil, shorter with higher oil pressure. A KAMAZ truck turbo (Orlov et al., cited there): "The rundown time was 18.6 s after 72,000 km", 22.8 s on an autonomous lubrication system (start speed not given). A ball-bearing turbo against a floating-ring one, otherwise alike (Brouwer, Purdue thesis / ASME 10.1115/1.4024780, rig driven by a 14 L diesel's compressor): "significantly lower frictional losses ... with an average increase in run-down time of 14.1%". Car turbos: forum timings only (5 to 15 s from idle).
 **Bearing loss.** Serrano et al. (Energy 55, 2013; three car turbos, compressor 49 / 46 / 40 mm, a fixed and two floating-ring journals; oil flow times its rise): loss plotted to some 450 W over 30,000 to 190,000 rpm, no values in the text; "A linear correlation between the journal bearing geometry and parameter k jb and the area of the compressor wheel was found". A Korean measurement (abstract): loss rising as the speed to the 1.6, falling with hotter oil, rising with oil pressure. Windage theory (Brno 2022): as w^3 d^4. **Not found:** any maker's bearing loss in W; any 80 to 100 mm heavy-duty turbo's loss at a stated speed; a measured rotor inertia (an aviation turbo's 3.48e-4 kg m2, a search snippet).
 So the class's measured run-down from 50,000 to 75,000 rpm is some 28 to 47 s, against the model's truck at 79 s and its small turbo at 23 s.
+
+## 20. The diesel archetypes' peak-torque speeds, from their makers (the lead's ask for N2's matching rule, 25 Nov 08:58 UTC)
+
+For the matching speed (a governed diesel's compressor sized with its torque-peak point some 10 % right of the surge line):
+the lowest speed of the plateau is the one nearest surge (the least air at the most boost), so each is given as a range
+with its start.
+- **The 15 L tractor (the X15 kind), and D2's truck card** (the same 137 x 169 mm six): Cummins X15 Efficiency Series,
+  Bulletin 5410582 (mart.cummins.com): **"peak torque starting at 950 rpm"**, flat to about 1300-1400 (read off its
+  charts; section 15). The ISX15 560 / 1850 (Bulletin 4971488) "from 1150 rpm to 1500 rpm"; Detroit's DD15 "@ 975" or
+  "@ 1100" by sheet (section 15). Cited. The tractor's own fuel curve plateaus from 1000 to 1400 rpm.
+- **The 6.7 pickup** (the Cummins 6.7 in the Ram heavy duty): FCA's 2019 Ram 2500/3500 Heavy Duty specifications
+  (chryslermedia, the maker's sheet): standard output **850 lb-ft @ 1,700 RPM**, 370 hp @ 2,800; high output **1000 lb-ft
+  @ 1,800 RPM**, 400 hp @ 2,800 (the sheet prints 1,084 N m for both: a misprint, 1000 lb-ft is 1356 N m). A single
+  speed, not a range. Cited. (Cummins' own release, 14 Jan 2019, gives the ratings without their speeds; the later
+  1,075 lb-ft rating's speed not found.)
+- **The 2.0 common rail** (the VW 2.0 TDI kind): Volkswagen's Golf Estate press presentation (volkswagen-newsroom.com,
+  the Mk7): the 2.0 TDI 110 kW, **"maximum torque of 320 Nm is available from 1,750 rpm (and up to 3,000 rpm)"**,
+  maximum power 3,500 to 4,000 rpm. Cited. (A later 340 N m EA288 evo is listed by spec sites at 1,600 to 3,000 rpm: not a
+  maker's sheet.)
+- **Not found:** a second source for p3/p2 at peak torque (section 18's patent's estimate the only one); Gundmalm's KTH
+  thesis on divided exhaust periods (Scania, measured) unreachable on 25 Nov (the server down).

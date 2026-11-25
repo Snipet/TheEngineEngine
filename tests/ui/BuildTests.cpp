@@ -304,7 +304,7 @@ namespace
         bake.tick();
         const std::string after = bake.state();
         std::printf("  after an edit of the compression: %s\n", after.c_str());
-        CHECK_MSG(after == "waiting to bake" || after.rfind("baking", 0) == 0, after);   // "baking spark map", "baking cam" ...
+        CHECK_MSG(after == "waiting to bake" || after.rfind("baking", 0) == 0 || after.rfind("checking", 0) == 0, after);   // "baking spark map", "baking cam" ...
         CHECK(rig.doc->get(autoF) > 0.5);   // set aside: the engine on its knock control
         CHECK(bake.error().empty());
         return 0;

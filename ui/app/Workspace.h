@@ -278,7 +278,9 @@ namespace tee::ui
         // The calibration's bake (card C's: the intake cam, then the spark map's knock limit; ServiceBake in
         // app/host/HostSources.h): "no table", "waiting to bake", "baking spark map", "baking cam", "baking spark map
         // again", "baked, to apply", "baked", "bake failed"; empty function: not served. TUNE shows it.
-        std::function<std::string()> sparkMap;   // while baking with a count: "baking cam 23 of 42"
+        // while working with a count ("baking cam 23 of 42", "checking spark map 3 of 9"); done: "baked" or
+        // "calibration checked"
+        std::function<std::string()> sparkMap;
         // The knock-limit table last baked: its cells still knocking after the corrections, [speed][load] on
         // ecu.maps.knockLimit's grid (empty: none, or not served). TUNE marks them on that map.
         std::function<std::vector<std::vector<bool>>()> stillKnocking;
