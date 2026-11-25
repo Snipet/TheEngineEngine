@@ -8,7 +8,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <deque>
+#include <map>
 #include <mutex>
+#include <set>
 
 using namespace tee;
 using namespace tee::test;
