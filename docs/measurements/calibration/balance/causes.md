@@ -1503,3 +1503,41 @@ to 0.53, on the toll's slope; the nearest measured residuals (one small engine, 
 the economy four agrees with them. Whether that factor of two lives in the overlap's backflow (D's measurement: the model
 at 0.4 to 0.6 of a series orifice), in the late closing's push-back and re-induction, or in the threshold, is not yet
 shown.
+
+**N3-16, a units-free yardstick: Cavina's orifice form, against the measured points and our engines** (00:59 `date -u`;
+P's pointer). Maldonado and Kaul, "Evaluation of residual gas fraction estimation methods for cycle-to-cycle combustion
+variability analysis and modeling", Int. J. Engine Research (2021), DOI 10.1177/1468087420983087 (OSTI 1756265, the
+accepted manuscript read here, its page 4 rendered): Eqs. 6 to 8, "as demonstrated by Cavina et al.":
+  X_res,IVO = (1/C)((r_c - 1)/r_c)(V_IVO/V_d)(E/I)^(1/gamma) (1/lambda_in)
+  X_res,VO  = sqrt[(1/C)((r_c - 1)/r_c)] * sqrt[R T_int |E - I| / E] * (pi sqrt(2) / 6) * (OF / N) * (E/I)^((gamma+1)/(2 gamma))
+  OF = [Z_int D_int integral(L_int dtheta, IVO to the lifts' crossing) + Z_exh D_exh integral(L_exh dtheta, the crossing to EVC)] / V_d
+with E and I the exhaust and intake manifold pressures at the crossing, D the inner seat diameters, Z the valves. No fitted
+constant; dimensionally whole when theta and N share an angle unit (OF in degrees per metre with N in degrees a second),
+so no unit can slip. C = 1 for a normal burn (their eq. 3); V_IVO/V_d taken as 1/(r_c - 1); T_int 300 K; gamma 1.35.
+
+*Against the thesis's measured points* (1200 rpm; its compression and the loads' intake pressures not stated: r_c 8.5 and
+I 40 / 65 kPa for 10 / 25 % load assumed): zero cam 0.237 / 0.165 against measured 0.230 / 0.180 (the clearance term
+alone, and right); production 0.410 / 0.251 against 0.250 / 0.195 (1.3 to 1.6 times); intermediate 0.83 / 0.46 against
+0.28 / 0.245; max 1.56 / 0.83 against 0.345 / 0.315. The quasi-steady orifice over-predicts the measured backflow, more
+as the overlap grows: measured overlap backflow runs well under this form.
+
+*Our four at their warm idles:*
+
+| engine | Cavina backflow + clearance = total | model's share | the model's clearance gas at TDC |
+|---|---|---|---|
+| v10-52 | 0.062 + 0.126 = **0.189** | 0.469 | 0.128 (0.020 of 0.156 g, my trace) |
+| v12-65 | 0.071 + 0.094 = **0.165** | 0.528 | |
+| big-bore-70-pushrod-v8 | 0.086 + 0.126 = **0.212** | 0.518 | |
+| economy-four-15 | 0.002 + 0.209 = **0.211** | 0.170 | |
+
+The model's clearance gas on the V10 (0.128) is Cavina's clearance term (0.126): the model's whole excess is the overlap's
+backflow and its re-induction, about 0.34 of the charge against this form's 0.062 (5.5 times), and this form itself runs
+over the measured points at overlap. So, by a yardstick with no fitted constant: the model's big-cam idle share (0.47 to
+0.53) is about 2.5 to 3 times an orifice estimate that already over-predicts measured residuals, and above the highest
+measured residual P found (0.35 to 0.40, a single at 130 degrees of overlap and 10 % load). The economy four (no lift at
+TDC) agrees within 0.04.
+
+*For D:* this form's backflow on the V10 is 0.062 x 0.156 = 0.0097 g a cycle; your series orifice gave 0.110 g and the
+model 0.055 g. The form's effective area is pi sqrt(2)/6 = 0.74 of D x L, about 0.24 of the curtain pi D L; the model's
+low-lift area is 0.73 of the curtain times q (1.65 / 1.8 on the V10): some 5 times larger. Where the two orifices differ
+(area, the density taken, the pressure difference across the valves) is the comparison to make.
