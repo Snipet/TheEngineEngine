@@ -262,7 +262,8 @@ namespace
         for (const Value& x : sets)
             sc.at(0.0).spec(x.path, x.value);
         const tee::test::Run r = sc.run(tm.end);
-        const Verdict v = judge(r, tm, archetype(build), true, mask == 0 ? 1e9 : referenceStep(build, kind));
+        const Verdict v = judge(r, tm, archetype(build), true, mask == 0 ? 1e9 : referenceStep(build, kind),
+                                mask == 0 ? -1.0 : referenceExcess(build, kind));
         std::size_t ruled = 0;
         for (const Failure& f : v.failures)
             ruled += shiftCutRuled(comboName(mask), f) ? 1 : 0;
