@@ -7,7 +7,7 @@
 // diameter, about 0.6 of the curtain at a tenth of the diameter and 0.4 of the valve's area at a quarter. This keeps
 // its form and gives it the geometry:
 //
-//   A(L) = n q 0.4 (pi d^2 / 4) tanh(6.8 L / d) / tanh(1.7)
+//   A(L) = n min(q A0, A0'(0) L),   A0 = 0.4 (pi d^2 / 4) tanh(6.8 L / d) / tanh(1.7)
 //
 // n valves of diameter d, q the port's quality (1: the reference's coefficients; a good racing port flows some 20 to
 // 30 % more at the same valve). Low down this is 0.73 of the curtain, at L = d / 4 it is 0.4 of the valves' area,
@@ -75,7 +75,17 @@ module Head
     {
         if (l <= 0.0f)
             return 0.0f;
-        return (float)n * q * 0.4f * 0.785398f * d * d * tanhf(6.8f * l / d) / 0.9354f;
+        // (the lesser of the port's limit and the curtain's: the port's quality acts where the port limits, and low down
+        // the curtain limits whatever the port, at the base form's own low-lift slope, 0.73 of the curtain (Heywood,
+        // Internal Combustion Engine Fundamentals, section 6.3: the flow's regimes by lift). The two meet at a lift of
+        // 0.12 of the diameter for a quality of 1.35, 0.19 for 1.8, below the peak lifts, so the peaks are as before.
+        // With the quality on every lift the default ports (1.35, 1.5) were given 1.0 to 1.1 of the geometric curtain
+        // at low lift and the V10's and V12's (1.65, 1.8) 1.2 to 1.3, more than the gap can pass: the overlap's backflow
+        // ran high, the warm idle's burned share at intake closing 0.49 and 0.52 (N3, causes.md N3-16: 0.10 by Fox,
+        // Cheng and Heywood's correlation, SAE 931025) and their idles wandered sd 12 and 18 rpm (card N1, 25 Nov))
+        const float base = 0.4f * 0.785398f * d * d * tanhf(6.8f * l / d) / 0.9354f;
+        const float curtain = 0.4f * 0.785398f * d * 6.8f * l / 0.9354f;
+        return (float)n * fminf(q * base, fmaxf(curtain, base));
     }
 
     float areaIn(float l)

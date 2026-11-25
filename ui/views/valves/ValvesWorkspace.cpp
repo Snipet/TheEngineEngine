@@ -390,6 +390,27 @@ namespace tee::ui
             return o;
         }
     public:
+        // A phaser band's words over the editor: "INTAKE PHASER 60 DEG", or why it waits
+        std::string bandWords(bool intake, double range) const
+        {
+            const std::string wait = phaserWaitWords(ctx_.live, ctx_.units, intake, true);
+            return std::string(intake ? "INTAKE PHASER " : "EXHAUST PHASER ") + (wait.empty() ? deg(range) + " DEG" : wait);
+        }
+        // The stage's speed in the PHASERS AND STAGES panel: "B from 3100 rpm"
+        std::string stageFromWords(const Train& t) const
+        {
+            return "B from " + (std::isfinite(t.stageSpeed) ? ctx_.units.format(Quantity::rotation, t.stageSpeed, 0) : std::string("-"));
+        }
+        // For tests: the words as the page draws them now ("" where the build has none)
+        std::string pageWords(int which) const
+        {
+            const Train t = trainOf(ctx_.doc);
+            if (which == 0)
+                return t.inPhaseRange > 0.0 ? bandWords(true, t.inPhaseRange) : std::string();
+            if (which == 1)
+                return t.exPhaseRange > 0.0 ? bandWords(false, t.exPhaseRange) : std::string();
+            return t.stages ? stageFromWords(t) : std::string();
+        }
         std::string overlapWords() const
         {
             const OverlapPressure o = overlapPressure();
@@ -767,7 +788,7 @@ namespace tee::ui
                 }
                 // parked or slowed (the simulator's tel.valve.waiting): said, so a still phaser does not look dead
                 const std::string wait = phaserWaitWords(ctx_.live, ctx_.units, intake, true);
-                const std::string w = std::string(intake ? "INTAKE PHASER " : "EXHAUST PHASER ") + (wait.empty() ? deg(range) + " DEG" : wait);
+                const std::string w = bandWords(intake, range);
                 // on the band's outer side (the exhaust's at its left, the intake's at its right), so the two never
                 // meet between the cams; the inner side where the outer would leave the plot. Clear of the target's ring,
                 // which stands at the band's end when it asks the whole range.
@@ -1041,8 +1062,7 @@ namespace tee::ui
                 else
                 {
                     const double st = ctx_.live.get(kTelStage);
-                    const std::string sp = std::isfinite(t.stageSpeed) ? ctx_.units.format(Quantity::rotation, t.stageSpeed, 0) : "-";
-                    put(c, "B from " + sp, at.x, at.y + 14.0f, lk::kBody, p.value);
+                    put(c, stageFromWords(t), at.x, at.y + 14.0f, lk::kBody, p.value);
                     const std::string now = !std::isfinite(st) ? "ENGAGED -" : st >= 0.5 ? "B ENGAGED" : "A ENGAGED";
                     lk::lamp(c, p, at.x, at.y + 36.0f, now, std::isfinite(st) && st >= 0.5, p.selected);
                     // B waits for warm oil with pressure (the lab's rule: 333 K and 100 kPa), in words
@@ -1516,6 +1536,12 @@ namespace tee::ui
     };
 
     std::unique_ptr<Workspace> makeValvesWorkspace(WorkspaceContext& c) { return std::make_unique<ValvesWorkspace>(c); }
+
+    std::string valvesPageWords(const Workspace& w, int which)
+    {
+        const auto* v = dynamic_cast<const ValvesWorkspace*>(&w);
+        return v != nullptr ? v->pageWords(which) : std::string();
+    }
 
     std::string valvesOverlapWords(const Workspace& w)
     {

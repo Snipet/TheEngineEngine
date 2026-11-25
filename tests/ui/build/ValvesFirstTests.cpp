@@ -1,5 +1,5 @@
 // tests/ui/build/ValvesFirstTests.cpp: U2's VALVES and ENGINE on the first build a person meets (content/builds/
-// first.json: the EA888 gen 3, valve.model Lab, phasers of 60 and 30 degrees, two-stage exhaust lift), through the
+// first.json, whatever it holds: its numbers are read from the Spec after the load, never written here), through the
 // real Spec's document and the application's frame, with the first launch's TRY FIRST strip showing (the stage's rect
 // then shorter) and the simulator's telemetry names set as it gives them (a cold start, then warm).
 //
@@ -63,11 +63,20 @@ namespace
         // custom on, four-stroke: the cam editor, not port timing (twoStrokeRuns, D's configure)
         CHECK(en::fieldValue(doc, en::EF::custom) >= 0.5);
         CHECK(!en::twoStrokeRuns(doc) && !en::twoStrokeOf(doc).on && !en::layoutOf(doc).twoStroke);
+        // What the page draws is what the build says: every number of the build's below is read from the Spec after
+        // the load (first.json changes as its sources do), none written here; the constants are the interface's own.
+        const auto spec = [&](const char* path) {
+            const int i = doc.find(path);
+            CHECK_MSG(i >= 0, path);
+            return i >= 0 ? doc.get(i) : std::nan("");
+        };
+        const double inRange = spec("valve.inPhaseRange"), exRange = spec("valve.exPhaseRange");
+        const bool stagesOn = spec("valve.stages") >= 0.5;
         const vv::Train t0 = vv::trainOf(doc);
-        // (the EA888 gen 3 since 95f3f3fc: two-stage exhaust lift on, stage B from 3100 rpm)
-        CHECK(t0.editable && t0.stages && t0.exB.known());
-        CHECK_MSG(std::fabs(t0.inPhaseRange - 60.0) < 1e-6 && std::fabs(t0.exPhaseRange - 30.0) < 1e-6,
-                  std::to_string(t0.inPhaseRange) + " " + std::to_string(t0.exPhaseRange));
+        CHECK(t0.editable);
+        CHECK(t0.stages == stagesOn);
+        CHECK(t0.inPhaseRange == inRange && t0.exPhaseRange == exRange);
+        CHECK(t0.in.lift == spec("valve.inLift") && t0.ex.lift == spec("valve.exLift"));
 
         // the frame over it, the strip showing, the engine cold just after a start (the oil at the air's 15 C)
         SetTelemetry tel;
@@ -100,6 +109,36 @@ namespace
         CHECK_MSG(ws.stage().y > rig.frame->workspace(rig.frame->find("valves")).stage().y + 4.0f,
                   "the TRY FIRST strip is not over the stage");
         CHECK(tee::ui::valvesHandle(ws, 100).x < 0.0f);   // no port marks: not a two-stroke
+        // the page's words, from the build's numbers by the interface's own rules ("%.0f" degrees, the units' rpm)
+        tel.set("valve.waiting", 0.0);
+        const auto degText = [](double v) {
+            char b[32];
+            std::snprintf(b, sizeof b, "%.0f", v);
+            return std::string(b);
+        };
+        CHECK_MSG(tee::ui::valvesPageWords(ws, 0) == (inRange > 0.0 ? "INTAKE PHASER " + degText(inRange) + " DEG" : std::string()),
+                  tee::ui::valvesPageWords(ws, 0));
+        CHECK_MSG(tee::ui::valvesPageWords(ws, 1) == (exRange > 0.0 ? "EXHAUST PHASER " + degText(exRange) + " DEG" : std::string()),
+                  tee::ui::valvesPageWords(ws, 1));
+        CHECK_MSG(tee::ui::valvesPageWords(ws, 2)
+                      == (stagesOn ? "B from " + units.format(tee::ui::Quantity::rotation, spec("valve.stageSpeed"), 0) : std::string()),
+                  tee::ui::valvesPageWords(ws, 2));
+        tel.set("valve.waiting", 4.0);
+        // the geometry: the taller cam's peak stands higher, stage A's now and stage B's once B is in
+        const auto taller = [&](double liftIn, double liftEx) {
+            const float yIn = tee::ui::valvesHandle(ws, 0).y, yEx = tee::ui::valvesHandle(ws, 3).y;
+            if (std::fabs(liftIn - liftEx) > 1e-4)
+                CHECK_MSG((yIn < yEx) == (liftIn > liftEx), std::to_string(yIn) + " " + std::to_string(yEx));
+        };
+        taller(spec("valve.inLift"), spec("valve.exLift"));
+        if (stagesOn)
+        {
+            tel.set("valve.stage", 1.0);
+            host.tick(2);
+            taller(spec("valve.inLiftB"), spec("valve.exLiftB"));
+            tel.set("valve.stage", 0.0);
+            host.tick(2);
+        }
 
         // the intake's peak, pressed where it is drawn: its centreline and lift move, one undo step
         const int fc = doc.find("valve.inCentre"), fl = doc.find("valve.inLift"), fd = doc.find("valve.inDurSeat");
@@ -120,9 +159,9 @@ namespace
         CHECK_MSG(doc.get(fd) > d0 && doc.get(fc) == c0, "the seat mark's drag did not reach the build");
         CHECK(rig.build->undo());
 
-        // cold: the phasers slowed and saying why; nothing about the stage (nothing waits for it)
+        // cold: the phasers slowed and saying why (where the build has one); nothing about the stage (nothing waits)
         std::string words = tee::ui::valvesOilWords(ws);
-        CHECK_MSG(words.find("SLOWED: COLD OIL") != std::string::npos, words);
+        CHECK_MSG((words.find("SLOWED: COLD OIL") != std::string::npos) == (inRange > 0.0 || exRange > 0.0), words);
         CHECK_MSG(words.find("B WAITS") == std::string::npos, words);
         // the phase and its target are drawn from telemetry: a move of either is something to draw
         const std::uint64_t k0 = ws.drawKey();
@@ -135,7 +174,7 @@ namespace
         host.tick(2);
         CHECK_MSG(tee::ui::valvesOilWords(ws).empty(), tee::ui::valvesOilWords(ws));
 
-        // two-stage cams (on in this build): B drawn and its handles live; stage B waits for the coolant, then follows
+        // two-stage cams (switched on here whatever the build has): B drawn and its handles live; stage B waits for the coolant, then follows
         // tel.valve.stage
         doc.set(doc.find("valve.stages"), 1.0);
         host.tick(3);

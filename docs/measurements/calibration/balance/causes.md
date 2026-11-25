@@ -1365,3 +1365,214 @@ model's VE runs 0.95 to 1.13 from 5000 up on this NA four (torque 164 N m at 500
 148 at 4000); the paper's grid study reads 0.89. The ram's *height* against a measured engine remains unbounded by any
 source read here; the level question sits with the cam timing's reference lift (not stated in the paper) and the intake
 lift (not given), so it is not sized.
+
+## N3-16. The big engines' burned share at a warm idle, against a published residual correlation (00:39 `date -u`, 2026-11-25)
+
+The lead's item (from N1's idle work: the V10's and V12's 1 Hz wander at a warm idle, and the 7.0's).
+*The source.* Fox, Cheng and Heywood, "A Model for Predicting Residual Gas Fraction in Spark-Ignition Engines", SAE
+931025 (1993): exists (SAE Mobilus), calibrated on in-cylinder hydrocarbon sampling at varied intake pressure, speed and
+overlap, and it carries the overlap's backflow explicitly. Its equation as reproduced (eq. 2.2 and 2.3) in a University of
+Wisconsin thesis, "Residual gas effects on combustion in an air-cooled utility engine" (read in full here):
+  y_r = 1.266 (OF / N) (p_i / p_e)^-0.87 sqrt|p_e - p_i| + 0.632 (phi / r_c) (p_i / p_e)^-0.74,
+  OF = [D_in * integral(L_in dtheta, IVO to the lifts' crossing) + D_ex * integral(L_ex dtheta, the crossing to EVC)] / V_d,
+D the inner seat diameters, L the lifts, V_d the displaced volume; OF in degrees per metre (the thesis's table 4.2). The
+units of N and p are not printed there: rpm and kPa taken from Heywood's text as I recall it (a check: p_i 35, p_e 100,
+OF 1, 800 rpm gives 0.17, an ordinary idle residual). Fox's data spanned 0.52 < OF < 1.43; the thesis found the
+correlation over-predicting well above that (its production cam OF 3.66). The same thesis measured y_r up to about 0.4
+on that small engine at large overlap (OF 27). Heywood's own measured residuals against overlap: not read here (N1's
+0.15 to 0.25 stays a recollection).
+*The definitions.* Fox's y_r is the burned-gas mass fraction of the charge at intake closing, backflow included (the
+sampling reads all burned gas in the cylinder). The model's share (my probe: the cylinder's mInert over m at each
+intake closing) is the same quantity: the last cycle's products left in, what came back from the header, and what the
+intake pushed back during the overlap and drew in again (cylinder.fm's mInert). Lined up; no definition gap.
+
+*At the warm idle* (the probe's new bench mode: started as tee-dyno starts it, then the dyno released and the pedal at 0,
+the ECU's idle control holding the speed; 4 s, then 2 s measured; lambda 1, the phasers parked). OF from each build's
+own generated lift curves (cam.fm's family, at its fatness), D the valve heads (the inner seats some 10 % less: OF about
+10 % high), the valves of one side summed:
+
+| engine | rpm | p_i / p_e kPa | r_c | OF deg/m | Fox: backflow + clearance = y_r | model's share | at q 1.0 |
+|---|---|---|---|---|---|---|---|
+| v10-52 | 896 | 54.8 / 101.7 | 12.5 | 1.38 | 0.023 + 0.080 = **0.103** | **0.469** | 0.395 |
+| v12-65 | 904 | 73.6 / 101.4 | 13.5 | 2.65 | 0.026 + 0.059 = **0.085** | **0.528** | 0.486 |
+| big-bore-70-pushrod-v8 | 752 | 65.6 / 101.4 | 11.0 | 2.16 | 0.032 + 0.079 = **0.111** | **0.518** | 0.481 |
+| economy-four-15 | 750 | 33.0 / 101.7 | 11.0 | 0.02 | 0.001 + 0.132 = **0.133** | **0.170** | |
+
+(The V12 and the 7.0 sit above Fox's range, where it over-predicts: the published figure for them, if anything, lower.)
+The four agrees within 0.04, its share nearly all clearance gas; the three big engines read 4 to 6 times the correlation.
+
+*Where it lives.* One cylinder of the V10 traced over a cycle at idle (grams a cycle, by crank window):
+
+| window (degrees, 360 = overlap TDC) | exhaust out | exhaust back in | intake drawn | intake pushed back |
+|---|---|---|---|---|
+| 0-300 (exhaust stroke) | 0.173 | 0.121 | | |
+| 300-340 | 0.068 | 0 | | |
+| **340-380 (the overlap)** | 0.007 | **0.054** | | **0.066** |
+| 380-420 | | 0.002 | 0.051 | |
+| 420-540 | | | 0.167 | 0.024 |
+| 540-640 (after BDC, before the late closing) | | | 0.024 | 0.079 |
+
+The burned gas in the cylinder: 0.020 g at the overlap's TDC (the clearance), 0.108 g at BDC, 0.079 of 0.156 g trapped
+at closing (0.51). The overlap takes 0.054 g of exhaust back through the cylinder into the intake runner and the intake
+draws it in again: against Fox's backflow term, 0.023 x 0.156 = 0.0036 g, about **15 times**. A plain orifice at the full
+manifold difference (47 kPa) across the valves' curtains for the whole overlap (Cd 0.6, exhaust gas at 800 K) gives about
+0.05 g: the model's backflow runs at that bound, where the measured correlation says a fifteenth of it. The late closing's
+push-back (0.079 g at share 0.5) recirculates the share through the runner, which holds the level up once it is there.
+
+*The three candidates the lead named:*
+1. **The backflow through the overlap at a low manifold pressure** (D's cylinder, N1's valvetrain): this is where the gap
+   is, 15 times the correlation's backflow. Measured part of it: area.fm's low-lift area is 0.73 of the curtain times
+   the port's quality q, and q multiplies the low-lift (curtain-limited) part too: the V10 and V12 carry q 1.65 / 1.8
+   (1.2 to 1.3 times the geometric curtain at low lift, more than any valve flows); the 7.0 and the four 1.35 / 1.5.
+   At q 1.0 (one change) the shares fall 0.04 to 0.07: a part, not the gap. The rest: how the overlap's flow is driven
+   (the full manifold difference seen across both valves in series, with the cylinder between at 92 kPa at TDC), unsized.
+2. **The share's definition**: lined up with Fox's y_r; not the gap.
+3. **The toll's threshold** (0.56, combustion.fm): with a share at the correlation's 0.09 to 0.11 these engines would
+   sit far below it; the threshold is not where the gap is, though the wander lives on the slope near it.
+Owners: D (the cylinder's overlap flow) and N1 (area.fm's low-lift area and q). The economy four's agreement is the
+control: an engine with almost no lift at TDC reads the correlation.
+
+**N3-16, the correlation's units as the source states them, and the overlap factors** (00:43 `date -u`; the lead's 00:42).
+*Units.* The thesis prints eq. 2.2 without units beside it; its nomenclature lists "N Engine Speed", "P Pressure", "kPa
+Kilo-Pascal", "RPM Revolutions Per Minute", every pressure in the text is in kPa and every speed in RPM, and its table 4.2
+gives OF in "[°/m]". So: OF in degrees per metre, *stated*; N in RPM and p in kPa, the thesis's own convention but *not
+printed at the equation*. The other readings, computed: N in revolutions a second makes the V10's backflow term 1.37 (a
+residual over 1: impossible), so rpm; p in bar instead of kPa divides the backflow term by 10, the clearance term
+unchanged:
+
+| engine | OF deg/m | in Fox's 0.52 to 1.43? | Fox, kPa and rpm | Fox, bar and rpm | model |
+|---|---|---|---|---|---|
+| v10-52 | 1.38 | inside | 0.023 + 0.080 = 0.103 | 0.002 + 0.080 = 0.082 | 0.469 |
+| v12-65 | 2.65 | beyond (over-predicts there: the thesis) | 0.026 + 0.059 = 0.085 | 0.003 + 0.059 = 0.062 | 0.528 |
+| big-bore-70-pushrod-v8 | 2.16 | beyond | 0.032 + 0.079 = 0.111 | 0.003 + 0.079 = 0.082 | 0.518 |
+| economy-four-15 | 0.02 | below | 0.001 + 0.132 = 0.133 | 0.000 + 0.132 = 0.132 | 0.170 |
+
+Either way the gap stands (bar only widens it). *How OF was computed* (scratchpad fox.py, for D and N1): each lobe the
+build's own generated curve (cam.fm's family: the build's seat and 1 mm durations, lift and centre, fatness 0.5, the
+phasers parked as at idle), the overlap's angles from the intake's leaving zero lift to the exhaust's reaching it (the
+curves' ends, not the 0.15 mm seat); the integral of the intake's lift from its opening to the lifts' crossing, and of the
+exhaust's from the crossing to its closing, each times the valve's head diameter times its valves a cylinder (2 on the
+four-valves, 1 on the 7.0), over one cylinder's swept volume. The heads stand in for the inner seat diameters, which are
+some 10 % smaller: the OFs about 10 % high, and the backflow terms with them.
+
+*Referee:* I hold the four idles (BAL_BENCH=1, 4 s settle, 2 s window) and will re-run them on each change D or N1 sends,
+with the share, the plenum's pressure, the overlap's backflow by window (the V10's traced cylinder) and the speed.
+
+**N3-16 corrected: the measured points, and what the fit cannot settle** (00:52 `date -u`; the lead's 00:50, D's overlap
+measurement). D measured the overlap from inside the cylinder: the model's backflow runs at 0.4 to 0.6 of a quasi-steady
+series orifice at the manifolds' difference, so it is limited by the cylinder between the valves, not at an unlimited
+bound as I wrote. And the fit's units are not settled, so my "4 to 6 times" and "15 times" are **withdrawn**.
+
+*The thesis's measured residuals* (its figure 4.6, HMS fuelling, production ignition; read off the plot, about +-0.01;
+the intake pressures of its 10 % and 25 % loads are not tabulated; a small air-cooled single):
+
+| cam (OF deg/m) | 1200 rpm, 10 % / 25 % | 1750 rpm, 10 % / 25 % | 3060 rpm, 10 % / 25 % |
+|---|---|---|---|
+| zero (0.11) | 0.23 / 0.18 | 0.21 / 0.16 | 0.14 / 0.13 |
+| production (3.66) | 0.25 / 0.195 | 0.215 / 0.175 | 0.16 / 0.135 |
+| intermediate (12.3) | 0.28 / 0.245 | 0.25 / 0.21 | 0.17 / 0.15 |
+| max (27.3) | 0.345 / 0.315 | 0.33 / 0.30 | 0.23 / 0.18 |
+
+*The fit against them.* The thesis's own evaluation of the correlation (its figure 4.9) gives 0.4 to 0.8 at the production
+cam and 0.6 to 1.2 at the larger ones, where it measured 0.13 to 0.35. In kPa and rpm (my reading) the same points give
+0.13 to 0.21 at the production cam (0.066 + about 0.15 at 1200 rpm and 10 % load, taking p_i 40 kPa and r_c 8.5, neither
+stated), 0.37 at the intermediate and 0.64 at the max. So the thesis evaluated it at some 3 to 5 times my numbers: either
+its units differ from mine (N in rad/s would be about 10 times) or its OF or p_i do. **The thesis does not settle the
+units**, and my earlier line "the thesis's finding confirms kPa and rpm" was wrong. In my reading the fit lands near the
+measured points at the production cam (0.13 to 0.21 against 0.135 to 0.25) and over them at large overlap, which is what
+the thesis says of it; in the thesis's own reading it is over everywhere but the zero cam. Neither proves the units.
+P's agent is after SAE 931025's own equation.
+
+*What the nearest measured points imply.* The V10, V12 and 7.0 sit at OF 1.4 to 2.7 (between the thesis's zero and
+production cams), 750 to 900 rpm (below its 1200), and 55 to 74 kPa in the plenum (above a 10 % load's). Lower speed
+raises the measured residual (+0.03 to +0.04 from 1750 to 1200 at the production cam), the higher manifold pressure lowers
+it (25 % against 10 % load: -0.04 to -0.06). By the nearest points, a measured residual of **about 0.2 to 0.27** for these
+three; the model reads 0.47 to 0.53, about **twice** that, on a different engine (a small air-cooled single, its compression
+not found). The economy four (OF 0.02, like the zero cam; 750 rpm, 33 kPa) against the zero cam's 0.21 to 0.23 at
+1200 rpm and 10 %: the model's 0.170 sits inside the measured spread.
+
+| engine | OF | model's share | fit, kPa and rpm (unsettled) | nearest measured (thesis fig. 4.6), adjusted by its own trends |
+|---|---|---|---|---|
+| v10-52 | 1.38 | 0.469 | 0.103 | about 0.20 to 0.25 |
+| v12-65 | 2.65 | 0.528 | 0.085 | about 0.20 to 0.25 |
+| big-bore-70-pushrod-v8 | 2.16 | 0.518 | 0.111 | about 0.21 to 0.27 |
+| economy-four-15 | 0.02 | 0.170 | 0.133 | about 0.18 to 0.23 |
+
+Standing finding, as the lead put it, with one measured line added: the model's idle share on the big-cam engines is 0.47
+to 0.53, on the toll's slope; the nearest measured residuals (one small engine, read off a plot) are about half of it, and
+the economy four agrees with them. Whether that factor of two lives in the overlap's backflow (D's measurement: the model
+at 0.4 to 0.6 of a series orifice), in the late closing's push-back and re-induction, or in the threshold, is not yet
+shown.
+
+**N3-16, a units-free yardstick: Cavina's orifice form, against the measured points and our engines** (00:59 `date -u`;
+P's pointer). Maldonado and Kaul, "Evaluation of residual gas fraction estimation methods for cycle-to-cycle combustion
+variability analysis and modeling", Int. J. Engine Research (2021), DOI 10.1177/1468087420983087 (OSTI 1756265, the
+accepted manuscript read here, its page 4 rendered): Eqs. 6 to 8, "as demonstrated by Cavina et al.":
+  X_res,IVO = (1/C)((r_c - 1)/r_c)(V_IVO/V_d)(E/I)^(1/gamma) (1/lambda_in)
+  X_res,VO  = sqrt[(1/C)((r_c - 1)/r_c)] * sqrt[R T_int |E - I| / E] * (pi sqrt(2) / 6) * (OF / N) * (E/I)^((gamma+1)/(2 gamma))
+  OF = [Z_int D_int integral(L_int dtheta, IVO to the lifts' crossing) + Z_exh D_exh integral(L_exh dtheta, the crossing to EVC)] / V_d
+with E and I the exhaust and intake manifold pressures at the crossing, D the inner seat diameters, Z the valves. No fitted
+constant; dimensionally whole when theta and N share an angle unit (OF in degrees per metre with N in degrees a second),
+so no unit can slip. C = 1 for a normal burn (their eq. 3); V_IVO/V_d taken as 1/(r_c - 1); T_int 300 K; gamma 1.35.
+
+*Against the thesis's measured points* (1200 rpm; its compression and the loads' intake pressures not stated: r_c 8.5 and
+I 40 / 65 kPa for 10 / 25 % load assumed): zero cam 0.237 / 0.165 against measured 0.230 / 0.180 (the clearance term
+alone, and right); production 0.410 / 0.251 against 0.250 / 0.195 (1.3 to 1.6 times); intermediate 0.83 / 0.46 against
+0.28 / 0.245; max 1.56 / 0.83 against 0.345 / 0.315. The quasi-steady orifice over-predicts the measured backflow, more
+as the overlap grows: measured overlap backflow runs well under this form.
+
+*Our four at their warm idles:*
+
+| engine | Cavina backflow + clearance = total | model's share | the model's clearance gas at TDC |
+|---|---|---|---|
+| v10-52 | 0.062 + 0.126 = **0.189** | 0.469 | 0.128 (0.020 of 0.156 g, my trace) |
+| v12-65 | 0.071 + 0.094 = **0.165** | 0.528 | |
+| big-bore-70-pushrod-v8 | 0.086 + 0.126 = **0.212** | 0.518 | |
+| economy-four-15 | 0.002 + 0.209 = **0.211** | 0.170 | |
+
+The model's clearance gas on the V10 (0.128) is Cavina's clearance term (0.126): the model's whole excess is the overlap's
+backflow and its re-induction, about 0.34 of the charge against this form's 0.062 (5.5 times), and this form itself runs
+over the measured points at overlap. So, by a yardstick with no fitted constant: the model's big-cam idle share (0.47 to
+0.53) is about 2.5 to 3 times an orifice estimate that already over-predicts measured residuals, and above the highest
+measured residual P found (0.35 to 0.40, a single at 130 degrees of overlap and 10 % load). The economy four (no lift at
+TDC) agrees within 0.04.
+
+*For D:* this form's backflow on the V10 is 0.062 x 0.156 = 0.0097 g a cycle; your series orifice gave 0.110 g and the
+model 0.055 g. The form's effective area is pi sqrt(2)/6 = 0.74 of D x L, about 0.24 of the curtain pi D L; the model's
+low-lift area is 0.73 of the curtain times q (1.65 / 1.8 on the V10): some 5 times larger. Where the two orifices differ
+(area, the density taken, the pressure difference across the valves) is the comparison to make.
+
+*The form's units, as I used them* (01:01 `date -u`; the lead's 01:01): OF in degrees per metre over N in degrees a second
+(rpm x 6). That is the consistent set: (deg/m)/(deg/s) = (rad/m)/(rad/s) = 2.567e-4 s/m on the V10 by either, so
+0.189 / 0.165 / 0.212 / 0.211 and the thesis check (zero cam on the measured points; production 1.3 to 1.6 over; the larger
+cams 3 to 5 over) are already the consistent-unit values: nothing changes on recomputing in radians. Read with N in rpm
+against OF in degrees per metre (the inconsistent reading), the backflow terms would be 6 times larger (V10 0.37,
+V12 0.43, 7.0 0.52; the thesis's production cam 1.07 at 10 % load against a measured 0.25), far over every measured point:
+the consistent reading is the one the measured points support. The pi sqrt(2)/6 in eq. 7 is not the unit factor 1/6:
+it stays in both. What stands in any case is the model's excess over the measured residuals (about two), which D's
+algebra rests on.
+
+**N3-16, referee: N1's low-lift area (68e683f1: the effective area min(q A0, the curtain line))** (01:03 `date -u`, my probe,
+the same warm idles):
+
+| engine | share before | after | plenum kPa after | the yardsticks |
+|---|---|---|---|---|
+| v10-52 | 0.469 | **0.397** | 43.7 (was 54.8) | measured about 0.20 to 0.27; Cavina's form 0.189 |
+| v12-65 | 0.528 | **0.488** | 57.4 (73.6) | 0.20 to 0.27; 0.165 |
+| big-bore-70-pushrod-v8 | 0.518 | **0.481** | 53.1 (65.6) | 0.21 to 0.27; 0.212 |
+| economy-four-15 | 0.170 | **0.167** | 32.2 (33.0) | 0.18 to 0.23; 0.211 |
+
+N1's own probe agrees (0.399 / 0.488 / 0.476 / 0.168), and its speed sd falls to 1.6 (V10) and 2.3 rpm (V12). The V10's
+cylinder over the overlap (340 to 380): exhaust back in 0.029 g (was 0.054), pushed into the runner 0.043 g (0.066);
+burned 0.0214 g at TDC, 0.084 g at BDC (0.108), 0.055 of 0.139 g at closing. The big-cam shares are still about twice the
+measured band and Cavina's form; the economy four is unchanged and agrees. What is left (about 0.2 of the charge on the
+V10, 0.25 on the V12 and the 7.0) is the overlap's drive in the cylinder (D's). The OFs in my table above were taken with
+the heads, not the curtain-capped area; Cavina's form does not read the model's area, so its column stands.
+
+*D's overlap-area sweep* (D's local probe, nothing committed; both valves' effective area times k only while both are
+open): share at closing V10 0.477 / 0.385 / 0.301, V12 0.527 / 0.471 / 0.366, 7.0 0.525 / 0.444 / 0.340, the four
+0.172 / 0.168 / 0.166 at k 1 / 0.5 / 0.25; the idle's 4 s range on the V10 856-941 to 897-904 rpm. Its k = 1 is the tree
+before N1's 68e683f1 (my reads then 0.469 / 0.528 / 0.518), so N1's curtain cap already took part of what k takes: after it,
+0.397 / 0.488 / 0.481. Cavina's effective area (about 0.24 of the curtain against the old 0.73 q) is D's k of about 0.2.
+D: the share at closing is (R + E)/(R + E + F); the late closing's push-back cancels and the runner's store does not ratchet
+([.rvstore]); the excess is the through-flow exhaust to cylinder to runner at 355 to 380 degrees.

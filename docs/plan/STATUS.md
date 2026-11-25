@@ -37,6 +37,36 @@
 
 ## Landed
 
+- **01:11 (25 Nov) the lead's check-in; `main` stays at 09c1fb4e.** No Linux and macOS job is green outright on a
+  commit holding tonight's fixes: macOS at 2f86a47 (run 45521139814) is red on one case, ui.build's
+  ValvesFirstTests.cpp:70, which held first.json's exhaust phaser as the constant 30 where P's cited 42 now stands
+  (U2 restating it to read the build, not constants); Linux at e29d52b on that and on core's books case, which caught
+  N2's 69c1fdfa: the tractor's turbo slower to arrive at 1800 rpm (1523 N m in the 4 to 6 s window against 2090;
+  steady state whole at 2096; 2065 in that window again after N2's 78e4deda). Main also waits on N2's word that
+  the tractor's time to boost is unchanged or meant (N2 measuring three trees). **Since 00:31.** *Idles*: N1's
+  576c1c6e (the idle valve's integral held through the first 3 s after a start): the after-start dip gone
+  (first.json's lowest 641 to 737 rpm against 750; the 7.0's 433 to 677). The V10's and V12's 1 Hz wander was not
+  the valve's loop but the burned gas at idle: N1's 68e683f1 (area.fm applied the port quality at every lift,
+  1.2 to 1.3 times the geometric curtain at low lift; now the lesser of the port's and the curtain's limits):
+  share at intake closing 0.487 to 0.399 (V10), 0.518 to 0.488 (V12); idle sd 12.1 to 1.6 and 17.7 to 2.3 rpm;
+  full load up 0 to 19 % where less exhaust crosses the overlap at speed (V12 5400 rpm 479 to 591 N m, fresh
+  charge 0.83 to 0.98): every row of K and every baked map is stale. *The residual at idle, open* (N3-16; D's
+  mechanics.md and N1's valvetrain.md): the big-cam shares read 0.40 / 0.49 / 0.49 against a measured band near
+  0.20 to 0.27 (one small engine, a thesis's figure) and the economy four agrees; the Fox correlation set aside
+  (units unprinted, paper not reached); the excess is the overlap's through-flow at 355 to 380 degrees (D: x =
+  (R + E) / (R + E + F); the late closing's push-back cancels; no ratchet). **Ruled: no "both valves open" factor**
+  (0.33 would land the V10 at 0.28, but it is no property of either valve); the sourced routes in order: the cam
+  cards' flanks (N1's sensitivity at 26 degrees a side: 0.035 to 0.056 off the share; P collecting cited cards),
+  reverse-flow discharge coefficients (SAE 962527 and 2001-01-1798, paywalled), the primary's ring at idle (no
+  trace). *Diesels*: the clatter's spread from the paper's idle point (0.559 degrees, read by P; D2's 7001b79a,
+  the test on the reduction, 3 dB); P's sources: VGT vanes closed at idle (kept), a fan switch at 100 / 95 C cited,
+  no idle warm-up time, no small-turbine map beyond peak efficiencies; the diesels' idle row restated on the
+  clatter's comb (all three pass). *Boost*: N2's surge cap reverted (it cost the turbo four 12 % at 2500 on the
+  present map) and held for the corrected map; the model's map against the published ones: surge too far right
+  at ratios 1.5 and 2.0 (0.31 and 0.38 against 0.22 to 0.26 and 0.26 to 0.34), the choke not growing above 1.8.
+  *Also*: C's CalibrationBakeService and U1's ServiceBake on it; L: the cabin by the mass law, Tailpipe the
+  default everywhere; P holds table L for N2's map, then re-bakes. The account's weekly usage shows a warning on
+  N2's session record (resets in about two days): told the owner.
 - **00:31 (25 Nov) the lead's check-in; `main` stays at 09c1fb4e**: its own run (45510675759) built and packed on
   Linux, macOS and Windows, 537 of 538 on each (the launch case: the steward's idle-trim fade bb93325e had quickened
   the idle launch by 0.064 s; reverted, 4e1c813b; the case restated by the lead as well). The owner asked for a stable

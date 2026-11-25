@@ -184,3 +184,42 @@ The targets: about 14 bar at 0.7 to 0.8 bar of boost (the 13B-REW's 294 N m): me
 That case is the archetype with its turbos taken off, not a naturally aspirated rotary's ports and intake, so part of the
 gap is the build's, not the rotor's (judgement). The unburned trailing end (card H's, N1 acting) is still to come and
 takes some 5 % more from both. The port gas runs hot, as a rotary's does.
+
+## Open
+
+### The big-cam engines' burned share at a warm idle (N3-16, 25 Nov; the lead's ruling: stop for now)
+
+At a warm idle the V10, V12 and 7.0 trap a burned share of **0.404 / 0.488 / 0.489** at intake closing (the economy four
+0.169), on the tree with N1's low-lift area capped at the curtain (68e683f1). The one measured engine found (Albert 2004,
+an air-cooled single, read off its figures and adjusted by its own speed and load trends) puts such engines near 0.20
+to 0.27: these read **about 1.6 to 2 times** it. The idle's wander is cured (the V10's sd 12.1 to 1.6 to 2.3 rpm, the
+V12's 1.8) at that sourced area; the share is what remains.
+
+Where it lives (measured, cylinder 1, the V10 at 874 to 901 rpm): x = (R + E) / (R + E + F), the clearance's burned gas,
+the exhaust drawn through the cylinder during the overlap, the fresh air. The late intake closing's push-back cancels
+(the reversion store empties each cycle and carries the cylinder's share: "[.rvstore]"). E is through-flow at 355 to
+380 degrees (overlap TDC 360): the intake's area overtakes the closing exhaust's, the cylinder empties toward the
+runner's 55 kPa (95 to 43 kPa) while the exhaust valve sees 91 to 101 kPa; 0.054 g a cycle before 68e683f1, 0.030 g
+after. A measured share of 0.20 to 0.25 needs E near 0.007 to 0.01 g.
+
+What each factor buys (a local sweep: both valves' effective area times k while both are open; the current tree):
+
+| k | V10 | V12 | 7.0 | the V10's E |
+|---|---|---|---|---|
+| 1 | 0.404 | 0.488 | 0.489 | 0.030 g |
+| 0.5 | 0.312 | 0.387 | 0.388 | 0.014 g |
+| 0.33 | 0.280 | 0.331 | 0.331 | 0.0090 g |
+
+k 0.33 is Cavina's effective overlap area (0.24 of the curtain, Maldonado and Kaul 2022 Eq. 7, a model's assumption,
+running 1.3 to 1.6 over the thesis's measured points) over area.fm's curtain line (0.73): its E, 0.0097 g, is what k 0.33
+gives. **Not adopted** (the lead's ruling): a factor acting only while both valves are open is no property of either
+valve. What may close it, each with its source, in the lead's expected order:
+1. **The cams' flanks**: the overlap's flow runs at 0.3 to 2 mm of lift, on flanks the cards make 14 degrees a side from
+   0.15 to 1 mm; aftermarket cards publish that step (durations at 0.050 in against advertised). Gentler real flanks
+   would cut the area where it physically is, at every low lift (P collecting, N1 to apply).
+2. **The valves' reverse-flow discharge at low lift**: measured both ways in Blair and Drouin SAE 962527 and Blair,
+   Callender and Mackey SAE 2001-01-1798 (not read: paywalled). N1's hook (vt.reverseIn / reverseEx, applied while
+   the flow reverses) goes in with a value, not before.
+3. **The primary's ring at idle**: the dip at 365 and the rise at 385 to 395 degrees are the 1.0 m primaries'
+   quarter-wave ring (card G: 119 Hz), phased as the geometry says; its damping at the junction at low flow may be
+   short, but not changed without a measured idle trace.

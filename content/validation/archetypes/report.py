@@ -47,6 +47,43 @@ TONE = {"name": "Idle: no standing tone", "range": [-60, -10], "unit": "dB", "ba
                   "tee-render of p-idle-warm"}
 
 
+COMB = {"name": "Idle: the clatter's comb (diesel)", "range": [0, 8], "unit": "dB", "basis": "recalled",
+        "source": "the lead's ruling (00:33, D2's measure): a turbo diesel's idle is its clatter over a muffled exhaust "
+                  "(the vanes closed at idle), so its row is the clatter's prominence, not a tone against the exhaust: at "
+                  "warm idle (8 to 14 s) a Welch spectrum (2^16-sample Hann, half overlap), the firing frequency f found "
+                  "within 3 %% of the telemetry's, then 10 log10 of the summed peaks within 1.5 Hz of h f over the mean "
+                  "within 1.5 Hz of (h + 1/2) f, for the harmonics from 1 to 3 kHz; at most 8 dB, the tone-to-noise "
+                  "prominence threshold above 1 kHz of ECMA-74 Annex D (recalled by D2, not read)"}
+
+
+def comb_depth(x, sr, fire):
+    """D2's comb depth (dB): the firing harmonics from 1 to 3 kHz against the half-way gaps, Welch, A-weighting
+    cancelling in the ratio."""
+    import numpy as np
+    n = 1 << 16
+    hop = n // 2
+    w = np.hanning(n)
+    segs = [x[i:i + n] * w for i in range(0, len(x) - n + 1, hop)]
+    if not segs:
+        return None
+    pw = np.mean([np.abs(np.fft.rfft(g)) ** 2 for g in segs], axis=0)
+    f = np.fft.rfftfreq(n, 1.0 / sr)
+
+    def depth(f0):
+        top = gap = 0.0
+        h = int(np.ceil(1000.0 / f0))
+        while h * f0 <= 3000.0:
+            a = (f > h * f0 - 1.5) & (f < h * f0 + 1.5)
+            b = (f > (h + 0.5) * f0 - 1.5) & (f < (h + 0.5) * f0 + 1.5)
+            if a.any() and b.any():
+                top += pw[a].max()
+                gap += pw[b].mean()
+            h += 1
+        return top, gap
+    best = max((depth(f0) + (f0,) for f0 in np.linspace(fire * 0.97, fire * 1.03, 121)), key=lambda r: r[0])
+    return 10 * np.log10(best[0] / best[1]) if best[1] > 0 else None
+
+
 def tone(bin_dir, slug, out_dir, build_path):
     """The idle's strongest line above 300 Hz against its exhaust band, dB, A-weighted (TONE), cached in out_dir."""
     import struct
@@ -72,14 +109,19 @@ def tone(bin_dir, slug, out_dir, build_path):
         k = int(np.argmax(pw * (f > 300)))
         line = pw[max(k - 1, 0):k + 2].sum()
         band = pw[(f > 20) & (f < 300)].sum()
+        b = json.load(open(build_path))
+        e = b["spec"]["engine"]
+        cyl = e.get("cylinders") or 2 * e.get("rotors", 2)
+        fire = b["spec"]["ecu"]["idle"]["speed"] * 30 / np.pi / 60.0 * cyl / 2.0
+        cd = comb_depth(x[8 * sr:14 * sr], sr, fire) if b["spec"]["fuel"].get("kind") == "Diesel" else None
         with open(path, "w") as fh:
-            fh.write("%.2f %.1f\n" % (10 * np.log10(line / band), f[k]))
+            fh.write("%.2f %.1f %s\n" % (10 * np.log10(line / band), f[k], "%.2f" % cd if cd is not None else "-"))
         os.remove(wav)
         for extra in (wav[:-4] + ".csv",):
             if os.path.exists(extra):
                 os.remove(extra)
-    d, hz = (float(v) for v in open(path).read().split())
-    return d, hz
+    v = open(path).read().split()
+    return float(v[0]), float(v[1]), (float(v[2]) if len(v) > 2 and v[2] != "-" else None)
 
 
 def basis(t):
@@ -231,9 +273,14 @@ def main():
         tones = dict(zip(slugs, ex.map(lambda s: tone(a.bin, s, a.src, os.path.join(content_dir, docs[s]["build"])),
                                        slugs)))
     for s_ in slugs:
-        if results[s_] is not None:
-            d = tones[s_][0]
-            results[s_].append((dict(TONE, line=tones[s_][1]), d, "pass" if TONE["range"][0] <= d <= TONE["range"][1]
+        if results[s_] is None:
+            continue
+        d, hz, cd = tones[s_]
+        if cd is not None:
+            # a diesel: the clatter's comb (the lead's ruling, 00:33), not the tone against the exhaust
+            results[s_].append((COMB, cd, "pass" if COMB["range"][0] <= cd <= COMB["range"][1] else "FAIL"))
+        else:
+            results[s_].append((dict(TONE, line=hz), d, "pass" if TONE["range"][0] <= d <= TONE["range"][1]
                                 else "FAIL"))
     content = a.content or os.path.join(ROOT, "content")
     for s_ in slugs:

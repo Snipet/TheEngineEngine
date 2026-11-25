@@ -44,7 +44,14 @@ A cam is asked as a cam card gives it: duration at the seat, at 1 mm, lift, cent
 
 ## From lift to area (`area.fm`)
 
-    A(L) = n q 0.4 (pi d^2 / 4) tanh(6.8 L / d) / tanh(1.7)
+    A(L) = n min(q A0(L), A0'(0) L),   A0 = 0.4 (pi d^2 / 4) tanh(6.8 L / d) / tanh(1.7)
+
+- The lesser of the port's limit and the curtain's (68e683f1): the port's quality `q` acts where the port limits, and
+  low down the curtain limits whatever the port, at the base form's own low-lift slope (0.73 of the curtain, no `q`).
+  The two meet at a lift of 0.12 of the diameter for `q` 1.35 and 0.19 for 1.8, below the peak lifts, so the peaks are
+  as before. With `q` on every lift the V10's and V12's ports (1.65, 1.8) had 1.2 to 1.3 of the geometric curtain at
+  low lift; their warm idles' burned share at intake closing went 0.487 to 0.399 and 0.518 to 0.488, their idles' sd
+  12.1 to 1.6 and 17.7 to 2.3 rpm (**measured**, card N1; N3 refereed, causes.md N3-16).
 
 - The form is the reference's `flowArea` (`tanh(1.7 l)`, `l` the lift over a quarter of the diameter), given the
   geometry: 0.73 of the curtain `pi d L` low down, 0.63 at a tenth of the diameter (the reference's comment: "about
@@ -192,6 +199,23 @@ The train mass changes only with a cited parts list.
 
 `Q = A(L) sqrt(2 dp / rho)`, dp 28 in of water (6.97 kPa), rho 1.204 kg/m^3; lifts 0.050 to 0.800 in, in m^3/s
 (CFM is times 2118.88). Computed when the Spec changes.
+
+## Open: the overlap's flow at low lift (N3-16, 25 Nov)
+
+The warm idle's burned share at intake closing still reads 0.40 to 0.49 on the V10, V12 and 7.0 against a measured
+band near 0.20 to 0.27 (N3: the thesis's points; Cavina's orifice form 0.17 to 0.21). What this file holds open, each
+waiting on a readable source:
+
+- (a) The cards' flanks. The generator meets a card exactly (0.15 mm in some 15 degrees from the seat, a ramp; the
+  card's 0.15 to 1 mm in (seat - 1 mm duration) / 2, 14 degrees a side on the V10's and V12's), and the overlap's flow
+  runs on those flanks between some 0.3 and 2 mm of lift. The archetypes' 1 mm durations are the generator's judgement;
+  catalogue cards (0.006 in against 0.050 in) would say whether real flanks are gentler (P's lookup).
+- (b) The discharge coefficient at very low lift. The form gives 0.66 to 0.73 of the curtain at a lift of 0.01 to 0.06
+  of the diameter, where the overlap's flow runs: the reference's own shape, **unsourced** (Heywood's figure of the
+  coefficient against lift over diameter, or Algieri et al. 2011's, not read here). One area serves both directions: no
+  reverse-flow coefficient in the code.
+- (c) The lobe's shape: flanks mirror (real closing ramps often differ) and no lash (a solid lifter's valve stays on
+  its seat until the lash is taken up). A maker's lift curve would settle both.
 
 ## Not done here, and why
 

@@ -346,3 +346,58 @@ TEST_CASE("fan cycles", "[.fan]")
                         still, vo, lo, hi, first, 100.0 * onT / 600.0, switches, b.field("heat.tCool"), b.tel("engine.speed") * 9.5492966);
         }
 }
+
+// The tractor's books against the settle (the lead's ask, 25 Nov: what the 1 % is made of at 1800 rpm full load):
+// consecutive 2 s windows after the dyno takes it, each store's rate
+TEST_CASE("tractor books settle", "[.tractorbooks]")
+{
+    Bench b("archetypes/tractor-15-inline-six");
+    std::string e;
+    REQUIRE(b.player().setSpec("car.model", 0, e));
+    b.ctl().ignition = 1;
+    b.play(0.1);
+    b.ctl().ignition = 2;
+    b.play(2.0);
+    b.ctl().ignition = 1;
+    b.play(1.0);
+    b.ctl().mode = 2;
+    b.ctl().throttle = 1.0f;
+    b.ctl().dynoSpeed = float(1800.0 / 9.5492966);
+    const int nc = int(b.tel("engine.cylinders"));
+    for (int w = 0; w < 12; ++w)
+    {
+        const double t0 = b.field("airThrottle"), v0 = b.field("airValves"), p0 = b.field("intk.mPlenum");
+        double m0 = 0;
+        for (int c = 0; c < nc; ++c)
+            m0 += b.field("cyl[" + std::to_string(c) + "].m");
+        b.play(2.0);
+        double m1 = 0;
+        for (int c = 0; c < nc; ++c)
+            m1 += b.field("cyl[" + std::to_string(c) + "].m");
+        const double raw = (b.field("airThrottle") - t0) * 500.0, pl = (b.field("intk.mPlenum") - p0) * 500.0;
+        const double thr = raw - pl, v = (b.field("airValves") - v0) * 500.0;
+        std::printf("window %2d (%4.0f-%4.0f s on the dyno): throttle %.2f, plenum's store %+.3f, booked %.2f, valves %.2f g/s: %+.3f %%; "
+                    "cylinders %+.3f g/s; boost %.0f kPa, tAir %.1f K, %.0f N m\n",
+                    w, 2.0 * w, 2.0 * w + 2.0, raw, pl, thr, v, 100.0 * (v / thr - 1.0), (m1 - m0) * 500.0,
+                    b.tel("boost.pressure") / 1000.0, b.field("intk.tAir"), b.tel("engine.torque"));
+    }
+}
+
+// N3-16 (1), the lead's ask, 25 Nov: the intake's reversion store on the V10 at a warm idle: its mass and burned share
+// over 10 s, against the cylinder's share; a store that ratchets would grow or drift its share upward
+TEST_CASE("reversion store", "[.rvstore]")
+{
+    Bench b("archetypes/v10-52");
+    std::string e;
+    REQUIRE(b.player().setSpec("car.model", 0, e));
+    b.start();
+    b.warm();
+    b.ctl().throttle = 0.0f;
+    for (int k = 0; k < 20; ++k)
+    {
+        b.play(0.5);
+        const double rm = b.field("cyl[0].rvMass"), ri = b.field("cyl[0].rvInert");
+        std::printf("t %4.1f s: store %.4f g, its burned share %.3f; cylinder's share now %.3f; %.0f rpm\n", 0.5 * (k + 1), 1e3 * rm,
+                    rm > 1e-12 ? ri / rm : 0.0, b.field("cyl[0].mInert") / b.field("cyl[0].m"), b.tel("engine.speed") * 9.5492966);
+    }
+}
