@@ -64,6 +64,7 @@ namespace tee::assistant
             std::string tool;            // the one running, else the last
             std::uint64_t calls = 0;     // calls answered since start
             std::uint64_t refused = 0;   // connections refused for their user
+            std::uint64_t accepted = 0;  // connections accepted (their user's checked) since the object was made
         };
         View view() const;
 
