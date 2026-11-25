@@ -1541,3 +1541,13 @@ TDC) agrees within 0.04.
 model 0.055 g. The form's effective area is pi sqrt(2)/6 = 0.74 of D x L, about 0.24 of the curtain pi D L; the model's
 low-lift area is 0.73 of the curtain times q (1.65 / 1.8 on the V10): some 5 times larger. Where the two orifices differ
 (area, the density taken, the pressure difference across the valves) is the comparison to make.
+
+*The form's units, as I used them* (01:01 `date -u`; the lead's 01:01): OF in degrees per metre over N in degrees a second
+(rpm x 6). That is the consistent set: (deg/m)/(deg/s) = (rad/m)/(rad/s) = 2.567e-4 s/m on the V10 by either, so
+0.189 / 0.165 / 0.212 / 0.211 and the thesis check (zero cam on the measured points; production 1.3 to 1.6 over; the larger
+cams 3 to 5 over) are already the consistent-unit values: nothing changes on recomputing in radians. Read with N in rpm
+against OF in degrees per metre (the inconsistent reading), the backflow terms would be 6 times larger (V10 0.37,
+V12 0.43, 7.0 0.52; the thesis's production cam 1.07 at 10 % load against a measured 0.25), far over every measured point:
+the consistent reading is the one the measured points support. The pi sqrt(2)/6 in eq. 7 is not the unit factor 1/6:
+it stays in both. What stands in any case is the model's excess over the measured residuals (about two), which D's
+algebra rests on.
