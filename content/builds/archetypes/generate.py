@@ -203,11 +203,15 @@ arch(slug="big-block-74-pushrod-v8", name="Big-block 7.4 L pushrod V8", geo="ref
            "automatic.")
 arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="Rotary", displacement=0.001308,
      cr=9.0, redline=8000, idle=800,
-     boost=dict(kind="Twin turbos", layout="Sequential", target=0.7, spring=0.5),
+     # the second turbo joins at 4500 rpm (boost.seqRpm, hidden, N2's c1e10dfe): Kevin Kelleher's measurement ("After
+     # twin [turbo] mode kicks in at 4500 at WOT", robrobinette.com, an enthusiast's) and an rx7club post quoting the 1993
+     # RX-7 workshop manual ("at about 4500 rpm", a search snippet); no Mazda figure read (sources section 16)
+     boost=dict(kind="Twin turbos", layout="Sequential", target=0.7, spring=0.5, seqRpm=4500),
      grade="Premium (91)", car="light-coupe-rotary", timing="Gears",
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
-           "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light "
-           "rear-drive coupe.")
+           "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). Its second turbo "
+           "joins at 4500 rpm (an enthusiast's measurement and a forum's quote of Mazda's workshop manual; no Mazda "
+           "figure read). In a light rear-drive coupe.")
 arch(slug="rotary-twin-na-side-port", clutchTorque=350.0, rotaryCam=0.15, rotaryPorts=(146.7, 362.0, 362.0, 583.3), name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
      displacement=0.001308, cr=10.0, redline=9000, idle=800,
      intake=dict(runnerLength=0.45, runnerLength2=0.30, runnerSwitch=5500 * RPM),
@@ -796,6 +800,8 @@ def build(a):
                 bo["scrolls"] = k["scrolls"]
             if k.get("vanes"):
                 bo["vanes"] = "Variable vanes"
+            if k.get("seqRpm"):
+                bo["seqRpm"] = float(k["seqRpm"])
             if k.get("antiLag"):
                 bo["antiLag"] = True
             if a.get("gateDiameter"):

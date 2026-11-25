@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Rotary twin",
-  "notes": "A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light rear-drive coupe.",
+  "notes": "A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). Its second turbo joins at 4500 rpm (an enthusiast's measurement and a forum's quote of Mazda's workshop manual; no Mazda figure read). In a light rear-drive coupe.",
   "spec": {
     "engine": {
       "layout": "Rotary",
@@ -55,6 +55,7 @@
       "target": 70000.0,
       "gateSpring": 50000.0,
       "blowOffKind": "Recirculating",
+      "seqRpm": 4500.0,
       "icEffect": 0.75,
       "icFlow": 0.16,
       "chargeVolume": 0.0026

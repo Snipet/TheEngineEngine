@@ -27,9 +27,11 @@ SIM = None
 def run(bin_dir, slug, out_dir):
     path = os.path.join(out_dir, slug + ".txt")
     if not os.path.exists(path):
-        cmd = [os.path.join(bin_dir, "tee-validate"), "--simulator", os.path.join(HERE, slug + ".json")]
-        if CONTENT:
-            cmd += ["--content", CONTENT]
+        # always a content directory named: a tool built from a pinned worktree otherwise reads that worktree's
+        # content (tools/common/Paths.h: the checkout it was built from), not this one's (found 25 Nov, 06:15: table L's
+        # first run read e43e228b's builds where 1efa3282's were meant)
+        cmd = [os.path.join(bin_dir, "tee-validate"), "--simulator", os.path.join(HERE, slug + ".json"),
+               "--content", CONTENT or os.path.join(ROOT, "content")]
         if SIM:
             cmd += ["--sim", SIM]
         r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
