@@ -15,6 +15,7 @@
 #include "app/Workspace.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
@@ -89,13 +90,15 @@ namespace tee::app
     class LateBake
     {
     public:
-        explicit LateBake(player::SimAdapter& player);
+        // `cache`: the bakes' folder (CalibrationBakeOptions::cacheDirectory); empty: none.
+        LateBake(player::SimAdapter& player, std::filesystem::path cache);
         ~LateBake();
         void tick();
         std::string state() const;
 
     private:
         player::SimAdapter& player_;
+        std::filesystem::path cache_;
         std::shared_ptr<Sim> made_;
         std::unique_ptr<ui::ServiceBake> inner_;
     };

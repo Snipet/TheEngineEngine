@@ -96,6 +96,28 @@ namespace tee::settings
         return (base.empty() ? fs::temp_directory_path(ec) : base) / "TheEngineEngine";
     }
 
+    fs::path cacheDirectory()
+    {
+        const fs::path given = fromEnvironment("TEE_CACHE_DIR");
+        if (!given.empty())
+            return given;
+       #if defined(_WIN32)
+        const fs::path base = fromEnvironment("LOCALAPPDATA");
+       #elif defined(__APPLE__)
+        const fs::path home = fromEnvironment("HOME");
+        const fs::path base = home.empty() ? fs::path() : home / "Library" / "Caches";
+       #else
+        fs::path base = fromEnvironment("XDG_CACHE_HOME");
+        if (base.empty())
+        {
+            const fs::path home = fromEnvironment("HOME");
+            base = home.empty() ? fs::path() : home / ".cache";
+        }
+       #endif
+        std::error_code ec;
+        return (base.empty() ? fs::temp_directory_path(ec) : base) / "TheEngineEngine";
+    }
+
     fs::path file()
     {
         return directory() / "settings.json";
