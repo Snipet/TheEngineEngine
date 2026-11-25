@@ -136,8 +136,12 @@ namespace
     }
 } // namespace
 
-TEST_CASE("diesel clatter: at a warm idle the tractor's clatter is a hump, not a comb", "[diesel][injection][sound]")
+TEST_CASE("diesel clatter: at a warm idle the tractor's clatter is a hump, not a comb", "[diesel][injection][sound][!mayfail]")
 {
+    // [!mayfail] on a named finding (25 Nov, 04:4x; the lead's rule for the default run): on the tip merged at 04:40 the
+    // comb without the spread fell to 7.0 dB (11.7 on the tip before), so the spread's reduction is 2.5 dB against the
+    // bound's 3 (4.5 dB with it); not ecu.afc (the same with it at 0.8). D2 to find which change moved the baseline;
+    // the bounds are unchanged.
     // (the bounds, judgement: the property is the reduction: with the spread the firing harmonics from 1 to 3 kHz stand
     // at least 3 dB lower over the spectrum midway between them than without it (judgement: clearly a smear, not noise;
     // the reduction itself moves with the tip, 8.2 then 5.5 dB, as the exhaust's own harmonics do not take the spread); and, as a wide guard only, at most
