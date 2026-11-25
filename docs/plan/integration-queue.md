@@ -609,6 +609,40 @@ app/Offline.cpp (B's, asleep) at A2, the exact lines to the lead first.
   finds the service manual's table. The owner reported this build's cam change as inaudible and invisible.
 - Next for N1: the idle residual (the V10's 0.46 and the V12's 0.61 bar at idle against 0.30 to 0.44), by a ledger.
 
+## Held for the next window (after P's bake at dbd64a5c has moved `main`); the lead calls the order
+
+Everything here is built or being built locally and is pushed only on the lead's word, each after the whole default
+tier on its merged tip. One bake follows the lot.
+
+| What | Whose | State at 11:48 | Under |
+|---|---|---|---|
+| `Build` step ids (`undoStep`, `redoStep`, `gestureOpen`), then the assistant's A1 | card A | e260d2b and d97da7b local, tier green on an earlier tree | host/, assistant/ |
+| The knock bake's light-load pedals (0.15 and 0.08 where 0.25 still knocks); `kKnockBakeVersion` 5 | C | built, bake tests green; V12's 1000 rpm row 0 up to 0.65 atm where it read 23.2 deg flat | host/ |
+| (b): the governed diesel's compressor at its torque-peak speed, the VE's back-pressure term from Heywood's relation | N2 | being built; tractor 1000 rpm 2580 N m at 225 kPa on the 76.8 mm wheel (N2); the lead re-measures before the push | sim/boost, content (P states the speeds) |
+| The surge setpoint limit in place of the vane guard | N2 | table first; not ruled in | sim/boost |
+| The pops, the exhaust's half (`exhaust.bang`, `PipeBurn`, the junction's source) | G | built on `g/bang-wip` 8c58a37e; harmless alone | sim/exhaust |
+| The pops, the account's seam (`FuelAccount` split, the charge's call) | N1 (H's model-on paths), after G's half is up | plan asked for | sim/ecu/overrun.fm, sim/combustion |
+
+**Content only, for P after `main` moves** (no re-bake but the builds touched): the rotary's cited ports; the
+two-stage build's high lobe on the F20C's centre; and, **only if N1's two checks pass**, the V10's exhaust at 210 deg
+(Audi SSP 994376AG; the lead recalls that programme as the S6 / S8's 7000 rpm engine, not the card's 8700 rpm one).
+
+**Recorded, nobody's yet:** the V12 at 1000 rpm and 0.93 to 0.96 atm still knocks with control's retard pinned at
+14.9 deg, its cell 46.6 deg and flagged (C); is 15 deg the control's designed ceiling (N2's to say). N3-16 stays on the
+V12's card: no source found for the L539's cams (N1). The nightly "diesel cold, full" red (D2, in hand).
+
+## N3-16, the idle residual: N1's ledger (25 Nov 11:42; one agent's)
+
+Per litre a cycle the V10, the V12 and the 7.0 do the same work against nearly the same friction: friction is not the
+term. (1) The knock table's lowest-speed row was copied flat to idle's load (the V12 idling at 10.8 deg after top
+centre; table off, 22.8 before), but the manifold barely moves with it (67.1 to 64.0 kPa): at about 0.5 burned share
+the burn is dilution-limited. C's cure above. (2) **The term is the residual through the overlap**: the burned share
+at intake closing is 0.43 on the V10 and 0.42 to 0.51 on the V12; the intake's parked centre 10 deg later takes 4 and
+8 kPa off. The V10's card is the Audi / Lamborghini 5.2 FSI (not the S85); Audi's SSPs give a 42 deg range, the
+adjusters locked at standstill with the intake advanced and the exhaust retarded, and an exhaust opening period of
+210 deg; no idle positions, no valve events. With the exhaust at 210 deg at 1 mm (the card: 232) the V10 idles at
+40.0 kPa, inside its class's 30 to 44.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 11:26: sim/, host/ and tools/ are FROZEN** (P re-bakes at the tip for the next `main`). ui/, app/,

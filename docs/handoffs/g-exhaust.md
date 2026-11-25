@@ -79,3 +79,54 @@ Card G, branch `claude/awesome-gates-ntdb58`, pushed at cf267fb.
     Measured: the fade never moved, steps 0.3865 against 0.3901 running.
   - (5) Q answered: the cost is in the generic junction path. (7) N1: diameters answered.
     Also added `tel.exhaust.portPressure` for N1.
+
+## The pops' seam: the account's side, for N1 (25 Nov; the lead's plan)
+
+G's half, `exhaust.bang` 1 ("Burned in the pipe"), is on the local branch `g/bang-wip` (8c58a37e). It goes onto the
+branch at the next sim window, on the lead's word. The design and its sources are in docs/models/exhaust.md, "Bangs:
+heat released in the pipe". This section is what the account (`sim/ecu/overrun.fm`) and combustion's call must do so
+that it is fed. G reviews the diff.
+
+**The call.** `Combustion` holds `pop` (= `&exh.pop[0]`; one per bank, 0 and 1). Under `pop[0].burnPipe != 0` (the
+exhaust sets it each sample: exhaust.model 1 and exhaust.bang 1), the account hands each burn as
+
+    pop[b].burnEvent(heat, fuel, mass, t, phi, xb, kind, own)
+
+| argument | unit | meaning |
+|---|---|---|
+| `heat` | J | the fuel that burns times its lower heating value (`kFuelLhv[fuelRow(grade)]`); ≤ 0 is ignored |
+| `fuel` | kg | that fuel |
+| `mass` | kg | the slug's whole gas: its fuel, its own air, its burned gas (sets the slug's length in the pipe) |
+| `t` | K | the slug's gas as it left its cylinder (`cy->t` at its exhaust opening) |
+| `phi` | | the slug's equivalence ratio (its fuel × AFR / its air). Outside 0.6 to 1.8 the exhaust burns nothing |
+| `xb` | | its burned-gas share (combustion's `dilution[c]`) |
+| `kind` | 1, 2 | `BURN_PREMIXED` 1: a charge that left with its own air (a spark cut, a misfire, an overrun charge burned late), a flame runs through it. `BURN_UNMIXED` 2: a rich charge's leftover meeting another's air; the exhaust leaves it out of the sound (Coward and Jones's limits: no flame runs) |
+| `own` | 0, 1 | 1: the slug is still burning as it leaves (`cy->burnAt >= 0 && cy->qTot > 0` at `evoNow`). It is lit at once and burns from within; 0: lit by a hot blowdown, the hot gas folding into it |
+
+- **When.** Once for each burn, at the moment it lights. A premixed slug lights when its own cylinder opens its exhaust
+  valve still burning (`own` 1). Otherwise it lights at the exhaust opening of a later fired cylinder of the same bank,
+  with chance (T − 900)/300 clamped to 0..1 of that cylinder's gas (the account's own ramp, judgement). It waits only
+  while still flammable: about 16 ms (kSlugLife: a stoichiometric slug mixing with an equal mass of air passes λ 1.8 at
+  0.8 of a 20 ms mixing time; judgement). After that its fuel and air join the unmixed store.
+- **Where.** At most 8 events per bank between two of the exhaust's samples (`POP_EVENTS`); the exhaust drains the
+  inbox every sample, so in practice one control step's lights.
+- **Keep by cylinder.** What a charge lets out unburned is known at its intake closing (`add()` now), but it reaches the
+  pipe at its exhaust opening. Keep it by cylinder (fuel, air, x_b, premixed or not) and release it at `evoNow`
+  (combustion's `sample()`, the block that writes `ecu->blow[b]`). A charge is premixed when its firing is
+  `CHARGE_SPARK_CUT`, a misfire (`!one.lit` and not a fuel cut), or `CHARGE_OVERRUN` with a late remainder. Its
+  premixed fuel is min(fuel, air/AFR) of that same charge; the rest of its fuel and air go to the unmixed store.
+- **What the account stops doing under `burnPipe`:**
+  - the 30 kPa ceiling, `pulse[b]` = 30 kPa (1 − exp(−m/7 mg));
+  - the hazard integral (40·hot·m/2 mg per second);
+  - firing `pop[b].fire(...)`.
+  It keeps the unmixed store's 0.25 s flush. It may keep `bangs` (premixed events) and `total` (fuel handed), so H9's
+  integrated test still reads.
+- **The gate.** With `burnPipe` 0 nothing changes, to the bit: `ecu.model` 0's dice, `exhaust.model` 0, and Carved.
+- **Tests that prove the pair** (G writes them once the seam is in):
+  1. Energy: the exhaust's `b.bangGiven` equals the account's handed fuel × LHV, to 1e-4, over a spark-cut limiter.
+     Released plus swept equals given is already BangTest's.
+  2. A stock fuel-cut limiter, and a lift from 6000 on first.json: no premixed event and `bangHeat` stays 0. The
+     sound is the cut firings.
+  3. Per event, a spark cut's premixed heat and its peak source exceed a fuel cut's, which has none. The ordering is
+     over the rally five against first.json.
+- Not in this seam: anti-lag's heat into the turbine (the lead: listed, not built).
