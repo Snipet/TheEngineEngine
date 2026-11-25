@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Twin-turbo 4.0 L hot-vee V8",
-  "notes": "A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -71,12 +71,12 @@
       "dIn": 0.033,
       "dEx": 0.028,
       "train": "Finger",
-      "inDurSeat": 244,
-      "inDur1mm": 206.0,
+      "inDurSeat": 250.0,
+      "inDur1mm": 212,
       "inLift": 0.0105,
       "inCentre": 130.0,
-      "exDurSeat": 240,
-      "exDur1mm": 202.0,
+      "exDurSeat": 246.0,
+      "exDur1mm": 208,
       "exLift": 0.0095,
       "exCentre": 112,
       "inPhaseRange": 42,
@@ -160,6 +160,36 @@
             [
               0.0,
               0.0,
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              35.0,
+              35.0
+            ],
+            [
+              0.0,
+              0.0,
+              35.0,
+              35.0
+            ],
+            [
+              0.0,
+              0.0,
+              25.0,
+              25.0
+            ],
+            [
+              0.0,
+              0.0,
               25.0,
               25.0
             ],
@@ -172,41 +202,118 @@
             [
               0.0,
               0.0,
-              38.47926330566406,
-              38.47926330566406
-            ],
-            [
-              0.0,
-              0.0,
-              20.0,
-              20.0
-            ],
-            [
-              0.0,
-              0.0,
-              20.0,
-              20.0
-            ],
-            [
-              0.0,
-              0.0,
-              20.0,
-              20.0
-            ],
-            [
-              0.0,
-              0.0,
-              20.0,
-              20.0
-            ],
-            [
-              0.0,
-              0.0,
-              20.0,
-              20.0
+              25.0,
+              25.0
             ]
           ]
-        }
+        },
+        "camInKey": 315857988,
+        "knockLimitAuto": false,
+        "knockLimit": {
+          "x": [
+            104.71975511965977,
+            189.9915070495168,
+            275.26325897937386,
+            360.5350109092309,
+            445.8067628390879,
+            531.078514768945,
+            616.350266698802,
+            701.622018628659
+          ],
+          "y": [
+            0.2,
+            0.487280123189172,
+            0.7745602463783441,
+            1.061840369567516,
+            1.349120492756688,
+            1.63640061594586,
+            1.923680739135032,
+            2.210960862324204
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        "knockLimitKey": 403011199
       }
     },
     "car": {

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Rotary twin, side ports",
-  "notes": "A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a two-stage intake; its side ports' timing EO 50 BBDC, EC 3 ATDC, IO 3 ATDC, IC 65 ABDC in eccentric-shaft degrees (N1, from memory, to some 10 degrees) (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through mufflers. In a light rear-drive coupe.",
+  "notes": "A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a two-stage intake; its side ports' timing EO 50 BBDC, EC 3 ATDC, IO 3 ATDC, IC 65 ABDC in eccentric-shaft degrees (N1, from memory, to some 10 degrees) (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through mufflers. In a light rear-drive coupe. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Rotary",
@@ -88,6 +88,114 @@
       },
       "idle": {
         "speed": 83.776
+      },
+      "maps": {
+        "knockLimitAuto": false,
+        "knockLimit": {
+          "x": [
+            104.71975511965977,
+            222.90351179282038,
+            341.08726846598097,
+            459.27102513914156,
+            577.4547818123021,
+            695.6385384854628,
+            813.8222951586234,
+            932.006051831784
+          ],
+          "y": [
+            0.2,
+            0.31230477424130276,
+            0.42460954848260546,
+            0.5369143227239082,
+            0.649219096965211,
+            0.7615238712065138,
+            0.8738286454478164,
+            0.9861334196891192
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        "knockLimitKey": 772209791
       }
     },
     "car": {

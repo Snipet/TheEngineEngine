@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Flat-plane 3.9 L V8, twin turbo",
-  "notes": "A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "V8 flat-plane",
@@ -71,12 +71,12 @@
       "dIn": 0.033,
       "dEx": 0.028,
       "train": "Finger",
-      "inDurSeat": 252,
-      "inDur1mm": 214.0,
+      "inDurSeat": 258.0,
+      "inDur1mm": 220,
       "inLift": 0.0105,
       "inCentre": 128.0,
-      "exDurSeat": 248,
-      "exDur1mm": 210.0,
+      "exDurSeat": 254.0,
+      "exDur1mm": 216,
       "exLift": 0.01,
       "exCentre": 112,
       "inPhaseRange": 40,
@@ -171,26 +171,32 @@
             [
               0.0,
               0.0,
-              15.0,
-              15.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              39.99987030029297,
-              39.99987030029297
+              30.0,
+              30.0
             ],
             [
               0.0,
               0.0,
-              30.636886596679688,
-              30.636886596679688
+              30.0,
+              30.0
             ],
             [
               0.0,
               0.0,
-              15.0,
-              15.0
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              25.0,
+              25.0
             ],
             [
               0.0,
@@ -203,15 +209,116 @@
               0.0,
               20.0,
               20.0
-            ],
-            [
-              0.0,
-              0.0,
-              15.0,
-              15.0
             ]
           ]
-        }
+        },
+        "camInKey": 1528863495,
+        "knockLimitAuto": false,
+        "knockLimit": {
+          "x": [
+            104.71975511965977,
+            207.9435072587802,
+            311.1672593979006,
+            414.3910115370211,
+            517.6147636761415,
+            620.8385158152619,
+            724.0622679543824,
+            827.2860200935028
+          ],
+          "y": [
+            0.2,
+            0.49806034330830773,
+            0.7961206866166155,
+            1.0941810299249233,
+            1.3922413732332308,
+            1.6903017165415388,
+            1.9883620598498464,
+            2.2864224031581544
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        "knockLimitKey": 1561084670
       }
     },
     "car": {

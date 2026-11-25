@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Small-block 5.7 L, carburettor-like",
-  "notes": "A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 8.5:1, two valves on pushrods, a flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's 180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: corvsport.com, corvetteactioncenter.com). One converter for both banks (2 into 1 into 2). Four-speed manual, live axle. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: its card's advertised and 0.050 in durations are tappet lift: through its 1.5 rocker (the small block's nominal 1.5, Chevrolet Performance) to the valve, solved in the simulator's lift curve (section 8 of the judgement sources). Its intake: the carburettor class's runner, 0.20 m from the valve to the plenum (a four-barrel over a dual-plane or open plenum, 1960s to 80s): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 8.5:1, two valves on pushrods, a flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's 180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: corvsport.com, corvetteactioncenter.com). One converter for both banks (2 into 1 into 2). Four-speed manual, live axle. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: its card's advertised and 0.050 in durations are tappet lift: through its 1.5 rocker (the small block's nominal 1.5, Chevrolet Performance) to the valve, solved in the simulator's lift curve (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the carburettor class's runner, 0.20 m from the valve to the plenum (a four-barrel over a dual-plane or open plenum, 1960s to 80s): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -124,6 +124,114 @@
       },
       "idle": {
         "speed": 73.304
+      },
+      "maps": {
+        "knockLimitAuto": false,
+        "knockLimit": {
+          "x": [
+            104.71975511965977,
+            170.54364851157038,
+            236.36754190348097,
+            302.19143529539156,
+            368.01532868730214,
+            433.83922207921273,
+            499.66311547112343,
+            565.487008863034
+          ],
+          "y": [
+            0.2,
+            0.3137580958549223,
+            0.42751619170984456,
+            0.5412742875647669,
+            0.6550323834196892,
+            0.7687904792746114,
+            0.8825485751295337,
+            0.9963066709844559
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        "knockLimitKey": 1498335811
       }
     },
     "car": {

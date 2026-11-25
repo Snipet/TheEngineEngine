@@ -71,6 +71,13 @@ def bake(bin_dir, sim, path, tmp):
                     last = s2
     saved = json.load(open(last))["spec"]["ecu"].get("maps", {})
     kept = {k: saved[k] for k in OWNED if k in saved and saved[k] not in (None, 0)}
+    # a cam map only with its key (an unphased build's saved file carries the empty default); no spark table on a
+    # diesel (C's be3ce9c4: the app reads a compression-ignition build as current for it, nothing to bake)
+    if "camInKey" not in kept:
+        kept.pop("camIn", None)
+    if b["spec"]["fuel"].get("kind") == "Diesel":
+        kept.pop("knockLimit", None)
+        kept.pop("knockLimitKey", None)
     return kept, log
 
 
