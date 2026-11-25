@@ -1,0 +1,64 @@
+diff --git a/sim/vehicle/bike.fm b/sim/vehicle/bike.fm
+index 8055f6b1..3c82c351 100644
+--- a/sim/vehicle/bike.fm
++++ b/sim/vehicle/bike.fm
+@@ -83,6 +83,8 @@ module BikeBox
+     float t;
+     float tIn;          // when the dogs went in
+     float robot;        // the clutch as the shift and the launch helper leave it, 0 open to 1
++    bool synced;        // the launch helper's clutch has synchronised in this gear: held closed by the output's speed
++                        // until a shift, neutral, the lever or a stall (card D's patch for B2, the lead's ruling, 25 Nov)
+     float rollOff;      // the rider's throttle through a clutch upshift, 0 shut to 1
+     bool cut;
+     float cutTime;
+@@ -101,6 +103,7 @@ module BikeBox
+         to = 0;
+         t = 0.0f;
+         robot = 1.0f;
++        synced = false;
+         rollOff = 1.0f;
+         cut = false;
+         blip = 0.0f;
+@@ -116,7 +119,7 @@ module BikeBox
+     }
+ 
+     void control(float d16, int upCount, int downCount, float pedal, float w, float wOut, float idleW, float redW,
+-                 bool quick, bool autoBlip)
++                 bool quick, bool autoBlip, float engage)
+     {
+         if (!seen)
+         {
+@@ -146,7 +149,23 @@ module BikeBox
+         }
+         // the launch helper: closes with the revs from just over idle (the vehicle model's)
+         const float x = fminf(fmaxf((w - idleW - 15.7f) / 94.2f, 0.0f), 1.0f);
+-        const float launch = x * x * (3.0f - 2.0f * x);
++        float launch = x * x * (3.0f - 2.0f * x);
++        // (once synchronised it is no launch, as the vehicle model's paddles (gearbox.fm, `synced`): once the clutch has
++        // locked in this gear (the slip under 0.5 rad/s, engaged) it is held closed by the output's speed through the gear,
++        // opening only as that nears the idle (50 to 250 rpm over it), until a shift begins, neutral, the lever pulled
++        // (engage under 0.5) or the output's speed at the stall band's foot. Here the output's speed carries the rear
++        // tyre's slip (the vehicle model's reads the road's); B2 may pass the road's instead)
++        const float gIn = ratioOf(gear);
++        const float wGear = fabsf(gIn * wOut);
++        if (gear == 0 || shifting || engage < 0.5f || wGear < idleW + 5.2f)
++            synced = false;
++        else if (fabsf(w - wGear) < 0.5f && robot > 0.1f)
++            synced = true;
++        if (synced)
++        {
++            const float xr = fminf(fmaxf((wGear - idleW - 5.2f) / 20.9f, 0.0f), 1.0f);
++            launch = fmaxf(launch, xr * xr * (3.0f - 2.0f * xr));
++        }
+         if (!shifting)
+         {
+             if (ups > 0)
+@@ -587,7 +606,7 @@ module Bike
+                 stage();
+         }
+         strip.control(d16, x, spec.proTree);
+-        box.control(d16, up, down, pedal, wLast, (float)wo, idleW, redW, bs.quickshifter, bs.autoBlip);
++        box.control(d16, up, down, pedal, wLast, (float)wo, idleW, redW, bs.quickshifter, bs.autoBlip, engage);
+         driveline();
+         gA = box.ratioOf(box.gear);
+         wheelieControl(d16);

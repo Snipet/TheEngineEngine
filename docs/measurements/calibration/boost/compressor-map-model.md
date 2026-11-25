@@ -305,3 +305,32 @@ peak over the target, time above +5 %, time to within 5 % from below):
 The stated wheel spools harder and arrives sooner (4.3 s against 7.2 at 2500), and overshoots a little more at 4500. A
 reasoned improvement, for after the join and not tuned by hand: a feed-forward that knows the boost's rate as it
 arrives (the gate opened ahead of the target by the rise's own momentum).
+
+## The map fitted to every cited map (25 Nov, the lead's rulings; the diesel package)
+
+The rise, the knee, the line's fall toward choke and the choke flow's scale were fitted together. The fit used least
+squares on residuals over reading precision, across P's two heavy-duty maps (S400SX-E and S300SX3, line by line,
+sources section 21) and the five maps above (ratio by ratio). The script and residuals are in map-shape-fit.py and
+map-shape-fit-residuals.txt.
+
+| law | form | value |
+|---|---|---|
+| rise | tau_knee = c(M) U^2 / (cp T) | c(M) = 0.608 - 0.157 (M - 1) |
+| knee | phiK = k(M) kAr | k(M) = 0.349 + 0.551 (M - 1) |
+| fall | tau at choke = f tau_knee | f = 0.652 |
+| choke | mc = k rho a A ... | k = 0.506 |
+
+**One floor:** below tip Mach 0.67, the lowest cited line (the S400SX-E's 230 m/s), the knee and the efficiency's Mach
+term are held at that line's. A law is read only where its maps are; under 230 m/s the map claims nothing.
+
+**Known limits:**
+- **It is a generic wheel**, the cited maps' mean: within about 3 % of a published wheel's peak ratio and 6 % of its
+  surge flow on average. The right ends are within about 10 %, at worst 21-33 %.
+- **The two heavy-duty maps disagree beyond their reading precision.** Fitted on either alone, each predicts the other
+  at RMS 10-14 precisions, against 3-5 on its own. The disagreement is mostly in the fall f and the choke scale k. It
+  goes with trim (56.3 against 52.3), but one pair is not a law, so trim is not entered.
+- **The kei and the rotary lose about 4 % of peak power.** Both run their right ends at the redline, where the fit's
+  residual is worst. The rotary's loss is the fall f; about half the kei's is.
+- **The 607 m/s line bends below the linear c** (5.0 against 5.29). That is past the 560 m/s tip limit, so it binds
+  nothing.
+- **The efficiency law is not refitted.** Its peak is each build's compEta, and its Mach term peaks at 1.1.

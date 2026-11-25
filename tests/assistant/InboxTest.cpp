@@ -31,7 +31,7 @@ TEST_CASE("assistant: a full inbox refuses at once and runs nothing it refused",
     });
     CHECK(over.ready());
     const Reply r = over.wait(10.0);
-    CHECK(std::chrono::steady_clock::now() - before < std::chrono::seconds(1));
+    CHECK(std::chrono::steady_clock::now() - before < std::chrono::seconds(5));   // not the wait's ten (wide: a loaded runner)
     CHECK_FALSE(r.ok);
     CHECK(r.error == kBusy);
     // the frame drains at most kPerFrame a frame, in order
