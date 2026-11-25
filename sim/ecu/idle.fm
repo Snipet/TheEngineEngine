@@ -94,7 +94,13 @@ module IdleControl
     {
         const float ie = (target - s->avg) * 0.001f;
         const float iep = (target - s->avg - 0.2f * s->rate) * 0.001f;
-        if (s->avg < target + 500.0f)
+        // (not down through the start and post-start phase, the first 3 s, as Bosch's idle-speed control holds its
+        // integrator then (Gasoline-Engine Management: the start and post-start phases): the start's flare is the
+        // proportional part's to shave, not the integral's to unlearn. Unlearned, it left the valve at its idle
+        // position as the speed fell through the target after the flare, and every warm start dipped: the first
+        // build to 641 rpm against 750, the 7.0 to 433, a 1.5 four to 645, the V10 and V12 to some 720 against 900,
+        // 2 to 3 s to recover (card N1, 25 Nov; held: 737, 677, 735, 883, 865))
+        if (s->avg < target + 500.0f && !(gasoline && sinceStart < 3.0f && ie < 0.0f))
             integral = fminf(fmaxf(integral + 0.5f * ie * d16, 0.0f), 1.0f);
         // (the valve's proportional part half the reference's near the target: the plenum's filling lags the valve by
         // some 0.1 s, and at
