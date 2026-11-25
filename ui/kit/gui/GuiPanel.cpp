@@ -404,7 +404,53 @@ namespace tee::ui
         }
         if (gestures_ && host_ != nullptr)
             gestures_->poll(host_->nowSeconds());
+        // U1: hover help: the control under the pointer (none while a press holds), else the one the keyboard holds
+        // (reached by Tab), after a short rest.
+        {
+            const bool byKey = !(hasPointer_ && hovered >= 0) && ring_ && focus_ >= 0;
+            const int key = pressed_ >= 0 ? -1 : (hasPointer_ && hovered >= 0) ? hovered : byKey ? focus_ : -1;
+            if (tip_.track(dt, key, byKey ? Tooltip::kFocusDwell : Tooltip::kDwell))
+                showHelp(key);   // its owner draws again when tooltip().drawKey() moves
+        }
         dirty_ = false;
+    }
+
+    std::string GuiPanel::helpFacts(const ParamInfo& info)
+    {
+        const auto num = [&](double v) {
+            char b[48];
+            std::snprintf(b, sizeof b, "%.*f", std::clamp(info.decimals, 0, 6), v * info.scale);
+            return std::string(b);
+        };
+        const std::string unit = info.unit.empty() ? std::string() : " " + info.unit;
+        switch (info.kind)
+        {
+            case ParamInfo::Kind::toggle:
+                return std::string("Off or on; default ") + (info.def >= 0.5 ? "on" : "off");
+            case ParamInfo::Kind::choice:
+            {
+                std::string all;
+                for (const std::string& ch : info.choices)
+                    all += (all.empty() ? "" : ", ") + ch;
+                const auto d = static_cast<std::size_t>(std::max(0.0, std::round(info.def - info.min)));
+                return "One of " + all + (d < info.choices.size() ? "; default " + info.choices[d] : std::string());
+            }
+            default:
+                return num(info.min) + " to " + num(info.max) + unit + "; default " + num(info.def) + unit;
+        }
+    }
+
+    void GuiPanel::showHelp(int item)
+    {
+        if (item < 0 || item >= static_cast<int>(items_.size()))
+            return;
+        const int slot = view_.slotOfItem(item);
+        if (slot < 0 || slot >= params_.count())
+            return;   // not a bound control: nothing to say here
+        const ParamInfo& info = params_.info(slot);
+        const std::string body = options_.help ? options_.help(slot) : std::string();
+        const auto& control = static_cast<const GuiControlItem&>(*items_[static_cast<std::size_t>(item)]);
+        tip_.show(info.label, body, helpFacts(info), control.cell(), static_cast<float>(width_), static_cast<float>(height_));
     }
 
     // The ground, then the interface's own ground, frames, labels and dividers, its items in its theme (clipped to the
@@ -441,6 +487,7 @@ namespace tee::ui
                     clip.emplace(c, area);
                 items_[i]->draw(c, gth, ring_ && focus_ == static_cast<int>(i));
             }
+        tip_.draw(c, th);   // U1: hover help, over everything
     }
 
     bool GuiPanel::isWidget(std::size_t item) const noexcept
@@ -561,6 +608,7 @@ namespace tee::ui
             return;
         }
         pressed_ = itemAt(pointer_);
+        tip_.pressed(pressed_);   // U1: no hover help over what was just pressed
         if (pressed_ >= 0 && items_[static_cast<std::size_t>(pressed_)]->focusable())
             setFocus(pressed_);
         else if (pressed_ < 0)

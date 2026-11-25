@@ -62,6 +62,8 @@ namespace
             const bool there = std::find(shown.begin(), shown.end(), i) != shown.end();
             (info.hidden ? hidden : fields) += 1;
             CHECK_MSG(there != info.hidden, info.path + (info.hidden ? " is hidden and shown" : " is on no page"));
+            // Hover help (the owner's ask): every control a person sets says what it does: its field's ui::help.
+            CHECK_MSG(info.hidden || !info.help.empty(), info.path + " has no ui::help: its tooltip would say only its range");
         }
         std::printf("  %d Spec fields a person sets (and %d hidden) in %zu sections, on %d inspector pages of %d workspaces\n",
                     fields, hidden, tee::ui::sectionsOf(*rig.doc).size(), pages, f.workspaceCount());
