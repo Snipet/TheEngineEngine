@@ -47,7 +47,7 @@ namespace tee::input::g29
             return "macOS could not open it (" + t_.describe(opened_) + ")";
 #else
         if (opened_ == kNotPermitted)
-            return "the system keeps it from this app";
+            return "the system keeps it from this app: its device needs your read and write access (see docs/controls.md)";
         if (opened_ != 0)
             return "it could not be opened (" + t_.describe(opened_) + ")";
 #endif

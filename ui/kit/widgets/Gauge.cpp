@@ -79,6 +79,7 @@ namespace tee::ui
             const float a = angleOf(t), ca = std::cos(a), sa = std::sin(a);
             const double v = lo_ + (hi_ - lo_) * static_cast<double>(t);
             Label l;
+            l.t = t;
             l.text = numerals_ ? numerals_(v) : plain(v);
             l.red = std::isfinite(redline_) && v >= redline_ - 1e-9;
             const float w = widthOf(l.text, numeral);
@@ -114,17 +115,28 @@ namespace tee::ui
             g.ra = ringInside(out);
             if (g.ra < 0.55f * g.r && out.size() > 2)
             {
-                // A small face: the ends' numbers (on the diagonals, the widest along the radius) go; the ones between
-                // stay, near the top, where they cost little of the needle's length.
+                // A small face: the ends' numbers (on the diagonals, the widest along the radius) go; of the ones between,
+                // the one or two nearest the top stay (one for an odd count, the pair either side of it for an even),
+                // where they cost little of the needle's length.
                 out.erase(out.begin());
                 out.pop_back();
+                std::sort(out.begin(), out.end(), [](const Label& a, const Label& b) { return std::fabs(a.t - 0.5f) < std::fabs(b.t - 0.5f); });
+                const std::size_t keep = out.empty() ? 0 : (std::fabs(out.front().t - 0.5f) < 1e-4f ? 1 : 2);
+                out.resize(std::min(out.size(), keep));
                 g.ra = ringInside(out);
+                if (g.ra < 0.55f * g.r && out.size() > 1)   // the pair too wide: the one nearer the top
+                {
+                    out.resize(1);
+                    g.ra = ringInside(out);
+                }
             }
             if (g.ra < 0.55f * g.r)
             {
-                // No room for a sweep worth the name inside them: ticks and digits only.
+                // No room for a sweep worth the name inside them: ticks and digits only, on the ring a number at the
+                // top would leave (so a small dial without one matches its neighbours that have one).
                 out.clear();
-                g.ra = g.r - 7.0f;
+                const float top = g.r - 3.0f - 2.0f * (numeral.px * 0.5f + 2.0f) - 3.0f;
+                g.ra = top >= 0.55f * g.r ? top : g.r - 7.0f;
             }
         }
         return out;
