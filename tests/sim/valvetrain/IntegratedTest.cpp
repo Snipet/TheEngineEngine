@@ -135,7 +135,12 @@ TEST_CASE("9: two stages: the curves cross, and a change set at the crossing sho
     print("stage B", rpms, b);
     // they cross: A above at the bottom, B above at the top
     REQUIRE(a.front() > b.front());
-    REQUIRE(b.back() > a.back());
+    // (at the top speed that still makes torque: the last of the speeds is on the limiter's cut, both curves some -200
+    // N m there and their order the cut's, not the cams')
+    std::size_t top = rpms.size() - 1;
+    while (top > 0 && (a[top] <= 0.0 || b[top] <= 0.0))
+        --top;
+    REQUIRE(b[top] > a[top]);
     double cross = 0.0;
     for (std::size_t i = 1; i < rpms.size(); ++i)
         if (a[i - 1] >= b[i - 1] && a[i] < b[i])
