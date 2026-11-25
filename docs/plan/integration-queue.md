@@ -692,8 +692,131 @@ engine by its own table; the top end loses 5 %). N3-16 stays recorded on the V10
   suggestion), against (ii) N2's test of whether opening helps, against the guard as it is.
 - Recorded for D2: the truck's sets lose VE 0.609 to 0.543 for p3/p2 1.22 to 1.32 at 1900 rpm (1997 to 1705 N m).
 
+## 25 Nov 12:42: what changed in the held list since 12:16, and the next window's order
+
+- **P's bake is on the branch at ce169231** (31e23ae1 merged with L's restated listen cases). Nothing was marked: L
+  restated the camera case and the defaults case on what the auto level holds (an exposure on peaks: each camera's
+  loudest moment at its target; the gap in typical levels tied to the crests' difference with the remainder of the
+  largest peaks' gap within 3.5 dB; the tractor's check on the idle's floor, not its start-history-sensitive
+  largest). The lead had prepared a `CHECK_NOFAIL` on the owner's leave and dropped it unpushed. The lead's own
+  build: listen 21 of 21 on the baked tip ("typical +2.6 dB = crests' difference +5.6 dB -2.9"). P's rows, table N:
+  114 of 847; the NA curves below idle + 450 whole (small block at 1032 rpm 199.7 to 402.5 N m). **The tractor held
+  at 1100 did not move: not the trim, the compressor** (P; on the 76.8 mm wheel 1100 holds 2718).
+- **(b) leaves the next window: it goes in as a pair with D2's cure of the brake.** On the 74.7 mm wheel no vane
+  position holds the shaft on the rise of a High brake at 2000 rpm (fully open from engagement: 1.012); earlier
+  blowdown (the lead's ruled cure) lowers the settled shaft 0.5 % per 10 deg and makes the rise worse: withdrawn.
+  D2's v8 holds the limit on both wheels at 1500, 2000 and 2400 (the vanes fed forward by speed, an integral on the
+  shaft toward 0.93, two cylinders held off at engagement above 1800 rpm, a cylinder cut past 0.985) and is the
+  basis; to settle before it is final: the hunting at 2000 on the smaller wheel (313 to 353 kW) and whether
+  something measurable at engagement tells the wheels apart so the matched wheel keeps its 372 kW. BrakeTest's 330
+  kW is read once the brake has settled (a published steady figure); the shaft's limit over the whole engagement.
+- **The guard: both candidates out** (N2, guard-candidates.md, local). (i) the flag on the cycle's mean (the
+  lead's): the mean flow is left of the line at the pinned cells too. (ii) the opening test: frees the pinned cells
+  (pickup 1300 576 to 809 N m; the 2.0 at 1750 158 to 252) and hunts on the truck. **The lead's reading, being
+  tested by N2:** the truck's low state is its own backflow (VE 0.61, minus 11 % for p3/p2 1.22 to 1.32; its sets
+  have no measured valve timing), which the guard rescues by lowering p3; a copy of the truck's sets with the
+  tractor's valve events, guard off, decides it.
+- **The auto level stays as it is** (L): the percentile of 0.1 s windows keeps the cameras' order and the body's
+  level but lets a rev come in 3.8 dB loud before it settles. Next to measure: today's instant rise, an isolated
+  crack passed to the limiter. The pops on the limiter do not pull the body down (0.7 dB at most): the lead's
+  suspicion, refuted.
+- **Dropped:** D2's `[!mayfail]` split of the tractor's quick case (L's restatement makes it unnecessary; D2's
+  start-fuel commit merged with the tip passes the listen suite unmarked: 21 of 21).
+- **Started 12:33:** card A on A3 (the key chat; its transport built and tested on a loopback server, 532e9f9
+  local; needs `libcurl4-openssl-dev libsecret-1-dev` in scripts/bootstrap-cloud.sh and the CI image: the lead's
+  to add); U5 on a help line for every unbound control of every stage, with a test; M on the idle's spectrum at the
+  opening camera (the owner's hum report, never confirmed closed); J2 on three designs of the inspector (12:20).
+- U1 holds 6e6c768e (the ribbon's unsettled marks) and the fix for CLASSIC's small dials.
+
+**The next window's order, once `main` has moved** (each on a green whole tier of its merged tip; a late item rides
+the window after):
+1. card A: e260d2b (`Build` step ids) alone, then A1, A2 and the wiring;
+2. N1: the 93 grade and `spec.fuel.octane` (fe250071, 4e057986, b225b7a6); then C: the knock bake's lighter pedals
+   with the octane in the key (version 5); then U4: the number in TUNE;
+3. D2: 9ef985c2 (the start's fuel);
+4. G: the exhaust's half of the pops; then N1's seam, G reviewing;
+5. ui only, any time the freeze allows: U1's ribbon marks and CLASSIC fix, U5's help lines, J2's design pictures.
+Then sim/, host/ and tools/ freeze and P bakes, with the content-only items (the rotary's cited ports; the
+two-stage build's high lobe at 247 deg on a centre of 98).
+
+## 25 Nov 13:16: `main` held by macOS; the diesel package's root cause
+
+- **The baked tip ce169231 is green on Linux and Windows and RED on macOS, 2 of 545, both U4's fuel control:**
+  `ui.tune.fuel` (SegFault) and `ui.build.tune.fuel` ("The simulator's fuel table was not read": AKI - RON - MON -).
+  The lead's diagnosis by reading ui/views/tune/Fuel.cpp: the table's values are written `91.0f` and read with
+  `istringstream >> double`, which fails on libc++ (the trailing `f` is gathered and the conversion refused), so the
+  table comes back empty on macOS only. U4 is released from the freeze for one ui/tests push with the cure; `main`
+  moves to that commit when Linux and macOS are green on it (sim/, host/, tools/ still the bake's).
+- **The diesels' root cause (D2, c24c127e local): 88 deg of valve overlap** from the reference's cam dial at 0.9999 on
+  every D2 build (diesel-v8-truck, diesel-mechanical-classic, diesel-pickup-tuned, diesel-marine-v12, the two
+  trucks). Harmless on the reference turbo, ruinous under a machine's back pressure: the truck at 1000 / 1300 rpm
+  makes 665 / 1121 N m on the dial, 1521 / 2572 on the tractor archetype's events, 758 / 1324 with the dial's overlap
+  alone. Ruled: all of them come off the dial (cited events where found, else the tractor archetype's as its
+  judgement), the fixture states a boost target (the no-target spring law limit-cycles every 2 s: N2).
+- **The corrected fixture shows the machine's turbo at its limit while firing:** with a 260 kPa target the shaft
+  stands at 1.000 to 1.050 of omegaMax at 1500 to 2000 rpm with the vanes wide open, on both wheels, so no brake
+  control can engage (D2). N2 re-reads the match on a healthy engine first (the wheel past its choke at rated, the
+  turbine's match, or a target held flat where a maker's tapers); then D2 retunes the brake once.
+- N2's (b) after its rule's correction (ed48581f: the map's own efficiency at the margin's point, the cooler's
+  drop): tractor 76.2 mm, the truck's sets 73.9, the 2.0 36.6. The lead's build, tractor on 76.2: 1458 / 2577 / 2718
+  / 2815 N m at 900 / 1000 / 1100 / 1300. The guard's removal is cff355f9 on (b): no shipped build gains a low
+  state; tractor 900 1403 to 2080 N m, pickup 1500 698 to 955, the 2.0 at 1750 158 to 253 (N2).
+- **The diesel package (a later window, together):** D2's builds off the dial and the fixture's target; N2's match
+  re-read, (b), the guard's removal; D2's brake cure on the result.
+- Card A: all of A1, A2 and A3 built and tested locally (the transport on a loopback server, the turn loop on
+  scripted streams, the keychain store, the chat panel on this tree's kit with a thinking row). For J2 from it: a
+  `TextField` where only Enter commits and leaving keeps the draft (multi-line with Shift+Enter); an error colour in
+  the kit's Look.
+- L: today's exposure stays (the percentile pumps; the crack rule is inert; the throttle's cue pumps or swells); the
+  tractor's cabin written down as the design's limit. **L's first item now: the starter's peak holds the exposure
+  6.1 to 6.8 dB low for ten seconds and more after every start** (M's table; first.json's `sound.autoGain` +9.2
+  against +16.0 with the starter muted), for the next window if ready.
+- M: the owner's hum closed at a warm idle (the pump's 3895 Hz from +8.6 dB over its band at Side on the owner's
+  build to undetectable; the voices' sum 39 to 56 dB under the body). The fan's 280 Hz tone returns whenever the fan
+  runs (+7.6 to +21.7 dB over its band): a cure held for a later window (its tones 10 dB under its own rush).
+  A fixed mode near 2.2 to 2.3 kHz excited at the firing rate, no voice: for G and L.
+
+## 25 Nov 13:43: `main` at 76420f32; the window is open
+
+- **`main` moved d0a7330e to 76420f32 at 13:43 UTC** (fast-forward): run 45623044537 green on linux-x64 (545 of 545,
+  13:38) and macos-arm64 (13:42); sim/, host/, tools/ equal the bake's tools sha dbd64a5c by the lead's diff (0
+  lines). In it since d0a7330e: D2's two cures of the idle spark trim (the dyno's low end, petrol and diesel), P's
+  bake on them (table N: 114 of 847 missed), U1's hover help and DRIVE's CLASSIC, DIGITAL and RACE styles, U4's fuel
+  control with its macOS cure (the table read by `strtod`, not a stream: libc++ refuses `91.0f`), L's restated listen
+  cases. Nothing marked, nothing weakened. Windows was still building when `main` moved (not a gate).
+- **The diesel match, not in this window** (N2, tractor-map-reading.md and rated-levers.md, local): the cited shroud
+  (above ratio 3 only) changes no wheel and is not built; the 1.15 floor costs the tractor 23 % at 1000 and does not
+  clear rated; the map's width is not the fault (2.64 at ratio 2.6); the model's top line at the tip limit: knee
+  3.93, island 3.36; at a flat 260 kPa no wheel is clear at rated; 80.4 mm with the taper's 202 clears rated (0.963)
+  and loses 16 % at 1000; 76.2 mm with a rated target of 160 to 180 keeps 1000 (0.98). **No ruling on the rated end
+  yet:** first the model's map against P's published maps in shape (top line, the surge line's place at ratio 2.8 to
+  3.0, flow per wheel area), then what a lower rated target costs at rated (power, lambda, the smoke limit). P's
+  sources, section 21 (1fa216c0): BorgWarner S300SX3 and S400SX-E, choke over surge 3.4 to 4.0 at ratio 2.0 and 2.35
+  to 2.6 at 3.0, top lines at 561 and 607 m/s; for the speed margin at rated only a patent's 94 % and a forum's
+  figure.
+- **D2's (c), local 811c744d:** its four builds off the 88 deg dial (the archetypes' events as judgement, idle trims
+  with them); on their own turbos the V8 3016 to 3143 N m, the marine 3412 to 3501, the others within 2 %; idles and
+  starts as before. **GradeTest :169 is red on it and NOT restated yet:** the stronger brake takes the engine under
+  the cut-out and "the rig runs away at idle" at a road speed above the one it began at in the same gear; the lead
+  asked whether the driveline opened (the integrator's) or the brake has no cut-in (D2's) before any change of gear.
+- N2's (b) reaches D2 as one patch file under docs/handoffs/patches/ (a docs-only push), for a first retune of the
+  brake.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 11:26: sim/, host/ and tools/ are FROZEN** (P re-bakes at the tip for the next `main`). ui/, app/,
-  assistant/, tests/ and docs/ pushes are allowed until the line below changes.
-- When P's baked content is pushed, **all pushes freeze** until `main` has moved; the lead will write it here.
+- **25 Nov 13:43: `main` IS AT 76420f32. THE WINDOW IS OPEN for the items named here and nothing else.** Each agent
+  merges the remote tip (no rebase, no force), runs the WHOLE default tier green on its merged tip, then pushes; a
+  red tier is not pushed. Where an item depends on another, it waits for that one to be on the branch.
+  1. the steward: 47b69019, 884e192b (first: after it a push soaks only when its message says `[soak]`);
+  2. card A: e260d2b alone, then A1, A2, the wiring, A3 (after the steward's push: A3 needs its two packages);
+  3. N1: fe250071, 4e057986, b225b7a6; then C: the knock bake's version 5 with `spec.fuel.octane` in its key; then
+     U4: the octane number in TUNE;
+  4. D2: 28ac7654 only (the start's fuel). L: 327e0db0, 27eb2429 (the start's exposure);
+  5. G: the exhaust's half of the pops (g/bang-wip); then N1's seam, G reviewing;
+  6. ui only, any time: U1 (6e6c768e, aa711bbc; after card A, the switch row and the chat's place), U5, J2;
+  7. X: the soak's shards when ready.
+- **NOT open:** the diesel package (D2's 811c744d, c24c127e, v8; N2's (b), nozzle and guard), M's fan cure, and
+  anything not named above. Ask the lead.
+- **Docs-only pushes (docs/** and *.md) are allowed at any time**: the workflow ignores them and starts no run.
+- The lead writes **FROZEN FOR THE BAKE** here when sim/, host/ and tools/ close; then P bakes and nobody else
+  pushes code until `main` has moved again.
