@@ -921,22 +921,15 @@ default after the clips; the idle's level; the listening questions.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 15:21: THE QUIET WINDOW IS OVER** (U1 pushed cb3e97a9, a fast-forward of a fully tested state).
-- **sim/, host/ and tools/ stay FROZEN FOR THE BAKE** (the tools sha is 758bb12f's; P is baking; Linux CI green on
-  it, 583 of 583; the lead's own runs: 581 of 581 on 88ebef01 and the 79 affected cases on the frozen tip). Nobody
-  but P pushes there until `main` has moved.
-- **OPEN now, under the rule "one green whole tier on a merged state, then merge a moved tip and push":** ui/,
-  assistant/, app/, shell/, tests/, ci and docs. Called by the lead, in this order where they touch the same files:
-  card A (c5ef4d7, the link never raises SIGPIPE; d0d19d2 docs); B (SIGPIPE ignored in the app's and the headless
-  tool's mains); U5 (GARAGE lists nothing under content/builds/combo/); the steward (the .mcpb as an artifact); X
-  (its three commits under tests/sim/combo and content/builds/combo; findings/ do NOT move yet; its tools/ commit
-  waits); U1 (the "Allow Claude Desktop" switch row and the chat's place). Docs-only pushes at any time.
-- **`main` does not move over a red macOS or Windows job** (the owner builds on both): today's reds are the
-  assistant's (the save-as test on a case-blind disk: cured by c457e849; SIGPIPE on macOS: cured by c5ef4d7 when it
-  lands).
-- **When P pushes the bake, code pushes stop for everyone** until the lead writes that `main` has moved.
-- **NOT open (the next window, after `main` moves):** the diesel package (the ruled compressor map, (b), the
-  whole-flow nozzle, the guard's removal, the taper; D2's builds off the dial, the fixture, the torque and power
-  ceiling, the brake); the integrator's one latch for both directions (87629688) with its patch for bike.fm; G's
-  8c9f4c20 and BangTest, then the bangs' default on the owner's ear; L's exposure against the bangs; X's tools/
-  commit and the fixtures' move out of content/; M's fan cure.
+- **25 Nov 15:46: P'S BAKED PUSH IS IN: 9c36dbd1** (the bake 15152e0b at tools sha 758bb12f's; sim/, host/ and
+  tools/ 0 lines from it by the lead's diff; on top of U1's switch row and chat panel fc0e9b0a, X's 08b796c8 and
+  U5's GARAGE filter 731f7bbf).
+- **CODE PUSHES ARE STOPPED FOR EVERYONE until the lead writes here that `main` has moved** (run 45648571240 on
+  9c36dbd1 must be green on linux-x64, macos-arm64 AND windows-x64; a push that builds would replace its waiting
+  jobs). The only exception: a fix the lead releases by name for a red job on that sha.
+- **Docs-only pushes (docs/** and *.md) are allowed**: the workflow ignores them and starts no run.
+- Held for after `main`: the steward's .mcpb artifact; X's tools/ commit. Then the next window, as the section of
+  15:23 lists it (the diesel package in its order; the one latch for both directions with bike.fm's patch; G's
+  8c9f4c20 and BangTest; L's exposure against the bangs; the fixtures' move out of content/; the soak's findings to
+  their owners; card A: the assistant's listing covering the archetypes GARAGE shows, the chat's "Add a key" action
+  drawn, the yes/no dialog with U1; M's fan cure).
