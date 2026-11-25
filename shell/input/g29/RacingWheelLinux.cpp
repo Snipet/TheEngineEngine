@@ -5,6 +5,10 @@
 // /dev/input (a wheel plugged in or out, a udev rule's permissions arriving) polled without waiting, and the driver's
 // two timers as deadlines on the steady clock. A frame's lateness is a timer's (at most a frame: 16 ms against the
 // lights' 25 and the switch's 8 s). Main thread only.
+#if defined(_WIN32)
+#error "Linux only: shell/CMakeLists.txt builds it there (Windows: RacingWheelNone.cpp)"
+#endif
+
 #include "input/g29/RacingWheel.h"
 
 #include "input/g29/G29Evdev.h"
