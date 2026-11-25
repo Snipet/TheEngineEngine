@@ -159,7 +159,7 @@ TEST_CASE("calibration boost: twin turbos on one bank, each fed by its own colle
 }
 
 TEST_CASE("calibration boost: variable vanes past the surge line open (one state, no worse than a fixed nozzle)",
-          "[calibration][boost]")
+          "[calibration][boost][nightly]")
 {
     // (restated, the lead's ruling: the property is one state, so each run is held until settled: the exhaust's walls
     // and the cooler's core settled 1 s into each speed (card C's heatSettle; held unsettled, 25 s at 2000 rpm carried
@@ -248,4 +248,29 @@ TEST_CASE("calibration boost: a sequential pair at its join flow holds one state
     // move them a few per cent; the cycling moves them by a factor of four))
     CHECK(hi < 1.15 * mean);
     CHECK(lo > 0.85 * mean);
+}
+
+TEST_CASE("calibration boost: variable vanes past the surge line open: one state, short form", "[calibration][boost]")
+{
+    // (the default tier's form of the [nightly] case above, the lead's ruling on the budget: the same property, one
+    // state from below and from above, on two runs, not three: from 1100 rpm and from 2000, held 10 s with the heat
+    // settled and read over 2 s. From 800 the climb takes 11 s to 90 % and a 12 s hold read it: 66.0 against 76.7 kPa)
+    Sims s;
+    const std::vector<std::pair<std::string, double>> sets = {{"boost.model", 1},       {"boost.kind", 1},
+                                                              {"boost.layout", 1},      {"boost.gateSpring", 220000},
+                                                              {"boost.icFlow", 0.8},    {"boost.chargeVolume", 0.02},
+                                                              {"boost.vanes", 1}};
+    const auto run = [&](double from) {
+        std::vector<Row> rows;
+        std::string error;
+        REQUIRE(tee::calib::dyno(s.sim, "content/builds/truck-15l-six.json", {from, 1300.0}, sets,
+                                 {"boost.pressure", "engine.torque"}, rows, error, 10.0, 2.0, 8.0, true));
+        return rows[1];
+    };
+    const Row up = run(1100.0);
+    const Row down = run(2000.0);
+    std::printf("truck at 1300 rpm, short: from 1100 %.1f kPa %.0f N m, from 2000 %.1f kPa %.0f N m\n",
+                up.at("boost.pressure") / 1000.0, up.at("engine.torque"), down.at("boost.pressure") / 1000.0,
+                down.at("engine.torque"));
+    CHECK(std::fabs(up.at("boost.pressure") - down.at("boost.pressure")) < 0.05 * down.at("boost.pressure"));
 }
