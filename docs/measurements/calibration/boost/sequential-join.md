@@ -39,3 +39,24 @@ The test (GateTest, "a sequential pair with a stated join speed changes over wit
 the pair stays joined to 4050 (0.9), so 4250 to 4500 read the joined pair's weaker 29 to 47: the speed hysteresis a
 driver would feel as less boost coming down than going up there. **Open**: the joined pair is weaker than the single
 below some 5000 rpm (the second compressor's old item); the rotary states its 4500 when P commits it.
+
+**Correction (the same day).** `spec.boost.seqRpm` was first made hidden, and a hidden field is not read from a build's
+file (host/src/Build.cpp, `inFile`): the rotary's stated 4500 (P, bbd7e631) was silently ignored and the rotary went on
+joining on its air, hunting 27 to 80 kPa at 4250, while the case above set the field directly and passed. The field is
+now visible; with the build's own 4500 the rotary reads 59 to 75 kPa at 4250, and the case at the join comes unmarked
+(59.3 to 76.3 against 67.1; predicted within 15 %, within 25 %, the lead's bound).
+
+**The sweep on the build as it ships** (the lead's ask; through tee-calib-boost, rotary-twin-13.json with its seqRpm
+4500 read from the file, no dyno sets; 250 rpm steps of 4 s, the last 2 s in 0.1 s windows: min-max kPa, min/mean to
+max/mean, mean N m; "today" the flow join, the field hidden; "cure" the field visible):
+
+| rising | today | cure |
+|---|---|---|
+| 4000 | 69-71 (0.98-1.02), 216 | 68-71 (0.99-1.02), 216 |
+| 4250 | 26-77 (0.56-1.65), 188 | 60-77 (0.89-1.13), 219 |
+| 4500 | 44-47 (0.98-1.03), 199 | 64-67 (0.98-1.02), 225 |
+| 4750 | 47-51 (0.96-1.03), 220 | 48-51 (0.96-1.03), 220 |
+
+Every other speed from 2500 to 7000 rising, and every speed from 7000 to 2500 falling, the same on both within 1 kPa
+and 1 N m. Falling through 4250 both read 32-50 kPa (0.80-1.24), 182 N m: the joined pair's weakness (open, the
+rotary's own item), unchanged by the cure.
