@@ -37,6 +37,26 @@
 
 ## Landed
 
+- **02:24 (25 Nov) `main` moved 09c1fb4e to 78cdd2f5**, fast-forward. Run 45529977919: Linux 542 of 542, macOS 542 of
+  542 (checked by the lead on the run's own jobs; Windows' job on this commit was cancelled by later pushes, so main's
+  own run is its first Windows build). It holds the ten fixes of fc554da and the bake's wiring (C's 648e7fca, 7f2ddfa1,
+  314e029e; U1's 1cfb5a6e; B's 169a729a, 02553ee2). New for the owner against 09c1fb4e: the V10's and V12's idles
+  steady; no dip after the start; the first-launch turbo four as the EA888 with a baked intake cam; Tailpipe the
+  default camera on every build; the cabin's firewall; the fan cycling on its switch; the spark and cam maps baked in
+  the background with the stage and count in the top bar, the ribbon's curve about 4 s after load, a second launch
+  taking the tables from `~/Library/Caches/TheEngineEngine/bakes`; VALVES showing the pressure across the overlap.
+  The steward's probe of the audio thread under a bake (4 vCPUs, not a real-time thread): median block 2.51 to 2.53 ms,
+  p99 4.31 to 4.77 ms, the few blocks over 10.67 ms there with or without a bake: weak evidence, not obviously bad.
+  **Not in main**: the compressor map (N2, unmeasured knee), the cam cards' changes (behind CAM_RULE until table L),
+  the four-valve low-lift coefficient (N1 probing; the lead rules on its table). *Since 02:11*: twelve heads' flow
+  sheets (P's 9594f39c; N1's overlay): the port limit's form stays (the heads collapse onto the tanh past the knee;
+  the K20A2 is a high-rising head; the series form refuted twice); at 0.100 in nine four-valve heads have medians of
+  0.66 and 0.63 of the curtain against the model's unsourced 0.73: ruled a probe and a table before any commit, and
+  the lead's "it is the head's kind" withdrawn as unestablished. `valve.portRise` declined. The two-stage build's
+  crossing is a validation row (P's 9dd37d32: 5500 to 5900 on a tuner's word; the model 8034) and a recorded miss;
+  its runner stays the class's 0.30 m (no maker's figure; forum figures near it); its switch takes the F20C's own
+  5850 (cited). The hot hatch becomes the 4A-GE whole (7b95a2e7); the 7.0's ports from the LS7's sheet (15f1f5ac).
+
 - **02:11 (25 Nov) a ruling withdrawn; the bake's wiring in; `main` still at 09c1fb4e.** *Withdrawn: the lead's
   01:49 ruling that N1 commit the seat passage's frustum.* Held before the push when a two-stage test's crossing
   moved 950 rpm; P's flow sheets (dbb23107) refute it (real heads pass 0.70 to 0.85 of the curtain at 0.100 to 0.200
