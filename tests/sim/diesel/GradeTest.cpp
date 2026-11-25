@@ -5,6 +5,8 @@
 // pedal at low revs" are card D's as integrator, with the lead's leave, 25 Nov.)
 #include "Diesel.h"
 
+#include <cmath>
+
 #include <cstdio>
 #include <string>
 
@@ -158,13 +160,27 @@ TEST_CASE("diesel truck, full: on the way down a 6 % grade the brakes hold the r
         e.spec("env.grade", -0.06);
         const int gear = static_cast<int>(e.tel("car.gear"));
         double v0 = e.tel("car.speed");
+        double slipMost = 0.0;   // (the clutch's slip, rad/s, its most while the brake holds cylinders)
         for (int i = 0; i < 400; ++i)
         {
             REQUIRE(e.run(0.1));
+            if (e.tel("ecu.brakeCylinders") > 0.0)
+                slipMost = std::max(slipMost, std::fabs(e.tel("car.clutchSlip")));
             if (e.tel("engine.speed") / 0.10471976 > 2300.0)
                 break;
         }
         vEnd[k] = e.tel("car.speed");
+        if (k == 1)
+        {
+            // (the lead's ruling, 25 Nov: the brake is still on at the end, and the clutch holds while it brakes. On the
+            // truck's own valve events the brake's -1450 N m at 1150 rpm slipped the paddles' robotised clutch open
+            // (vehicle.fm, its capacity on the overrun: the integrator's), the engine fell under the brake's cut-out and
+            // idled while the rig ran away; 2 rad/s: judgement, a held clutch's slip is some tenths)
+            std::printf("  the brake's cylinders at the end %.0f; the clutch's most slip while braking %.1f rad/s\n",
+                        e.tel("ecu.brakeCylinders"), slipMost);
+            CHECK(e.tel("ecu.brakeCylinders") > 0.0);
+            CHECK(slipMost < 2.0);
+        }
         std::printf("down 6 %%, gear %d, brakes %s: %.1f km/h -> %.1f km/h after 40 s at %.0f rpm, %.0f N m on the crank\n", gear,
                     k == 0 ? "off" : "on (High, flap)", v0 * 3.6, vEnd[k] * 3.6, e.tel("engine.speed") / 0.10471976, e.tel("engine.torque"));
     }
