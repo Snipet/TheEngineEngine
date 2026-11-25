@@ -1,0 +1,334 @@
+diff --git a/sim/combustion/combustion.fm b/sim/combustion/combustion.fm
+index 2674a1d2..dfa31cac 100644
+--- a/sim/combustion/combustion.fm
++++ b/sim/combustion/combustion.fm
+@@ -393,7 +393,19 @@ module Combustion
+         if (e1)
+         {
+             const int b = lay->topo == 0 ? 0 : lay->bank[ci];
+-            ecu->one.account.add(b, outFuel, outAir);
++            if (pop[0].burnPipe != 0)
++            {
++                // Burned in the pipe (overrun.fm): the charge held by its cylinder until its exhaust opens, its fuel
++                // that never burned here split from the rest: a cut or misfired charge's whole fuel, an overrun charge's
++                // late remainder (its fuel less the mixture's own leftover); a lit charge's leftover is unmixed
++                const bool litC = f1 ? one.lit : firing == CHARGE_BURN;
++                const float unb = f1 && one.lit ? one.mix.unburned : 0.0f;
++                const float late = firing == CHARGE_FUEL_CUT ? 0.0f
++                                   : (!litC ? outFuel : (firing == CHARGE_OVERRUN ? fmaxf(outFuel - unb, 0.0f) : 0.0f));
++                ecu->one.account.hold(ci, outFuel, outAir, late, dilution[ci], kFuelAfr[fuelRow(fuel->grade)]);
++            }
++            else
++                ecu->one.account.add(b, outFuel, outAir);
+         }
+         cy->qTot = q;
+         cy->lateFuel = 0;
+@@ -455,12 +467,28 @@ module Combustion
+         // stoichiometric petrol flame reaches; a late spark's pops are this, the flame burning on in the header). Card
+         // N1 measured H9's fuelled overrun (30 degrees retarded): every fired charge still burning at its opening, while
+         // its gas then read 650 to 1050 K and the hold fell to 530 to 690 K between them
++        if (ecu->model1())
++            ecu->one.account.pipe = pop[0].burnPipe;
+         if (cy->evoNow)
+         {
+             const int b = lay->topo == 0 ? 0 : (lay->bank[c] == 1 ? 1 : 0);
+-            ecu->blow[b] = fmaxf(ecu->blow[b], cy->burnAt >= 0.0f && cy->qTot > 0.0f ? fmaxf(cy->t, 2000.0f) : cy->t);
++            const int own = cy->burnAt >= 0.0f && cy->qTot > 0.0f ? 1 : 0;
++            ecu->blow[b] = fmaxf(ecu->blow[b], own != 0 ? fmaxf(cy->t, 2000.0f) : cy->t);
+             if (lay->topo == 0)
+                 ecu->blow[1] = ecu->blow[0];
++            // Burned in the pipe: what this charge let out reaches the pipe now, and its blowdown may light what waits
++            if (ecu->model1() && pop[0].burnPipe != 0)
++            {
++                FuelAccount* acct = &ecu->one.account;
++                // (what lights a waiting slug: the hottest gas it meets, this blowdown's or the bank's recent one held, as
++                // the account's store has always read it: under a hard spark cut no charge fires for a while, and the
++                // pipe's gas from the last fired ones still lights what follows them)
++                acct->release(c, b, cy->m, cy->t, ecu->blow[b], own, 1, 0.5f + 0.5f * nz->rnd());
++                const float lhv = kFuelLhv[fuelRow(fuel->grade)];
++                for (int e = 0; e < acct->nOut; ++e)
++                    pop[b].burnEvent(acct->outFuel[e] * lhv, acct->outFuel[e], acct->outMass[e], acct->outT[e],
++                                     acct->outPhi[e], acct->outXb[e], BURN_PREMIXED, acct->outOwn[e]);
++            }
+         }
+         if (c == 0)
+         {
+diff --git a/sim/ecu/overrun.fm b/sim/ecu/overrun.fm
+index 1dc6a3a8..0db09ca6 100644
+--- a/sim/ecu/overrun.fm
++++ b/sim/ecu/overrun.fm
+@@ -22,8 +22,32 @@
+ // largest pop (its pops are 10 to 30 kPa; a spark cut's whole charge, some 40 mg, would otherwise make 150 kPa, a step five
+ // times the reference's, finding X-006). Whatever does not burn flows on out of the pipe (both stores empty over 0.25 s,
+ // judgement for the gas's stay in the system at an overrun's flow).
++//
++// Burned in the pipe (exhaust.bang 1: the exhaust sets Pop::burnPipe; card N1 with G, 25 Nov, the owner's "pops" todo;
++// docs/handoffs/g-exhaust.md, "The pops' seam"): no hazard, no ceiling, no pulse. What a charge lets out unburned is
++// split as combustion knows it (hold, at its intake closing) and kept by its cylinder until its exhaust opens
++// (release): the PREMIXED share, a charge that never burned (a spark cut, a misfire) or an overrun charge's late
++// remainder, its fuel at most what its own air burns; the rest UNMIXED (a rich charge's excess, its free air). At the
++// opening a premixed slug still burning is a burn at once (its own flame); one not burning waits, flammable for some
++// 16 ms (kSlugLife: a stoichiometric slug mixing with an equal mass of air passes lambda 1.8 at 0.8 of a 20 ms mixing
++// time; judgement, G's), and at each later opening of its bank lights with the chance (T - 900) / 300 of the hottest
++// gas it meets there, that blowdown's or the bank's recent one held (Ecu::blow: the account's own ramp and hold,
++// judgement, G's review: under a hard spark cut no charge fires for a while, and the last fired ones' gas, still hot
++// in the pipe, lights what follows them. It is not the re-fire: the first fired blowdown after the cut lights what is
++// still waiting by the same rule, not by a rule of its own); past its life it joins the unmixed store. The unmixed store only
++// flushes (0.25 s): it mixes too slowly to bang (Coward and Jones's limits, G's side). Each burn is handed over whole
++// (out*: combustion passes them to Pop::burnEvent): heat its fuel times the fuel's lower heating value.
+ #pragma once
+ 
++enum
++{
++    ACCT_CYL = 16,      // cylinders held, at most
++    ACCT_SLUGS = 4,     // premixed slugs waiting in a bank's pipe, at most
++    ACCT_OUT = 8        // burns handed over at one opening, at most
++};
++
++const float kSlugLife = 0.016f;
++
+ module OverrunCut
+ {
+     bool on;            // the cut is in
+@@ -60,6 +84,29 @@ module FuelAccount
+     float total;        // fuel burned in the pipe since the reset, kg
+     int bangs;
+     float kFlush;       // the stores' emptying, a step
++    // Burned in the pipe (above): set by combustion each sample from the exhaust's Pop::burnPipe
++    int pipe;
++    float hFuelP[ACCT_CYL];     // each cylinder's charge held from its intake closing: premixed fuel and its air
++    float hAirP[ACCT_CYL];
++    float hFuelU[ACCT_CYL];     // and its unmixed fuel and free air
++    float hAirU[ACCT_CYL];
++    float hXb[ACCT_CYL];        // its burned-gas share
++    float hPhi[ACCT_CYL];       // the charge's own equivalence ratio
++    int sN[2];                  // premixed slugs waiting in each bank's pipe
++    float sFuel[2][ACCT_SLUGS];
++    float sAir[2][ACCT_SLUGS];
++    float sMass[2][ACCT_SLUGS];
++    float sT[2][ACCT_SLUGS];
++    float sXb[2][ACCT_SLUGS];
++    float sPhi[2][ACCT_SLUGS];
++    float sAge[2][ACCT_SLUGS];
++    int nOut;                   // the burns of the last release: fuel kg, slug mass kg, T, phi, x_b, own flame
++    float outFuel[ACCT_OUT];
++    float outMass[ACCT_OUT];
++    float outT[ACCT_OUT];
++    float outPhi[ACCT_OUT];
++    float outXb[ACCT_OUT];
++    int outOwn[ACCT_OUT];
+ 
+     void setup(float d16)
+     {
+@@ -78,6 +125,99 @@ module FuelAccount
+         }
+         total = 0.0f;
+         bangs = 0;
++        pipe = 0;
++        for (int c = 0; c < ACCT_CYL; ++c)
++        {
++            hFuelP[c] = 0.0f;
++            hAirP[c] = 0.0f;
++            hFuelU[c] = 0.0f;
++            hAirU[c] = 0.0f;
++            hXb[c] = 0.0f;
++            hPhi[c] = 0.0f;
++        }
++        sN[0] = 0;
++        sN[1] = 0;
++        nOut = 0;
++    }
++
++    // Burned in the pipe: cylinder ci's charge at its intake closing. fuel and air its unburned outputs (combustion's),
++    // late the fuel of them that never burned in the cylinder (a cut or misfired charge's whole fuel, an overrun charge's
++    // late remainder), xb its burned share, afr the fuel's stoichiometric ratio
++    void hold(int ci, float fuel, float air, float late, float xb, float afr)
++    {
++        const int c = ci < ACCT_CYL ? ci : ACCT_CYL - 1;
++        const float f = fmaxf(fuel, 0.0f);
++        const float a = fmaxf(air, 0.0f);
++        const float pf = fminf(fminf(fmaxf(late, 0.0f), f), a / afr);
++        hFuelP[c] = pf;
++        hAirP[c] = pf * afr;
++        hFuelU[c] = f - pf;
++        hAirU[c] = fmaxf(a - pf * afr, 0.0f);
++        hXb[c] = xb;
++        hPhi[c] = a > 0.0f ? f * afr / a : 0.0f;
++    }
++
++    void handOut(float f, float mass, float t, float phi, float xb, int own)
++    {
++        if (nOut >= ACCT_OUT || f <= 0.0f)
++            return;
++        outFuel[nOut] = f;
++        outMass[nOut] = mass;
++        outT[nOut] = t;
++        outPhi[nOut] = phi;
++        outXb[nOut] = xb;
++        outOwn[nOut] = own;
++        nOut += 1;
++        total += f;
++        bangs += 1;
++    }
++
++    // Burned in the pipe: cylinder ci of bank b opens its exhaust, its gas `mass` kg at `t` K; tLight the blowdown's
++    // heat that lights what waits (a charge still burning: its flame, 2000 K, as the account's hold takes it); own 1 when
++    // its charge is still burning (its flame goes with it), fired 1 when it burned this cycle, u a uniform number in
++    // [0, 1). Fills out* with the burns this opening lights
++    void release(int ci, int b, float mass, float t, float tLight, int own, int fired, float u)
++    {
++        nOut = 0;
++        const int c = ci < ACCT_CYL ? ci : ACCT_CYL - 1;
++        const int k = b == 1 ? 1 : 0;
++        // the gas this opening meets lights the slugs already waiting, by its heat (fired: 0 to let it light nothing)
++        const float chance = fminf(fmaxf((tLight - 900.0f) / 300.0f, 0.0f), 1.0f);
++        if (fired != 0 && sN[k] > 0 && u < chance)
++        {
++            for (int i = 0; i < sN[k]; ++i)
++                handOut(sFuel[k][i], sMass[k][i], sT[k][i], sPhi[k][i], sXb[k][i], 0);
++            sN[k] = 0;
++        }
++        // this charge's own: its unmixed part to the store; its premixed slug lit by its own flame, else waiting
++        fuel[k] += hFuelU[c];
++        air[k] += hAirU[c];
++        if (hFuelP[c] > 0.0f)
++        {
++            if (own != 0)
++                handOut(hFuelP[c], mass, t, hPhi[c], hXb[c], 1);
++            else if (sN[k] < ACCT_SLUGS)
++            {
++                const int i = sN[k];
++                sFuel[k][i] = hFuelP[c];
++                sAir[k][i] = hAirP[c];
++                sMass[k][i] = mass;
++                sT[k][i] = t;
++                sXb[k][i] = hXb[c];
++                sPhi[k][i] = hPhi[c];
++                sAge[k][i] = 0.0f;
++                sN[k] += 1;
++            }
++            else
++            {
++                fuel[k] += hFuelP[c];
++                air[k] += hAirP[c];
++            }
++        }
++        hFuelP[c] = 0.0f;
++        hAirP[c] = 0.0f;
++        hFuelU[c] = 0.0f;
++        hAirU[c] = 0.0f;
+     }
+ 
+     // A cylinder of bank b let out `f` kg of fuel and `a` kg of air unburned
+@@ -91,6 +231,41 @@ module FuelAccount
+     // Every 16 samples: each bank's gas temperature (K) where it lights, the fuel's stoichiometric ratio
+     void control(float t0, float t1, float afr, float d16)
+     {
++        if (pipe != 0)
++        {
++            // Burned in the pipe: the slugs age, and past their flammable life join the unmixed store; the store flushes
++            for (int b = 0; b < 2; ++b)
++            {
++                burned[b] = 0.0f;
++                pulse[b] = 0.0f;
++                hazard[b] = 0.0f;
++                int keep = 0;
++                for (int i = 0; i < sN[b]; ++i)
++                {
++                    sAge[b][i] += d16;
++                    if (sAge[b][i] > kSlugLife)
++                    {
++                        fuel[b] += sFuel[b][i];
++                        air[b] += sAir[b][i];
++                    }
++                    else
++                    {
++                        sFuel[b][keep] = sFuel[b][i];
++                        sAir[b][keep] = sAir[b][i];
++                        sMass[b][keep] = sMass[b][i];
++                        sT[b][keep] = sT[b][i];
++                        sXb[b][keep] = sXb[b][i];
++                        sPhi[b][keep] = sPhi[b][i];
++                        sAge[b][keep] = sAge[b][i];
++                        keep += 1;
++                    }
++                }
++                sN[b] = keep;
++                fuel[b] -= fuel[b] * kFlush;
++                air[b] -= air[b] * kFlush;
++            }
++            return;
++        }
+         for (int b = 0; b < 2; ++b)
+         {
+             burned[b] = 0.0f;
+diff --git a/tests/sim/ecu/IntegratedTest.cpp b/tests/sim/ecu/IntegratedTest.cpp
+index ba742466..f291f261 100644
+--- a/tests/sim/ecu/IntegratedTest.cpp
++++ b/tests/sim/ecu/IntegratedTest.cpp
+@@ -387,3 +387,65 @@ TEST_CASE("H9 (quick): a spark-cut limiter bangs; a clean overrun does not", "[e
+     Sim f = car();                                   // the fuel-cut limiter: a spark cut's store would linger
+     CHECK(bangs(f, 1.0, 1.0, false).count == 0.0);
+ }
++
++// Burned in the pipe (exhaust.bang 1; card N1 with G, 25 Nov, the owner's "pops" todo; docs/handoffs/g-exhaust.md):
++// the account hands only premixed charge to the pipe. A probe: the V8's bangs by account and the exhaust's heat given,
++// on each limiter and a fuelled overrun
++TEST_CASE("probe: burned in the pipe, the account's burns and the exhaust's heat", "[.probe-burnpipe]")
++{
++    struct Case
++    {
++        const char* name;
++        int kind;
++        double share;
++        double limit, lift;
++        bool onLimiter;
++    };
++    for (const Case& k : {Case{"fuel-cut limiter, then a clean lift", 0, 0.0, 3.0, 2.0, false},
++                          Case{"spark-cut limiter", 1, 0.0, 3.0, 0.0, true},
++                          Case{"fuelled overrun 0.25, 30 deg late", 0, 0.25, 1.5, 2.5, false}})
++        for (int bang : {0, 1})
++        {
++            Sim s = car();
++            s.set("exhaust.model", 1);
++            s.set("exhaust.bang", bang);
++            s.set("ecu.limiter.kind", k.kind);
++            if (k.share > 0.0)
++            {
++                s.set("ecu.overrun.fuel", k.share);
++                s.set("ecu.overrun.retard", 30.0);
++            }
++            const double g0 = s.read("exh.b.bangGiven");
++            const Bangs b = bangs(s, k.limit, k.lift, k.onLimiter);
++            const double given = s.read("exh.b.bangGiven") - g0;
++            std::printf("[burnpipe] %-36s bang %d: %4.0f burns, %8.2f mg handed, exhaust given %8.1f J (fuel x LHV %8.1f J)\n",
++                        k.name, bang, b.count, b.burned * 1e6, given, b.burned * 42.2e6);
++            CHECK(s.finite);
++        }
++}
++
++// Burned in the pipe, quick (the owner's "pops" todo; G's half 67a8a21e): only premixed charge bangs. The fuel-cut
++// limiter and a clean lift hand the pipe nothing (rich burned gas meeting a cut charge's air is unmixed: no flame
++// runs); a spark cut's charges are premixed and the hot pipe lights them, one burn a cut charge at most. Measured on
++// the V8, 3 s on each limiter (card N1, 25 Nov): fuel cut 0 burns; spark cut 600 burns, 29.8 g handed, where the
++// carved account fired 738 pulses
++TEST_CASE("H9 (burned in the pipe, quick): a spark cut's charges burn in the pipe; a fuel-cut limiter's none", "[ecu][integrated]")
++{
++    auto run = [](int kind, bool onLimiter) {
++        Sim s = car();
++        s.set("exhaust.model", 1);
++        s.set("exhaust.bang", 1);
++        s.set("ecu.limiter.kind", kind);
++        const double g0 = s.read("exh.b.bangGiven");
++        const Bangs b = bangs(s, 1.5, onLimiter ? 0.0 : 1.0, onLimiter);
++        return std::make_pair(b, s.read("exh.b.bangGiven") - g0);
++    };
++    const auto spark = run(1, true);
++    const auto fuel = run(0, false);
++    WARN("spark cut: " << spark.first.count << " burns, " << spark.first.burned * 1e6 << " mg; fuel cut: "
++                       << fuel.first.count << " burns");
++    CHECK(spark.first.count > 5.0);
++    CHECK(spark.second > 0.0);                       // the exhaust received their heat
++    CHECK(fuel.first.count == 0.0);
++    CHECK(fuel.second == 0.0);
++}
