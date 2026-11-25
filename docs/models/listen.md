@@ -169,8 +169,8 @@ compressor. P rises to any peak at once and the gain follows within 1 ms, measur
 the limiter. P holds 1.5 s, then falls at 4 dB a second. It never falls below 4 times Q, the level of what is heard
 lately (0.1 s windows' peaks: Q falls over 1 s and rises at 0.3 dB a second, so a 4 s rev moves it 1.2 dB). The gain is
 0.4 / P, within -30 to +30 dB of the staged level, and rises over 0.5 s. In a start (the starter turning and 1.5 s
-after; and the first sound after silence, for 3 s) P falls at 12 dB a second without the hold and Q follows as it
-comes, so the crank and the catch do not set the exposure. A cut (another camera, place, or the windows past half)
+after; and the first sound after silence, for 3 s) P falls at 12 dB a second without the hold and Q follows what
+comes over some 0.3 s, so the crank and the catch do not set the exposure and the catch's flare stands over the idle. A cut (another camera, place, or the windows past half)
 starts afresh; silence holds it. (Until the first sound counted as a start, a start whose starter was not heard, a
 voice muted or none, left Q at the first faint sound, rising 0.3 dB a second, and P on the catch's peak: the idle
 5.5 dB over where a heard start leaves it, +15.6 dB against +10.1 on first.json. M measured the two apart, 25 Nov;

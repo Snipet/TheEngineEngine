@@ -895,7 +895,7 @@ module Listen
         {
             const float n = (float)autoN;
             if (autoStart > 0.0f)
-                autoQ = autoWin;
+                autoQ *= expf(logf(fmaxf(autoWin, 1.0e-6f) / autoQ) * 0.3f);    // as it comes, over some 0.3 s
             else
                 autoQ = autoWin < autoQ ? autoQ * expf(logf(autoWin / autoQ) * fminf(n / rate, 1.0f))
                                         : fminf(autoQ * expf(n * autoRise), autoWin);
