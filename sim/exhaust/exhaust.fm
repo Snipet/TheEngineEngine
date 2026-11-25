@@ -732,6 +732,15 @@ module Exhaust
     // Every 16 samples: the gas's temperature at the ports
     void gas(float d16)
     {
+        // (exhaust.bang: the builder sets the account's switch each sample; the reference's exhaust clears it, so a switch
+        // back to model 0 leaves the account on its own path)
+        if (model == 0)
+        {
+            pop[0].burnPipe = 0;
+            pop[1].burnPipe = 0;
+            pop[0].nEv = 0;
+            pop[1].nEv = 0;
+        }
         // the exhaust's temperature: what the ports let out, slowly
         if (mSum > 1.0e-9f)
         {
