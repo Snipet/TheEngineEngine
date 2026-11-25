@@ -66,6 +66,10 @@ RETIME = {"boxer-four-turbo-unequal", "diesel-20-common-rail", "inline-five-turb
           "pickup-diesel-67-inline-six", "straight-six-twin-turbo-30", "tractor-15-inline-six", "turbo-four-20-gdi",
           "twin-turbo-hot-vee-v8-40", "v6-35-twin-turbo-pickup"}
 RETIME_SETTLE = 20
+# TEE_RETIME=0 writes the old timing (a 10 s run read 8 to 10 s, dyno steps held 5 s) for the twin that shows each
+# re-timed row's old reading beside its new one (the lead's ask); the committed files are written with it on
+if os.environ.get("TEE_RETIME") == "0":
+    RETIME = set()
 
 # rows a ceiling the build states holds by construction (ecu.torqueMax / powerMax: docs/models/diesel.md, "What it holds
 # stops counting as validation"; the lead's ruling, 25 Nov): HELD BY CALIBRATION, shown and out of the counts. Where the
