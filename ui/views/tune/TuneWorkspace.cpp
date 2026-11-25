@@ -63,6 +63,7 @@ namespace tee::ui
         };
         constexpr int kMapCount = static_cast<int>(std::size(kMaps));
         constexpr int kKnockLimit = 7;   // kMaps' knock-limit table (its own words and its own bake)
+        constexpr int kCamIn = 3;        // kMaps' intake cam (set aside while the calibration bakes)
 
         // Telemetry, by name (ui/app/Workspace.h: NaN while absent).
         struct Tel
@@ -244,7 +245,7 @@ namespace tee::ui
         {
             DrawKey k;
             k.mix(shown_).mix(ctx_.selection.revision()).mix(ctx_.units.revision()).mix(ctx_.doc.revision()).mix(message_);
-            k.mix(historyRevision_).mix(sparkMapWords());
+            k.mix(historyRevision_).mix(bakeWords());
             return k.h;
         }
 
@@ -830,7 +831,7 @@ namespace tee::ui
             else
                 left = bake_->bounds().right() + 16.0f;
             const std::string words = !message_.empty() ? message_
-                                    : (shown_ == 0 || shown_ == kKnockLimit) && !sparkMapWords().empty() ? sparkMapWords()
+                                    : !bakeWords().empty() ? bakeWords()
                                     : "Shift-click a block; Page Up, Page Down nudge it.";
             // Whole, at the top right; else under the table after the tools; else (a hint) not at all.
             const float right = mapBox_.right() - look::kPad, ww = c.textWidth(words.c_str(), look::kBody);
@@ -846,15 +847,24 @@ namespace tee::ui
             }
         }
 
-        // The spark map's knock limit as the host says it (card C's bake: FrameServices::sparkMap), with what the program
-        // runs (tel ecu.knockTable: 1 the baked table is in use); "" when neither is served.
-        std::string sparkMapWords() const
+        // The calibration's bake as the host says it (FrameServices::sparkMap: "baking cam", "baking spark map", "waiting
+        // to bake", "baked, to apply", "baked", "bake failed"), and whether the program uses the table it concerns: on the
+        // spark map and the knock limit, the knock-limit table (tel ecu.knockTable 1: in use); on the intake cam, the cam
+        // table (ecu.maps.camInAuto 1: set aside while the calibration bakes). "" for other maps, or when neither is said.
+        std::string bakeWords() const
         {
+            const bool knock = shown_ == 0 || shown_ == kKnockLimit, cam = shown_ == kCamIn;
+            if (!knock && !cam)
+                return {};
             const std::string state = ctx_.services != nullptr && ctx_.services->sparkMap ? ctx_.services->sparkMap() : std::string();
-            const double inUse = ctx_.live.get("ecu.knockTable");
+            double inUse = std::nan("");
+            if (knock)
+                inUse = ctx_.live.get("ecu.knockTable");
+            else if (const int f = slots_[static_cast<std::size_t>(kCamIn)].autoField; f >= 0 && !state.empty())
+                inUse = ctx_.doc.get(f) >= 0.5 ? 0.0 : 1.0;
             if (state.empty() && !std::isfinite(inUse))
                 return {};
-            std::string w = "Knock limit: " + (state.empty() ? std::string("-") : state);
+            std::string w = std::string(knock ? "Knock limit: " : "Intake cam: ") + (state.empty() ? std::string("-") : state);
             if (std::isfinite(inUse))
                 w += inUse >= 0.5 ? "; in use" : "; not in use";
             return w;

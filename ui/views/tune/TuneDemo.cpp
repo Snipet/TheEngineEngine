@@ -36,6 +36,20 @@ namespace tee::ui
             a.label = "Lambda: formula";
             a.group = "Maps";
             x.fields->push_back(a);
+            // The intake cam's phase map (degrees advanced) and its switch: on, the formula (phasers at 0).
+            FieldInfo ci = m;
+            ci.path = "ecu.maps.camIn";
+            ci.min = -10.0;
+            ci.max = 50.0;
+            ci.def = 0.0;
+            ci.label = "Intake cam";
+            ci.unit = "deg";
+            ci.decimals = 1;
+            x.fields->push_back(ci);
+            FieldInfo cia = a;
+            cia.path = "ecu.maps.camInAuto";
+            cia.label = "Intake cam: formula";
+            x.fields->push_back(cia);
             // Card N2's knock-limit table (degrees off the best-torque spark), not baked yet.
             FieldInfo k = m;
             k.path = "ecu.maps.knockLimit";
