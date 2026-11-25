@@ -182,6 +182,9 @@ TEST_CASE("diesel turbo: variable vanes settle to one state at 1300 rpm, from be
         std::printf("VGT at 1300 rpm from %.0f rpm: %.0f kPa, %.0f N m, vanes %.2f\n", from, boost[k] / 1000.0, torque[k], e.tel("boost.vanes[0]"));
         ++k;
     }
-    CHECK(std::fabs(boost[0] - boost[1]) < 0.05 * boost[1]);
-    CHECK(std::fabs(torque[0] - torque[1]) < 0.05 * torque[1]);
+    // (within 15 %, the lead's ruling for N2's form of this check, 25 Nov: the two states it guards against were 25 against
+    // 58 kPa, more than a factor of two apart; a tenth of that separation, three times the scatter N2's form read between
+    // machines and timings (3.0 to 5.4 kPa). It was 5 %, which a different machine turns red)
+    CHECK(std::fabs(boost[0] - boost[1]) < 0.15 * boost[1]);
+    CHECK(std::fabs(torque[0] - torque[1]) < 0.15 * torque[1]);
 }

@@ -154,6 +154,9 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
     // (marked [!mayfail] 24-25 Nov since G's 15fcdd84 (the housings given the valves' true mass): measured straight after
     // a cold start the brake made 247-289 kW at 183-227 kPa. After a climb, warm, on N2's matched turbine (25 Nov):
     // 365 kW, 319 kPa over a second, the shaft at most 9673 of omegaMax 10149, the brake's own vane command at 0.68.)
+    // (No cold-start brake beside it: a second engine's run would cost some 5 s of the default tier (the lead's ruling:
+    // a print only if under a couple of seconds). What a cold brake read is above, 247-289 kW: braking straight after a
+    // start, the turbine has a cold exhaust's gas and no fuel to warm it, on the valves' true mass)
     // (marked [!mayfail] for an hour on 24 Nov: read over one second, the shaft peaked at 12539 rad/s against omegaMax
     // 11932, the brake's PID past 95 % hunting into card F's 105 % relief. The governor rebuilt on the plant's measured
     // response (heavy.fm vaneCommand): the shaft at most 11713 rad/s over the whole run (on the way up), 11090 settled. Plain again.)
