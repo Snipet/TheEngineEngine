@@ -1,6 +1,8 @@
 // tests/sim/sound/FrontTest.cpp: the front of the engine: the accessory belt, the cam drive, a supercharger's drive
 // (sim/sound/drives.fm) and the cooling fan (sim/sound/fan.fm).
 #include "Rig.h"
+#include "tee/Measures.h"
+#include <algorithm>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -103,8 +105,8 @@ TEST_CASE("fan: an electric fan comes in at its temperature, out 5 K below, its 
     CHECK(rms(steady(rig, Fan, 0.5, 0.5)) == 0.0);
     rig.set("coolant", 374.0);
     rig.run(2.0, Fan);                              // spun up (0.35 s)
-    const auto on = rig.run(1.0, Fan);
-    CHECK(rms(on) > 1e-4);
+    const auto on = rig.run(4.0, Fan);             // (4 s: the line is masked by the fan's rush, by design, and stands
+    CHECK(rms(on) > 1e-4);                         // over it only in bins this narrow)
     near(on, 7.0 * 40.0, 0.005);
     rig.set("coolant", 370.0);                      // within the 5 K: stays on
     CHECK(rms(steady(rig, Fan, 0.5, 0.5)) > 1e-4);
@@ -117,7 +119,7 @@ TEST_CASE("fan: an electric fan comes in at its temperature, out 5 K below, its 
     five.set("coolant", 380.0);
     five.set("spec.fanBlades", 5);
     five.run(2.0, Fan);
-    near(five.run(1.0, Fan), 5.0 * 40.0, 0.005);
+    near(five.run(4.0, Fan), 5.0 * 40.0, 0.005);
     // the key off: no electric fan
     Rig off;
     off.set("coolant", 380.0);
@@ -157,9 +159,49 @@ TEST_CASE("fan: a viscous clutch's roar grows with the coolant's heat and with t
     rig.set("coolant", 380.0);
     rig.set("crankHz", 50.0);
     rig.run(25.0, Fan);
-    near(rig.run(1.0, Fan), 7.0 * 50.0 * 1.1 * 0.9, 0.005);
+    near(rig.run(4.0, Fan), 7.0 * 50.0 * 1.1 * 0.9, 0.005);
     Rig none;
     none.set("spec.fan", 0);
     none.set("coolant", 400.0);
     CHECK(rms(steady(none, Fan, 1.0, 0.5)) == 0.0);
+}
+
+TEST_CASE("fan: an electric fan running is heard as rushing air, its blades' tones 10 dB under its own rush in their "
+          "third octaves", "[sound][fan]")
+{
+    // The lead's ruling (25 Nov): the owner's hum came back whenever the fan ran (its blade pass at 7 x 40 = 280 Hz
+    // and twice it, 9 to 22 dB over everything else in their third octaves at the cameras). The fan alone, at full
+    // speed: each of its shaft orders' lines (40 Hz apart) in the third octaves about the blade pass and twice it, against
+    // the rest of the fan's own energy in that third octave, at most -10 dB. (The path is smooth within a third octave:
+    // measured through Places at Tailpipe, Rear, Side and Driver the same within 0.2 dB, docs/models/voices.md.) It
+    // fails if the tone comes back: evenly spaced blades or the tone at its old level put the 280 Hz line far over.
+    Rig rig;
+    rig.set("coolant", 380.0);
+    rig.run(3.0, Fan);                              // spun up
+    const auto x = rig.run(4.0, Fan);
+    const auto sp = tee::measure::spectrum(x, kRate);
+    auto energy = [&](double lo, double hi) {
+        double e = 0.0;
+        for (std::size_t k = 1; k < sp.db.size(); ++k)
+        {
+            const double f = static_cast<double>(k) * sp.binHz;
+            if (f >= lo && f < hi)
+                e += std::pow(10.0, sp.db[k] / 10.0);
+        }
+        return e;
+    };
+    for (const double fc : {280.0, 560.0})
+    {
+        const double lo = fc * std::pow(2.0, -1.0 / 6.0), hi = fc * std::pow(2.0, 1.0 / 6.0);
+        for (int order = 1; order < 30; ++order)
+        {
+            const double hz = 40.0 * order;
+            if (hz < lo || hz >= hi)
+                continue;
+            const double line = energy(hz * 0.9975, hz * 1.0025);
+            const double ratio = 10.0 * std::log10(line / std::max(energy(lo, hi) - line, 1e-30));
+            INFO("the fan's " << hz << " Hz line against the rest of its third octave about " << fc << " Hz: " << ratio << " dB");
+            CHECK(ratio < -10.0);
+        }
+    }
 }
