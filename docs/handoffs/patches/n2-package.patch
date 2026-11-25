@@ -1,0 +1,770 @@
+From d80cc3dad3f0bd5ae9012ae9a80e38f89e954cee Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 11:49:22 +0000
+Subject: [PATCH 1/7] boost: (b) a governed diesel's compressor sized along the
+ climb at its torque peak (local, not pushed: sim/ frozen)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+(cherry picked from commit fe4582fa63ee5d2a52f3b965df676620897d8b98)
+---
+ sim/boost/boost.fm   |  8 ++++++++
+ sim/boost/machine.fm | 49 +++++++++++++++++++++++++++++++++++++++++++-
+ sim/engine.fm        | 27 ++++++++++++++++++++++++
+ sim/spec/boost.fm    |  6 ++++++
+ 4 files changed, 89 insertions(+), 1 deletion(-)
+
+diff --git a/sim/boost/boost.fm b/sim/boost/boost.fm
+index b341d5b5..9649ae2f 100644
+--- a/sim/boost/boost.fm
++++ b/sim/boost/boost.fm
+@@ -422,6 +422,14 @@ module Boost
+         mach.designRpm = rpm;
+     }
+ 
++    // (N2, (b)) A governed diesel's torque-peak speed (rpm, above 0) and its compression ratio, for the compressor's
++    // sizing along the climb there (machine.fm, apply); before applyMachine
++    void peakSpeed(float rpm, float compression)
++    {
++        mach.peakRpm = rpm;
++        mach.compression = compression;
++    }
++
+     // 1: on an engine test cell (MODE_DYNO_ENGINE with the absorber on): the cell's charge-air cooling holds the
+     // intercooler's core at the air's temperature (SAE J1349; machine.fm, the core)
+     void testCell(int on)
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index 4b66dea2..7a6bb8fa 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -100,6 +100,10 @@ module BoostMachine
+     float vd;           // the engine's displacement, m^3, and its redline, rpm (for matched sizes)
+     float redRpm;
+     float designRpm;    // a governed diesel's rated speed, rpm (Engine's, Boost::designSpeed); below 0: spark ignition
++    float peakRpm;      // its torque peak, rpm (Boost::peakSpeed; 0: none): the compressor sized along the climb there
++    float compression;  // the engine's compression ratio (for the back pressure's cost to its fresh air)
++    float sizePeak;     // (telemetry for the sizing table: the annulus by the rule at rated and at the torque peak, m^2)
++    float sizeRated;
+     int active;         // the charge path runs: a turbo, a supercharger, or nitrous
+     int kind;           // 0 natural, 1 to 3 turbos, 4 a supercharger
+     int turbos;         // shafts in use (a centrifugal supercharger: comp[0], no turbine)
+@@ -287,6 +291,8 @@ module BoostMachine
+         vd = vdIn;
+         redRpm = redIn;
+         designRpm = -1.0f;
++        peakRpm = 0.0f;
++        compression = 17.0f;
+         structure = -1;
+         kind = 0;
+         active = 0;
+@@ -481,7 +487,48 @@ module BoostMachine
+             // (a compound pair's high-pressure stage meets air already compressed some 1.6 times: a smaller wheel)
+             const float mt = mMatch * share * s->size * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
+             const float wide = expf(0.25f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
+-            const float aAnn = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide * chokeAt);
++            const float aRated = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide * chokeAt);
++            // (the lead's ruling (b), 25 Nov: a governed diesel's wheel also held 10 % right of the surge flag's line
++            // (0.9 of the knee: compressor.fm) along the whole climb to its design ratio at its torque-peak speed
++            // (BorgWarner's "10-percent or more to the right of the surge line"; Woollenweber, US 5,025,629: "matched to
++            // the engine to avoid the surge area at torque peak"); F's 1.15 at rated kept where it gives the smaller
++            // wheel. The engine's air there in the model's own terms: VE 0.9 (F's) less the back pressure's cost to the
++            // fresh charge, the ideal cycle's (Heywood, Internal Combustion Engine Fundamentals, ch. 6, the ideal
++            // volumetric efficiency rc/(rc-1) - (pe/pi)/(gamma (rc-1)), read against its own value at pe = pi:
++            // (gamma rc - pe/pi) / (gamma rc - 1)) at the build's back-pressure limit (the tractor at 1.4, 17:1: 0.982,
++            // the model 0.879 against 0.9 x 0.982 = 0.884 measured at 1000 rpm, after-burn-cure.md); the charge at each
++            // ratio as tCharge's; the speed line through each ratio's flag point the map's own (tau at 0.9 of the knee
++            // 0.1794 M^2: compressor.fm's rise at x = 0.9); no pulse term (0.998 measured at the boosted state))
++            float aAnn = aRated;
++            if (dsl != 0 && peakRpm > 0.0f && layout != BOOST_COMPOUND)
++            {
++                const float g = 1.4f;
++                const float bp = fmaxf(s->backPressure, 1.0f);
++                const float veBp = 0.9f * (g * compression - bp) / (g * compression - 1.0f);
++                const float kArS = expf(-0.3f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
++                float best = 1.0e9f;
++                for (int k = 0; k <= 200; ++k)
++                {
++                    const float pr = 1.3f + 0.05f * (float)k;
++                    if (pr > prDesign + 1.0e-4f)
++                        break;
++                    const float tau = expf(logf(pr) / 3.5f) - 1.0f;
++                    const float t2 = tOut * (1.0f + tau / fmaxf(s->compEta, 0.3f));
++                    const float tc = t2 - s->icEffect * (t2 - tOut);
++                    const float flow = vd * peakRpm / 120.0f * (pr * pOut / (kBoostR * tc)) * veBp * share * s->size;
++                    const float m = sqrtf(tau / 0.1794f);
++                    const float kn = fminf(fmaxf((0.40f + 0.178f * (fmaxf(m, 0.8f) - 1.0f)) * kArS, 0.2f), 0.7f);
++                    const float cf = 0.3f + 0.7f * fminf(m / 1.63f, 1.0f);
++                    const float a = flow / (1.1f * 0.9f * kn * 0.45f * 1.204f * 343.2f * wide * cf);
++                    best = fminf(best, a);
++                }
++                aAnn = fminf(aRated, best);
++            }
++            if (t == 0)
++            {
++                sizeRated = aRated;
++                sizePeak = aAnn;
++            }
+             float dInd = s->compInducer > 0.0f ? s->compInducer : 2.0f * sqrtf(aAnn / (0.91f * 3.14159265f));
+             float dEx = s->compExducer > 0.0f ? s->compExducer : dInd / 0.7416f;
+             if (sc == 3 && s->compExducer <= 0.0f)
+diff --git a/sim/engine.fm b/sim/engine.fm
+index fb17f82e..36b36caa 100644
+--- a/sim/engine.fm
++++ b/sim/engine.fm
+@@ -524,6 +524,7 @@ module Engine
+         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
+         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
+         boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
++        boost.peakSpeed(dieselPeakRpm(), spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
+         boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+         ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
+         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
+@@ -1056,6 +1057,31 @@ module Engine
+     float gearTq;       // the full-load torque the car's gearing was chosen for (at the layout's or size's change)
+     float clatSize;     // a diesel's clatter for its cylinders' size: their panels' area (a cube root of the volume)
+ 
++    // (N2, the lead's ruling (b), 25 Nov) A governed diesel's torque-peak speed, rpm, for its compressor's sizing: the
++    // build's stated one (spec.boost.peakRpm, a maker's sheet), else its full-load fuel curve's lowest speed within 2 %
++    // of the curve's most (torque goes with the fuel there), else 0.6 of its rated speed (judgement); 0 for spark
++    // ignition
++    float dieselPeakRpm()
++    {
++        if (fuelUse == 0)
++            return 0.0f;
++        if (spec.boost.peakRpm > 0.0f)
++            return spec.boost.peakRpm;
++        float most = 0.0f;
++        for (int i = 0; i < 8; ++i)
++            most = fmaxf(most, spec.ecu.fuelCurveMg[i]);
++        if (most > 0.0f)
++        {
++            for (int i = 0; i < 8; ++i)
++            {
++                if (spec.ecu.fuelCurveMg[i] > 0.0f && spec.ecu.fuelCurveMg[i] >= 0.98f * most)
++                    return spec.ecu.fuelCurveRpm[i];
++            }
++        }
++        const float rated = spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm;
++        return 0.6f * rated;
++    }
++
+     // About the most torque this engine gives (the turbo's boost with it), for the clutch's capacity
+     float peakTorque()
+     {
+@@ -1616,6 +1642,7 @@ module Engine
+             s->tsize = spec.boost.size;
+             s->bov = spec.boost.blowOff;
+             boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
++            boost.peakSpeed(dieselPeakRpm(), spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
+             boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+             ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
+         }
+diff --git a/sim/spec/boost.fm b/sim/spec/boost.fm
+index 798f01a4..e7469a53 100644
+--- a/sim/spec/boost.fm
++++ b/sim/spec/boost.fm
+@@ -121,6 +121,12 @@ module BoostSpec
+         [[ui::help("Counts requests: at each increase the intercooler's core is put where the present flow and the air through it would hold it (for a tool: a dyno's sweep without waiting for the core)")]];
+     // (card N2, the lead's ruling on the sequential join: a maker's changeover speed, which a source can fill; not hidden,
+     // since a hidden field is not read from a build's file (Build.cpp) and the build is where the source states it)
++    // (card N2, the lead's ruling (b), 25 Nov: a governed diesel's compressor sized for its boost from the torque peak:
++    // the makers' speed where the build states it (a sheet's "peak torque from"); 0: the fuel curve's lowest speed within
++    // 2 % of its most, else 0.6 of rated (judgement). Spark ignition and engines without a governor ignore it)
++    float peakRpm [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Torque peak from")]]
++        [[ui::unit("rpm")]] [[ui::group("Compressor")]]
++        [[ui::help("A governed diesel's compressor is sized to hold its boost clear of surge from this speed up; 0: the full-load fuel curve's plateau start, else 0.6 of rated")]];
+     float seqRpm [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Second turbo joins above")]]
+         [[ui::unit("rpm")]]
+         [[ui::help("A sequential pair's changeover speed; 0: the speed at which the engine passes the join flow at the design boost")]];
+-- 
+2.43.0
+
+
+From ddc618b6596861eb2c5a1865f138329ff27968d4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 12:15:07 +0000
+Subject: [PATCH 2/7] boost: (b) the curve's plateau found in Boost::peakSpeed
+ (engine.fm keeps two call lines); the VE factor's comment says the page is
+ not checked
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+(cherry picked from commit 0be09ca2b30c1d7d309301f89d3cafda8ad2fd0e)
+---
+ sim/boost/boost.fm   | 23 +++++++++++++++++++----
+ sim/boost/machine.fm | 12 ++++++++----
+ sim/engine.fm        | 29 ++---------------------------
+ 3 files changed, 29 insertions(+), 35 deletions(-)
+
+diff --git a/sim/boost/boost.fm b/sim/boost/boost.fm
+index 9649ae2f..8f094850 100644
+--- a/sim/boost/boost.fm
++++ b/sim/boost/boost.fm
+@@ -32,6 +32,7 @@
+ #include "lib/noise.fm"
+ #include "spec/telemetry.fm"
+ #include "spec/scope.fm"
++#include "spec/ecu.fm"
+ #include "machine.fm"
+ 
+ module Boost
+@@ -422,11 +423,25 @@ module Boost
+         mach.designRpm = rpm;
+     }
+ 
+-    // (N2, (b)) A governed diesel's torque-peak speed (rpm, above 0) and its compression ratio, for the compressor's
+-    // sizing along the climb there (machine.fm, apply); before applyMachine
+-    void peakSpeed(float rpm, float compression)
++    // (N2, the lead's ruling (b), 25 Nov) For a governed diesel's compressor sizing (machine.fm, apply), before
++    // applyMachine: its full-load fuel curve's plateau start, the lowest speed within 2 % of the curve's most (torque
++    // goes with the fuel there; 0: no curve, and the machine takes 0.6 of rated, judgement, unless spec.boost.peakRpm
++    // states a maker's speed), and the compression ratio (the back pressure's cost to the fresh air)
++    void peakSpeed(EcuSpec* e, float compression)
+     {
+-        mach.peakRpm = rpm;
++        float most = 0.0f;
++        for (int i = 0; i < 8; ++i)
++            most = fmaxf(most, e->fuelCurveMg[i]);
++        float at = 0.0f;
++        if (most > 0.0f)
++        {
++            for (int i = 7; i >= 0; --i)
++            {
++                if (e->fuelCurveMg[i] > 0.0f && e->fuelCurveMg[i] >= 0.98f * most)
++                    at = e->fuelCurveRpm[i];
++            }
++        }
++        mach.curvePeakRpm = at;
+         mach.compression = compression;
+     }
+ 
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index 7a6bb8fa..4bc4633a 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -100,7 +100,8 @@ module BoostMachine
+     float vd;           // the engine's displacement, m^3, and its redline, rpm (for matched sizes)
+     float redRpm;
+     float designRpm;    // a governed diesel's rated speed, rpm (Engine's, Boost::designSpeed); below 0: spark ignition
+-    float peakRpm;      // its torque peak, rpm (Boost::peakSpeed; 0: none): the compressor sized along the climb there
++    float curvePeakRpm; // its fuel curve's plateau start, rpm (Boost::peakSpeed; 0: no curve)
++    float peakRpm;      // its torque peak, rpm, the compressor sized along the climb there (apply: stated, the curve's, 0.6 of rated)
+     float compression;  // the engine's compression ratio (for the back pressure's cost to its fresh air)
+     float sizePeak;     // (telemetry for the sizing table: the annulus by the rule at rated and at the torque peak, m^2)
+     float sizeRated;
+@@ -292,6 +293,7 @@ module BoostMachine
+         redRpm = redIn;
+         designRpm = -1.0f;
+         peakRpm = 0.0f;
++        curvePeakRpm = 0.0f;
+         compression = 17.0f;
+         structure = -1;
+         kind = 0;
+@@ -458,6 +460,7 @@ module BoostMachine
+         // (the old match's 2.4 bar at 1.9 atm), its gas 1150 K, a diesel's 900 K)
+         const int dsl = designRpm > 0.0f ? 1 : 0;
+         const float nDesign = dsl != 0 ? designRpm : s->designShare * redRpm;
++        peakRpm = dsl != 0 ? (s->peakRpm > 0.0f ? s->peakRpm : (curvePeakRpm > 0.0f ? curvePeakRpm : 0.6f * nDesign)) : 0.0f;
+         const float asked = s->target > 0.0f ? s->target : s->gateSpring;
+         const float prDesign = fmaxf((pOut + asked) / pOut, 1.3f);
+         const float p3Design = 1.247f * prDesign * pOut;
+@@ -494,9 +497,10 @@ module BoostMachine
+             // the engine to avoid the surge area at torque peak"); F's 1.15 at rated kept where it gives the smaller
+             // wheel. The engine's air there in the model's own terms: VE 0.9 (F's) less the back pressure's cost to the
+             // fresh charge, the ideal cycle's (Heywood, Internal Combustion Engine Fundamentals, ch. 6, the ideal
+-            // volumetric efficiency rc/(rc-1) - (pe/pi)/(gamma (rc-1)), read against its own value at pe = pi:
+-            // (gamma rc - pe/pi) / (gamma rc - 1)) at the build's back-pressure limit (the tractor at 1.4, 17:1: 0.982,
+-            // the model 0.879 against 0.9 x 0.982 = 0.884 measured at 1000 rpm, after-burn-cure.md); the charge at each
++            // volumetric efficiency for the exhaust-to-intake pressure ratio, as the lead recalled it and N2 rearranged
++            // it: rc/(rc-1) - (pe/pi)/(gamma (rc-1)), read against its own value at pe = pi: (gamma rc - pe/pi) /
++            // (gamma rc - 1); THE PAGE NOT CHECKED) at the build's back-pressure limit (the tractor at 1.4, 17:1: 0.982;
++            // measured 0.879 against its 0.9 x 0.982 = 0.884 at 1000 rpm, after-burn-cure.md); the charge at each
+             // ratio as tCharge's; the speed line through each ratio's flag point the map's own (tau at 0.9 of the knee
+             // 0.1794 M^2: compressor.fm's rise at x = 0.9); no pulse term (0.998 measured at the boosted state))
+             float aAnn = aRated;
+diff --git a/sim/engine.fm b/sim/engine.fm
+index 36b36caa..2af4297d 100644
+--- a/sim/engine.fm
++++ b/sim/engine.fm
+@@ -524,7 +524,7 @@ module Engine
+         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
+         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
+         boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
+-        boost.peakSpeed(dieselPeakRpm(), spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
++        boost.peakSpeed(&spec.ecu, spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
+         boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+         ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
+         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
+@@ -1057,31 +1057,6 @@ module Engine
+     float gearTq;       // the full-load torque the car's gearing was chosen for (at the layout's or size's change)
+     float clatSize;     // a diesel's clatter for its cylinders' size: their panels' area (a cube root of the volume)
+ 
+-    // (N2, the lead's ruling (b), 25 Nov) A governed diesel's torque-peak speed, rpm, for its compressor's sizing: the
+-    // build's stated one (spec.boost.peakRpm, a maker's sheet), else its full-load fuel curve's lowest speed within 2 %
+-    // of the curve's most (torque goes with the fuel there), else 0.6 of its rated speed (judgement); 0 for spark
+-    // ignition
+-    float dieselPeakRpm()
+-    {
+-        if (fuelUse == 0)
+-            return 0.0f;
+-        if (spec.boost.peakRpm > 0.0f)
+-            return spec.boost.peakRpm;
+-        float most = 0.0f;
+-        for (int i = 0; i < 8; ++i)
+-            most = fmaxf(most, spec.ecu.fuelCurveMg[i]);
+-        if (most > 0.0f)
+-        {
+-            for (int i = 0; i < 8; ++i)
+-            {
+-                if (spec.ecu.fuelCurveMg[i] > 0.0f && spec.ecu.fuelCurveMg[i] >= 0.98f * most)
+-                    return spec.ecu.fuelCurveRpm[i];
+-            }
+-        }
+-        const float rated = spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm;
+-        return 0.6f * rated;
+-    }
+-
+     // About the most torque this engine gives (the turbo's boost with it), for the clutch's capacity
+     float peakTorque()
+     {
+@@ -1642,7 +1617,7 @@ module Engine
+             s->tsize = spec.boost.size;
+             s->bov = spec.boost.blowOff;
+             boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
+-            boost.peakSpeed(dieselPeakRpm(), spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
++            boost.peakSpeed(&spec.ecu, spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
+             boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+             ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
+         }
+-- 
+2.43.0
+
+
+From a1b87980f191951de8e95c7b2d436333cf210b60 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 12:48:30 +0000
+Subject: [PATCH 3/7] boost: no vane surge guard (the lead's ruling): its
+ rescue was the truck fixture's breathing, and it pinned three builds' vanes
+ open; its own case goes with it
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+(cherry picked from commit cff355f91d6eb4e9ca927bf42b010f5332390e7a)
+---
+ sim/boost/machine.fm           | 29 ++++++-------------------
+ tests/sim/boost/LayoutTest.cpp | 39 ----------------------------------
+ 2 files changed, 6 insertions(+), 62 deletions(-)
+
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index 4bc4633a..8bdc1e71 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -171,7 +171,6 @@ module BoostMachine
+     float bovLift;
+     float bpLimit;      // a variable nozzle's limit on the pressure before the turbine over the boost (absolute)
+     float bpOpen[BOOST_TURBOS];  // the limit's opening of the vanes, each turbo
+-    float surgeOpen[BOOST_TURBOS];  // the surge guard's opening of the vanes, each turbo
+     float bovAt;        // the blow-off valve's opening the air sees: bovLift followed every sample by two 1 ms stages
+     float bovMid;
+     float kAt;          // that following's step a sample
+@@ -342,7 +341,6 @@ module BoostMachine
+             turb[t].vanesAt = 1.0f;
+             turb[t].vanesMid = 1.0f;
+             bpOpen[t] = 0.0f;
+-            surgeOpen[t] = 0.0f;
+             gateMass[t] = 0.0f;
+             gateTemp[t] = tOut;
+         }
+@@ -1317,31 +1315,16 @@ module BoostMachine
+                     const float r3 = house[hh].p / fmaxf(v2.p, 1000.0f);
+                     bpOpen[t] = fminf(fmaxf(bpOpen[t] + d16 * 3.0f * (r3 - bpLimit), 0.0f), 1.0f);
+                     v = fmaxf(v, turb[t].vaneMin + bpOpen[t]);
+-                    // (the surge guard, gain-reversal protection: vanes shut past the compressor's surge line make
+-                    // less boost, not more: it cannot deliver, the engine's air and the diesel's smoke-limited fuel fall
+-                    // and the turbine's energy with them, a second steady state below the first: card D2's 15 L truck
+-                    // at 1300 rpm stood at 98 kPa and 882 N m with its vanes at 0.47, surging two thirds of the time,
+-                    // against 209 kPa and 1945 N m at 0.9. While the compressor surges, an integral opens the vanes at
+-                    // 1 a second and gives back a tenth of that while it does not: the vanes settle where it surges
+-                    // some 9 % of the time, just off the surge line (with the exhaust's mean flow closed, G's
+-                    // 8bb2c80f, 0.3 left them on it and the truck's spool hunted 140 to 187 kPa for 2 s; 2 a second
+-                    // put the 15 L tractor at 1000 rpm off its boost). Judgement, as the limit above is: a maker's
+-                    // vane map keeps its own margin)
+-                    const float phiS = comp[t].mdot / fmaxf(comp[t].mc, 1.0e-5f);
+-                    // (only the loop's own surge counts: with the pedal down (the plenum not under the throttle's
+-                    // vacuum, as the assist's test) and the boost short of what is asked; a lift's surge on a closed
+-                    // throttle is the blow-off valve's matter, and then the guard only gives back)
+-                    const int surging = (comp[t].mdot < 0.0f || (phiS < 0.9f * comp[t].phiK && comp[t].pr > 1.15f)) &&
+-                                                pPlenum > 0.85f * pOut && boost < want
+-                                            ? 1
+-                                            : 0;
+-                    surgeOpen[t] = fminf(fmaxf(surgeOpen[t] + d16 * 1.0f * (surging != 0 ? 1.0f : -0.1f), 0.0f), 1.0f);
+-                    v = fmaxf(v, turb[t].vaneMin + surgeOpen[t]);
++                    // (no surge guard (the lead's ruling, 25 Nov): the vanes were opened while the compressor sat left
++                    // of its flag, to rescue card D2's 15 L truck from a second state at 1300 rpm; that state was the
++                    // fixture's own breathing (fresh VE 0.35 on the reference cam dial, falling as shut vanes raised
++                    // p3), not the compressor's surge: with real valve events it has none, and the guard pinned the
++                    // vanes open on three shipped builds at their low speeds, 25 to 40 % of the torque
++                    // (truck-valve-events.md, guard-candidates.md). The surge flag stays a reading, U3's oversize warning)
+                 }
+                 else
+                 {
+                     bpOpen[t] = 0.0f;
+-                    surgeOpen[t] = 0.0f;
+                 }
+                 v = fminf(fmaxf(v, turb[t].vaneMin), 1.0f);
+                 turb[t].vanes += (v - turb[t].vanes) * (1.0f - expf(-d16 / 0.05f));
+diff --git a/tests/sim/boost/LayoutTest.cpp b/tests/sim/boost/LayoutTest.cpp
+index 8375db9c..37f18b23 100644
+--- a/tests/sim/boost/LayoutTest.cpp
++++ b/tests/sim/boost/LayoutTest.cpp
+@@ -179,42 +179,3 @@ TEST_CASE("boost: a variable nozzle's back-pressure limit holds the turbine's in
+         }
+     }
+ }
+-
+-TEST_CASE("boost: a variable nozzle's surge guard acts on the loop's own surge only and stays bounded", "[boost][layout]")
+-{
+-    // (card N2) The guard opens the vanes while the compressor surges with the pedal down and the boost short of its
+-    // target (gain-reversal protection, machine.fm). A lift's surge (a closed throttle, no blow-off valve) is not the
+-    // loop's: the guard gives back through it (measured: at most 0.004 through a 1.5 s lift at 5000 rpm on a 100 kPa
+-    // target the turbo makes). With the ECU's vanes (an engine brake) it is held at 0.
+-    Rig rig;
+-    build(rig, 1, 5000.0);
+-    rig.set("spec.vanes", 1);
+-    rig.set("spec.target", 100000.0);
+-    rig.set("spec.gateSpring", 100000.0);
+-    rig.set("spec.blowOffKind", 0);
+-    rig.spec("rev", 0);
+-    rig.run(3.0);
+-    const double onLoad = rig.get("boost.surgeOpen[0]");
+-    rig.set("throttle", 0.0);
+-    double most = 0.0;
+-    bool surged = false;
+-    for (int k = 0; k < 300; ++k)
+-    {
+-        rig.run(0.005);
+-        most = std::fmax(most, rig.get("boost.surgeOpen[0]"));
+-        surged = surged || (static_cast<int>(rig.get("boost.flags")) & 1) != 0;
+-    }
+-    const double afterLift = rig.get("boost.surgeOpen[0]");
+-    rig.set("throttle", 1.0);
+-    rig.set("boost.cmdVanes", 0.0);
+-    rig.run(1.0);
+-    const double braked = rig.get("boost.surgeOpen[0]");
+-    std::printf("surge guard: %.3f on load, at most %.3f through a lift (surged %d), %.3f after it, %.3f braked; vanes "
+-                "%.2f\n",
+-                onLoad, most, surged ? 1 : 0, afterLift, braked, rig.get("boost.turb[0].vanes"));
+-    CHECK(surged);
+-    CHECK(onLoad == 0.0);
+-    CHECK(most < 0.02);
+-    CHECK(afterLift < 0.01);
+-    CHECK(braked == 0.0);
+-}
+-- 
+2.43.0
+
+
+From 3ec3100e64058d69debf8e9c76d412bb2a6de8e3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 12:58:12 +0000
+Subject: [PATCH 4/7] boost: (b)'s flow law with the charge as the build's
+ model gives it: the map's efficiency at the margin's point and the cooler's
+ pressure drop
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+(cherry picked from commit ed48581f3399933389a6a12cf97b1e90e16bca0b)
+---
+ sim/boost/machine.fm | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index 8bdc1e71..f1c2a974 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -515,11 +515,22 @@ module BoostMachine
+                     if (pr > prDesign + 1.0e-4f)
+                         break;
+                     const float tau = expf(logf(pr) / 3.5f) - 1.0f;
+-                    const float t2 = tOut * (1.0f + tau / fmaxf(s->compEta, 0.3f));
+-                    const float tc = t2 - s->icEffect * (t2 - tOut);
+-                    const float flow = vd * peakRpm / 120.0f * (pr * pOut / (kBoostR * tc)) * veBp * share * s->size;
+                     const float m = sqrtf(tau / 0.1794f);
+                     const float kn = fminf(fmaxf((0.40f + 0.178f * (fmaxf(m, 0.8f) - 1.0f)) * kArS, 0.2f), 0.7f);
++                    // (the compressor's efficiency at the margin's own point on the map, 0.99 of the knee, not its
++                    // peak (compressor.fm's efficiency()); the charge after the cooler's icEffect; the cooler's pressure
++                    // drop at the engine's whole flow, icDrop at icFlow, squared: the charge as the build's own model
++                    // gives it (the lead's ruling, 25 Nov; guard-removed.md))
++                    const float dm = m - 1.1f;
++                    const float phiB = kn + 0.61f * (1.0f - kn);
++                    const float dp = 0.99f * kn - phiB;
++                    const float etaHere = fmaxf(s->compEta - 0.25f * dm * dm - 0.9f * dp * dp, 0.3f);
++                    const float t2 = tOut * (1.0f + tau / etaHere);
++                    const float tc = t2 - s->icEffect * (t2 - tOut);
++                    const float whole0 = vd * peakRpm / 120.0f * (pr * pOut / (kBoostR * tc)) * veBp;
++                    const float icR = whole0 / fmaxf(s->icFlow, 0.05f);
++                    const float p2 = fmaxf(pr * pOut - s->icDrop * icR * icR, pOut);
++                    const float flow = whole0 * (p2 / (pr * pOut)) * share * s->size;
+                     const float cf = 0.3f + 0.7f * fminf(m / 1.63f, 1.0f);
+                     const float a = flow / (1.1f * 0.9f * kn * 0.45f * 1.204f * 343.2f * wide * cf);
+                     best = fminf(best, a);
+-- 
+2.43.0
+
+
+From 74a3c8e8d14c9cea3a136d0fdf07ba309e09849b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 13:28:40 +0000
+Subject: [PATCH 5/7] boost: a variable nozzle's matched open area passes the
+ whole design flow (a wastegate's 0.65 kept); its stop scaled so the shut area
+ is unchanged
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+(cherry picked from commit 3520482cc0a5fcd9ba9fd3cf4d1454c68279ef69)
+---
+ sim/boost/machine.fm | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index f1c2a974..24d7575b 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -559,7 +559,12 @@ module BoostMachine
+             const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
+             const float rc = 0.6f * dT;
+             float aNoz = 0.0f;
+-            const float aNozMatched = 0.65f * mt * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
++            // (the share of the design flow the matched nozzle passes: a wastegated turbine 0.65, its gate passing the rest
++            // at full power (docs/models/boost.md); a variable nozzle the whole, since its gate is only a relief over
++            // the target (the lead's ruling, 25 Nov: matched as a wastegate's, every machine diesel's shaft ran at its
++            // relief firing at rated with the vanes wide open; healthy-match.md))
++            const float nozShare = s->vanes != 0 ? 1.0f : 0.65f;
++            const float aNozMatched = nozShare * mt * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
+             if (s->turbAR > 0.0f)
+                 aNoz = s->turbAR * 0.0254f * rc;
+             else
+@@ -578,7 +583,10 @@ module BoostMachine
+             turb[t].aNoz = aNoz;
+             turb[t].etaMax = s->turbEta;
+             turb[t].vgt = s->vanes;
+-            turb[t].vaneMin = s->vaneMin;
++            // (the vanes' stop is a share of the open area: where the matched open nozzle passes the whole flow, the
++            // stop falls by the same factor, so the shut end is the same metal: the smallest area as a wastegate-style
++            // match gave it, the brake's back pressure unchanged (the lead's ruling))
++            turb[t].vaneMin = s->turbAR > 0.0f ? s->vaneMin : s->vaneMin * 0.65f / nozShare;
+             bpLimit = s->backPressure;
+             turb[t].gateExt = s->gate;
+             turb[t].scrolls = scrolls;
+-- 
+2.43.0
+
+
+From a647f2cb7ce41039538156d4f88230c1728e3faf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 15:06:07 +0000
+Subject: [PATCH 6/7] boost: the compressor map fitted to every cited map
+ (rise, knee, fall, choke scale), one floor at the lowest cited line (Mach
+ 0.67) for the knee and the efficiency
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+(cherry picked from commit 964f1b8c918dbcade7f428d674acafb609fd243d)
+---
+ sim/boost/compressor.fm | 26 +++++++++++++++++---------
+ sim/boost/machine.fm    | 23 +++++++++++++++--------
+ 2 files changed, 32 insertions(+), 17 deletions(-)
+
+diff --git a/sim/boost/compressor.fm b/sim/boost/compressor.fm
+index 643e8a54..81b3c052 100644
+--- a/sim/boost/compressor.fm
++++ b/sim/boost/compressor.fm
+@@ -99,17 +99,19 @@ module BoostCompressor
+     {
+         const float a01 = sqrtf(1.4f * kBoostR * t);
+         const float rho01 = p / (kBoostR * t);
+-        return 0.45f * rho01 * a01 * aInd * arWide * (0.3f + 0.7f * fminf(m / 1.63f, 1.0f));
++        return 0.506f * rho01 * a01 * aInd * arWide * (0.3f + 0.7f * fminf(m / 1.63f, 1.0f));
+     }
+ 
+     // The knee and the island at a tip Mach number m (published-compressor-maps.md, above)
+     void knee(float m)
+     {
+-        // (below a tip Mach number of 0.8, under the published maps' lowest speed lines (a ratio near 1.5), the knee is
+-        // held at that line's: the law is read from those maps only, and at an idle's few hundred m/s the knee moved
+-        // with every firing pulse, its 16-sample steps sounding between the firing harmonics (the diesel clatter case:
+-        // 12.3 -> 3.7 dB at the tractor's warm idle))
+-        phiK = fminf(fmaxf((0.40f + 0.178f * (fmaxf(m, 0.8f) - 1.0f)) * kAr, 0.2f), 0.7f);
++        // (the knee's law fitted to every cited map, the lead's ruling 25 Nov: phiK = 0.349 + 0.551 (M - 1), least
++        // squares over P's S400SX-E and S300SX3 line by line (sources section 21) and the five maps of
++        // published-compressor-maps.md ratio by ratio; docs/measurements/calibration/boost/map-shape-fit.md. Below
++        // tip Mach 0.67, the lowest cited speed line (the S400SX-E's 230 m/s), it is held at that line's: a law is read
++        // only where its maps are (at an idle's few hundred m/s the knee would otherwise move with every firing pulse,
++        // its 16-sample steps sounding between the firing harmonics: the diesel clatter case))
++        phiK = fminf(fmaxf((0.349f + 0.551f * (fmaxf(m, 0.67f) - 1.0f)) * kAr, 0.15f), 0.9f);
+         phiB = phiK + 0.61f * (1.0f - phiK);
+     }
+ 
+@@ -123,10 +125,16 @@ module BoostCompressor
+         mach = u / a01;
+         mc = chokeFlow(mach, p1, t1);
+         knee(mach);
+-        tauK = 0.45f * u * u / (kBoostCpA * t1);
++        // (the rise at the knee, its fall toward choke and the choke flow's scale (chokeFlow's 0.506) fitted with the
++        // knee to every cited map (map-shape-fit.md): tau_knee = (0.608 - 0.157 (M - 1)) U^2 / (cp T), the line falling to
++        // 0.652 of it at choke; the generic wheel is the maps' mean: within some 3 % of a published wheel's peak ratio
++        // and 6 % of its surge flow on average, the two heavy-duty maps disagreeing beyond their reading precision
++        // (known limits: compressor-map-model.md). The efficiency's Mach term held at the lowest cited line (0.67),
++        // as the knee: under 230 m/s the map claims nothing and keeps that line's efficiency)
++        tauK = (0.608f - 0.157f * (mach - 1.0f)) * u * u / (kBoostCpA * t1);
+         tau0 = 0.88f * tauK;
+-        tauC = 0.35f * tauK;
+-        const float dm = mach - 1.1f;
++        tauC = 0.652f * tauK;
++        const float dm = fmaxf(mach, 0.67f) - 1.1f;
+         etaM = etaMax - 0.25f * dm * dm;
+         // (a disc's churning: some hundreds of watts at full speed, about rho U^3 r^2 / 500)
+         windage = 0.002f * (p1 / (kBoostR * t1)) * u * u * u * rTip * rTip;
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index 24d7575b..0917d248 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -480,7 +480,12 @@ module BoostMachine
+         // the way to choke: tau 0.865 of the knee's, tauK = 0.45 x 0.4 M^2 against the air's):
+         // docs/measurements/calibration/boost/compressor-map-model.md)
+         const float tauD = expf(logf(prDesign) / 3.5f) - 1.0f;
+-        const float machD = fminf(sqrtf(tauD / (0.865f * 0.18f)), 1.63f);
++        // (the design ratio's tip Mach on the map's island: tau there 0.928 of the knee's (the fall 0.652, the island 0.61 of
++        // the way to choke), the knee's rise (0.608 - 0.157 (M - 1)) x 0.4 M^2, solved by iteration)
++        float machD = 1.0f;
++        for (int it = 0; it < 12; ++it)
++            machD = sqrtf(tauD / (0.928f * 0.4f * (0.608f - 0.157f * (machD - 1.0f))));
++        machD = fminf(machD, 1.63f);
+         const float chokeAt = 0.3f + 0.7f * machD / 1.63f;
+         const float share = layout == BOOST_TWIN ? 0.5f : (layout == BOOST_QUAD ? 0.25f : (layout == BOOST_SEQUENTIAL ? 0.5f : 1.0f));
+         for (int t = 0; t < BOOST_TURBOS; ++t)
+@@ -488,7 +493,7 @@ module BoostMachine
+             // (a compound pair's high-pressure stage meets air already compressed some 1.6 times: a smaller wheel)
+             const float mt = mMatch * share * s->size * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
+             const float wide = expf(0.25f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
+-            const float aRated = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide * chokeAt);
++            const float aRated = 1.15f * mt / (0.506f * 1.204f * 343.2f * wide * chokeAt);
+             // (the lead's ruling (b), 25 Nov: a governed diesel's wheel also held 10 % right of the surge flag's line
+             // (0.9 of the knee: compressor.fm) along the whole climb to its design ratio at its torque-peak speed
+             // (BorgWarner's "10-percent or more to the right of the surge line"; Woollenweber, US 5,025,629: "matched to
+@@ -500,7 +505,7 @@ module BoostMachine
+             // (gamma rc - 1); THE PAGE NOT CHECKED) at the build's back-pressure limit (the tractor at 1.4, 17:1: 0.982;
+             // measured 0.879 against its 0.9 x 0.982 = 0.884 at 1000 rpm, after-burn-cure.md); the charge at each
+             // ratio as tCharge's; the speed line through each ratio's flag point the map's own (tau at 0.9 of the knee
+-            // 0.1794 M^2: compressor.fm's rise at x = 0.9); no pulse term (0.998 measured at the boosted state))
++            // 0.9966 of the knee's rise: compressor.fm's smooth step at x = 0.9); no pulse term (0.998 measured at the boosted state))
+             float aAnn = aRated;
+             if (dsl != 0 && peakRpm > 0.0f && layout != BOOST_COMPOUND)
+             {
+@@ -515,13 +520,15 @@ module BoostMachine
+                     if (pr > prDesign + 1.0e-4f)
+                         break;
+                     const float tau = expf(logf(pr) / 3.5f) - 1.0f;
+-                    const float m = sqrtf(tau / 0.1794f);
+-                    const float kn = fminf(fmaxf((0.40f + 0.178f * (fmaxf(m, 0.8f) - 1.0f)) * kArS, 0.2f), 0.7f);
++                    float m = 1.0f;
++                    for (int it = 0; it < 12; ++it)
++                        m = sqrtf(tau / (0.9966f * 0.4f * (0.608f - 0.157f * (m - 1.0f))));
++                    const float kn = fminf(fmaxf((0.349f + 0.551f * (fmaxf(m, 0.67f) - 1.0f)) * kArS, 0.15f), 0.9f);
+                     // (the compressor's efficiency at the margin's own point on the map, 0.99 of the knee, not its
+                     // peak (compressor.fm's efficiency()); the charge after the cooler's icEffect; the cooler's pressure
+                     // drop at the engine's whole flow, icDrop at icFlow, squared: the charge as the build's own model
+                     // gives it (the lead's ruling, 25 Nov; guard-removed.md))
+-                    const float dm = m - 1.1f;
++                    const float dm = fmaxf(m, 0.67f) - 1.1f;
+                     const float phiB = kn + 0.61f * (1.0f - kn);
+                     const float dp = 0.99f * kn - phiB;
+                     const float etaHere = fmaxf(s->compEta - 0.25f * dm * dm - 0.9f * dp * dp, 0.3f);
+@@ -532,7 +539,7 @@ module BoostMachine
+                     const float p2 = fmaxf(pr * pOut - s->icDrop * icR * icR, pOut);
+                     const float flow = whole0 * (p2 / (pr * pOut)) * share * s->size;
+                     const float cf = 0.3f + 0.7f * fminf(m / 1.63f, 1.0f);
+-                    const float a = flow / (1.1f * 0.9f * kn * 0.45f * 1.204f * 343.2f * wide * cf);
++                    const float a = flow / (1.1f * 0.9f * kn * 0.506f * 1.204f * 343.2f * wide * cf);
+                     best = fminf(best, a);
+                 }
+                 aAnn = fminf(aRated, best);
+@@ -555,7 +562,7 @@ module BoostMachine
+             if (t == 0)
+                 compFlowHas = 0.0f;
+             if (t < turbos && !(layout == BOOST_COMPOUND && t == 0))
+-                compFlowHas += 0.45f * 1.204f * 343.2f * wide * chokeAt * 0.91f * 3.14159265f * 0.25f * dInd * dInd;
++                compFlowHas += 0.506f * 1.204f * 343.2f * wide * chokeAt * 0.91f * 3.14159265f * 0.25f * dInd * dInd;
+             const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
+             const float rc = 0.6f * dT;
+             float aNoz = 0.0f;
+-- 
+2.43.0
+
+
+From 7a18f889de23cfb41de85d229d4ead4826b43b2d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 15:19:17 +0000
+Subject: [PATCH 7/7] boost: MapTest restated on the cited lines (the fitted
+ rise; the 471 m/s knee against the S300SX3 and S400SX-E)
+
+(code part of 668c642e)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+---
+ tests/sim/boost/MapTest.cpp | 21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
+
+diff --git a/tests/sim/boost/MapTest.cpp b/tests/sim/boost/MapTest.cpp
+index 84af4102..ae68742b 100644
+--- a/tests/sim/boost/MapTest.cpp
++++ b/tests/sim/boost/MapTest.cpp
+@@ -67,30 +67,37 @@ TEST_CASE("boost: the choke flow scales with the inducer's area", "[boost][map]"
+     CHECK(choke(small, 16000.0) > choke(small, 6000.0));
+ }
+ 
+-TEST_CASE("boost: the knee's pressure ratio goes with the tip speed squared", "[boost][map]")
++TEST_CASE("boost: the knee's pressure ratio goes with the tip speed squared times the fitted rise", "[boost][map]")
+ {
+     Rig rig;
+     sizes(rig, 0.045, 0.060);
+-    // tau = PR^(1/3.5) - 1 at the knee, against the tip speed's square (the knee's flow moves with the tip Mach
+-    // number, published-compressor-maps.md: each speed's own)
++    // tau = PR^(1/3.5) - 1 at the knee, against the tip speed's square times the rise coefficient fitted to every cited
++    // map, c(M) = 0.608 - 0.157 (M - 1) (map-shape-fit.md: the published lines' peak ratios fall below a flat
++    // coefficient's as the tip speed rises), the inlet at 293.15 K as the rig's
+     const double u1 = 300.0;
+     const double u2 = 450.0;
+     const double r = 0.030;
+     const double t1 = std::pow(ratio(rig, knee(rig, u1 / r), u1 / r), 1.0 / 3.5) - 1.0;
+     const double phiK = knee(rig, u2 / r);
+     const double t2 = std::pow(ratio(rig, phiK, u2 / r), 1.0 / 3.5) - 1.0;
+-    CHECK(t2 / t1 == Catch::Approx((u2 * u2) / (u1 * u1)).epsilon(0.002));
++    const double a01 = std::sqrt(1.4 * 287.0 * 293.15);
++    const auto c = [&](double u) { return 0.608 - 0.157 * (u / a01 - 1.0); };
++    CHECK(t2 / t1 == Catch::Approx((c(u2) * u2 * u2) / (c(u1) * u1 * u1)).epsilon(0.002));
+     // the knee is the line's highest point: lower toward surge and toward choke
+     const double top = ratio(rig, phiK, u2 / r);
+     CHECK(ratio(rig, 0.5 * phiK, u2 / r) < top);
+     CHECK(ratio(rig, 0.0, u2 / r) < top);
+     CHECK(ratio(rig, phiK + 0.5 * (1.0 - phiK), u2 / r) < top);
+     CHECK(ratio(rig, 1.0, u2 / r) < ratio(rig, phiK + 0.5 * (1.0 - phiK), u2 / r));
+-    // a 60 mm wheel at 150,000 rpm makes some 2.6 to 3.0 at its knee (published maps of the class)
++    // a 60 mm wheel at 150,000 rpm (471 m/s at the tip) makes at its knee what the cited heavy-duty lines make at that tip
++    // speed: the S400SX-E 3.21 at 461 m/s and 3.62 at 491, the S300SX3 3.14 at 443 and 3.94 at 505 (sources section 21,
++    // read off the makers' maps; their peaks interpolated to 471 m/s: 3.35 and 3.50); the generic map is their mean
++    // within its stated 3 % (map-shape-fit.md). The earlier 2.6 to 3.0 was the five passenger maps' class, which state
++    // no per-line peaks; the all-seven fit replaced the knee's law
+     const double pr150 = ratio(rig, knee(rig, 150000.0 * 6.283185307 / 60.0), 150000.0 * 6.283185307 / 60.0);
+     INFO("PR at 150 krpm: " << pr150);
+-    CHECK(pr150 > 2.5);
+-    CHECK(pr150 < 3.1);
++    CHECK(pr150 > 3.35 * 0.97);
++    CHECK(pr150 < 3.50 * 1.03);
+ }
+ 
+ TEST_CASE("boost: efficiency peaks at the best flow and a tip Mach number of 1.1", "[boost][map]")
+-- 
+2.43.0
+
