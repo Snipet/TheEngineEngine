@@ -193,3 +193,11 @@ sheet will include every registered workspace.
   no. app/Offline.cpp passes the Session an `ask` that reaches the frame while it lives (cleared before it goes: no),
   with LOAD and KEEP for card A's load over unsaved changes. The chat is mounted in a ChatSlot made with the frame, so
   the key dialog and the question draw over it. Test: frame.ask.
+- The owner's rule for DRIVE's dials (25 Nov, "text on visual dials overlaps the needle"): a needle never crosses a
+  number. `Gauge::setClearNumerals` now puts each number just inside the rim and ends the ticks and the needle inside
+  the nearest number's box; a face too small for the end numbers keeps the middle one (at the top), one smaller still
+  shows ticks and digits only. `setReadoutClear` on every DRIVE dial (the digits in the arc's open wedge). CLASSIC's
+  small dials re-choose their span in the unit shown to round steps, two or four (`dash::roundScale`: 0 50 100 psi, 100
+  150 200 F), a number at the ends and the middle (`Gauge::setNumeralStride`). `Gauge::labelsClearOfNeedle(t, why)`
+  is the check; drive.dials runs it on every dial at the range's bottom, middle and top, in both unit systems, at the
+  large stage and the smallest window. J2's default Gauge look is unchanged.

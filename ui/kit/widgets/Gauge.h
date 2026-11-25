@@ -27,9 +27,13 @@ namespace tee::ui
         void setReadout(std::function<std::string(double)> f) { readout_ = std::move(f); }
         void setUnit(std::string u) { unit_ = std::move(u); }
         void setRange(double lo, double hi) { lo_ = lo; hi_ = hi; }
-        // U1: numerals set clear of the ticks by their own size, over the needle on a backing of the face, and a short
-        // needle tail (DRIVE's instruments). Off (the default): J2's look.
+        // U1: the numerals out of the needle's reach (DRIVE's instruments; the owner's rule, 25 Nov: "a needle never
+        // crosses a number"): each just inside the rim, the tick ring and the needle ending inside the nearest one's box;
+        // a face too small for that keeps its ticks and its digits and shows no numerals. A short needle tail. Off (the
+        // default): J2's look, the numerals inside the ticks.
         void setClearNumerals(bool on) { clearNumerals_ = on; }
+        // U1: a numeral at every `n`th major tick only (the two ends always): a small dial's few numbers.
+        void setNumeralStride(int n) { numeralStride_ = std::max(1, n); }
         // U1: the digits (and the unit's line under them) kept out of the needle's sweep: set low in the arc's open
         // wedge, as far below the hub as half their width (the wedge's sides are the needle at the range's ends), so the
         // needle and the end ticks pass clear of them at any value. A small dial's (DRIVE's CLASSIC). Off (the default):
@@ -51,6 +55,11 @@ namespace tee::ui
         bool readoutClearOfSweep() const;
         // The numerals' boxes at the range's ends (none on a face too small for numerals).
         std::vector<funkgui::Rect> endNumerals() const;
+        // Every numeral's box as drawn (with its backing).
+        std::vector<funkgui::Rect> numeralBoxes() const;
+        // Whether the needle at `t` (0..1 of the range: its box, hub to tip, its width included) misses every numeral's
+        // box and the readout's (the digits it would show there, and the unit); `why` names what it meets (tests).
+        bool labelsClearOfNeedle(double t, std::string& why) const;
 
         double value() const noexcept { return value_; }
         float needle() const noexcept { return needle_; }   // where the needle is, 0..1 of the arc
@@ -70,6 +79,14 @@ namespace tee::ui
         const char* kind() const override { return "gauge"; }
 
     private:
+        struct Label
+        {
+            std::string text;
+            float x = 0.0f, y = 0.0f, hw = 0.0f, hh = 0.0f;   // its centre, its box's half sizes (the backing's)
+            bool red = false;
+        };
+        // The numerals for `g`'s face; sets g.ra, the tick ring's radius (the needle ends 3 px inside it).
+        std::vector<Label> numeralsOf(Geometry& g) const;
         float fractionOf(double v) const noexcept;
         std::string readoutText() const;
 
@@ -80,6 +97,7 @@ namespace tee::ui
         std::string unit_;
         double value_ = 0.0;
         bool clearNumerals_ = false, readoutClear_ = false;
+        int numeralStride_ = 1;
         float needle_ = 0.0f;
     };
 }

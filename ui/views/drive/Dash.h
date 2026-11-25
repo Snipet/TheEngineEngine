@@ -84,6 +84,14 @@ namespace tee::ui::dash
         int decimals;                          // the digits' (in the user's unit)
         const char* help;
     };
+    // A span re-chosen to round steps in the unit shown: a step of 1, 2, 2.5 or 5 times a power of ten, `maxSteps` steps
+    // at most (`even`: two or four, so a step marks the middle), the ends on steps and covering [lo, hi].
+    struct Scale
+    {
+        double lo, hi;
+        int steps;
+    };
+    Scale roundScale(double lo, double hi, int maxSteps, bool even = false);
     inline constexpr int kDials = 8;
     const Dial& dial(int i);
 }
