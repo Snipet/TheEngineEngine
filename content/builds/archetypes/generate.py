@@ -659,9 +659,21 @@ def card(a):
         how = ("its card's advertised and 0.050 in durations are tappet lift: through its %.1f rocker (%s) to the "
                "valve, solved in the simulator's lift curve" % (t["ratio"], t["ratioBasis"]))
         return si, oi, se, oe, how
-    si, oi = (d1 + 2 * f, d1) if own.get("in") == "1mm" else (di, di - 2 * f)
-    se, oe = (d1e + 2 * f, d1e) if own.get("ex") == "1mm" else (de, de - 2 * f)
-    how = "the seat-to-1 mm step %.0f deg a side, the %s class's rule" % (f, a["train"].lower())
+    # the anchor (the lead's ruling, 06:08): on a card of judgement the rule HOLDS THE DURATION AT 1 MM and moves the
+    # seat out (seat = 1 mm + twice the step): a cam's size is, by every card's convention, its duration at 1 mm, and
+    # the rule was adopted to correct the flank near the seat, not to resize the cam. A card with its own figure at a
+    # stated or assumed height ("cardNote": the S54, the 4A-GE, the K20A lobes) and the pushrods keep the seat held
+    judged = "cardNote" not in a and a["train"] != "Pushrod"
+    if own.get("in") == "1mm" or judged:
+        si, oi = d1 + 2 * f, d1
+    else:
+        si, oi = di, di - 2 * f
+    if own.get("ex") == "1mm" or judged:
+        se, oe = d1e + 2 * f, d1e
+    else:
+        se, oe = de, de - 2 * f
+    how = ("the seat-to-1 mm step %.0f deg a side, the %s class's rule, %s" %
+           (f, a["train"].lower(), "the 1 mm duration held and the seat moved" if judged else "the seat held"))
     return si, oi, se, oe, how
 
 
