@@ -89,16 +89,17 @@ namespace tee::ui
         mutable std::uint64_t lastBlock_ = 0, generation_ = 0;
     };
 
-    // The knock limit baked in the background (card C's KnockBakeService, 8572845f; TUNE's "spark map" line): tick()
-    // on the UI thread once a frame. After each change of the build (its hash: an edit, an undo, a load) it considers
-    // the build: a stale table is set aside at once (ecu.maps.knockLimitAuto on, one Build write) and a bake asked,
-    // debounced; a finished bake still the build's is applied (one undo step). state(): "no table", "waiting to bake",
-    // "baking", "baked, to apply", "baked", "bake failed" (error() says why). The shell makes one beside ServiceDyno and
-    // fills FrameServices::sparkMap from it.
+    // The calibration baked in the background (card C's CalibrationBakeService, 879c59f2: the intake cam, then the
+    // knock limit; TUNE's "spark map" line): tick() on the UI thread once a frame. After each change of the build (its
+    // hash: an edit, an undo, a load) it considers the build: a stale table is set aside at once (knockLimitAuto and/or
+    // camInAuto on, a Build write each) and a bake asked, debounced; what finished is applied while still the build's
+    // (the cam, then the spark, an undo step each). state(): "no table", "waiting to bake", "baking", "baked, to apply",
+    // "baked", "bake failed" (error() says why); while baking, "baking spark map", "baking cam", "baking spark map
+    // again" (stage()). The shell makes one beside ServiceDyno and fills FrameServices::sparkMap from it.
     class ServiceBake
     {
     public:
-        ServiceBake(std::shared_ptr<tee::Sim> sim, tee::Build& build, tee::KnockBakeOptions options = {});
+        ServiceBake(std::shared_ptr<tee::Sim> sim, tee::Build& build, tee::CalibrationBakeOptions options = {});
         void tick();
         std::string state() const;
         std::string error() const;
@@ -107,7 +108,7 @@ namespace tee::ui
     private:
         std::shared_ptr<tee::Sim> sim_;
         tee::Build& build_;
-        tee::KnockBakeService bakes_;
+        tee::CalibrationBakeService bakes_;
         std::uint64_t seen_ = 0, applied_ = 0;
         bool first_ = true;
         std::string applyError_;

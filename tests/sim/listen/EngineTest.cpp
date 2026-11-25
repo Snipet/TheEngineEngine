@@ -606,12 +606,12 @@ namespace
 
 // The engine's tilt by camera, held warm at idle (measured: Tailpipe -1.4 -5.6 -3.6 -2.0 -2.1 -1.2; Side with no
 // ground -0.2 -0.2 +1.1 +3.1 +5.2 +3.6, on asphalt -2.1 -8.1 +0.4 +2.3 +2.2 -1.4; Engine bay +0.9 -2.8 +0.9 +1.2 +1.3
-// +1.7; Rear -1.0 -3.7 -7.4 -0.8 0.0 -2.9; Driver +0.4 +0.5 +1.4 -6.5 -19.1 -32.3). Tolerances: 7 dB (some 2 dB over
-// the worst reading, the voices and the engines still moving); 9 to 10 at 500 Hz where there is ground (its first
-// notch falls near 600 Hz: the reference has no ground); Rear 9: not a finding but the camera (the bay shaded by
-// the body and the ground's notch near 1 kHz, against a REAR whose bay no geometry gives). Open: the cabin
-// above 1 kHz, checked to 1 kHz only. Its walls are second-order low-passes (12 dB an octave from 260 Hz, 800 Hz,
-// 1.2 kHz) where a wall's mass law falls 6 dB an octave; the reference's CABIN hears the bay unfiltered
+// +1.7; Rear -1.0 -3.7 -7.4 -0.8 0.0 -2.9; Driver, since the firewall's mass law, +0.1 +0.6 +3.9 +1.0 -6.5 -12.4,
+// before it +0.4 +0.5 +1.4 -6.5 -19.1 -32.3). Tolerances: 7 dB (some 2 dB over the worst reading, the voices and the
+// engines still moving); 9 to 10 at 500 Hz where there is ground (its first notch falls near 600 Hz: the reference
+// has no ground); Rear 9: not a finding but the camera (the bay shaded by the body and the ground's notch near 1 kHz,
+// against a REAR whose bay no geometry gives). The Driver 9 to 4 kHz; at 8 kHz it is 12 dB under the reference's
+// CABIN, which hears the bay unfiltered (0.06 of it) where Places brings it through the firewall's mass law
 TEST_CASE("the engine's tilt through Places, quick: Tailpipe, and Side without the ground, against the reference's views", "[listen][engine]")
 {
     tiltHeld("Tailpipe / Exhaust", 0, 0, -1, 7.0, 9.0);
@@ -625,5 +625,5 @@ TEST_CASE("the engine's tilt through Places: every fitted camera against the ref
     tiltHeld("Side (asphalt) / Side", 2, 2, 0, 7.0, 10.0);
     tiltHeld("Engine bay / Engine", 3, 3, -1, 7.0, 9.0);
     tiltHeld("Rear / Rear (the camera: see listen.md)", 1, 1, -1, 9.0, 9.0);
-    tiltHeld("Driver / Cabin (open above 1 kHz)", 4, 4, -1, 7.0, 9.0, 3);
+    tiltHeld("Driver / Cabin (to 4 kHz)", 4, 4, -1, 9.0, 9.0, 5);
 }
