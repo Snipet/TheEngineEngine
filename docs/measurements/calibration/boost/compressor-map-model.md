@@ -164,3 +164,67 @@ the turbine's nozzle 4.59 cm2 on every tree. The IS20 (P, rebuilders, about 1 mm
 turbine inducer. A build can state them today: spec.boost.compInducer, compExducer, compAR, turbWheel, turbAR (0:
 matched); what a build cannot state is the trim apart from the two diameters, the turbine's throat area as a number
 (it follows A/R and the wheel), or a map.
+
+## The lead's ruling (i): the knee and the flag only; the design flow at the charge's temperature
+
+Ruled: the knee's law x 0.889 (0.8 / 0.9 of today's), the flag (and the surge guard that reads it) at 0.9 of the knee,
+the measured onset; the matching's design flow at the charge's density at the design point (the compressor's outlet
+at the design ratio, its efficiency the spec's compEta, cooled by the build's icEffect; 0: none) in place of 1.204 x
+the ratio. The table before building it (design flow = compressorWants / 1.15 on a18f1bd4; what each engine passes at
+its design speed, full load, heat settled, on map and sizing):
+
+| build | design PR | charge T at design, K | design flow now kg/s | after | engine passes at its design speed | passes / now | passes / after | inducer mm: a18f1bd4 / map+sizing / after |
+|---|---|---|---|---|---|---|---|---|
+| truck (GateTest's sets) | 3.17 | 338 | 0.896 | 0.776 | 0.516 (2100 rpm) | 58 % | 66 % | 88.1 / 89.2 / 83.0 |
+| tractor | 3.57 | 335 | 0.915 | 0.799 | 0.799 (1900 rpm) | 87 % | 100 % | 89.0 / 89.0 / 83.2 |
+| 2.0 common-rail | 2.38 | 320 | 0.169 | 0.155 | 0.171 (4000 rpm) | 101 % | 110 % | 38.3 / 41.0 / 39.2 |
+| pickup | 2.97 | 328 | 0.521 | 0.465 | 0.495 (2900 rpm) | 95 % | 106 % | 67.1 / 68.8 / 65.0 |
+| first.json | 2.18 | 317 | 0.226 | 0.209 | 0.174 (5500 rpm, 99 kPa: short of its 120) | 77 % | 83 % | 44.2 / 48.3 / 46.4 |
+
+The truck in GateTest's sets (a single, a 220 kPa spring, a 0.8 kg/s cooler) passes two thirds of even the corrected
+design flow: its point at 2100 rpm is itself in surge cycles, short of its ratio; the temperature is not the whole of
+it.
+
+**Prediction, the truck at 1300 rpm after (i) and the temperature** (written before the run): its inducer 83.0 mm (area
+-13 %), its knee 0.889 of today's: the low point moves from 0.63 to about 0.81 of the knee, still left of the flag at
+0.9, so the surge guard still opens the vanes; left of the onset, so the point cycles rather than sits. One state from
+both sides within 5 %, 55 to 65 kPa held until settled; the climb from 800 faster than 19 s to 90 % (the rotor's
+inertia some 0.7 of today's), about 12 to 15 s.
+
+## Built and measured (on the tip, N1's 6771c402 in)
+
+The knee 0.40 + 0.178 (M - 1), floored at M 0.8; the flag and the surge guard at 0.9 of it; the island 0.61 of the way
+to choke (0.58 put the ridge at 0.604 at a ratio of 2, under the published 0.62; 0.61 reads 0.604 / 0.620 / 0.702 /
+0.787, at 3 over by 0.007, inside the readings' +-0.02); the sizing's 1.15 at the design tip speed; the design flow at
+the charge's temperature.
+
+**The onset on the flag** (the same rig, the throttle in 0.004 steps): steady down to 0.946 of the knee at M 0.75 and
+0.970 at M 0.83; the next step falls into surge with the flow reversing, its mean at 0.90 and 0.90 of the knee.
+
+**The truck at 1300, against the prediction** (written above before the run): one state, 76.1 kPa from 800 and 78.2
+from 2000 (heat settled, the last 5 s of 40); the case (GateTest, restated: heat settled, 15 s, read over 5 s) 78.1 and
+81.1. The prediction's 55 to 65 kPa was **wrong** (low by some 15 kPa); its one state was right; its 12 to 15 s was
+near: 11 s to 90 % from 800. The vanes stand open (1.00), the guard holding them, the point left of the flag.
+
+| turbo four (first.json), N m / charge kPa g | 1500 | 1800 | 2500 | 4000 | 6200 |
+|---|---|---|---|---|---|
+| tip (a18f1bd4's loop) | 213 / 14 | 226 / 20 | 309 / 79 | 369 / 124 | 289 / 88 |
+| the map alone | 220 / 17 | 245 / 28 | 390 / 123 | 368 / 124 | 292 / 88 |
+| all of it | 216 / 16 | 237 / 25 | 385 / 124 | 365 / 124 | 288 / 88 |
+
+The 2.0 common-rail at 1800 / 2500 / 4000: 165 / 336 / 288 on the tip, 168 / 335 / 286 with all of it.
+
+| take-up, settled N m (tip -> all of it) | low | mid | high |
+|---|---|---|---|
+| tractor 1000 / 1300 / 1800 | 653 -> 688 | 1946 -> 2263 (72 -> 219 kPa) | 2224 -> 2137 |
+| pickup 1600 / 2400 / 3000 | 657 -> 995 (32 -> 185 kPa) | 997 -> 989 | 452 -> 431 |
+| 2.0 1800 / 2500 / 4000 | 161 -> 164 | 250 -> 334 | 287 -> 285 |
+
+The losses at the top (tractor 1800 -3.9 %, pickup 3000 -4.6 %, with more boost) are the turbine's side of the
+design flow: a smaller nozzle, the turbine's inlet settling at 1.62 of the boost against 1.46.
+
+**Findings, marked by name**: the variable nozzle's back-pressure limit at its open stop (400 kPa asked: 1.64 against
+the case's 1.55; LayoutTest); the wastegate loop's overshoot where the turbo first reaches its target (the turbo four at
+3500 rpm: 129 kPa at 3 s, 100 only after some 8 s; TurboTest); a sequential pair cycling at its join (the rotary at
+4250: 26 to 106 kPa; GateTest, new). F's "variable vanes make boost at low speed", marked since the closed exhaust,
+now passes; the diesel tier's TurboTest:118 (the big single over 30 kPa) and BrakeTest:213 pass.
