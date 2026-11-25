@@ -186,6 +186,10 @@ module BoostMachine
     float seqOpen;
     float seqWant;
     float seqFlow;
+    float seqRpmJoin;   // the join's engine speed, rpm, as the build states it (spec.boost.seqRpm; 0: the join on the flow)
+    float seqXfer;      // the exhaust's transfer valve to the second turbine, 0 to 1 (the pre-spool)
+    float seqDwell;     // s since the charge valve last opened
+    float seqAbove;     // s the engine has stood above the join speed, the pedal down, unjoined
     float aTransfer;
     float aSecValve;
     float drawMean;
@@ -362,6 +366,9 @@ module BoostMachine
         integ = 0.0f;
         seqOpen = 0.0f;
         seqWant = 0.0f;
+        seqXfer = 0.0f;
+        seqDwell = 0.0f;
+        seqAbove = 0.0f;
         drawMean = 0.0f;
         bypassOpen = 1.0f;
         scDrive = 0.0f;
@@ -535,6 +542,10 @@ module BoostMachine
         aTransfer = turb[1].aNoz;
         aSecValve = comp[1].aInd * 1.5f;
         seqFlow = s->seqFlow > 0.0f ? s->seqFlow : 0.4f * mMatch;
+        // (the join's speed only as a build states it: derived from the join flow at the design point (0.4 of the design
+        // speed) it was 2720 rpm on the rotary against its source's 4500, 1.65 out on the one build with a pair; no default
+        // is made from one engine, and a build that states none keeps the join on the flow, as before)
+        seqRpmJoin = s->seqRpm;
         // the charge path
         kFilter = 2500.0f / (mMatch * mMatch);
         v1.resize(0.4f * s->chargeVolume);
@@ -881,7 +892,7 @@ module BoostMachine
                     area = an + turb[0].aGate * turb[0].liftAt / (float)scrolls;
                 }
                 else
-                    area = aTransfer * seqOpen / (float)scrolls;
+                    area = aTransfer * (seqRpmJoin > 0.0f ? seqXfer : seqOpen) / (float)scrolls;
                 const float kk = boostStiff(house[h].vol, house[h].t, 1.3333333f, dt) + boostStiff(house[hd].vol, house[hd].t, 1.3333333f, dt);
                 const float m = boostOrificeStep(house[h].p, house[h].t, house[hd].p, house[hd].t, area, 1, kk);
                 if (m >= 0.0f)
@@ -1321,10 +1332,46 @@ module BoostMachine
         drawMean += (mDraw - drawMean) * (1.0f - expf(-d16 / 0.1f));
         if (layout == BOOST_SEQUENTIAL)
         {
-            if (drawMean > seqFlow)
-                seqWant = 1.0f;
-            else if (drawMean < 0.8f * seqFlow)
-                seqWant = 0.0f;
+            if (seqRpmJoin > 0.0f)
+            {
+                // (the lead's ruling, as real sequential pairs change over: on engine speed and load, the hysteresis in speed,
+                // which the join does not move (it was on the engine's air, which the join itself collapses: the rotary
+                // hunted 26 to 106 kPa at 4250 rpm). Two stages: from 0.85 of the join speed the exhaust's transfer valve
+                // opens progressively, the second compressor blowing off through its bleed (a pre-spool against no load);
+                // its charge valve opens above the join speed once that compressor's shut-off ratio at its shaft's speed
+                // reaches the charge pipe's (it can push air in as it joins), or after 1 s above the join speed (a half-fed
+                // second compressor may never reach it); leaves below 0.9 of the join speed or on a lift, not within 1 s of
+                // joining. Before the join the transfer opens at most 0.3 (fully open it robbed the first turbine: the
+                // rotary sat at 30 to 33 kPa at 4500). 0.85, 0.9, 0.3 and 1 s: judgement. The 13B-REW's own figures
+                // (P's sources §16: a pre-spool from about 3000 rpm, a forum's quote of the workshop manual; release below
+                // about 3300, an enthusiast's measurement), 0.67 and 0.73 of its 4500, were tried on the rotary: the pre-spool
+                // from 0.67 cost 1 % at 3250 to 4000 rpm and gained nothing, and the release at 0.73 kept the joined pair down
+                // to 3500 rpm, where it makes 10 to 27 kPa against the single's 67 to 71 (this model's joined pair is weaker
+                // than the single below some 5000 rpm), so 0.85 and 0.9 are kept)
+                const float rpmNow = omegaCrank * 9.5492966f;
+                const int pedal = pPlenum > 0.85f * pOut ? 1 : 0;
+                const float xferWant = pedal != 0 ? fminf(fmaxf((rpmNow - 0.85f * seqRpmJoin) / (0.15f * seqRpmJoin), 0.0f), 1.0f) : 0.0f;
+                seqXfer += (fmaxf(0.3f * xferWant, seqWant) - seqXfer) * (1.0f - expf(-d16 / 0.15f));
+                const float c0 = 1.0f + comp[1].tau0;
+                const float shutOff = c0 * c0 * c0 * sqrtf(c0);
+                seqDwell += d16;
+                seqAbove = pedal != 0 && rpmNow > seqRpmJoin ? seqAbove + d16 : 0.0f;
+                if (seqWant < 0.5f && pedal != 0 && rpmNow > seqRpmJoin && (shutOff * p1 >= v1.p || seqAbove > 1.0f))
+                {
+                    seqWant = 1.0f;
+                    seqDwell = 0.0f;
+                }
+                else if (seqWant > 0.5f && seqDwell > 1.0f && (rpmNow < 0.9f * seqRpmJoin || pedal == 0))
+                    seqWant = 0.0f;
+            }
+            else
+            {
+                // (no join speed stated: the join on the engine's air, as before, to the bit)
+                if (drawMean > seqFlow)
+                    seqWant = 1.0f;
+                else if (drawMean < 0.8f * seqFlow)
+                    seqWant = 0.0f;
+            }
             seqOpen += (seqWant - seqOpen) * (1.0f - expf(-d16 / 0.15f));
         }
         // a supercharger's bypass: open with the vacuum after the throttle
