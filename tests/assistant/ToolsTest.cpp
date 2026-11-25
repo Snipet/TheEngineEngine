@@ -274,6 +274,16 @@ TEST_CASE("assistant: save-as refuses a name that is already a build's, and over
     for (const auto& e : fs::directory_iterator(rig.user))
         names.push_back(e.path().filename().string());
     CHECK(names == std::vector<std::string>{"mine.json"});
+    // a name that differs only in case is the same name, on every system: refused above, and loaded by it here
+    REQUIRE_FALSE(rig.call("save_build_as", {{"name", "assistant-other"}}).isError);
+    const Result loaded = rig.call("load_build", {{"name", "MINE"}});
+    INFO(loaded.text());
+    REQUIRE_FALSE(loaded.isError);
+    CHECK(loaded.value["loaded"] == "mine");   // the library's own spelling
+    // a new name in anything but plain ASCII is refused (names must compare alike everywhere)
+    const Result accented = rig.call("save_build_as", {{"name", "mi\xC3\xA9n"}});
+    CHECK(accented.isError);
+    CHECK(accented.value["error"].get<std::string>().find("ASCII") != std::string::npos);
     // no tool removes a build
     for (const ToolInfo& t : rig.tools->list())
     {

@@ -284,6 +284,34 @@ namespace tee::assistant
         }
     }
 
+    namespace
+    {
+        // A build of the library by the name asked, compared as the listing has it and without regard to case (the
+        // rule on every platform: a disk that tells cases apart and one that does not behave alike, and a library
+        // copied from one to the other never collides silently). Two listed names that differ only in case: refused,
+        // ambiguous. Non-ASCII bytes compare as they are (no Unicode folding or normalisation is attempted).
+        bool resolveBuild(const files::BuildLibrary& library, const std::string& asked, std::string& found, std::string& why)
+        {
+            std::vector<std::string> matches;
+            for (const files::BuildSummary& b : library.list())
+                if (lower(b.name) == lower(asked))
+                    matches.push_back(b.name);
+            if (matches.empty())
+            {
+                why = "the library has no build named \"" + asked + "\"";
+                return false;
+            }
+            if (matches.size() > 1)
+            {
+                why = "two builds' names differ only in case (\"" + matches[0] + "\", \"" + matches[1]
+                      + "\"): ask the owner to rename one in the app";
+                return false;
+            }
+            found = matches[0];
+            return true;
+        }
+    }
+
     bool safeBuildName(const std::string& name, std::string& why)
     {
         if (name.empty() || name.size() > 64)
@@ -651,7 +679,9 @@ namespace tee::assistant
             std::string open;
         };
         auto asked = std::make_shared<Asked>();
-        const auto load = [this, name]() -> Reply {
+        auto chosen = std::make_shared<std::string>(name);   // the library's own spelling of it
+        const auto load = [this, chosen]() -> Reply {
+            const std::string& name = *chosen;
             std::vector<std::string> warnings;
             std::string err;
             if (!host_.library.load(host_.document, name, warnings, err))
@@ -662,19 +692,23 @@ namespace tee::assistant
             return Reply::of(out);
         };
         Result first = job(
-            [this, name, asked, load]() -> std::optional<Reply> {
+            [this, name, asked, load, chosen]() -> std::optional<Reply> {
+                std::string found, whyNot;
+                if (!resolveBuild(host_.library, name, found, whyNot))
+                    return Reply::failed(whyNot);
+                *chosen = found;
                 files::BuildSummary s;
-                if (!host_.library.summary(name, s))
+                if (!host_.library.summary(found, s))
                     return Reply::failed("the library has no build named \"" + name + "\"");
                 if (!s.part.empty())
-                    return Reply::failed("\"" + name + "\" is a part (" + s.part + "), not a whole build");
+                    return Reply::failed("\"" + found + "\" is a part (" + s.part + "), not a whole build");
                 if (!host_.document.dirty())
                     return load();
                 if (!host_.ask)
                     return Reply::failed("the open build has unsaved changes and the owner cannot be asked; nothing was loaded");
                 asked->hash = host_.document.build().hash();
                 asked->open = host_.document.build().name;
-                asked->answer = host_.ask("Claude asks to load \"" + name + "\". The open build, \"" + asked->open
+                asked->answer = host_.ask("Claude asks to load \"" + found + "\". The open build, \"" + asked->open
                                           + "\", has unsaved changes, which would be lost. Load it?");
                 return Reply::of({{"asking", true}});
             },
@@ -711,6 +745,10 @@ namespace tee::assistant
         std::string why;
         if (!safeBuildName(name, why))
             return error(why);
+        for (const char c : name)
+            if (static_cast<unsigned char>(c) >= 0x80)
+                return error("a new build's name is written in plain ASCII here, so that names compare the same on every "
+                             "system (letters without accents, digits, spaces, - _ ( ) .)");
         return job(
             [this, name]() -> std::optional<Reply> {
                 // a name already a build's, shipped or own, in any letter case (a Mac's disk does not tell them apart)
