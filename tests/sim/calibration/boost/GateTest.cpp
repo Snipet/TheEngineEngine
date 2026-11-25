@@ -280,3 +280,36 @@ TEST_CASE("calibration boost: variable vanes past the surge line open: one state
     // machine and 5.4 on CI, against a 5 % bound that went red on all three)
     CHECK(std::fabs(up.at("boost.pressure") - down.at("boost.pressure")) < 0.15 * down.at("boost.pressure"));
 }
+
+TEST_CASE("calibration boost: a sequential pair with a stated join speed changes over without a hunt", "[calibration][boost]")
+{
+    // (the lead's ruling on the join: on a build that states spec.boost.seqRpm the pair changes over on engine speed and
+    // load (machine.fm); here the 13B-kind rotary with 4500 rpm stated, its source's figure (P's sources §16), swept across
+    // the join in 250 rpm steps at full load: every 0.1 s window within 15 % of its speed's mean (a hunt there was 26 to
+    // 106 kPa), and the same bound either side of the join)
+    Sims s;
+    std::vector<double> rpms;
+    for (double r = 3750.0; r <= 5250.0; r += 250.0)
+        for (int k = 0; k < 30; ++k)
+            rpms.push_back(r);
+    std::vector<Row> rows;
+    std::string error;
+    REQUIRE(tee::calib::dyno(s.sim, "content/builds/archetypes/rotary-twin-13.json", rpms, {{"boost.seqRpm", 4500.0}},
+                             {"boost.pressure", "engine.torque"}, rows, error, 0.0, 0.1));
+    for (std::size_t at = 0; at + 30 <= rows.size(); at += 30)
+    {
+        double lo = 1.0e9, hi = -1.0e9, mean = 0.0;
+        for (std::size_t i = at + 15; i < at + 30; ++i)
+        {
+            const double b = rows[i].at("boost.pressure");
+            lo = std::min(lo, b);
+            hi = std::max(hi, b);
+            mean += b / 15.0;
+        }
+        std::printf("rotary, join stated at 4500, %.0f rpm: boost %.1f to %.1f kPa, mean %.1f\n", rows[at].at("rpm"), lo / 1000.0,
+                    hi / 1000.0, mean / 1000.0);
+        INFO(rows[at].at("rpm") << " rpm");
+        CHECK(hi < 1.15 * mean);
+        CHECK(lo > 0.85 * mean);
+    }
+}
