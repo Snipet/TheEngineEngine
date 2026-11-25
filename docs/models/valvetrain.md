@@ -96,6 +96,31 @@ A cam is asked as a cam card gives it: duration at the seat, at 1 mm, lift, cent
   redline, none at the top or idle; exhaust retarded at part load in the middle): **judgement**, a placeholder for
   card H's maps.
 
+### The cam bake's choice (card N1, 25 Nov; the lead's rulings, from C's trace of P's knock-limit pass)
+
+`bakeIntakeCam` (host/src/Bake.cpp) sweeps the intake phaser held at each advance and takes, at each speed, the most
+full-load torque. Each cell is measured at the spark the engine can run there, so the choice is on knock-limited torque.
+
+- **No knock gate.** An earlier gate set a cell aside when knock control's retard rose 2 degrees over parked's. A baked
+  spark table fooled it: the table does the retarding, control reads 0, and the table's cell knows the speed and load,
+  not the cam. On its table the economy four at 1786 rpm gave up 7.2 degrees at every advance. On control alone the gate
+  stopped it at 10 to 15 degrees (123 N m), where 30 to 35 made 129.6 knock-limited. The spark given up (control's
+  retard plus the table's cell) is still reported per cell (`CamBakeResult::knock`).
+- **Ties inside a point's floor.** A single predicted point carries about ±0.5 % (the stop rule's cycle averaging:
+  docs/measurements/calibration/na/flow-sheets-vs-seat.md). Above some 25 degrees full load is flat to 0.2 to 0.5 %.
+  So cells within `floor` (0.005) of a speed's best count as its best, and the smoothing path takes the one nearest its
+  neighbours' choice.
+- **Measured** (test `the cam bake on the economy four: the same advance...`, nightly): the economy four's cam baked on
+  knock control alone and on its own baked spark table chooses the same advance at every speed. At 1786 rpm both choose
+  35 degrees, alone 129.5 N m and on its table 128.4. At 2571 both choose 40 degrees, 138.5 and 139.2.
+
+**What a baked spark table costs.** Where the engine knocks, a baked spark table gives up about half to one per cent
+of full-load torque against running on knock control alone: −0.8 % at 1786 rpm on the economy four. The table retards
+7.2 degrees there, where control's sawtooth averages 3.7 to 4.9. That is the knock-limit bake's margin of 2 degrees over
+the mean retard, by design. If that margin is to be argued, it is card C's.
+
+The bake's rules carry a version in its key (`kCamBakeVersion`, Bake.h). A map baked by older rules reads stale.
+
 ### Known limit: the schedule at the top of a high-revving engine (card N3, measured; causes.md N3-10, N3-11)
 
 The schedule (`Phaser::scheduleIntake`, by a target intake closing) is a fallback for a build without its own cam map.

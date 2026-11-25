@@ -57,7 +57,9 @@ namespace tee
         int points = 16;              // speeds in the refined curve (the coarse ones among them)
         double from = 0.0;            // rad/s; 0: 1000 rpm, or the idle's speed when that is higher
         double to = 0.0;              // rad/s; 0: redlineMarginRpm under the redline (tel.engine.redline)
-        double redlineMarginRpm = 100.0;   // the top speed's margin under the redline when `to` is 0
+        // The top speed's margin under the redline when `to` is 0: 300 rpm, so the top point is clear of the limiter
+        // (at 100 it sat on it on the economy four, v6-35-na and flat-plane-v8-45, drawing -36, -81, -155 N m)
+        double redlineMarginRpm = 300.0;
         std::vector<double> speeds;   // rad/s, ascending: these speeds instead of from, to and points (a bake's own)
         double pedal = 1.0;           // the throttle, 0 to 1
         double tolerance = 0.01;      // two cycles in a row within this share of each other: settled

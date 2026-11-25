@@ -31,10 +31,12 @@ namespace tee
     struct CamBakeOptions
     {
         double step = 10.0;           // degrees of advance between cells, from 0 to spec.valve.inPhaseRange
-        double knockLimit = 2.0;      // degrees of knock retard over the parked cell's that set a cell aside
         // Smoothing: a path over the speeds that gives up stepCost of the best torque for each 10 degrees between
         // neighbouring rows (0: each row its own best). The turbo four's grid alone read 20, 20, 0, 30, 0, 20, 30, 20.
         double stepCost = 0.01;
+        // Ties: cells within `floor` of a speed's best torque count as its best, and the path takes the one nearest its
+        // neighbours' (a single predicted point's floor, about 0.5 %: card N1, measured; the lead's C, 25 Nov)
+        double floor = 0.005;
         // Between each two speeds the map interpolates its advance; where at an interval's quarter points the
         // interpolated advance makes more than midLoss less torque than the best cell there, that point is added as a
         // row of its own (the worst first, to the map's 16). A V12's exhaust wave returning into a big low-speed
@@ -53,7 +55,14 @@ namespace tee
         double acceptLoss = 0.02;
         PredictOptions predict;       // the curves' (their range, speeds: 8 by default here)
 
-        CamBakeOptions() { predict.points = 8; predict.coarse = 8; }
+        // the top speed redline less 300 rpm: at the default 100 the top point sat on the rev limiter on three builds
+        // (card C: economy four -36 N m, v6-35-na -81, flat-plane -155; at 300 all clean), its torque no measure
+        CamBakeOptions()
+        {
+            predict.points = 8;
+            predict.coarse = 8;
+            predict.redlineMarginRpm = 300.0;
+        }
     };
 
     struct CamBakeResult
@@ -61,7 +70,8 @@ namespace tee
         std::vector<double> speeds;                  // rad/s
         std::vector<double> advances;                // degrees from parked, the cells swept
         std::vector<std::vector<double>> torque;     // [advance][speed], N m (NaN: no measure)
-        std::vector<std::vector<double>> knock;      // [advance][speed], degrees of retard
+        std::vector<std::vector<double>> knock;      // [advance][speed], degrees of spark given up: knock control's
+                                                     // retard plus a baked knock-limit table's cell, when applied
         std::vector<double> best;                    // degrees of advance chosen at each speed
         std::vector<double> bestTorque;              // N m there
         double parkedCentre = 0.0;                   // the build's intake centreline (degrees after top), parked
@@ -87,6 +97,9 @@ namespace tee
     // its stages included, the intake, the exhaust, the boost, the engine, the fuel; never a hidden field nor an ECU
     // map) with the spark it was chosen on (knockLimitBaseKey: the knock key without the cam maps, so that the
     // calibration's order, spark then cam then spark again, ends). A 31-bit number, as spec.ecu.maps.camInKey holds it.
+    // The cam bake's own rules' version, in its key: a map baked by older rules reads stale (2: no knock gate, the
+    // choice on knock-limited torque; ties inside a point's floor to the neighbours' choice)
+    constexpr int kCamBakeVersion = 2;
     std::int64_t intakeCamKey(const Build& build, const Sim& sim);
     // Whether the build's cam map is baked and current: camInAuto off and camInKey this build's key
     bool intakeCamCurrent(const Build& build, const Sim& sim);
@@ -129,7 +142,7 @@ namespace tee
         // many steps; then the pedals under full, at the spring's target (the loads below). 0: pedals alone. A supercharger (no loop: its boost is its pulley's)
         // has pedals alone, said in the notes.
         int boostSteps = 4;
-        int speeds = 8;               // over PredictOptions' from and to (0: 1000 rpm, the redline less 100)
+        int speeds = 8;               // over PredictOptions' from and to (0: 1000 rpm, the redline less 300)
         int loads = 8;                // the table's loads: from 0.2 atm to the most a pedal gave, evenly
         double margin = 2.0;          // degrees over the mean retard
         // Where a cell's mean retard was over correctAbove degrees (the retard at or near knock control's ceiling, its
@@ -178,7 +191,8 @@ namespace tee
     // whoever changes how a table is chosen bumps it, with a line here saying what changed.
     //   1  (no number in the key) the first bake and its corrections
     //   2  a point on which the rev limiter acted (PredictPoint::limited) is missing, not a cell
-    inline constexpr int kKnockBakeVersion = 2;
+    //   3  the top row 300 rpm under the redline, not 100 (PredictOptions::redlineMarginRpm's default)
+    inline constexpr int kKnockBakeVersion = 3;
 
     // The fields that move the knock limit (card N2's list): the engine's compression, displacement, bore and stroke,
     // cylinders and layout; the fuel's kind, grade and model; the boost section; the boost, lambda, cam and spark maps
