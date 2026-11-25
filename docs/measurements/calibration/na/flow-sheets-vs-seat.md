@@ -173,8 +173,7 @@ own port. **No change to the port limit.** The two-stage build's stage B under-r
 - two-valve: LS7 0.70 / 0.67, 882 0.78 / 0.84.
 
 The model's 0.73 governs at 0.100 in on four-valve cards with q above about 1.1. So it sits about 10 to 15 % over
-the median production four-valve head where the overlap's flow begins. A per-class coefficient is the lead's ruling
-to make. Below 2.5 mm nothing is measured.
+the median production four-valve head where the overlap's flow begins. Below 2.5 mm nothing is measured.
 
 ## The overlay: twelve heads normalised (the lead's item 1, 02:22)
 
@@ -205,6 +204,62 @@ The four-valve medians equal the all-heads medians at every point, so no split b
 - A card cannot carry a shape today: q sets level only. A per-card rise is the lead's ruling.
 - Below the knee the sheets sit under the tanh, but there the model's 0.73 of the curtain governs (the low-lift
   coefficient above).
+
+## The low-lift coefficient by the head's valves (applied; the lead's ruling on the table, 02:32)
+
+`sim/valvetrain/area.fm`, valve.model 1:
+
+- **Four valves:** 0.66 of π d L intake and 0.63 exhaust. These are the medians at 0.100 in of the nine production
+  heads above, basis a secondary compilation at 28 in.
+- **Two valves:** keep the base form's 0.73. The two heads measured, the LS7 at 0.70 / 0.67 and the 882 at 0.78 / 0.84,
+  straddle it and are too few to move it. These heads run the old expression bit for bit.
+- **Three and five valves:** no sheet, unchanged.
+- **Below 0.100 in:** the same slope carried down, unmeasured.
+
+**What it is not.** It does not close N3-16: that closes on the cards and the idle rows. It is tuned to no row.
+
+Measured against the tip in scratch trees: full load in N m at 2500 / 4000 / 5500 rpm, tip → new.
+
+| engine | 2500 | 4000 | 5500 |
+|---|---|---|---|
+| economy four | 133.3 → 135.5 | 135.0 → 135.3 | 147.1 → 145.5 |
+| hot hatch, 4A-GE card | 136.3 → 137.6 | 137.7 → 137.8 | 145.3 → 144.9 |
+| V10 | 410.8 → 422.9 | 437.5 → 444.4 | 439.6 → 454.7 |
+| V12 | 579.7 → 581.5 | 561.1 → 560.5 | 628.3 → 654.1 |
+| 3.2 | 282.1 → 286.8 | 297.3 → 297.6 | 276.9 → 280.7 |
+| 7.0 (two-valve control) | identical | identical | identical |
+
+The hot hatch's 4A-GE card was generated with TEE_CAM_RULE=1.
+
+Warm idle, tip → new: speed, sd, manifold, burned share at intake closing.
+
+| engine | speed | sd | manifold | share |
+|---|---|---|---|---|
+| economy four | 752, unchanged | 6.1, unchanged | 32.0, unchanged | 0.168, unchanged |
+| hot hatch | 855, unchanged | 5.7 → 5.6 | 37.1 → 35.1 kPa | 0.289 → 0.276 |
+| V10 | 899, unchanged | 1.6 → 1.7 | 43.4 → 41.0 kPa | 0.399 → 0.380 |
+| V12 | 899, unchanged | 2.3 → 1.8 | 57.6 → 54.2 kPa | 0.488 → 0.474 |
+| 3.2 | 848, unchanged | 3.7 → 3.6 | 51.0 → 50.1 kPa | 0.428 → 0.411 |
+| 7.0 | identical | identical | identical | identical |
+
+The four-valve idles moved toward their rows by 1 to 3 kPa, which is what happened, not a target.
+
+The two-stage build's crossing (each stage held, 3000 to 8500 every 250) moved from 8012 to 7298 rpm, against the
+real 5500 to 5900. It stays a recorded miss.
+
+## A single dyno point's sensitivity floor (measured)
+
+A first trial wrote the two-valve coefficient as 0.72696 against the old expression's 0.7269616, a difference of 2
+parts per million. The 7.0's full load at 2500 rpm (tee-dyno --predict, default tolerance 0.01) moved from 593.5 to
+591.1 N m, −0.4 %, repeatably in both directions.
+
+With a tolerance of 0.001 and 40 to 60 cycles, both trees read 591.1 and 591.2 (neither met 0.001 by 60 cycles). So the gap is where the predictor's
+stop rule ends its cycle average, not the idle or knock loops settling differently. The default reading of the tip is
+itself 0.4 % from its own long mean.
+
+So a single predicted point carries a floor of about ±0.5 %. A comparison or test bound finer than that on one point
+reads the averaging, not the change. The predictor's users, the cam bake's "which position is best" and the near-bound
+cases, should not decide on differences inside it (told to C).
 
 ## Tests
 
