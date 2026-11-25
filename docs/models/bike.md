@@ -15,7 +15,11 @@ ratio: judgement); the rear wheel (driven); the front wheel (free); the bike and
 clamped to the capacity) through the overall ratio `primaryRatio x ratio[g] x rearSprocket / frontSprocket`, at
 `gearEfficiency x chainEfficiency` whichever way the power goes. Capacity `clutchTorque` (0: 1.35 x the engine's peak)
 x the lever's engagement (bites a third of the way out, in at three quarters) x the launch helper (closes with the revs
-from just over idle: a rider who never stalls). A wet clutch's oil drag when open: 0.6 % of capacity (judgement).
+from just over idle: a rider who never stalls). Once it has locked in a gear the helper is held closed by the gearbox
+output's speed through the gear until a shift, neutral, the lever pulled (engagement under 0.5) or that speed near the
+idle (the stall band's foot): the integrator's law for the car's robotised clutch, the lead's ruling of 25 Nov. The
+output's speed rather than the road's, so a locked rear lets the clutch go before the engine stalls. `bike.lugging`
+(the cruiser floored at 1,300 rpm in sixth): slip after the first lock 22.5 rad/s without the latch, 0.00 with it. A wet clutch's oil drag when open: 0.6 % of capacity (judgement).
 **Slipper**: backwards (the wheel driving the engine) it passes at most `slipperTorque` x capacity (default 0.15:
 about a litre four's closed-throttle drag at high revs, so it trims engine braking a little and stops a downshift's
 spin-up from reaching the tyre).

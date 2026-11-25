@@ -100,6 +100,11 @@ module BoostMachine
     float vd;           // the engine's displacement, m^3, and its redline, rpm (for matched sizes)
     float redRpm;
     float designRpm;    // a governed diesel's rated speed, rpm (Engine's, Boost::designSpeed); below 0: spark ignition
+    float curvePeakRpm; // its fuel curve's plateau start, rpm (Boost::peakSpeed; 0: no curve)
+    float peakRpm;      // its torque peak, rpm, the compressor sized along the climb there (apply: stated, the curve's, 0.6 of rated)
+    float compression;  // the engine's compression ratio (for the back pressure's cost to its fresh air)
+    float sizePeak;     // (telemetry for the sizing table: the annulus by the rule at rated and at the torque peak, m^2)
+    float sizeRated;
     int active;         // the charge path runs: a turbo, a supercharger, or nitrous
     int kind;           // 0 natural, 1 to 3 turbos, 4 a supercharger
     int turbos;         // shafts in use (a centrifugal supercharger: comp[0], no turbine)
@@ -166,7 +171,6 @@ module BoostMachine
     float bovLift;
     float bpLimit;      // a variable nozzle's limit on the pressure before the turbine over the boost (absolute)
     float bpOpen[BOOST_TURBOS];  // the limit's opening of the vanes, each turbo
-    float surgeOpen[BOOST_TURBOS];  // the surge guard's opening of the vanes, each turbo
     float bovAt;        // the blow-off valve's opening the air sees: bovLift followed every sample by two 1 ms stages
     float bovMid;
     float kAt;          // that following's step a sample
@@ -180,6 +184,7 @@ module BoostMachine
     float cmdVanes;     // the ECU's vanes (below 0: the loop's)
     float duty;
     float integ;
+    int vanesHeld;      // 1: last step a variable nozzle stood more open than the loop asked (its stop, or the back-pressure limit)
     float overBoost;
     float assistCmd;
     // sequential
@@ -287,6 +292,9 @@ module BoostMachine
         vd = vdIn;
         redRpm = redIn;
         designRpm = -1.0f;
+        peakRpm = 0.0f;
+        curvePeakRpm = 0.0f;
+        compression = 17.0f;
         structure = -1;
         kind = 0;
         active = 0;
@@ -334,7 +342,6 @@ module BoostMachine
             turb[t].vanesAt = 1.0f;
             turb[t].vanesMid = 1.0f;
             bpOpen[t] = 0.0f;
-            surgeOpen[t] = 0.0f;
             gateMass[t] = 0.0f;
             gateTemp[t] = tOut;
         }
@@ -364,6 +371,7 @@ module BoostMachine
         mBov = 0.0f;
         duty = 0.0f;
         integ = 0.0f;
+        vanesHeld = 0;
         seqOpen = 0.0f;
         seqWant = 0.0f;
         seqXfer = 0.0f;
@@ -452,6 +460,7 @@ module BoostMachine
         // (the old match's 2.4 bar at 1.9 atm), its gas 1150 K, a diesel's 900 K)
         const int dsl = designRpm > 0.0f ? 1 : 0;
         const float nDesign = dsl != 0 ? designRpm : s->designShare * redRpm;
+        peakRpm = dsl != 0 ? (s->peakRpm > 0.0f ? s->peakRpm : (curvePeakRpm > 0.0f ? curvePeakRpm : 0.6f * nDesign)) : 0.0f;
         const float asked = s->target > 0.0f ? s->target : s->gateSpring;
         const float prDesign = fmaxf((pOut + asked) / pOut, 1.3f);
         const float p3Design = 1.247f * prDesign * pOut;
@@ -473,7 +482,12 @@ module BoostMachine
         // the way to choke: tau 0.865 of the knee's, tauK = 0.45 x 0.4 M^2 against the air's):
         // docs/measurements/calibration/boost/compressor-map-model.md)
         const float tauD = expf(logf(prDesign) / 3.5f) - 1.0f;
-        const float machD = fminf(sqrtf(tauD / (0.865f * 0.18f)), 1.63f);
+        // (the design ratio's tip Mach on the map's island: tau there 0.928 of the knee's (the fall 0.652, the island 0.61 of
+        // the way to choke), the knee's rise (0.608 - 0.157 (M - 1)) x 0.4 M^2, solved by iteration)
+        float machD = 1.0f;
+        for (int it = 0; it < 12; ++it)
+            machD = sqrtf(tauD / (0.928f * 0.4f * (0.608f - 0.157f * (machD - 1.0f))));
+        machD = fminf(machD, 1.63f);
         const float chokeAt = 0.3f + 0.7f * machD / 1.63f;
         const float share = layout == BOOST_TWIN ? 0.5f : (layout == BOOST_QUAD ? 0.25f : (layout == BOOST_SEQUENTIAL ? 0.5f : 1.0f));
         for (int t = 0; t < BOOST_TURBOS; ++t)
@@ -481,7 +495,62 @@ module BoostMachine
             // (a compound pair's high-pressure stage meets air already compressed some 1.6 times: a smaller wheel)
             const float mt = mMatch * share * s->size * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
             const float wide = expf(0.25f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
-            const float aAnn = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide * chokeAt);
+            const float aRated = 1.15f * mt / (0.506f * 1.204f * 343.2f * wide * chokeAt);
+            // (the lead's ruling (b), 25 Nov: a governed diesel's wheel also held 10 % right of the surge flag's line
+            // (0.9 of the knee: compressor.fm) along the whole climb to its design ratio at its torque-peak speed
+            // (BorgWarner's "10-percent or more to the right of the surge line"; Woollenweber, US 5,025,629: "matched to
+            // the engine to avoid the surge area at torque peak"); F's 1.15 at rated kept where it gives the smaller
+            // wheel. The engine's air there in the model's own terms: VE 0.9 (F's) less the back pressure's cost to the
+            // fresh charge, the ideal cycle's (Heywood, Internal Combustion Engine Fundamentals, ch. 6, the ideal
+            // volumetric efficiency for the exhaust-to-intake pressure ratio, as the lead recalled it and N2 rearranged
+            // it: rc/(rc-1) - (pe/pi)/(gamma (rc-1)), read against its own value at pe = pi: (gamma rc - pe/pi) /
+            // (gamma rc - 1); THE PAGE NOT CHECKED) at the build's back-pressure limit (the tractor at 1.4, 17:1: 0.982;
+            // measured 0.879 against its 0.9 x 0.982 = 0.884 at 1000 rpm, after-burn-cure.md); the charge at each
+            // ratio as tCharge's; the speed line through each ratio's flag point the map's own (tau at 0.9 of the knee
+            // 0.9966 of the knee's rise: compressor.fm's smooth step at x = 0.9); no pulse term (0.998 measured at the boosted state))
+            float aAnn = aRated;
+            if (dsl != 0 && peakRpm > 0.0f && layout != BOOST_COMPOUND)
+            {
+                const float g = 1.4f;
+                const float bp = fmaxf(s->backPressure, 1.0f);
+                const float veBp = 0.9f * (g * compression - bp) / (g * compression - 1.0f);
+                const float kArS = expf(-0.3f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
+                float best = 1.0e9f;
+                for (int k = 0; k <= 200; ++k)
+                {
+                    const float pr = 1.3f + 0.05f * (float)k;
+                    if (pr > prDesign + 1.0e-4f)
+                        break;
+                    const float tau = expf(logf(pr) / 3.5f) - 1.0f;
+                    float m = 1.0f;
+                    for (int it = 0; it < 12; ++it)
+                        m = sqrtf(tau / (0.9966f * 0.4f * (0.608f - 0.157f * (m - 1.0f))));
+                    const float kn = fminf(fmaxf((0.349f + 0.551f * (fmaxf(m, 0.67f) - 1.0f)) * kArS, 0.15f), 0.9f);
+                    // (the compressor's efficiency at the margin's own point on the map, 0.99 of the knee, not its
+                    // peak (compressor.fm's efficiency()); the charge after the cooler's icEffect; the cooler's pressure
+                    // drop at the engine's whole flow, icDrop at icFlow, squared: the charge as the build's own model
+                    // gives it (the lead's ruling, 25 Nov; guard-removed.md))
+                    const float dm = fmaxf(m, 0.67f) - 1.1f;
+                    const float phiB = kn + 0.61f * (1.0f - kn);
+                    const float dp = 0.99f * kn - phiB;
+                    const float etaHere = fmaxf(s->compEta - 0.25f * dm * dm - 0.9f * dp * dp, 0.3f);
+                    const float t2 = tOut * (1.0f + tau / etaHere);
+                    const float tc = t2 - s->icEffect * (t2 - tOut);
+                    const float whole0 = vd * peakRpm / 120.0f * (pr * pOut / (kBoostR * tc)) * veBp;
+                    const float icR = whole0 / fmaxf(s->icFlow, 0.05f);
+                    const float p2 = fmaxf(pr * pOut - s->icDrop * icR * icR, pOut);
+                    const float flow = whole0 * (p2 / (pr * pOut)) * share * s->size;
+                    const float cf = 0.3f + 0.7f * fminf(m / 1.63f, 1.0f);
+                    const float a = flow / (1.1f * 0.9f * kn * 0.506f * 1.204f * 343.2f * wide * cf);
+                    best = fminf(best, a);
+                }
+                aAnn = fminf(aRated, best);
+            }
+            if (t == 0)
+            {
+                sizeRated = aRated;
+                sizePeak = aAnn;
+            }
             float dInd = s->compInducer > 0.0f ? s->compInducer : 2.0f * sqrtf(aAnn / (0.91f * 3.14159265f));
             float dEx = s->compExducer > 0.0f ? s->compExducer : dInd / 0.7416f;
             if (sc == 3 && s->compExducer <= 0.0f)
@@ -495,11 +564,16 @@ module BoostMachine
             if (t == 0)
                 compFlowHas = 0.0f;
             if (t < turbos && !(layout == BOOST_COMPOUND && t == 0))
-                compFlowHas += 0.45f * 1.204f * 343.2f * wide * chokeAt * 0.91f * 3.14159265f * 0.25f * dInd * dInd;
+                compFlowHas += 0.506f * 1.204f * 343.2f * wide * chokeAt * 0.91f * 3.14159265f * 0.25f * dInd * dInd;
             const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
             const float rc = 0.6f * dT;
             float aNoz = 0.0f;
-            const float aNozMatched = 0.65f * mt * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
+            // (the share of the design flow the matched nozzle passes: a wastegated turbine 0.65, its gate passing the rest
+            // at full power (docs/models/boost.md); a variable nozzle the whole, since its gate is only a relief over
+            // the target (the lead's ruling, 25 Nov: matched as a wastegate's, every machine diesel's shaft ran at its
+            // relief firing at rated with the vanes wide open; healthy-match.md))
+            const float nozShare = s->vanes != 0 ? 1.0f : 0.65f;
+            const float aNozMatched = nozShare * mt * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
             if (s->turbAR > 0.0f)
                 aNoz = s->turbAR * 0.0254f * rc;
             else
@@ -518,7 +592,10 @@ module BoostMachine
             turb[t].aNoz = aNoz;
             turb[t].etaMax = s->turbEta;
             turb[t].vgt = s->vanes;
-            turb[t].vaneMin = s->vaneMin;
+            // (the vanes' stop is a share of the open area: where the matched open nozzle passes the whole flow, the
+            // stop falls by the same factor, so the shut end is the same metal: the smallest area as a wastegate-style
+            // match gave it, the brake's back pressure unchanged (the lead's ruling))
+            turb[t].vaneMin = s->turbAR > 0.0f ? s->vaneMin : s->vaneMin * 0.65f / nozShare;
             bpLimit = s->backPressure;
             turb[t].gateExt = s->gate;
             turb[t].scrolls = scrolls;
@@ -1186,7 +1263,23 @@ module BoostMachine
         float u = 0.0f;
         if (tg > 0.0f)
         {
-            const float e = (tg - boost) / tg;
+            // (the shaft's ceiling, the lead's ruling, 25 Nov: a target the turbo cannot make is one any owner can type,
+            // and the loop then drove the shaft through its over-speed relief on every re-application, 1.066 to 1.080
+            // of its limit with the vanes ringing (the truck's sets at 2000 rpm, D2's brake release). The loop's error
+            // is the lesser of the boost's and the shaft's headroom as the boost's, 1 - (omega / omegaMax)^2 (the
+            // pressure rise goes with the tip speed squared, compressor.fm): it holds the lesser of the target and the
+            // boost at which the shaft stands at its limit. omegaMax is the limit by its own definition; no new number.
+            // The relief at 1.05 stays the emergency behind it. Held at omegaMax itself, the loop's own approach carried the
+            // shaft 10.8 % over (the truck's sets stepped 1700 to 2000 rpm, the relief off) and so through the relief,
+            // whose snap open and the loop's re-closing then cycled the shaft 0.87 to 1.06 for good: the ceiling stands
+            // that approach's overshoot under the relief, 1.05 / 1.108 = 0.948 of the limit (the lead's rule: the margin
+            // is what the measured overshoot needs; shaft-ceiling.md). The margin follows the loop: when the loop's tuning is
+            // cured and its approach overshoots less, it shrinks with it)
+            float shaftMost = 0.0f;
+            if (sc == 0)
+                for (int t = 0; t < turbos; ++t)
+                    shaftMost = fmaxf(shaftMost, shaft[t].omega / fmaxf(0.948f * omegaMax[t], 1.0f));
+            const float e = fminf((tg - boost) / tg, 1.0f - shaftMost * shaftMost);
             // (gains 0.5 and 1 a second: the duty bleeds the whole boost off the actuator's signal, so a unit of duty
             // moves the gate signal / span, some 2.4 at 73 kPa: at 2.5 and 4 the loop cycled at the turbo four's top
             // with the gate's span widened; judgement against that plant, as a calibrator sets a boost PID)
@@ -1196,7 +1289,20 @@ module BoostMachine
                     vanes = 1;
             if (vanes != 0)
             {
-                integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
+                // (no accumulation while the vanes cannot follow, the lead's ruling, 25 Nov: conditional integration.
+                // Short of the target the integral grew to its bound while the vanes stood at their stop or were held
+                // open by the back-pressure limit, through every spool and lift; past the target it then unwound at
+                // the error's own rate, 5 to 15 % a second, and held the boost 10 to 16 % over it for 6 to 10 s on the
+                // tractor's step to rated and the truck's re-application at 1300 rpm (vgt-windup.md). Not
+                // back-calculation: that needs a tracking time, a number this loop has no source for; here the stops
+                // the vanes have decide, and nothing new is chosen)
+                const float uRaw = 0.5f * e + integ;
+                const int cannotShut = e > 0.0f && (uRaw >= 0.95f || vanesHeld != 0);
+                const int cannotOpen = e < 0.0f && uRaw <= 0.0f;
+                // (and held while the ECU owns the vanes, an engine brake: the boost's error then means nothing, the brake
+                // blowing the manifold up on purpose; at release the loop starts where it stood (D2's point, 25 Nov))
+                if (cannotShut == 0 && cannotOpen == 0 && cmdVanes < 0.0f)
+                    integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
                 u = fminf(fmaxf(0.5f * e + integ, 0.0f), 0.95f);
             }
             else
@@ -1266,33 +1372,20 @@ module BoostMachine
                     const float r3 = house[hh].p / fmaxf(v2.p, 1000.0f);
                     bpOpen[t] = fminf(fmaxf(bpOpen[t] + d16 * 3.0f * (r3 - bpLimit), 0.0f), 1.0f);
                     v = fmaxf(v, turb[t].vaneMin + bpOpen[t]);
-                    // (the surge guard, gain-reversal protection: vanes shut past the compressor's surge line make
-                    // less boost, not more: it cannot deliver, the engine's air and the diesel's smoke-limited fuel fall
-                    // and the turbine's energy with them, a second steady state below the first: card D2's 15 L truck
-                    // at 1300 rpm stood at 98 kPa and 882 N m with its vanes at 0.47, surging two thirds of the time,
-                    // against 209 kPa and 1945 N m at 0.9. While the compressor surges, an integral opens the vanes at
-                    // 1 a second and gives back a tenth of that while it does not: the vanes settle where it surges
-                    // some 9 % of the time, just off the surge line (with the exhaust's mean flow closed, G's
-                    // 8bb2c80f, 0.3 left them on it and the truck's spool hunted 140 to 187 kPa for 2 s; 2 a second
-                    // put the 15 L tractor at 1000 rpm off its boost). Judgement, as the limit above is: a maker's
-                    // vane map keeps its own margin)
-                    const float phiS = comp[t].mdot / fmaxf(comp[t].mc, 1.0e-5f);
-                    // (only the loop's own surge counts: with the pedal down (the plenum not under the throttle's
-                    // vacuum, as the assist's test) and the boost short of what is asked; a lift's surge on a closed
-                    // throttle is the blow-off valve's matter, and then the guard only gives back)
-                    const int surging = (comp[t].mdot < 0.0f || (phiS < 0.9f * comp[t].phiK && comp[t].pr > 1.15f)) &&
-                                                pPlenum > 0.85f * pOut && boost < want
-                                            ? 1
-                                            : 0;
-                    surgeOpen[t] = fminf(fmaxf(surgeOpen[t] + d16 * 1.0f * (surging != 0 ? 1.0f : -0.1f), 0.0f), 1.0f);
-                    v = fmaxf(v, turb[t].vaneMin + surgeOpen[t]);
+                    // (no surge guard (the lead's ruling, 25 Nov): the vanes were opened while the compressor sat left
+                    // of its flag, to rescue card D2's 15 L truck from a second state at 1300 rpm; that state was the
+                    // fixture's own breathing (fresh VE 0.35 on the reference cam dial, falling as shut vanes raised
+                    // p3), not the compressor's surge: with real valve events it has none, and the guard pinned the
+                    // vanes open on three shipped builds at their low speeds, 25 to 40 % of the torque
+                    // (truck-valve-events.md, guard-candidates.md). The surge flag stays a reading, U3's oversize warning)
                 }
                 else
                 {
                     bpOpen[t] = 0.0f;
-                    surgeOpen[t] = 0.0f;
                 }
                 v = fminf(fmaxf(v, turb[t].vaneMin), 1.0f);
+                if (t == 0)
+                    vanesHeld = cmdVanes < 0.0f && tg > 0.0f && v > 1.0f - u + 1.0e-3f ? 1 : 0;
                 turb[t].vanes += (v - turb[t].vanes) * (1.0f - expf(-d16 / 0.05f));
                 // (with vanes the gate is a relief only: well above the target)
                 if (tg > 0.0f && boost < 1.2f * tg)
