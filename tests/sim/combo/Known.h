@@ -11,9 +11,6 @@ const Known kKnown[] = {
      "the ranges' corners seed 1: 2.1 to 4.9 R (Q measured 2.1 to 2.4 on a quieter host); reported as the heavy case"},
     // The soak's reds of 25 Nov (e37feb24's run; bisected over sim trees with TEE_SIM_DIR). None is a pop: each reads
     // the same with ecu.pops 0 (tee-fuzz --play ... --set ecu.pops=0).
-    {"X-029", "2026-11-25", "G (exhaust.model) and T (the rotary)", "random 245", "fuzz", "random", "*",
-     "a one-rotor custom rotary on exhaust.model 1 with a 0.6 mm first primary diverges at 0.31 s and is restarted "
-     "(content/builds/combo/findings/x029-rotary-tiny-primary.json)"},
     {"X-030", "2026-11-25", "the steward (the ECU's shift cut)", "+fuel.model+ecu.model", "*", "pull", "click-shift-cut",
      "ecu.model 1 under fuel.model 1 at an upshift's cut: 20.8 to 23.1 against 19.6 or 20.7 (not ruled: fuel.model on); "
      "since c035fe75 (the V8 13.4 before it, 38.5 at it)"},
@@ -40,5 +37,15 @@ const Known kKnown[] = {
      "full scale against 0.005, since the first soak (never green)"},
     {"X-037", "2026-11-25", "N1 (the valve)", "as built", "pickup-diesel-67-inline-six", "tour", "tel-range:valve.dpOverlap",
      "valve.dpOverlap -393835 Pa at 9.41 s against +-300000, since 2f86a47a"},
+    // The fuzz under stable draws (1abb05a0): X-029 (a rotary's 0.6 mm primary, from the old draws' random 245) is held
+    // by its build alone, content/builds/combo/findings/x029-rotary-tiny-primary.json
+    {"X-038", "2026-11-25", "N2 (boost.model) and G (the pipes)", "random 167", "fuzz", "random", "*",
+     "boost.model 1 with a 0.07 mm tailpipe diverges (findings/x038-boost-tiny-tailpipe.json)"},
+    {"X-038", "2026-11-25", "N2 (boost.model) and G (the pipes)", "random 298", "fuzz", "random", "*",
+     "boost.model 1 with a 0.011 mm primary diverges (findings/x038-boost-tiny-primary.json)"},
+    {"X-039", "2026-11-25", "N2 (the supercharger)", "corners 205", "fuzz", "corners", "*",
+     "a supercharged 50 cc single, blow-off kind 2, diverges at 0.27 s (findings/x039-single-blower-blowoff.json)"},
+    {"X-040", "2026-11-25", "L (intake.model)", "random 251", "fuzz", "random", "*",
+     "intake.model 1 with a 0.025 mm runner bore: intake.box non-finite at 0.26 s (findings/x040-intake-tiny-runner.json)"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
