@@ -1431,3 +1431,75 @@ push-back (0.079 g at share 0.5) recirculates the share through the runner, whic
    sit far below it; the threshold is not where the gap is, though the wander lives on the slope near it.
 Owners: D (the cylinder's overlap flow) and N1 (area.fm's low-lift area and q). The economy four's agreement is the
 control: an engine with almost no lift at TDC reads the correlation.
+
+**N3-16, the correlation's units as the source states them, and the overlap factors** (00:43 `date -u`; the lead's 00:42).
+*Units.* The thesis prints eq. 2.2 without units beside it; its nomenclature lists "N Engine Speed", "P Pressure", "kPa
+Kilo-Pascal", "RPM Revolutions Per Minute", every pressure in the text is in kPa and every speed in RPM, and its table 4.2
+gives OF in "[°/m]". So: OF in degrees per metre, *stated*; N in RPM and p in kPa, the thesis's own convention but *not
+printed at the equation*. The other readings, computed: N in revolutions a second makes the V10's backflow term 1.37 (a
+residual over 1: impossible), so rpm; p in bar instead of kPa divides the backflow term by 10, the clearance term
+unchanged:
+
+| engine | OF deg/m | in Fox's 0.52 to 1.43? | Fox, kPa and rpm | Fox, bar and rpm | model |
+|---|---|---|---|---|---|
+| v10-52 | 1.38 | inside | 0.023 + 0.080 = 0.103 | 0.002 + 0.080 = 0.082 | 0.469 |
+| v12-65 | 2.65 | beyond (over-predicts there: the thesis) | 0.026 + 0.059 = 0.085 | 0.003 + 0.059 = 0.062 | 0.528 |
+| big-bore-70-pushrod-v8 | 2.16 | beyond | 0.032 + 0.079 = 0.111 | 0.003 + 0.079 = 0.082 | 0.518 |
+| economy-four-15 | 0.02 | below | 0.001 + 0.132 = 0.133 | 0.000 + 0.132 = 0.132 | 0.170 |
+
+Either way the gap stands (bar only widens it). *How OF was computed* (scratchpad fox.py, for D and N1): each lobe the
+build's own generated curve (cam.fm's family: the build's seat and 1 mm durations, lift and centre, fatness 0.5, the
+phasers parked as at idle), the overlap's angles from the intake's leaving zero lift to the exhaust's reaching it (the
+curves' ends, not the 0.15 mm seat); the integral of the intake's lift from its opening to the lifts' crossing, and of the
+exhaust's from the crossing to its closing, each times the valve's head diameter times its valves a cylinder (2 on the
+four-valves, 1 on the 7.0), over one cylinder's swept volume. The heads stand in for the inner seat diameters, which are
+some 10 % smaller: the OFs about 10 % high, and the backflow terms with them.
+
+*Referee:* I hold the four idles (BAL_BENCH=1, 4 s settle, 2 s window) and will re-run them on each change D or N1 sends,
+with the share, the plenum's pressure, the overlap's backflow by window (the V10's traced cylinder) and the speed.
+
+**N3-16 corrected: the measured points, and what the fit cannot settle** (00:52 `date -u`; the lead's 00:50, D's overlap
+measurement). D measured the overlap from inside the cylinder: the model's backflow runs at 0.4 to 0.6 of a quasi-steady
+series orifice at the manifolds' difference, so it is limited by the cylinder between the valves, not at an unlimited
+bound as I wrote. And the fit's units are not settled, so my "4 to 6 times" and "15 times" are **withdrawn**.
+
+*The thesis's measured residuals* (its figure 4.6, HMS fuelling, production ignition; read off the plot, about +-0.01;
+the intake pressures of its 10 % and 25 % loads are not tabulated; a small air-cooled single):
+
+| cam (OF deg/m) | 1200 rpm, 10 % / 25 % | 1750 rpm, 10 % / 25 % | 3060 rpm, 10 % / 25 % |
+|---|---|---|---|
+| zero (0.11) | 0.23 / 0.18 | 0.21 / 0.16 | 0.14 / 0.13 |
+| production (3.66) | 0.25 / 0.195 | 0.215 / 0.175 | 0.16 / 0.135 |
+| intermediate (12.3) | 0.28 / 0.245 | 0.25 / 0.21 | 0.17 / 0.15 |
+| max (27.3) | 0.345 / 0.315 | 0.33 / 0.30 | 0.23 / 0.18 |
+
+*The fit against them.* The thesis's own evaluation of the correlation (its figure 4.9) gives 0.4 to 0.8 at the production
+cam and 0.6 to 1.2 at the larger ones, where it measured 0.13 to 0.35. In kPa and rpm (my reading) the same points give
+0.13 to 0.21 at the production cam (0.066 + about 0.15 at 1200 rpm and 10 % load, taking p_i 40 kPa and r_c 8.5, neither
+stated), 0.37 at the intermediate and 0.64 at the max. So the thesis evaluated it at some 3 to 5 times my numbers: either
+its units differ from mine (N in rad/s would be about 10 times) or its OF or p_i do. **The thesis does not settle the
+units**, and my earlier line "the thesis's finding confirms kPa and rpm" was wrong. In my reading the fit lands near the
+measured points at the production cam (0.13 to 0.21 against 0.135 to 0.25) and over them at large overlap, which is what
+the thesis says of it; in the thesis's own reading it is over everywhere but the zero cam. Neither proves the units.
+P's agent is after SAE 931025's own equation.
+
+*What the nearest measured points imply.* The V10, V12 and 7.0 sit at OF 1.4 to 2.7 (between the thesis's zero and
+production cams), 750 to 900 rpm (below its 1200), and 55 to 74 kPa in the plenum (above a 10 % load's). Lower speed
+raises the measured residual (+0.03 to +0.04 from 1750 to 1200 at the production cam), the higher manifold pressure lowers
+it (25 % against 10 % load: -0.04 to -0.06). By the nearest points, a measured residual of **about 0.2 to 0.27** for these
+three; the model reads 0.47 to 0.53, about **twice** that, on a different engine (a small air-cooled single, its compression
+not found). The economy four (OF 0.02, like the zero cam; 750 rpm, 33 kPa) against the zero cam's 0.21 to 0.23 at
+1200 rpm and 10 %: the model's 0.170 sits inside the measured spread.
+
+| engine | OF | model's share | fit, kPa and rpm (unsettled) | nearest measured (thesis fig. 4.6), adjusted by its own trends |
+|---|---|---|---|---|
+| v10-52 | 1.38 | 0.469 | 0.103 | about 0.20 to 0.25 |
+| v12-65 | 2.65 | 0.528 | 0.085 | about 0.20 to 0.25 |
+| big-bore-70-pushrod-v8 | 2.16 | 0.518 | 0.111 | about 0.21 to 0.27 |
+| economy-four-15 | 0.02 | 0.170 | 0.133 | about 0.18 to 0.23 |
+
+Standing finding, as the lead put it, with one measured line added: the model's idle share on the big-cam engines is 0.47
+to 0.53, on the toll's slope; the nearest measured residuals (one small engine, read off a plot) are about half of it, and
+the economy four agrees with them. Whether that factor of two lives in the overlap's backflow (D's measurement: the model
+at 0.4 to 0.6 of a series orifice), in the late closing's push-back and re-induction, or in the threshold, is not yet
+shown.
