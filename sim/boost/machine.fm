@@ -515,11 +515,22 @@ module BoostMachine
                     if (pr > prDesign + 1.0e-4f)
                         break;
                     const float tau = expf(logf(pr) / 3.5f) - 1.0f;
-                    const float t2 = tOut * (1.0f + tau / fmaxf(s->compEta, 0.3f));
-                    const float tc = t2 - s->icEffect * (t2 - tOut);
-                    const float flow = vd * peakRpm / 120.0f * (pr * pOut / (kBoostR * tc)) * veBp * share * s->size;
                     const float m = sqrtf(tau / 0.1794f);
                     const float kn = fminf(fmaxf((0.40f + 0.178f * (fmaxf(m, 0.8f) - 1.0f)) * kArS, 0.2f), 0.7f);
+                    // (the compressor's efficiency at the margin's own point on the map, 0.99 of the knee, not its
+                    // peak (compressor.fm's efficiency()); the charge after the cooler's icEffect; the cooler's pressure
+                    // drop at the engine's whole flow, icDrop at icFlow, squared: the charge as the build's own model
+                    // gives it (the lead's ruling, 25 Nov; guard-removed.md))
+                    const float dm = m - 1.1f;
+                    const float phiB = kn + 0.61f * (1.0f - kn);
+                    const float dp = 0.99f * kn - phiB;
+                    const float etaHere = fmaxf(s->compEta - 0.25f * dm * dm - 0.9f * dp * dp, 0.3f);
+                    const float t2 = tOut * (1.0f + tau / etaHere);
+                    const float tc = t2 - s->icEffect * (t2 - tOut);
+                    const float whole0 = vd * peakRpm / 120.0f * (pr * pOut / (kBoostR * tc)) * veBp;
+                    const float icR = whole0 / fmaxf(s->icFlow, 0.05f);
+                    const float p2 = fmaxf(pr * pOut - s->icDrop * icR * icR, pOut);
+                    const float flow = whole0 * (p2 / (pr * pOut)) * share * s->size;
                     const float cf = 0.3f + 0.7f * fminf(m / 1.63f, 1.0f);
                     const float a = flow / (1.1f * 0.9f * kn * 0.45f * 1.204f * 343.2f * wide * cf);
                     best = fminf(best, a);
