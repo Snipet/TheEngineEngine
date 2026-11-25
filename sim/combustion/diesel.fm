@@ -53,6 +53,8 @@ module DieselFields
     // its panels ring as sharp lines at the firing harmonics (card P's idle row)
     float delayDeg;
     float socSpread;
+    float socLast;      // the last charge's start of combustion's offset from its mean (degrees: the reference's rough and
+                        // this spread together), for the tests to read its spread
 
     void defaults()
     {
@@ -70,6 +72,7 @@ module DieselFields
         capShare = 1.0f;
         phiBurned = 0.0f;
         delayDeg = 0.0f;
+        socLast = 0.0f;
         socSpread = 0.150f;
     }
 

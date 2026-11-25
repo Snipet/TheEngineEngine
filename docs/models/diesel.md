@@ -158,10 +158,14 @@ its 1900 Hz mode, the pickup's on 1661, the tractor's on 1454 and 1989). The tra
 is also some 20 dB quiet at idle: the VGT's vanes sit near shut there and reflect the pulses (G's measure; N2's). Under
 the physical diesel (fuel.model 1) the start of combustion now takes the ignition delay's cycle-to-cycle spread, a
 standard deviation of `socSpread` (0.150) times the model's own delay (`DieselFields::socSpread`, chargeDiesel): at the
-tractor's warm idle (3.60 to 3.73 degrees of delay) some 0.55 degrees. The tractor's firing harmonics from 1 to 3 kHz over the
-spectrum midway between them: 14.2 dB without it, 6.0 with it on 25 Nov's tip (9.3 and 5.5 on 24 Nov's, at 0.172) (ClatterTest); card P's measure: the 2.0's line goes
-(-8.6 to -11.9 dB, a pass), the pickup's +1.4 to -2.4, the tractor's unmoved (its exhaust's blowdown carries its
-harmonics there too). A cold start's long delay varies more: the cold starts on H's models take longer (233 K, the
+tractor's warm idle (3.60 to 3.73 degrees of delay) some 0.55 degrees. The spread's first form took the noise's
+gauss() for a unit sigma; it is 0.577 (three uniforms), so it gave 0.58 of the cited spread until 25 Nov (now x sqrt 3).
+Measured (ClatterTest, the mechanism: the start of combustion's sigma over 200 charges at the tractor's warm idle):
+0.498 degrees against 0.529 expected, 0.119 without it. Card P's diesel row (the comb of firing harmonics 1-3 kHz over
+the spectrum between them, in the mix, at the archetypes' own settings, at most 8 dB): tractor 1.9 dB, pickup 3.2, the
+2.0 3.5 (6.4 to 7.0 before the correction). The comb in the mix moves with every valve and turbine change, by much:
+without the spread 13.2 dB before 68e683f1, 13.1 after it, 5.5 after 6771c402 (four-valve curtain), 11.0 after
+7e9bee72 (N2's map), 7.0 after 29684891; so the test is of the mechanism, and the sound is P's row. A cold start's long delay varies more: the cold starts on H's models take longer (233 K, the
 mechanical governor, 5.2 to 9.4 s; 253 K up to 2.5 s), within their bounds.
 
 **Open**: the spread's size is read but not of the right quantity. Szpica and Kluczynski, Energies 2026, 19, 1343 (read

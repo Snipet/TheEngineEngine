@@ -1,9 +1,7 @@
-// tests/sim/diesel/ClatterTest.cpp: card D2: a diesel's idle clatter is a hump, not a comb. Its premixed burn strikes the
-// head and block, ringing their panels (the reference's clatter, sim/sound/extras.fm); struck at the same moment every
-// cycle those modes ring as sharp lines at the firing frequency's harmonics, a standing tone (card P's idle row found
-// three diesel archetypes with lines 1 to 10 dB under their exhaust's note). Under the physical diesel (fuel.model 1)
-// the start of combustion takes the ignition delay's own cycle-to-cycle spread (sim/combustion/diesel.fm, socSpread),
-// which smears the harmonics above a kilohertz into a hump, as a real engine's.
+// tests/sim/diesel/ClatterTest.cpp: card D2: a diesel's idle clatter is struck at the start of combustion; struck at the
+// same moment every cycle its panels ring as sharp lines at the firing harmonics (card P's idle row found three diesel
+// archetypes so). Under the physical diesel (fuel.model 1) the start of combustion takes the ignition delay's own
+// cycle-to-cycle spread (sim/combustion/diesel.fm, socSpread). This tests that mechanism; the sound is P's diesel row.
 #include "Diesel.h"
 
 #include <algorithm>
@@ -14,65 +12,25 @@
 
 using d2::Engine;
 
-namespace
+
+TEST_CASE("diesel clatter: the start of combustion takes the ignition delay's spread at a warm idle", "[diesel][injection]")
 {
-    // x's power spectrum averaged over segments of 2^bits samples, Hann-windowed, half overlapping (Welch's), by an
-    // in-place radix-2 FFT
-    std::vector<double> welch(const std::vector<float>& x, int bits)
+    // What D2's code does, which no other package moves: over 200 charges at the tractor's warm idle the start of
+    // combustion's offset from its mean (DieselFields::socLast: the reference's rough x its gauss(), whose sigma is
+    // 0.577, and under fuel.model 1 socSpread x the delay, a sigma) has a standard deviation of
+    // sqrt((0.577 rough)^2 + (socSpread x delay)^2) within 15 %, and without the spread, the reference's alone. (Its
+    // first form read 0.58 of what it meant: the spread had taken gauss() for a unit sigma, 24-25 Nov.)
+    // (It was a sound test until 25 Nov: the firing harmonics from 1 to 3 kHz over the spectrum between them, with the
+    // spread against without. That comb is mostly the engine's other periodic sound (the exhaust's blowdown, the block),
+    // and it moved with every valve and turbine change: without the spread, 13.2 dB before 68e683f1, 13.1 after it
+    // (valve area: the port's limit), 5.5 after 6771c402 (four-valve curtain 0.66/0.63), 11.0 after 7e9bee72 (N2's
+    // compressor map), 7.0 after 29684891 (design flow at the charge's temperature); with it 4.1 to 6.4 throughout. The
+    // sound is card P's diesel row now, in the mix at the archetypes' own settings: comb <= 8 dB; the lead's ruling)
+    for (double spread : {-1.0, 0.0})
     {
-        const std::size_t n = std::size_t(1) << bits;
-        std::vector<double> p(n / 2, 0.0);
-        std::vector<std::complex<double>> a(n);
-        int segs = 0;
-        for (std::size_t s0 = 0; s0 + n <= x.size(); s0 += n / 2, ++segs)
-        {
-            for (std::size_t i = 0; i < n; ++i)
-                a[i] = (0.5 - 0.5 * std::cos(6.283185307179586 * double(i) / double(n - 1))) * double(x[s0 + i]);
-            for (std::size_t i = 1, j = 0; i < n; ++i)
-            {
-                std::size_t bit = n >> 1;
-                for (; (j & bit) != 0; bit >>= 1)
-                    j ^= bit;
-                j ^= bit;
-                if (i < j)
-                    std::swap(a[i], a[j]);
-            }
-            for (std::size_t len = 2; len <= n; len <<= 1)
-            {
-                const std::complex<double> w(std::cos(-6.283185307179586 / double(len)), std::sin(-6.283185307179586 / double(len)));
-                for (std::size_t i = 0; i < n; i += len)
-                {
-                    std::complex<double> wk(1.0, 0.0);
-                    for (std::size_t k = 0; k < len / 2; ++k)
-                    {
-                        const std::complex<double> u = a[i + k], v = a[i + k + len / 2] * wk;
-                        a[i + k] = u + v;
-                        a[i + k + len / 2] = u - v;
-                        wk *= w;
-                    }
-                }
-            }
-            for (std::size_t i = 0; i < n / 2; ++i)
-                p[i] += std::norm(a[i]);
-        }
-        return p;
-    }
-
-    struct Idle
-    {
-        double rpm = 0.0;
-        double delay = 0.0;     // degrees, the model's ignition delay
-        double depth = 0.0;     // dB: the firing harmonics between 1 and 3 kHz over the spectrum midway between them
-    };
-
-    // An archetype warm at idle in the car, in neutral (card P's p-idle-warm), a six. spread: socSpread (below 0: the
-    // model's own)
-    Idle warmIdle(const std::string& build, double spread)
-    {
-        Engine e(build);
+        Engine e("archetypes/tractor-15-inline-six");
         e.spec("env.temperature", 300.0);
         e.spec("env.pressure", 101325.0);
-        e.spec("sound.autoLevel", 0);
         if (spread >= 0.0)
             e.write("comb.diesel.socSpread", spread);
         auto& c = e.ctl();
@@ -90,69 +48,33 @@ namespace
         };
         play(1.75);
         c.ignition = tee::EnginePlayer::kIgnitionOn;
-        play(4.0);
-        e.recording = true;
-        play(5.5);
-        Idle r;
-        r.rpm = e.tel("engine.speed") * 9.5492966;
-        r.delay = e.get("comb.diesel.delayDeg");
-        // (2^16 samples: 0.73 Hz bins against the harmonics' 35 Hz; each harmonic's most within 1.5 Hz, and the mean
-        // within 1.5 Hz of the point midway to the next: summed over the harmonics from 1 to 3 kHz)
-        const auto p = welch(e.rec, 16);
-        const double df = e.rate / 65536.0;
-        // (the firing frequency from the spectrum itself, within 2 % of the revs' (an instant's reading misses the 40th
-        // harmonic by some 4 Hz): the one whose harmonics from 1 to 3 kHz hold the most)
-        auto at = [&](double f) { return p[static_cast<std::size_t>(f / df + 0.5)]; };
-        double fire = r.rpm / 60.0 * 3.0, bestSum = 0.0;
-        for (int j = -400; j <= 400; ++j)
+        play(3.0);
+        // (a charge every 29 ms at 700 rpm on six; read every 512 samples, 11 ms: each charge's value once, as it changes)
+        std::vector<double> x;
+        double was = e.get("comb.diesel.socLast"), delay = 0.0;
+        while (x.size() < 200)
         {
-            const double f = r.rpm / 60.0 * 3.0 * (1.0 + 0.02 * j / 400.0);
-            double sum = 0.0;
-            for (int h = static_cast<int>(std::ceil(1000.0 / f)); h * f <= 3000.0; ++h)
-                sum += at(h * f);
-            if (sum > bestSum)
+            e.holdWarm();
+            REQUIRE(e.run(512.0 / e.rate));
+            const double v = e.get("comb.diesel.socLast");
+            if (v != was)
             {
-                bestSum = sum;
-                fire = f;
+                x.push_back(v);
+                was = v;
+                delay += e.get("comb.diesel.delayDeg") / 200.0;
             }
         }
-        double on = 0.0, mid = 0.0;
-        for (int h = static_cast<int>(std::ceil(1000.0 / fire)); h * fire <= 3000.0; ++h)
-        {
-            double most = 0.0, sum = 0.0;
-            int cnt = 0;
-            for (std::size_t i = std::size_t((h * fire - 1.5) / df); i <= std::size_t((h * fire + 1.5) / df) + 1; ++i)
-                most = std::max(most, p[i]);
-            for (std::size_t i = std::size_t(((h + 0.5) * fire - 1.5) / df); i <= std::size_t(((h + 0.5) * fire + 1.5) / df) + 1; ++i)
-            {
-                sum += p[i];
-                ++cnt;
-            }
-            on += most;
-            mid += sum / cnt;
-        }
-        r.depth = 10.0 * std::log10(on / mid);
-        return r;
+        double m = 0.0, s2 = 0.0;
+        for (double v : x)
+            m += v / 200.0;
+        for (double v : x)
+            s2 += (v - m) * (v - m) / 199.0;
+        const double rough = e.get("spec.engine.rough");
+        const double k = spread >= 0.0 ? spread : e.get("comb.diesel.socSpread");
+        const double want = std::sqrt(0.57735 * rough * 0.57735 * rough + k * delay * k * delay);
+        std::printf("tractor warm idle, socSpread %.3f, delay %.2f deg, rough %.2f: the start of combustion's sigma %.3f deg "
+                    "(expected %.3f)\n", k, delay, rough, std::sqrt(s2), want);
+        CHECK(std::sqrt(s2) > 0.85 * want);
+        CHECK(std::sqrt(s2) < 1.15 * want);
     }
-} // namespace
-
-TEST_CASE("diesel clatter: at a warm idle the tractor's clatter is a hump, not a comb", "[diesel][injection][sound][!mayfail]")
-{
-    // [!mayfail] on a named finding (25 Nov, 04:4x; the lead's rule for the default run): on the tip merged at 04:40 the
-    // comb without the spread fell to 7.0 dB (11.7 on the tip before), so the spread's reduction is 2.5 dB against the
-    // bound's 3 (4.5 dB with it); not ecu.afc (the same with it at 0.8). D2 to find which change moved the baseline;
-    // the bounds are unchanged.
-    // (the bounds, judgement: the property is the reduction: with the spread the firing harmonics from 1 to 3 kHz stand
-    // at least 3 dB lower over the spectrum midway between them than without it (judgement: clearly a smear, not noise;
-    // the reduction itself moves with the tip, 8.2 then 5.5 dB, as the exhaust's own harmonics do not take the spread); and, as a wide guard only, at most
-    // 10 dB. The baseline moves with the exhaust and the turbine (24 Nov's tip 9.3 -> 5.5 dB, 25 Nov's 14.2 -> 6.0; one
-    // tip between read 7.8 with the spread), so an absolute bound near the reading goes red on others' commits. What
-    // remains with the spread is not only the clatter: the exhaust's blowdown, as periodic as the revs, has its own
-    // harmonics there, as a real engine's)
-    const Idle off = warmIdle("archetypes/tractor-15-inline-six", 0.0);
-    const Idle on = warmIdle("archetypes/tractor-15-inline-six", -1.0);
-    std::printf("tractor warm idle %.0f rpm, ignition delay %.2f deg: the firing harmonics 1-3 kHz over the spectrum between "
-                "them: %.1f dB with no spread, %.1f dB with the model's\n", on.rpm, on.delay, off.depth, on.depth);
-    CHECK(on.depth <= 10.0);
-    CHECK(on.depth <= off.depth - 3.0);
 }
