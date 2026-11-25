@@ -257,6 +257,20 @@ namespace tee
         bool take(KnockBakeResult& out);
         KnockBakeState state() const;
         std::string stage() const;     // "spark map", "cam", "spark map again"; empty when not baking
+        // The stage running: fast-dyno points done of about `total` (an estimate made at the stage's start, from its
+        // grid; corrections and refinements add to it as they come). {0, 0} when not baking.
+        struct Progress
+        {
+            int done = 0, total = 0;
+        };
+        Progress progress() const;
+        // While `predict` is busy (the ribbon's curve wanted), the bake waits between its points, so the curve a person
+        // waits for has the workers (nullptr: never). The service must outlive this one, or be set to nullptr first.
+        void yieldTo(const PredictService* predict) noexcept { yieldTo_.store(predict); }
+        // The spark table last applied by takeAndApply, kept for TUNE: its cells still knocking after the corrections
+        // (KnockBakeResult::stillKnocking, measured: KnockBakeCell::stillKnocking).
+        bool lastSpark(KnockBakeResult& out) const;
+        int stillKnockingCells() const;   // measured cells still knocking in it (0 with none applied)
         std::string error() const;
         // Moves when the state or the stage changes.
         std::uint64_t revision() const noexcept { return revision_.load(); }
@@ -281,6 +295,10 @@ namespace tee
         std::atomic<std::uint64_t> revision_{0};
         KnockBakeState state_ = KnockBakeState::NoTable;
         std::string stage_;
+        std::atomic<int> done_points_{0}, total_points_{0};
+        std::atomic<const PredictService*> yieldTo_{nullptr};
+        bool haveLast_ = false;
+        KnockBakeResult last_;
         bool ready_ = false;
         CalibrationBakeResult done_;
         std::string error_;

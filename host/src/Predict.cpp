@@ -916,6 +916,8 @@ namespace tee
                             started[r] = true;
                         }
                         const PredictPoint p = rig.point(w, cancel);
+                        if (options.onPoint)
+                            options.onPoint();
                         if (!p.valid)
                             started[r] = false;   // at rest after the fault: the next point starts it again
                         if (cancel != nullptr && cancel->load(std::memory_order_relaxed))

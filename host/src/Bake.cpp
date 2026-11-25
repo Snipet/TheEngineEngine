@@ -1112,6 +1112,16 @@ namespace tee
             if (!applyKnockLimit(build, r.spark, error))
                 return false;
             applied = true;
+            const std::lock_guard<std::mutex> lock(mutex_);
+            last_ = r.spark;
+            haveLast_ = true;
+        }
+        // both current now: so it says (consider() need not be called for it)
+        if (applied && knockLimitCurrent(build, *sim_) && (!camWanted(build) || intakeCamCurrent(build, *sim_)))
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            if (!asked_)
+                setState(KnockBakeState::Current);
         }
         return applied;
     }
@@ -1126,6 +1136,35 @@ namespace tee
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         return state_ == KnockBakeState::Baking ? stage_ : std::string();
+    }
+
+    CalibrationBakeService::Progress CalibrationBakeService::progress() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        if (state_ != KnockBakeState::Baking)
+            return {};
+        const int done = done_points_.load();
+        return {done, std::max(done, total_points_.load())};
+    }
+
+    bool CalibrationBakeService::lastSpark(KnockBakeResult& out) const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        if (!haveLast_)
+            return false;
+        out = last_;
+        return true;
+    }
+
+    int CalibrationBakeService::stillKnockingCells() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        int n = 0;
+        if (haveLast_)
+            for (const auto& column : last_.measured)
+                for (const KnockBakeCell& c : column)
+                    n += c.stillKnocking ? 1 : 0;
+        return n;
     }
 
     std::string CalibrationBakeService::error() const
@@ -1157,10 +1196,36 @@ namespace tee
             setState(KnockBakeState::Baking);
             lock.unlock();
 
-            const auto at = [&](const char* stage) {
+            const auto at = [&](const char* stage, int total) {
                 const std::lock_guard<std::mutex> guard(mutex_);
                 stage_ = stage;
+                done_points_ = 0;
+                total_points_ = total;
                 ++revision_;
+            };
+            // each point counted, and the bake waiting between points while the ribbon's curve is wanted
+            const auto onPoint = [this] {
+                ++done_points_;
+                ++revision_;
+                while (!cancel_.load())
+                {
+                    const PredictService* p = yieldTo_.load();
+                    if (p == nullptr || !p->busy())
+                        break;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                }
+            };
+            KnockBakeOptions spark = options_.spark;
+            spark.predict.onPoint = onPoint;
+            CamBakeOptions cam = options_.cam;
+            cam.predict.onPoint = onPoint;
+            const auto sparkPoints = [&](const Build& b) {
+                const bool turbo = b.fieldOf("boost.kind") >= 0 && b.get("boost.kind") >= 1.0 && b.get("boost.kind") <= 3.0;
+                return spark.speeds * (static_cast<int>(spark.pedals.size()) + (turbo ? spark.boostSteps : 0));
+            };
+            const auto camPoints = [&](const Build& b) {
+                const double range = b.fieldOf("valve.inPhaseRange") >= 0 ? b.get("valve.inPhaseRange") : 0.0;
+                return (static_cast<int>(range / std::max(cam.step, 1.0)) + 1) * std::max(cam.predict.points, 2);
             };
             CalibrationBakeResult result;
             std::string error;
@@ -1170,22 +1235,22 @@ namespace tee
             // the spark, if stale, applied to the copy
             if (ok && !knockLimitCurrent(build, *sim_))
             {
-                at("spark map");
-                ok = bakeKnockLimit(sim_, build, options_.spark, result.spark, error, &cancel_)
+                at("spark map", sparkPoints(build));
+                ok = bakeKnockLimit(sim_, build, spark, result.spark, error, &cancel_)
                      && applyKnockLimit(build, result.spark, error);
                 result.hasSpark = ok;
             }
             // the cam on that spark, if wanted and stale, applied to the copy; the spark again if that made it stale
             if (ok && camWanted(build) && !intakeCamCurrent(build, *sim_))
             {
-                at("cam");
-                ok = bakeIntakeCam(sim_, build, options_.cam, result.cam, error, &cancel_)
+                at("cam", camPoints(build));
+                ok = bakeIntakeCam(sim_, build, cam, result.cam, error, &cancel_)
                      && applyIntakeCam(build, result.cam, error);
                 result.hasCam = ok;
                 if (ok && !knockLimitCurrent(build, *sim_))
                 {
-                    at("spark map again");
-                    ok = bakeKnockLimit(sim_, build, options_.spark, result.spark, error, &cancel_)
+                    at("spark map again", sparkPoints(build));
+                    ok = bakeKnockLimit(sim_, build, spark, result.spark, error, &cancel_)
                          && applyKnockLimit(build, result.spark, error);
                     result.hasSpark = ok;
                 }

@@ -651,18 +651,31 @@ TEST_CASE("the background bake: a stale table set aside at once, baked when the 
     CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);   // the engine on its knock control alone meanwhile
     CHECK(bakes.consider(build) != KnockBakeState::Current);   // asked once: a second consider asks nothing new
 
-    KnockBakeResult r;
+    // taken and applied (the UI's each frame); its progress counted in points while it baked
+    int mostDone = 0, total = 0;
+    bool applied = false;
     const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-    while (!bakes.take(r) && std::chrono::steady_clock::now() < until)
+    while (!applied && std::chrono::steady_clock::now() < until)
     {
         REQUIRE(bakes.state() != KnockBakeState::Failed);
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        const CalibrationBakeService::Progress p = bakes.progress();
+        mostDone = std::max(mostDone, p.done);
+        total = std::max(total, p.total);
+        CHECK(p.done <= p.total);
+        applied = bakes.takeAndApply(build, error);
+        INFO(error);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
-    REQUIRE(r.speeds.size() == 2);
-    CHECK(r.key == knockLimitKey(build, *sim));
-    REQUIRE(applyKnockLimit(build, r, error));
-    CHECK(bakes.consider(build) == KnockBakeState::Current);
+    REQUIRE(applied);
+    CHECK(total >= 2);   // two speeds at full throttle: about two points
+    CHECK(knockLimitCurrent(build, *sim));
+    CHECK(bakes.state() == KnockBakeState::Current);   // so it says once applied, without a consider()
     CHECK(std::string(knockBakeStateName(bakes.state())) == "baked");
+    KnockBakeResult r;
+    REQUIRE(bakes.lastSpark(r));   // the table applied, kept for TUNE
+    CHECK(r.key == knockLimitKey(build, *sim));
+    CHECK(bakes.stillKnockingCells() >= 0);
+    CHECK(bakes.consider(build) == KnockBakeState::Current);
 
     // a control is not an edit of the build: nothing to consider. The compression is: stale, set aside, asked again
     build.set("engine.compression", build.get("engine.compression") - 0.5);
