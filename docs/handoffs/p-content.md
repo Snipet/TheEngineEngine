@@ -1,7 +1,7 @@
 # P: content, validation targets, the manual (handoff)
 
 Package P, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `content/builds/**` (new files),
-`content/validation/**`, `docs/manual/**`, `docs/measurements/validation/`, this file. Updated 25 Nov, 00:45 UTC.
+`content/validation/**`, `docs/manual/**`, `docs/measurements/validation/`, this file. Updated 25 Nov, 06:00 UTC.
 
 **Builds.** 31 archetypes and `content/builds/first.json` (the first launch: the 2.0 turbo four, now the EA888 gen 3 of
 the Mk7 GTI), written by `content/builds/archetypes/generate.py`. Every model switch on, checked against `tee-schema`
@@ -20,8 +20,8 @@ lists the worst five, and measures the idle's standing tone itself. Timed runs b
 power curve, revs held at the green, warm tyres), regenerated on each table's pin.
 
 **Tables** (all kept in `docs/measurements/validation/`, named at real UTC): G 132 of 648, H 193 of 741, I 123, J 124 of
-772, **K (`ab107ca`) 120 of 839 (25 of 196 cited)**, power in range 15 of 31, torque 11; with its cams-off twin (128).
-Table L waits for N2's compressor-map correction (the lead).
+772, K (`ab107ca`) 120 of 839, **L (`e43e228b`, content `1efa3282`) 121 of 847 (29 of 203 cited)**, power in range 12 of
+30, torque 10 (the tractor's set by its fuel curve); with its twin on K's content (114) to read content from model.
 
 **Sources files:** `docs/measurements/validation/2026-11-24-2314-ea888-gen3-sources.md` (the turbo four: what is known,
 what is guessed; gen 3's exhaust cam timing the one figure not found); `docs/measurements/2026-11-25-0032-judgement-sources.md`
