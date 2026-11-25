@@ -2,7 +2,9 @@
 // [-1, 1) a call. Several modules may draw from one Noise (a pointer to it), as the reference's parts of one module drew
 // from one stream: the order of the draws is then part of the sound, and the null test holds it.
 //
-//   Noise n;  n.rs = seed (not 0);  x = n.rnd();  g = n.gauss() (three summed: about a unit normal)
+//   Noise n;  n.rs = seed (not 0);  x = n.rnd();  g = n.gauss() (0.57735 x three summed: near normal, but a SIGMA OF
+//   0.577, not 1: three uniforms on [-1, 1) have a variance of 1 together, and the factor takes it to 1/3. A use that
+//   wants a unit sigma multiplies by sqrt 3: card D2's socSpread, 25 Nov)
 #pragma once
 
 module Noise
