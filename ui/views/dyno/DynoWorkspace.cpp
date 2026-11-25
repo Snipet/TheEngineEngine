@@ -420,9 +420,11 @@ namespace tee::ui
             out += "speed_rad_s,rpm,torque_N_m,power_kW";
             for (const std::string& f : t.fields)
                 out += "," + f;
-            const bool knock = !t.knock.empty();
+            const bool knock = !t.knock.empty(), cut = !t.limited.empty();
             if (knock)
                 out += ",knock_limited,retard_min_deg,retard_max_deg";
+            if (cut)
+                out += ",rev_limited";
             out += "\n";
             char b[64];
             for (std::size_t i = 0; i < t.speed.size(); ++i)
@@ -442,6 +444,8 @@ namespace tee::ui
                                   i < t.retardMin.size() ? t.retardMin[i] : std::nan(""), i < t.retardMax.size() ? t.retardMax[i] : std::nan(""));
                     out += b;
                 }
+                if (cut)
+                    out += t.limitedAt(i) ? ",1" : ",0";
                 out += "\n";
             }
             return out;
@@ -611,6 +615,32 @@ namespace tee::ui
                 {
                     c.disc(lx + 5.0f, ly, 4.5f, kClear, 1.75f, p.warning);
                     c.text("KNOCK-LIMITED", lx + 14.0f, ly - 5.0f, look::kCaps, p.warning);
+                    lx += 14.0f + c.textWidth("KNOCK-LIMITED", look::kCaps) + 18.0f;
+                }
+                // The dim rings: points the rev limiter cut (no measure of the engine).
+                bool cut = false;
+                for (int row : allRows())
+                    if (isShown(row))
+                        for (const char l : trace(row).limited)
+                            cut = cut || l != 0;
+                // On the legend's line where it fits, else on the axis titles' line between them (centred there).
+                const char* cutWord = "LIMITER, NOT MEASURED";
+                const float cw = 14.0f + c.textWidth(cutWord, look::kCaps);
+                if (cut && lx + cw < plotBox_.right() - look::kPad)
+                {
+                    c.disc(lx + 5.0f, ly, 3.5f, kClear, 1.25f, p.dim);
+                    c.text(cutWord, lx + 14.0f, ly - 5.0f, look::kCaps, p.label);
+                }
+                else if (cut)
+                {
+                    const float l0 = plotArea_.x + c.textWidth(("TORQUE  " + std::string(ctx_.units.unit(Quantity::torque).name)).c_str(), look::kCaps) + 16.0f;
+                    const float l1 = plotArea_.right() - c.textWidth(("POWER  " + std::string(ctx_.units.unit(Quantity::power).name)).c_str(), look::kCaps) - 16.0f;
+                    if (l1 - l0 >= cw)
+                    {
+                        const float x0 = (l0 + l1 - cw) * 0.5f, y0 = plotArea_.y - 16.0f;
+                        c.disc(x0 + 5.0f, y0 + 5.0f, 3.5f, kClear, 1.25f, p.dim);
+                        c.text(cutWord, x0 + 14.0f, y0, look::kCaps, p.label);
+                    }
                 }
             }
             // The grid, from the left axis; the right axis numbers the same lines.
@@ -662,13 +692,35 @@ namespace tee::ui
                 any = true;
                 const Stroke s = strokeOf(p, row);
                 std::vector<float> xs, yt, yp;
+                // A point the rev limiter acted on (card C's PredictPoint::limited) is the cut's torque, no measure of the
+                // engine: left out of the curve (it breaks there) and drawn as a dim ring alone.
+                std::vector<std::pair<float, float>> cutT, cutP;
                 for (std::size_t i = 0; i < t.speed.size(); ++i)
                 {
-                    xs.push_back(xScale_.px(u.toUser(Quantity::rotation, t.speed[i])));
-                    yt.push_back(i < t.torque.size() ? tqScale_.px(u.toUser(Quantity::torque, t.torque[i])) : std::nanf(""));
-                    yp.push_back(i < t.power.size() ? pwScale_.px(u.toUser(Quantity::power, t.power[i])) : std::nanf(""));
+                    const float x = xScale_.px(u.toUser(Quantity::rotation, t.speed[i]));
+                    const float ty = i < t.torque.size() ? tqScale_.px(u.toUser(Quantity::torque, t.torque[i])) : std::nanf("");
+                    const float py = i < t.power.size() ? pwScale_.px(u.toUser(Quantity::power, t.power[i])) : std::nanf("");
+                    xs.push_back(x);
+                    if (t.limitedAt(i))
+                    {
+                        cutT.push_back({ x, ty });
+                        cutP.push_back({ x, py });
+                        yt.push_back(std::nanf(""));
+                        yp.push_back(std::nanf(""));
+                    }
+                    else
+                    {
+                        yt.push_back(ty);
+                        yp.push_back(py);
+                    }
                 }
                 const Canvas::ClipScope clip(c, { a.x - 4.0f, a.y - 4.0f, a.w + 8.0f, a.h + 8.0f });
+                for (const auto& q : cutT)
+                    if (std::isfinite(q.second))
+                        c.disc(q.first, q.second, 3.5f, kClear, 1.25f, p.dim);
+                for (const auto& q : cutP)
+                    if (std::isfinite(q.second))
+                        c.disc(q.first, q.second, 3.0f, kClear, 1.25f, p.dim);
                 chart::stroke(c, xs, yt, kTorqueW, s.ink, s.dash);
                 chart::stroke(c, xs, yp, kPowerW, s.ink, s.dash);
                 // Knock-limited points (card C's): a ring on the torque curve and a tick under the plot, amber; the words
