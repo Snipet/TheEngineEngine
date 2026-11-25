@@ -422,6 +422,14 @@ module Boost
         mach.designRpm = rpm;
     }
 
+    // (N2, (b)) A governed diesel's torque-peak speed (rpm, above 0) and its compression ratio, for the compressor's
+    // sizing along the climb there (machine.fm, apply); before applyMachine
+    void peakSpeed(float rpm, float compression)
+    {
+        mach.peakRpm = rpm;
+        mach.compression = compression;
+    }
+
     // 1: on an engine test cell (MODE_DYNO_ENGINE with the absorber on): the cell's charge-air cooling holds the
     // intercooler's core at the air's temperature (SAE J1349; machine.fm, the core)
     void testCell(int on)

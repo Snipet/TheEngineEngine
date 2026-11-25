@@ -100,6 +100,10 @@ module BoostMachine
     float vd;           // the engine's displacement, m^3, and its redline, rpm (for matched sizes)
     float redRpm;
     float designRpm;    // a governed diesel's rated speed, rpm (Engine's, Boost::designSpeed); below 0: spark ignition
+    float peakRpm;      // its torque peak, rpm (Boost::peakSpeed; 0: none): the compressor sized along the climb there
+    float compression;  // the engine's compression ratio (for the back pressure's cost to its fresh air)
+    float sizePeak;     // (telemetry for the sizing table: the annulus by the rule at rated and at the torque peak, m^2)
+    float sizeRated;
     int active;         // the charge path runs: a turbo, a supercharger, or nitrous
     int kind;           // 0 natural, 1 to 3 turbos, 4 a supercharger
     int turbos;         // shafts in use (a centrifugal supercharger: comp[0], no turbine)
@@ -287,6 +291,8 @@ module BoostMachine
         vd = vdIn;
         redRpm = redIn;
         designRpm = -1.0f;
+        peakRpm = 0.0f;
+        compression = 17.0f;
         structure = -1;
         kind = 0;
         active = 0;
@@ -481,7 +487,48 @@ module BoostMachine
             // (a compound pair's high-pressure stage meets air already compressed some 1.6 times: a smaller wheel)
             const float mt = mMatch * share * s->size * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
             const float wide = expf(0.25f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
-            const float aAnn = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide * chokeAt);
+            const float aRated = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide * chokeAt);
+            // (the lead's ruling (b), 25 Nov: a governed diesel's wheel also held 10 % right of the surge flag's line
+            // (0.9 of the knee: compressor.fm) along the whole climb to its design ratio at its torque-peak speed
+            // (BorgWarner's "10-percent or more to the right of the surge line"; Woollenweber, US 5,025,629: "matched to
+            // the engine to avoid the surge area at torque peak"); F's 1.15 at rated kept where it gives the smaller
+            // wheel. The engine's air there in the model's own terms: VE 0.9 (F's) less the back pressure's cost to the
+            // fresh charge, the ideal cycle's (Heywood, Internal Combustion Engine Fundamentals, ch. 6, the ideal
+            // volumetric efficiency rc/(rc-1) - (pe/pi)/(gamma (rc-1)), read against its own value at pe = pi:
+            // (gamma rc - pe/pi) / (gamma rc - 1)) at the build's back-pressure limit (the tractor at 1.4, 17:1: 0.982,
+            // the model 0.879 against 0.9 x 0.982 = 0.884 measured at 1000 rpm, after-burn-cure.md); the charge at each
+            // ratio as tCharge's; the speed line through each ratio's flag point the map's own (tau at 0.9 of the knee
+            // 0.1794 M^2: compressor.fm's rise at x = 0.9); no pulse term (0.998 measured at the boosted state))
+            float aAnn = aRated;
+            if (dsl != 0 && peakRpm > 0.0f && layout != BOOST_COMPOUND)
+            {
+                const float g = 1.4f;
+                const float bp = fmaxf(s->backPressure, 1.0f);
+                const float veBp = 0.9f * (g * compression - bp) / (g * compression - 1.0f);
+                const float kArS = expf(-0.3f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
+                float best = 1.0e9f;
+                for (int k = 0; k <= 200; ++k)
+                {
+                    const float pr = 1.3f + 0.05f * (float)k;
+                    if (pr > prDesign + 1.0e-4f)
+                        break;
+                    const float tau = expf(logf(pr) / 3.5f) - 1.0f;
+                    const float t2 = tOut * (1.0f + tau / fmaxf(s->compEta, 0.3f));
+                    const float tc = t2 - s->icEffect * (t2 - tOut);
+                    const float flow = vd * peakRpm / 120.0f * (pr * pOut / (kBoostR * tc)) * veBp * share * s->size;
+                    const float m = sqrtf(tau / 0.1794f);
+                    const float kn = fminf(fmaxf((0.40f + 0.178f * (fmaxf(m, 0.8f) - 1.0f)) * kArS, 0.2f), 0.7f);
+                    const float cf = 0.3f + 0.7f * fminf(m / 1.63f, 1.0f);
+                    const float a = flow / (1.1f * 0.9f * kn * 0.45f * 1.204f * 343.2f * wide * cf);
+                    best = fminf(best, a);
+                }
+                aAnn = fminf(aRated, best);
+            }
+            if (t == 0)
+            {
+                sizeRated = aRated;
+                sizePeak = aAnn;
+            }
             float dInd = s->compInducer > 0.0f ? s->compInducer : 2.0f * sqrtf(aAnn / (0.91f * 3.14159265f));
             float dEx = s->compExducer > 0.0f ? s->compExducer : dInd / 0.7416f;
             if (sc == 3 && s->compExducer <= 0.0f)

@@ -524,6 +524,7 @@ module Engine
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
         boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
+        boost.peakSpeed(dieselPeakRpm(), spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
         boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
@@ -1055,6 +1056,31 @@ module Engine
 
     float gearTq;       // the full-load torque the car's gearing was chosen for (at the layout's or size's change)
     float clatSize;     // a diesel's clatter for its cylinders' size: their panels' area (a cube root of the volume)
+
+    // (N2, the lead's ruling (b), 25 Nov) A governed diesel's torque-peak speed, rpm, for its compressor's sizing: the
+    // build's stated one (spec.boost.peakRpm, a maker's sheet), else its full-load fuel curve's lowest speed within 2 %
+    // of the curve's most (torque goes with the fuel there), else 0.6 of its rated speed (judgement); 0 for spark
+    // ignition
+    float dieselPeakRpm()
+    {
+        if (fuelUse == 0)
+            return 0.0f;
+        if (spec.boost.peakRpm > 0.0f)
+            return spec.boost.peakRpm;
+        float most = 0.0f;
+        for (int i = 0; i < 8; ++i)
+            most = fmaxf(most, spec.ecu.fuelCurveMg[i]);
+        if (most > 0.0f)
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                if (spec.ecu.fuelCurveMg[i] > 0.0f && spec.ecu.fuelCurveMg[i] >= 0.98f * most)
+                    return spec.ecu.fuelCurveRpm[i];
+            }
+        }
+        const float rated = spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm;
+        return 0.6f * rated;
+    }
 
     // About the most torque this engine gives (the turbo's boost with it), for the clutch's capacity
     float peakTorque()
@@ -1616,6 +1642,7 @@ module Engine
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
             boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
+            boost.peakSpeed(dieselPeakRpm(), spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
             boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
             ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         }
