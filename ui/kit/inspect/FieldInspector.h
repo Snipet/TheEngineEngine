@@ -44,6 +44,7 @@ namespace tee::ui
         // What it shows: the page's outline; and, while the filter holds text, the fields it searches (the
         // workspace's: every section it shows; none: the outline's own).
         void setOutline(Outline outline);
+        const Outline& outline() const noexcept { return outline_; }
         void setSearchable(std::vector<int> fields);
         // The card's look (design 3): a title, a frame and a shadow, no filter; `more` names what the column holds.
         void setCard(std::string title, std::string more);

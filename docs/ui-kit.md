@@ -368,6 +368,34 @@ In `AppFrame` (seven places):
 
 And for tests: `RowsPage* inspectorRows() const` (the shown page's; nullptr while a FieldPage is shown).
 
+## The card on the picture: the second hook (J2 for U1, 25 Nov)
+
+*An addition to Rows: press a part on the stage and a card opens beside it with the part's first six fields (typed,
+scrubbed, nudged, refused out of range as in the rows); "N MORE IN THE COLUMN" under them. ENGINE and EXHAUST first;
+it works on any workspace whose stage selects a part by a press.*
+
+`ui/kit/inspect/PartCard.h`: the frame makes a `FieldInspector` (Style::list) on its own board, drawn over the stage,
+and a `PartCard` over it. `afterPress(pathBefore, pathNow, hovered, at)` after each press on the stage: a press that
+chose a part (the selection moved, or the part under the pointer is the one selected) wants a card there; a press on
+no part closes it. `update(path, page, stage)` each tick, once the pages are made for the selection (page: the shown
+RowsPage's `rows().outline()`, nullptr when a table's FieldPage is shown): opens the card wanted; closes it when the
+selection is not the card's. `place(stage)` at every layout, `close()`, `isOpen()`, `titleOf(path)` ("CYLINDER 3").
+
+In `AppFrame`: (1) members `FieldInspector* cardItem_` (made on the board after the other items, so it is drawn over
+the stage and them) and `std::unique_ptr<PartCard> card_`; (2) `pointerDown`: remember the selection's path, call
+`Board::pointerDown`, then, when the press was on the stage and not on the card, `card_->afterPress(before,
+selection_.path(), selection_.hovered(), {e.x, e.y})`; (3) `tick`, after the selection's block: `card_->update(...)`;
+(4) `arrange`: `card_->place(stageRect())`; (5) `close()` on another workspace, the chat, the settings page; (6)
+`key`: Escape nobody took closes an open card; (7) for tests: `const PartCard& partCard() const` and
+`FieldInspector& partCardItem()`.
+
+**What each workspace owner changes: nothing, for ENGINE and EXHAUST.** Both select a part on a press
+(`selection.select(hit)`) and set `selection.hover` to the same path on a move, which is all `afterPress` reads; the
+card's fields are the first of the page the frame already makes for that selection. A card opened from the keyboard
+or from the column (no press to say where the part is) would need each workspace to say where a part is drawn (a
+`partRect(path)`, about twenty lines in each workspace's own file, and a virtual in U1's `Workspace.h`); not built,
+and not needed for the press.
+
 ## TextField for a chat, and the error colour (J2, 25 Nov, for card A)
 
 `TextField::setOptions({ enterOnly, multiline })`, both off by default (every existing field is as it was):

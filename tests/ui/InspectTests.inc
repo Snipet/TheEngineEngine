@@ -262,3 +262,55 @@
         CHECK(!rows->key(tab));
         return 0;
     }
+
+    // The card on the picture (PartCard): a press that chooses a part opens the card beside it with the part's first
+    // fields, inside the stage; a press on nothing closes it, as does another selection; the part pressed again opens
+    // it again; its title from the path.
+    TEST(testInspectPartCard, "inspect.partcard")
+    {
+        CHECK(tee::ui::PartCard::titleOf("engine.cylinder[2]") == "CYLINDER 3");
+        CHECK(tee::ui::PartCard::titleOf("exhaust.header") == "HEADER");
+        CHECK(tee::ui::PartCard::titleOf("exhaust.tailPipe") == "TAIL PIPE");
+        tee::ui::MemoryDoc doc{ tee::test::mockFields() };
+        tee::ui::Units units;
+        tee::ui::Board board{ 1100, 700 };
+        funkgui::HeadlessHost host{ board, 0, 1.0f };
+        tee::ui::FieldInspector& item = board.make<tee::ui::FieldInspector>(doc, units, tee::ui::FieldInspector::Style::list);
+        tee::ui::PartCard card(item);
+        CHECK(!item.shown() && !card.isOpen());
+        const funkgui::Rect stage{ 64, 48, 696, 574 };
+        const tee::ui::Outline engine = tee::ui::outlineOf(doc, tee::ui::sectionFields(doc, "engine"));
+        const std::size_t all = tee::ui::fieldsOf(engine).size();
+        CHECK(all > static_cast<std::size_t>(tee::ui::PartCard::kFields));
+        // A part chosen at (200, 300): the card to its right, inside the stage, six fields, the rest counted.
+        card.afterPress("", "engine", "engine", { 200, 300 });
+        CHECK(!card.isOpen());                           // not until the pages are made
+        card.update("engine", &engine, stage);
+        CHECK(card.isOpen() && item.shown() && item.shownFields() == tee::ui::PartCard::kFields);
+        const funkgui::Rect r = item.bounds();
+        CHECK(r.x >= 224.0f && r.right() <= stage.right() && r.y >= stage.y && r.bottom() <= stage.bottom());
+        CHECK(r.h < 400.0f);
+        host.tick(2);
+        funkgui::Rect row, value;
+        const int first = tee::ui::fieldsOf(engine).front();
+        CHECK(item.fieldRect(first, row, value) && r.contains({ value.centreX(), value.centreY() }));
+        // Near the stage's right edge: to the part's left.
+        card.afterPress("engine", "engine", "engine", { 700, 600 });   // the part already selected, pressed again
+        card.update("engine", &engine, stage);
+        CHECK(card.isOpen() && item.bounds().right() <= 676.0f && item.bounds().bottom() <= stage.bottom());
+        // A press on nothing (the selection kept, no part under the pointer) closes it.
+        card.afterPress("engine", "engine", "", { 400, 400 });
+        CHECK(!card.isOpen() && !item.shown());
+        // Another selection than the card's closes it.
+        card.afterPress("", "engine", "engine", { 200, 300 });
+        card.update("engine", &engine, stage);
+        CHECK(card.isOpen());
+        card.update("boost", nullptr, stage);
+        CHECK(!card.isOpen());
+        // A part with no fields: no card.
+        card.afterPress("", "engine", "engine", { 200, 300 });
+        const tee::ui::Outline none;
+        card.update("engine", &none, stage);
+        CHECK(!card.isOpen());
+        return 0;
+    }
