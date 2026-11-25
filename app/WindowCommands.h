@@ -64,6 +64,11 @@ namespace tee::app
             std::function<std::string()> wheel;                 // the racing wheel's line ("on: ..."; empty: no item)
             std::function<bool()> wheelOn;
             std::function<void(bool)> setWheelOn;
+            // The wheel's buttons (input/g29/G29Input.h): the line of the i-th bindable action ("shift up: button 5");
+            // learn(i): the next button pressed is bound to it; learn(-1): the defaults again. None: no submenu.
+            std::function<std::string(int)> wheelButton;
+            std::function<int()> wheelButtonCount;
+            std::function<void(int)> learnWheelButton;
             std::function<bool()> coldStart;                    // the engine starts cold (the settings'; none: no item)
             std::function<void(bool)> setColdStart;
         };

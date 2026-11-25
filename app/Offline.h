@@ -14,6 +14,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace tee::input
@@ -94,11 +96,44 @@ namespace tee::app
         // keep; null: not the simulator's frame.
         assistant::Session* assistant = nullptr;
 
+        // Called just before the Panel goes (the assistant's questions stop reaching the frame). A Shown moved from
+        // has none: the hook moves with the Panel. (std::function's own move leaves its source unspecified, and
+        // macOS's libc++ keeps a small one: a moved-from Shown's destructor then cleared the live frame's asker, and
+        // every load over unsaved work was answered no at once: the chain test's macOS red, tests/shell/app.) A
+        // move-assignment over a Shown that has a Panel calls that Panel's hook first.
+        class PanelGoing
+        {
+        public:
+            PanelGoing() = default;
+            template <class F, class = std::enable_if_t<!std::is_same_v<std::decay_t<F>, PanelGoing>>>
+            PanelGoing(F&& f) : f_(std::forward<F>(f))
+            {
+            }
+            PanelGoing(PanelGoing&& o) noexcept : f_(std::exchange(o.f_, nullptr)) {}
+            PanelGoing& operator=(PanelGoing&& o) noexcept
+            {
+                if (this != &o)
+                {
+                    if (f_)
+                        f_();
+                    f_ = std::exchange(o.f_, nullptr);
+                }
+                return *this;
+            }
+            PanelGoing(const PanelGoing&) = delete;
+            PanelGoing& operator=(const PanelGoing&) = delete;
+            ~PanelGoing() = default;
+            explicit operator bool() const noexcept { return static_cast<bool>(f_); }
+            void operator()() const { f_(); }
+
+        private:
+            std::function<void()> f_;
+        };
+
         Shown() = default;
         Shown(Shown&&) = default;
         Shown& operator=(Shown&&) = default;
-        // Called just before the Panel goes (the assistant's questions stop reaching the frame).
-        std::function<void()> panelGoing;
+        PanelGoing panelGoing;
         ~Shown()                                    // the Panel first: it holds references into `keep`
         {
             if (panelGoing)

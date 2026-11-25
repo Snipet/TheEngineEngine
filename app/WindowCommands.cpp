@@ -39,6 +39,8 @@ namespace tee::app
             kQuality = 900,         // + 0 full, 1 economy
             kColdStart = 950,
             kWheel = 960,
+            kWheelDefaults = 970,
+            kWheelLearn = 971,      // + index of the bindable actions
         };
         constexpr int kRates[] = { 0, 44100, 48000, 88200, 96000 };
         constexpr int kBuffers[] = { 64, 128, 256, 512, 1024, 2048 };
@@ -429,6 +431,15 @@ namespace tee::app
         if (ctx_.wheel && ctx_.wheelOn && ctx_.setWheelOn && !ctx_.wheel().empty())
             items.push_back({ kWheel, "Read the racing wheel (Logitech G29): " + ctx_.wheel(), true, ctx_.wheelOn(), false,
                               false, true });
+        if (ctx_.wheel && ctx_.wheelButton && ctx_.wheelButtonCount && ctx_.learnWheelButton && !ctx_.wheel().empty())
+        {
+            funkgui::MenuItem b{ .label = "Wheel buttons (choose one, then press the button)" };
+            for (int i = 0; i < ctx_.wheelButtonCount(); ++i)
+                b.submenu.push_back({ kWheelLearn + i, ctx_.wheelButton(i), true });
+            b.submenu.push_back({ .separator = true });
+            b.submenu.push_back({ kWheelDefaults, "The defaults (paddles shift, PS starts)", true });
+            items.push_back(std::move(b));
+        }
         if (ctx_.coldStart && ctx_.setColdStart)
             items.push_back({ kColdStart, "Start the engine cold (from the next launch)", true, ctx_.coldStart(), false,
                               false, true });
@@ -445,6 +456,11 @@ namespace tee::app
                 const bool on = !ctx_.wheelOn();
                 ctx_.setWheelOn(on);
                 say(on ? "wheel: on (a G29 is read when connected)" : "wheel: off (nothing read from it or sent to it)");
+                return;
+            }
+            if (id == kWheelDefaults || (id >= kWheelLearn && ctx_.wheelButtonCount && id < kWheelLearn + ctx_.wheelButtonCount()))
+            {
+                ctx_.learnWheelButton(id == kWheelDefaults ? -1 : id - kWheelLearn);
                 return;
             }
             if (id == kColdStart)
