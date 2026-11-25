@@ -254,3 +254,23 @@ shaft krpm):
 The prediction was **wrong at both ends**: the low end gains more (+7 % and +14 % against +2 and +3 %), and the top
 does not fall (288 either way; the IS20's compressor at 6200 still at 0.74, its tip 432 m/s, short of choke). The
 maker's 350 from 1500 is still not reached at 1500 to 1800 (232 / 270): the spool there is the turbine's matter.
+
+## Tried and refuted: the surge cap on the corrected map (the lead dropped it)
+
+The loop's target capped at the surge flag's ratio at the compressor's present flow (followed over 50 ms), less a
+tenth of its rise. The turbo four (first.json), swept 1500 -> 1800 -> 2500 -> 3000 -> 4000 -> 6200, heat settled:
+
+| rpm | without, N m / kPa g | with the cap |
+|---|---|---|
+| 1500 | 216 / 16 | 216 / 16 |
+| 1800 | 237 / 25 | 237 / 25 |
+| 2500 | 385 / 124 | **301 / 61** |
+| 3000 | 351 / 122 | 352 / 122 |
+| 4000 | 365 / 124 | 365 / 124 |
+| 6200 | 289 / 88 | 288 / 88 |
+
+A target fed back from the flow it controls latches: reached straight from the warm-up at 2500 the capped engine reads
+the uncapped one's point (a ratio of 2.21 against 2.23), stepped up from 1800 it stays at 61 kPa. And it protects
+nothing on this map: uncapped, the 2500 point is flagged as surging 11 % of the time, its operating line right of the
+flag. **Condition for trying again**: a target from engine speed and load, as a maker's target map is, never one fed
+back from the compressor's flow. The patch is not in the tree.
