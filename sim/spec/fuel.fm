@@ -13,10 +13,10 @@ module FuelSpec
     int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Combustion model")]]
         [[ui::help("Reference: the original burn. Fuels: each fuel's heat, octane, burn speed and knock")]]
         [[ui::choices("Reference", "Fuels")]];
-    int grade [[fminus::range(0, 8)]] [[fminus::default(0)]] [[ui::label("Fuel")]]
+    int grade [[fminus::range(0, 9)]] [[fminus::default(0)]] [[ui::label("Fuel")]]
         [[ui::help("The fuel: its octane decides how much advance and boost it takes before knocking")]]
         [[ui::choices("Regular (87)", "Midgrade (89)", "Premium (91)", "Race", "E85", "Methanol", "Diesel", "Propane (untested)",
-                      "Hydrogen (untested)")]];
+                      "Hydrogen (untested)", "Premium (93)")]];
     float direct [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Direct injection")]] [[ui::quantity("fraction")]]
         [[ui::help("0: port injection; 1: direct; between, a share of each")]];
     float knockDelay [[fminus::range(0.25, 8)]] [[fminus::default(3)]] [[ui::label("Knock delay")]] [[ui::quantity("ratio")]]

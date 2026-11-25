@@ -203,6 +203,28 @@ TEST_CASE("H2: the knock limit at a known operating point", "[h][combustion][kno
     CHECK(limitE85 > limit + 5.0);
 }
 
+// The 93 grade (card N1, 25 Nov: the owner's "Fuel controls for octane"): appended last, RON 98 / MON 88 against the
+// 91's 96 / 86. At the trace's knock edge it takes more advance than the 91, by Douaud and Eyzat's own exponent and the
+// table's own rows (the octane read from fuels.fm, not typed here), and less than the race fuel's; its other rows are
+// the 91's
+TEST_CASE("H2: the 93 grade takes more advance than the 91 at the knock edge, less than race fuel", "[h][combustion][knock]")
+{
+    Fm fm = trace();
+    const int premium = 2, race = 3, premium93 = 9;
+    REQUIRE(fm.call<float>("Trace::row", premium93, 3) > fm.call<float>("Trace::row", premium, 3));
+    for (int what = 0; what < 3; ++what)
+        CHECK(fm.call<float>("Trace::row", premium93, what) == fm.call<float>("Trace::row", premium, what));
+    auto edge = [&](int kind) {
+        fm.call<void>("Trace::defaults");
+        fm.set("octane", static_cast<double>(fm.call<float>("Trace::row", kind, 3)));
+        return static_cast<double>(fm.call<float>("Trace::limitAdvance"));
+    };
+    const double a91 = edge(premium), a93 = edge(premium93), aRace = edge(race);
+    WARN("knock-limited advance at the trace's case: 91 " << a91 << ", 93 " << a93 << ", race " << aRace);
+    CHECK(a93 > a91);
+    CHECK(a93 < aRace);
+}
+
 TEST_CASE("H2: what a tick of the end gas's integral costs", "[h][combustion][knock][cost]")
 {
     Fm fm = trace();
