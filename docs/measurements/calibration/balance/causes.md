@@ -1318,3 +1318,15 @@ intake 30: 233 N m at 1500 (64 kPa), 336 at 1800 (122); with the exhaust lobe 30
 while the torque rises at 1500 by 40 %: the reading, taken around the overlap's top, does not rank the exhaust axis (the
 exhaust closing earlier shortens the overlap it reads over). A bake should rank by torque, not by it. (My "long lobe"
 rows at this merge were on the build's short lobe: the lobe P put in; withdrawn as long-lobe readings.)
+
+**N3-15, N1's reading of the intake's damping** (N1's message, 23:57 by `date -u`). Every sourced loss on the list is in
+the model: the port's bend and the seat's loss through the lab's flow-bench discharge coefficients (Idelchik's bend on
+top would count them twice); quasi-steady friction from the mean |u| at the ends (swing included); the unsteady friction
+and the oscillating thermal layer as Kirchhoff's wall loss, within 2 to 6 % of the textbook coefficient (with turbulent
+mean flow the measured damping tends to the quasi-steady value: Peters et al. 1993, N1 from memory). The flat six at
+4750 rpm, air through the valves by runner length (my probe): 0.10 1.035, 0.20 1.057, 0.25 1.074, 0.30 1.057,
+0.35 1.052, 0.40 1.110, 0.45 1.097, 0.53 1.241, 0.60 1.168, 0.70 1.252. The off-tune floor is flat at 1.04 to 1.07 from
+0.10 to 0.35 (0.30 is no trough); the tuned 0.53 and 0.70 stand 16 to 19 % over it, against 6 to 9 % published. So the
+excess is the resonance's height, not a missing loss: candidates the port's taper and area change (the model's runner one
+bore to the valve), the flow's multidimensional end at the valve, and what the experiments counted as untuned. Mine if
+the lead agrees; not started.

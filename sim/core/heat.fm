@@ -127,9 +127,11 @@ module Heat
 
     // Every 16 samples (d16 s; 0: only what follows from the temperatures): the engine's heat. The burns give the
     // coolant some 40 % of their heat and the rubbing 60 % of its; the block and its coolant hold some 9 kJ/K a
-    // litre (as the 0.9th power of the size: a 2 L engine warms from 20 to 90 C in some 5 minutes at idle, the 2 L
-    // turbo four measured 4.8 (24 Nov; first written as some 8), in one or two driven hard), lose a little to the
-    // air, and the thermostat opens from 195 F, its radiator then holding it there. The oil follows some 4 minutes
+    // litre (as the 0.9th power of the size; the 40 %, the 9 kJ/K and the 0.9 all judgement). From these a 2 L
+    // engine warms from 20 to 90 C in some 5 minutes at idle: the 2 L turbo four measured 4.8 (24 Nov), the
+    // [nightly] case's band 3.5 to 8 judgement about it. (This comment first said some 8, a figure never measured and
+    // with no source: 4.8 is not a regression from it. A published idle warm-up time would replace the band.) In
+    // one or two minutes driven hard. They lose a little to the air, and the thermostat opens from 195 F, its radiator then holding it there. The oil follows some 4 minutes
     // behind, 10 K over the coolant while it runs; the combustion chamber's walls
     // some 25 s behind, 87 K over it while it runs (a cold start's thin flame-quenching walls warm long before the
     // coolant does), sinking back to it over minutes once it stops. Its thickness (a 5W-30's:
