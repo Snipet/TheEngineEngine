@@ -52,3 +52,11 @@ Nothing is invented: every number is a `DynoTrace`'s. The plan is this workspace
 and `sections()` is empty.
 
 Tests: `ui.dyno.stage` (goldens dyno.stage, .large, .paper), `ui.dyno.run`, `ui.dyno.absent`, `ui.dyno.text`, `ui.dyno.walls`, `ui.dyno.knock`; nightly: `ui.dyno.sheet.pictures`, `ui.dyno.framestages.pictures`.
+
+## The fuel
+
+A run is named with the grade it ran on ("Engine 2, Regular (87)") when the build has `fuel.grade` under the Fuels
+model, so runs on two fuels stay side by side in the list (held for the session: DYNO keeps runs until quit, it does
+not save them). When the predicted curve and the one before the last edit were made on different grades, their rows
+say so ("Predicted, Race", "Before, Premium (91)"); the grade is the one in the build when a curve came in. Test:
+`ui.dyno.fuel`.

@@ -43,6 +43,41 @@
 
 ## Landed
 
+- **25 Nov 13:43 UTC: `main` at 76420f32** (from d0a7330e, fast-forward; Linux 545 of 545 and macOS green on run
+  45623044537, sim/host/tools equal the bake's dbd64a5c). New in `main`: the idle spark trim's two cures (the dyno's
+  low end), P's bake on them, hover help, DRIVE's three new styles, the fuel control (octane grades; its macOS fault
+  caught by CI before `main` moved and cured). The window for the held items is open (the queue's FREEZE STATE has
+  the order); the diesel package stays out of it, its rated end unruled (the queue, 13:43).
+
+- **12:20 (25 Nov) the owner: "Windows was able to launch and run"** (`main` at d0a7330e; the first run of the app by
+  a person on Windows; what beyond launching and running was tried is not known yet). README's line updated to say
+  exactly that. **The owner also asked whether the right-side controls are to be redesigned ("relatively clunky
+  still"):** no plan existed; J2 is woken to draw three designs of the inspector as real pictures (rows with typed
+  numbers and a filter; dials kept but exact; fields on the stage's picture), nothing merged until the owner picks.
+- **`main` is held at d0a7330e** on the owner's decision about one listen assertion on P's re-bake (queue, 12:16).
+- On the branch since the last entry: U1's DRIVE styles (CLASSIC, DIGITAL, RACE beside STANDARD; 545 of 545 by U1;
+  rendered by the lead and sent to the owner; CLASSIC's small dials overlap their digits at the small stage, U1 is
+  fixing that first).
+
+- **12:02 (25 Nov) check-in.** `main` at d0a7330e. P's re-bake at dbd64a5c running (pre-bake tier 540 of 540 by P);
+  sim/, host/ and tools/ frozen since 11:26, untouched by every push since (the lead's diff: 0 lines).
+- **On the branch since `main`, ui/ and app/ only:** U1's hover help (240c9a58: every bound control and the frame's
+  own items; a test that fails when a settable field has no help; 541 of 541 by U1; the lead rendered its picture in
+  its own build and sent it to the owner) and U4's fuel control (89fa786e: a FUEL band in TUNE with AKI, RON and
+  MON read from `fuels.fm`, the knock map and the bake's state after a change, the DYNO naming each run's fuel;
+  543 of 543 by U4). The owner's todos 5 and 1.
+- **The lead now builds the tree itself** (build-dev in its checkout) and re-measured two claims before they move
+  anything: D2's trim cure and N2's (b) wheel, both confirmed (numbers in the queue).
+- **Held for the next window, each built or building and each on the lead's word:** card A's `Build` step ids, A1 and
+  A2 (Claude Desktop over MCP: built and tested locally, never run against Claude Desktop); C's knock bake with
+  lighter pedals (kKnockBakeVersion 5; N1 found the V12 idling at 10.8 deg after top centre on a row copied flat);
+  N2's (b) and the surge setpoint limit (table first); G's half of the pops and N1's seam for it (G's session would
+  not take the owner's leave through the lead, so the two files went to the card that owns them); D2's start fuel;
+  N1's 93 grade. Content only, for P: the rotary's cited ports (N1: 244.5 to 320 N m at 5000 on 294) and the
+  two-stage build's high lobe on the F20C's centreline (N1: the stages cross at 5802 rpm where they crossed at
+  7188; makers' 5500 to 5900).
+- **Fleet:** nine working at times (P, N2, U1, U4, G, A, N1, D2, C), under the owner's ten.
+
 - **11:30 (25 Nov) the fleet under the owner's cap of ten.** Working: P (the re-bake at dbd64a5c for the next
   `main`: D2's two cures under sim/), N2 (its low-speed cells again on the cured engine), U1 (hover help built,
   then the DRIVE gauges), U4 (the fuel grade in TUNE), G (the pops), card A (the assistant, A1), N1 (the two-stage

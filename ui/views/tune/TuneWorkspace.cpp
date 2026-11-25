@@ -13,6 +13,7 @@
 #include "kit/widgets/Plot.h"
 #include "kit/widgets/Tables.h"
 #include "views/dyno/Chart.h"
+#include "views/tune/Fuel.h"
 #include "views/tune/Tune.h"
 
 #include <funkgui/params/ParamPort.h>
@@ -213,6 +214,13 @@ namespace tee::ui
             sliceY_ = &make<Plot>("Along load");
             prev_ = &make<Button>("Prev", [this] { showMap((shown_ + kMapCount - 1) % kMapCount); });
             next_ = &make<Button>("Next", [this] { showMap((shown_ + 1) % kMapCount); });
+            // The fuel: its grade stepped among the spark-lit fuels (a diesel's own is shown, not stepped).
+            gradeField_ = doc.find("fuel.grade");
+            if (gradeField_ >= 0 && doc.info(gradeField_).kind != FieldKind::choice)
+                gradeField_ = -1;
+            modelField_ = doc.find("fuel.model");
+            fuelPrev_ = &make<Button>("Prev fuel", [this] { stepGrade(-1); });
+            fuelNext_ = &make<Button>("Next fuel", [this] { stepGrade(1); });
             for (int i = 0; i < kMapCount; ++i)
                 if (slots_[static_cast<std::size_t>(i)].field >= 0)
                 {
@@ -246,6 +254,8 @@ namespace tee::ui
             DrawKey k;
             k.mix(shown_).mix(ctx_.selection.revision()).mix(ctx_.units.revision()).mix(ctx_.doc.revision()).mix(message_);
             k.mix(historyRevision_).mix(bakeWords());
+            const FuelWords fw = fuelWords();
+            k.mix(fw.name).mix(fw.octane).mix(fw.effect).mix(static_cast<int>(fuelTable_.rows.size()));
             return k.h;
         }
 
@@ -289,6 +299,11 @@ namespace tee::ui
                         ctx_.selection.select("ecu.maps");
                     return;
                 }
+            if (fuel_.contains({ e.x, e.y }) && !fuelButton(-1).contains({ e.x, e.y }) && !fuelButton(1).contains({ e.x, e.y }))
+            {
+                ctx_.selection.select("fuel.grade");
+                return;
+            }
             for (const Hit& h : lampHits())
                 if (h.rect.contains({ e.x, e.y }))
                 {
@@ -310,6 +325,16 @@ namespace tee::ui
         void choose(int i) { showMap(i); }
         int samples() const noexcept { return static_cast<int>(history_.size()); }
         funkgui::Rect bakeRect() const { return bake_->shown() ? bake_->bounds() : funkgui::Rect{}; }
+        funkgui::Rect fuelButton(int dir) const
+        {
+            const Button* b = dir < 0 ? fuelPrev_ : fuelNext_;
+            return b->shown() ? b->bounds() : funkgui::Rect{};
+        }
+        std::string fuelText() const
+        {
+            const FuelWords w = fuelWords();
+            return w.name + " | " + w.octane + " | " + w.effect;
+        }
 
     protected:
         void step(float dt) override
@@ -351,6 +376,7 @@ namespace tee::ui
                 while (trailPts_.size() > 40)
                     trailPts_.pop_front();
             }
+            watchFuel();
             // A bake asked for: in when the Scope's count moves (the map it was asked for, even if another is shown).
             if (const float n = bakeCount(); bakeWanted_ >= 0 && n >= 1.0f && n > bakeSeen_)
             {
@@ -377,15 +403,22 @@ namespace tee::ui
             // A narrow stage folds the list of maps into PREV and NEXT on the map's title row, and drops the slices: the
             // table keeps the room its numbers need.
             narrow_ = s.w < 900.0f;
+            stage_ = s;
             const float pad = 16.0f, listW = narrow_ ? 0.0f : std::clamp(s.w * 0.16f, 160.0f, 210.0f);
             const float sliceW = narrow_ ? 0.0f : std::clamp(s.w * 0.24f, 230.0f, 340.0f);
             const float traceH = std::clamp(s.h * 0.30f, 180.0f, 300.0f);
-            const float topH = s.h - 3.0f * pad - traceH;
-            list_ = narrow_ ? Rect{} : Rect{ s.x + pad, s.y + pad, listW, topH };
+            // The fuel's band across the top, when the build has a grade.
+            const float fuelH = gradeField_ >= 0 ? kFuelH : 0.0f, top = s.y + pad + (fuelH > 0.0f ? fuelH + 10.0f : 0.0f);
+            fuel_ = fuelH > 0.0f ? Rect{ s.x + pad, s.y + pad, s.w - 2.0f * pad, fuelH } : Rect{};
+            const float topH = s.y + s.h - 2.0f * pad - traceH - top;
+            list_ = narrow_ ? Rect{} : Rect{ s.x + pad, top, listW, topH };
             const float mx = s.x + pad + (narrow_ ? 0.0f : listW + pad);
-            mapBox_ = { mx, s.y + pad, s.x + s.w - pad - (narrow_ ? 0.0f : sliceW + pad) - mx, topH };
-            slices_ = { mapBox_.right() + pad, s.y + pad, sliceW, topH };
-            traces_ = { s.x + pad, s.y + pad + topH + pad, s.w - 2.0f * pad, traceH };
+            mapBox_ = { mx, top, s.x + s.w - pad - (narrow_ ? 0.0f : sliceW + pad) - mx, topH };
+            slices_ = { mapBox_.right() + pad, top, sliceW, topH };
+            traces_ = { s.x + pad, top + topH + pad, s.w - 2.0f * pad, traceH };
+            const bool stepped = fuelH > 0.0f && !compressionLit();
+            fuelPrev_->setPlace({ fuel_.x + 52.0f, fuel_.y + 6.0f, kFuelButtonW, 20.0f }, stepped);
+            fuelNext_->setPlace({ fuel_.x + 52.0f + kFuelButtonW + kFuelNameW + 12.0f, fuel_.y + 6.0f, kFuelButtonW, 20.0f }, stepped);
             prev_->setPlace({ mapBox_.right() - look::kPad - 116.0f, mapBox_.y + 4.0f, 56.0f, 20.0f }, narrow_);
             next_->setPlace({ mapBox_.right() - look::kPad - 56.0f, mapBox_.y + 4.0f, 56.0f, 20.0f }, narrow_);
             fill_->setTitle(narrow_ ? "Fill" : "Fill between corners");
@@ -420,6 +453,7 @@ namespace tee::ui
         void drawStage(Canvas& c, const funkgui::Theme& th) const override
         {
             const look::Palette p = look::Palette::of(th);
+            drawFuel(c, p);
             drawList(c, p);
             drawMapFrame(c, p);
             drawTraces(c, p);
@@ -756,6 +790,228 @@ namespace tee::ui
             const std::string atX = live ? "AT " + u.format(info.axes[0], lx, 0) : "THROUGH THE MIDDLE";
             fill(*sliceX_, info.axes[0], m.x, m.nx, lx, true, "Along speed, " + atY);
             fill(*sliceY_, info.axes[1], m.y, m.ny, ly, false, "Along load, " + atX);
+        }
+
+        // ---- the fuel ----------------------------------------------------------------------------------------------
+        static constexpr float kFuelH = 56.0f, kFuelNameW = 128.0f, kFuelButtonW = 84.0f;
+
+        int grade() const { return gradeField_ >= 0 ? static_cast<int>(std::lround(ctx_.doc.get(gradeField_))) : -1; }
+        std::string gradeName(int g) const
+        {
+            const FieldInfo& f = ctx_.doc.info(gradeField_);
+            return g >= 0 && g < static_cast<int>(f.choices.size()) ? f.choices[static_cast<std::size_t>(g)] : std::string("-");
+        }
+        // Lit by compression (the table's word; unread, the choice's name).
+        bool compressionLit(int g) const
+        {
+            if (fuelTable_.has(g))
+                return fuelTable_.rows[static_cast<std::size_t>(g)].compression;
+            return gradeName(g).rfind("Diesel", 0) == 0;
+        }
+        bool compressionLit() const { return gradeField_ >= 0 && compressionLit(grade()); }
+        bool untested(int g) const
+        {
+            return fuelTable_.has(g) ? fuelTable_.rows[static_cast<std::size_t>(g)].untested
+                                     : gradeName(g).find("untested") != std::string::npos;
+        }
+        bool referenceBurn() const { return modelField_ >= 0 && ctx_.doc.get(modelField_) < 0.5; }
+
+        // The next spark-lit grade up or down (none past the ends): one gesture of the document.
+        void stepGrade(int dir)
+        {
+            if (gradeField_ < 0 || compressionLit())
+                return;
+            const FieldInfo& f = ctx_.doc.info(gradeField_);
+            for (int g = grade() + dir; g >= static_cast<int>(f.min) && g <= static_cast<int>(f.max); g += dir)
+                if (!compressionLit(g))
+                {
+                    ctx_.doc.beginGesture();
+                    ctx_.doc.set(gradeField_, static_cast<double>(g));
+                    ctx_.doc.endGesture();
+                    return;
+                }
+        }
+
+        // Once a frame: the table read when the host serves the simulator's source; a change of grade (here, in the
+        // inspector, an undo) remembered with the knock-limit table as it was, and that table shown, where the change
+        // lands (its bake, its cells).
+        void watchFuel()
+        {
+            if (!fuelRead_ && ctx_.services != nullptr && ctx_.services->simSource)
+            {
+                fuelRead_ = true;
+                fuelTable_ = fuel::parse(ctx_.services->simSource("combustion/fuels.fm"), ctx_.services->simSource("combustion/knock.fm"));
+                layout(stage_);
+            }
+            const int g = grade();
+            if (g == gradeSeen_)
+                return;
+            const Slot& k = slots_[static_cast<std::size_t>(kKnockLimit)];
+            if (gradeSeen_ >= 0 && g >= 0)
+            {
+                gradeFrom_ = gradeSeen_;
+                knockFrom_ = k.field >= 0 ? ctx_.doc.map(k.field) : Map16{};
+                knockFromBaked_ = k.field >= 0 && k.autoField >= 0 && ctx_.doc.get(k.autoField) < 0.5;
+                if (k.field >= 0 && !compressionLit(g))
+                    showMap(kKnockLimit);
+            }
+            gradeSeen_ = g;
+            layout(stage_);
+        }
+
+        // A Map16 read bilinearly at (x, y), the edges held outside its grid (as the simulator reads it).
+        static double mapAt(const Map16& m, double x, double y)
+        {
+            if (m.nx < 1 || m.ny < 1)
+                return 0.0;
+            const auto index = [](const auto& axis, int n, double v, int& i0, double& t) {
+                i0 = 0;
+                t = 0.0;
+                if (n < 2 || v <= axis[0])
+                    return;
+                if (v >= axis[static_cast<std::size_t>(n - 1)])
+                {
+                    i0 = n - 2;
+                    t = 1.0;
+                    return;
+                }
+                while (i0 < n - 2 && v > axis[static_cast<std::size_t>(i0 + 1)])
+                    ++i0;
+                const double a = axis[static_cast<std::size_t>(i0)], b = axis[static_cast<std::size_t>(i0 + 1)];
+                t = b > a ? (v - a) / (b - a) : 0.0;
+            };
+            int i = 0, j = 0;
+            double tx = 0.0, ty = 0.0;
+            index(m.x, m.nx, x, i, tx);
+            index(m.y, m.ny, y, j, ty);
+            const auto z = [&m](int jj, int ii) {
+                return m.z[static_cast<std::size_t>(std::min(jj, m.ny - 1))][static_cast<std::size_t>(std::min(ii, m.nx - 1))];
+            };
+            const double lo = z(j, i) + (z(j, i + 1) - z(j, i)) * tx, hi = z(j + 1, i) + (z(j + 1, i + 1) - z(j + 1, i)) * tx;
+            return lo + (hi - lo) * ty;
+        }
+        static bool sameMap(const Map16& a, const Map16& b)
+        {
+            if (a.nx != b.nx || a.ny != b.ny)
+                return false;
+            for (int i = 0; i < a.nx; ++i)
+                if (a.x[static_cast<std::size_t>(i)] != b.x[static_cast<std::size_t>(i)])
+                    return false;
+            for (int j = 0; j < a.ny; ++j)
+            {
+                if (a.y[static_cast<std::size_t>(j)] != b.y[static_cast<std::size_t>(j)])
+                    return false;
+                for (int i = 0; i < a.nx; ++i)
+                    if (a.z[static_cast<std::size_t>(j)][static_cast<std::size_t>(i)] != b.z[static_cast<std::size_t>(j)][static_cast<std::size_t>(i)])
+                        return false;
+            }
+            return true;
+        }
+
+        struct FuelWords
+        {
+            std::string name, octane, effect;
+            bool warn = false;   // untested: the name in amber (and its word)
+        };
+        // The band's words: the grade's name; its octane numbers from the simulator's table (a dash where the table has
+        // none); and one line of what it changes: after a change of grade, the bake's state and then what the
+        // re-baked knock limit gives in degrees off boost and on it; else what the knock model's delay says.
+        FuelWords fuelWords() const
+        {
+            FuelWords w;
+            if (gradeField_ < 0)
+                return w;
+            const int g = grade();
+            w.name = gradeName(g);
+            w.warn = untested(g);
+            const auto num = [](double v) { return std::isfinite(v) ? chart::fixed(v, std::fabs(v - std::round(v)) < 0.05 ? 0 : 1) : std::string("-"); };
+            const fuel::Table& t = fuelTable_;
+            if (compressionLit(g))
+                w.octane = "No octane: lit by compression";
+            else
+            {
+                w.octane = "AKI " + num(t.aki(g)) + "   RON " + num(t.ron(g)) + "   MON " + num(t.mon(g));
+                if (t.has(g) && std::isfinite(t.index(g)) && std::fabs(t.index(g) - t.ron(g)) > 0.05)
+                    w.octane += "   knock model reads " + num(t.index(g));
+            }
+            const std::string untestedWords = w.warn ? " Untested: nothing has run this fuel through an engine." : "";
+            if (referenceBurn())
+            {
+                w.effect = "The reference burn does not read the grade: set Combustion model to Fuels for it to count.";
+                return w;
+            }
+            if (compressionLit(g))
+            {
+                w.effect = "A diesel's knock is its premixed burn, not octane: no knock-limit table to bake for it.";
+                return w;
+            }
+            if (!t.has(g))
+            {
+                w.effect = "The simulator's fuel table was not read: no octane shown." + untestedWords;
+                return w;
+            }
+            // After a change: the bake as the host says it, then the table it baked against the one before.
+            const Slot& k = slots_[static_cast<std::size_t>(kKnockLimit)];
+            const std::string state = ctx_.services != nullptr && ctx_.services->sparkMap ? ctx_.services->sparkMap() : std::string();
+            if (gradeFrom_ >= 0 && k.field >= 0)
+            {
+                const std::string from = gradeName(gradeFrom_) + " to " + w.name + ": ";
+                const Map16 now = ctx_.doc.map(k.field);
+                const bool baked = k.autoField >= 0 && ctx_.doc.get(k.autoField) < 0.5;
+                const bool done = baked && !sameMap(now, knockFrom_) && (state.empty() || state.rfind("baked", 0) == 0 || state == "calibration checked");
+                if (!done)
+                {
+                    w.effect = from + "the knock-limit table re-bakes (" + (state.empty() ? std::string("-") : state) + ")." + untestedWords;
+                    return w;
+                }
+                double sum[2] = { 0.0, 0.0 };
+                int n[2] = { 0, 0 };
+                for (int j = 0; j < now.ny; ++j)
+                    for (int i = 0; i < now.nx; ++i)
+                    {
+                        const double x = now.x[static_cast<std::size_t>(i)], y = now.y[static_cast<std::size_t>(j)];
+                        const double was = knockFromBaked_ ? std::max(0.0, mapAt(knockFrom_, x, y)) : 0.0;
+                        const int b = y > 1.0 ? 1 : 0;
+                        sum[b] += std::max(0.0, now.z[static_cast<std::size_t>(j)][static_cast<std::size_t>(i)]) - was;
+                        ++n[b];
+                    }
+                const auto part = [&](int b, const char* where) {
+                    if (n[b] == 0)
+                        return std::string(where) + " -";
+                    const double d = sum[b] / n[b];
+                    if (!knockFromBaked_)
+                        return chart::fixed(d, 1) + " deg off the best spark " + where;
+                    return std::fabs(d) < 0.05 ? std::string("no change ") + where
+                                               : chart::fixed(std::fabs(d), 1) + (d < 0.0 ? " deg more advance " : " deg less advance ") + where;
+                };
+                w.effect = from + part(0, "off boost") + ", " + part(1, "on boost") + " (knock limit, mean of its cells)." + untestedWords;
+                return w;
+            }
+            // Before any change: what the knock model's delay says against the lowest grade.
+            const double ratio = t.delayRatio(g, 0);
+            if (g == 0 || !std::isfinite(ratio))
+                w.effect = "Its octane sets how much advance and boost fit before knock; a change re-bakes the knock-limit table." + untestedWords;
+            else
+                w.effect = "Against " + gradeName(0) + ", the end gas waits " + chart::fixed(ratio, 2) +
+                           " times as long before it lights: more advance and boost before knock." + untestedWords;
+            return w;
+        }
+
+        void drawFuel(Canvas& c, const look::Palette& p) const
+        {
+            if (fuel_.isEmpty())
+                return;
+            const bool sel = ctx_.selection.is("fuel.grade") || ctx_.selection.is("fuel");
+            c.rrect(fuel_.x, fuel_.y, fuel_.w, fuel_.h, 6.0f, p.panel, sel ? 1.5f : 1.0f, sel ? p.selected : p.edge);
+            const FuelWords w = fuelWords();
+            c.text("FUEL", fuel_.x + look::kPad, fuel_.y + 11.0f, look::kCaps, sel ? p.selected : p.label);
+            const bool stepped = fuelPrev_->shown();
+            const float nx = stepped ? fuelPrev_->bounds().right() + 6.0f : fuel_.x + 52.0f;
+            c.text(w.name.c_str(), nx + (stepped ? kFuelNameW * 0.5f : 0.0f), fuel_.y + 9.0f, look::kBody, w.warn ? p.warning : p.value,
+                   stepped ? funkgui::Align::centre : funkgui::Align::left);
+            const float ox = stepped ? fuelNext_->bounds().right() + 16.0f : nx + std::max(kFuelNameW, c.textWidth(w.name.c_str(), look::kBody)) + 16.0f;
+            c.text(w.octane.c_str(), ox, fuel_.y + 9.0f, look::kBody, w.octane.rfind("AKI -", 0) == 0 ? p.dim : p.text);
+            chart::wrap(c, w.effect, fuel_.x + look::kPad, fuel_.y + 30.0f, fuel_.w - 2.0f * look::kPad, look::kBody, p.label, 12.0f, 2);
         }
 
         // ---- drawing -----------------------------------------------------------------------------------------------
@@ -1174,6 +1430,16 @@ namespace tee::ui
         Button *bake_ = nullptr, *down_ = nullptr, *up_ = nullptr, *smooth_ = nullptr, *fill_ = nullptr;
         Plot *sliceX_ = nullptr, *sliceY_ = nullptr;
         Button *prev_ = nullptr, *next_ = nullptr;
+        // The fuel: its fields, the simulator's table (read once served), the grade last seen, and what a change of
+        // grade left to compare: the grade before, and the knock-limit table (and whether it was in use) then.
+        Button *fuelPrev_ = nullptr, *fuelNext_ = nullptr;
+        int gradeField_ = -1, modelField_ = -1;
+        fuel::Table fuelTable_;
+        bool fuelRead_ = false;
+        int gradeSeen_ = -1, gradeFrom_ = -1;
+        Map16 knockFrom_{};
+        bool knockFromBaked_ = false;
+        Rect fuel_{}, stage_{};
         bool narrow_ = false, lampWords_ = true;
         std::deque<Sample> history_;
         std::deque<Pt> trailPts_;
@@ -1207,5 +1473,20 @@ namespace tee::ui
     {
         auto* t = dynamic_cast<TuneWorkspace*>(&w);
         return t != nullptr ? t->bakeRect() : funkgui::Rect{};
+    }
+    funkgui::Rect tuneFuelButton(Workspace& w, int dir)
+    {
+        auto* t = dynamic_cast<TuneWorkspace*>(&w);
+        return t != nullptr ? t->fuelButton(dir) : funkgui::Rect{};
+    }
+    std::string tuneFuelText(Workspace& w)
+    {
+        auto* t = dynamic_cast<TuneWorkspace*>(&w);
+        return t != nullptr ? t->fuelText() : std::string();
+    }
+    int tuneShownMap(Workspace& w)
+    {
+        auto* t = dynamic_cast<TuneWorkspace*>(&w);
+        return t != nullptr ? t->shownMap() : -1;
     }
 }
