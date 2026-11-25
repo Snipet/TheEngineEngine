@@ -539,6 +539,15 @@ namespace
             rig.spark = "baking cam 23 of 42";   // with card C's count
             rig.host->tick(3);
             CHECK(said(rig, "Baking the cam 23 of 42"));
+            rig.spark = "checking spark map 3 of 9";   // card C's verified reuse: its own words, not "Baking"
+            rig.host->tick(3);
+            CHECK(said(rig, "Checking the calibration 3 of 9") && !said(rig, "Baking"));
+            rig.spark = "checking calibration";       // no stage chosen yet
+            rig.host->tick(3);
+            CHECK(said(rig, "Checking the calibration"));
+            rig.spark = "baking";
+            rig.host->tick(3);
+            CHECK(said(rig, "Baking the calibration"));
             rig.showWorkspace("drive");
             rig.spark = "baking spark map";
             rig.host->tick(3);
@@ -546,6 +555,9 @@ namespace
             rig.spark = "baked";
             rig.host->tick(3);
             CHECK(!said(rig, "Baking"));
+            rig.spark = "calibration checked";
+            rig.host->tick(3);
+            CHECK(!said(rig, "Baking") && !said(rig, "Checking"));
         }
         return 0;
     }

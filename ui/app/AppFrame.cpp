@@ -306,7 +306,7 @@ namespace tee::ui
         std::string s = services_.sparkMap ? services_.sparkMap() : std::string();
         // "baking cam 23 of 42": the stage, then its count kept as it is
         std::string count;
-        if (s.rfind("baking ", 0) == 0)
+        if (s.rfind("baking ", 0) == 0 || s.rfind("checking ", 0) == 0)
             if (const std::size_t d = s.find_first_of("0123456789"); d != std::string::npos && d > 7)
             {
                 count = " " + s.substr(d);
@@ -324,6 +324,8 @@ namespace tee::ui
     {
         if (s == "waiting to bake")
             return "Calibration: waiting for the edits to rest";
+        if (s.rfind("checking", 0) == 0)   // a cached bake checked on this program: seconds, not minutes
+            return "Checking the calibration";
         if (s == "baking spark map")
             return "Baking the spark map";
         if (s == "baking spark map again")

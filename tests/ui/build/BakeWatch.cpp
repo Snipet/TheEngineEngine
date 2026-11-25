@@ -84,14 +84,14 @@ namespace
                     lastPeak = pk;
                     lastPrint = now();
                 }
-                if (stopAtBaked && s == "baked")
+                if (stopAtBaked && (s == "baked" || s == "calibration checked"))
                     return;
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
         };
         std::printf("  -- load (the bake yields to the ribbon's predictor; cache %s, empty)\n", cache.string().c_str());
         watch(300.0, "load", true);
-        CHECK(bake->state() == "baked");
+        CHECK(bake->state() == "baked" || bake->state() == "calibration checked");
         // The ribbon's first curve with the bake running: 6 s here (4.0 s with no bake at all, a cold process's predictor;
         // 31 to 35 s before the bake yielded to it, card C's 7f2ddfa1).
         CHECK_MSG(firstCurve >= 0.0 && firstCurve < 10.0, std::to_string(firstCurve));
@@ -112,7 +112,7 @@ namespace
         t0 = std::chrono::steady_clock::now();
         lastStage.clear();
         watch(60.0, "second", true);
-        CHECK_MSG(bake->state() == "baked" && now() < 5.0, bake->state() + " after " + std::to_string(now()) + " s");
+        CHECK_MSG((bake->state() == "baked" || bake->state() == "calibration checked") && now() < 5.0, bake->state() + " after " + std::to_string(now()) + " s");
         return 0;
     }
 }
@@ -131,7 +131,7 @@ namespace
         {
             tee::ui::ServiceBake bake(rig.sim, *rig.build);
             const auto t0 = std::chrono::steady_clock::now();
-            while (bake.state() != "baked" && std::chrono::steady_clock::now() - t0 < std::chrono::seconds(400))
+            while (bake.state() != "baked" && bake.state() != "calibration checked" && std::chrono::steady_clock::now() - t0 < std::chrono::seconds(400))
             {
                 bake.tick();
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
