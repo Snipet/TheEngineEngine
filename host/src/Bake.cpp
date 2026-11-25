@@ -32,6 +32,83 @@ namespace tee
                     return true;
             return f.path == "spec.fuel.kind" || f.path == "spec.fuel.grade";
         }
+
+        // The baked knock-limit table's retard at a speed (rad/s) and a manifold pressure (Pa), as the simulator reads
+        // it (sim/combustion/combustion.fm: only with the spark on its formula, ecu.maps.sparkAuto, and the table
+        // baked, knockLimitAuto 0; sim/spec/tables.fm Map16::at, bilinear, the edges outside the grid; never below 0).
+        // 0 when there is none
+        struct SparkTable
+        {
+            bool on = false;
+            std::vector<double> x, y;
+            std::vector<std::vector<double>> z;
+
+            explicit SparkTable(const Build& build)
+            {
+                const int fi = build.fieldOf("ecu.maps.knockLimit");
+                if (fi < 0 || build.fieldOf("ecu.maps.knockLimitAuto") < 0 || build.fieldOf("ecu.maps.sparkAuto") < 0)
+                    return;
+                if (build.get("ecu.maps.knockLimitAuto") != 0.0 || !(build.get("ecu.maps.sparkAuto") > 0.5))
+                    return;
+                const FieldInfo& f = build.fields().all()[static_cast<std::size_t>(fi)];
+                const std::vector<double>& v = build.values(fi);
+                auto leaf = [&](const char* name) {
+                    std::size_t at = 0;
+                    for (const FieldInfo::Leaf& l : f.leaves)
+                    {
+                        if (l.name == name)
+                            return at;
+                        at += l.count;
+                    }
+                    return static_cast<std::size_t>(-1);
+                };
+                const std::size_t ox = leaf("x"), oy = leaf("y"), oz = leaf("z"), onx = leaf("nx"), ony = leaf("ny");
+                if (ox == std::size_t(-1) || oy == std::size_t(-1) || oz == std::size_t(-1) || onx == std::size_t(-1)
+                    || ony == std::size_t(-1) || onx >= v.size() || ony >= v.size())
+                    return;
+                const int nx = std::clamp(static_cast<int>(v[onx]), 0, 16), ny = std::clamp(static_cast<int>(v[ony]), 0, 16);
+                if (nx <= 0 || ny <= 0)
+                    return;
+                x.assign(v.begin() + static_cast<std::ptrdiff_t>(ox), v.begin() + static_cast<std::ptrdiff_t>(ox + nx));
+                y.assign(v.begin() + static_cast<std::ptrdiff_t>(oy), v.begin() + static_cast<std::ptrdiff_t>(oy + ny));
+                z.assign(static_cast<std::size_t>(nx), std::vector<double>(static_cast<std::size_t>(ny), 0.0));
+                for (int i = 0; i < nx; ++i)
+                    for (int j = 0; j < ny; ++j)
+                        z[i][j] = v[oz + static_cast<std::size_t>(i) * 16 + static_cast<std::size_t>(j)];
+                on = true;
+            }
+
+            static int cell(const std::vector<double>& axis, double u, double& frac)
+            {
+                frac = 0.0;
+                const int k = static_cast<int>(axis.size());
+                if (k <= 1 || u <= axis[0])
+                    return 0;
+                if (u >= axis[k - 1])
+                {
+                    frac = 1.0;
+                    return k - 2;
+                }
+                int i = 0;
+                while (i < k - 2 && u >= axis[i + 1])
+                    ++i;
+                const double span = axis[i + 1] - axis[i];
+                frac = span > 0.0 ? (u - axis[i]) / span : 0.0;
+                return i;
+            }
+
+            double at(double speed, double manifold) const
+            {
+                if (!on || !std::isfinite(manifold))
+                    return 0.0;
+                double fx = 0.0, fy = 0.0;
+                const int i = cell(x, speed, fx), j = cell(y, manifold / 101325.0, fy);
+                const int i1 = x.size() > 1 ? i + 1 : i, j1 = y.size() > 1 ? j + 1 : j;
+                const double a = z[i][j] * (1.0 - fy) + z[i][j1] * fy;
+                const double b = z[i1][j] * (1.0 - fy) + z[i1][j1] * fy;
+                return std::fmax(a * (1.0 - fx) + b * fx, 0.0);
+            }
+        };
     } // namespace
 
     std::int64_t intakeCamKey(const Build& build, const Sim& sim)
@@ -47,6 +124,8 @@ namespace tee
         };
         const std::uint64_t program = sim.sourceHash();
         mixIn(&program, sizeof program);
+        const int version = kCamBakeVersion;   // (the bake's own rules: a map baked by older rules reads stale)
+        mixIn(&version, sizeof version);
         const auto& all = build.fields().all();
         for (std::size_t i = 0; i < all.size(); ++i)
         {
@@ -90,6 +169,22 @@ namespace tee
             return false;
         }
         result.parkedCentre = build.get("valve.inCentre");
+        // The spark a cell gives up (the lead's B, 25 Nov, from C's trace): knock control's retard plus the baked
+        // knock-limit table's cell at the point (with a spark table applied the table does the retarding and control's
+        // retard reads near zero, so the gate judged on control's alone passed cells it had set aside: the economy
+        // four at 1786 rpm, 30 degrees knocking 4.3 against parked 1.4 without the table, chosen 35 with it). With no
+        // table it is control's retard as before. The table is read at the point's speed and manifold, as the
+        // simulator reads it
+        const SparkTable table(build);
+        const double nan = std::numeric_limits<double>::quiet_NaN();
+        PredictOptions base = options.predict;
+        const std::size_t manAt = base.fields.size();
+        if (table.on)
+            base.fields.push_back("engine.manifold");
+        auto givenUp = [&](const PredictPoint& p) {
+            const double m = manAt < p.fields.size() ? p.fields[manAt] : nan;
+            return p.knockRetard + (table.on ? table.at(p.speed, m) : 0.0);
+        };
         const double step = std::max(options.step, 1.0);
         for (double a = 0.0; a <= range + 1e-9; a += step)
             result.advances.push_back(a);
@@ -109,7 +204,7 @@ namespace tee
             held.set("valve.inPhaseRange", 0.0);
             held.set("valve.inCentre", result.parkedCentre - advance);
             PredictCurve curve;
-            if (!predictCurve(sim, held, options.predict, curve, error, cancel))
+            if (!predictCurve(sim, held, base, curve, error, cancel))
                 return false;
             if (result.speeds.empty())
                 for (const PredictPoint& p : curve.points)
@@ -118,7 +213,7 @@ namespace tee
             for (const PredictPoint& p : curve.points)
             {
                 torque.push_back(p.valid ? p.torque : std::numeric_limits<double>::quiet_NaN());
-                knock.push_back(p.knockRetard);
+                knock.push_back(givenUp(p));
             }
             result.torque.push_back(std::move(torque));
             result.knock.push_back(std::move(knock));
@@ -132,12 +227,11 @@ namespace tee
                 return false;
             held.set("valve.inPhaseRange", 0.0);
             held.set("valve.inCentre", result.parkedCentre - advance);
-            PredictOptions po = options.predict;
+            PredictOptions po = base;
             if (!speeds.empty())
                 po.speeds = speeds;
             return predictCurve(sim, held, po, curve, error, cancel);
         };
-        const double nan = std::numeric_limits<double>::quiet_NaN();
         // a row at `speed` measured at every advance, inserted in order (the stage's rows)
         auto insertRows = [&](const std::vector<double>& at) {
             std::vector<std::vector<double>> tAt(result.advances.size()), kAt(result.advances.size());
@@ -149,7 +243,7 @@ namespace tee
                 for (const PredictPoint& p : curve.points)
                 {
                     tAt[a].push_back(p.valid ? p.torque : nan);
-                    kAt[a].push_back(p.knockRetard);
+                    kAt[a].push_back(givenUp(p));
                 }
             }
             for (std::size_t k = 0; k < at.size() && k < tAt.front().size(); ++k)
@@ -244,7 +338,7 @@ namespace tee
                     return false;
                 held.set("valve.inPhaseRange", 0.0);
                 held.set("valve.inCentre", result.parkedCentre - result.advances[a]);
-                PredictOptions po = options.predict;
+                PredictOptions po = base;
                 po.speeds = at;
                 PredictCurve curve;
                 if (!predictCurve(sim, held, po, curve, error, cancel))
@@ -252,7 +346,7 @@ namespace tee
                 for (const PredictPoint& p : curve.points)
                 {
                     tAt[a].push_back(p.valid ? p.torque : std::numeric_limits<double>::quiet_NaN());
-                    kAt[a].push_back(p.knockRetard);
+                    kAt[a].push_back(givenUp(p));
                 }
             }
             // the torque at advance adv at probe k: between the two cells about it
@@ -347,7 +441,7 @@ namespace tee
                 for (std::size_t k = 0; k < curve.points.size() && k < where.size(); ++k)
                 {
                     torque[where[k]] = curve.points[k].valid ? curve.points[k].torque : nan;
-                    knock[where[k]] = curve.points[k].knockRetard;
+                    knock[where[k]] = givenUp(curve.points[k]);
                 }
                 std::size_t pos = 0;
                 while (pos < result.advances.size() && result.advances[pos] < c)
@@ -377,24 +471,41 @@ namespace tee
         // smooth across speed: the advances chosen together, the most torque less a cost for each step between
         // neighbouring rows (stepCost of the best torque per 10 degrees: judgement), so the map does not swing back and
         // forth between cells chasing the waves' teeth (a turbo four's grid bake read 20, 20, 0, 30, 0, 20, 30, 20; the
-        // lead's 22:35). Cells set aside for knock stay set aside
-        if (options.stepCost > 0.0 && result.speeds.size() >= 2)
+        // lead's 22:35). Cells set aside for knock stay set aside. Ties (the lead's C, 25 Nov): a single predicted point
+        // carries a floor of about 0.5 % (its cycle averaging's stop rule: flow-sheets-vs-seat.md, measured), and above
+        // some 25 degrees full load is flat to 0.2 to 0.5 % (the economy four at 2571 rpm: 137.9 / 138.3 / 138.6 at 30 /
+        // 35 / 40 degrees one way, 138.6 / 138.7 / 138.6 the other), so the choice flipped between neighbours: the cells
+        // within `floor` of a speed's best count as its best, and among them the path takes the one nearest its
+        // neighbours' (the step's cost, and with none a vanishing one, so the nearest still wins; a whole tie, the
+        // least advance)
+        if ((options.stepCost > 0.0 || options.floor > 0.0) && result.speeds.size() >= 2)
         {
             const std::size_t ns = result.speeds.size(), na = result.advances.size();
             double tMax = 0.0;
             for (std::size_t s = 0; s < ns; ++s)
                 if (std::isfinite(result.bestTorque[s]))
                     tMax = std::fmax(tMax, result.bestTorque[s]);
-            const double cost = options.stepCost * tMax / 10.0;
+            const double cost = options.stepCost * tMax / 10.0 + 1e-9 * tMax;
             const double bad = -std::numeric_limits<double>::infinity();
             auto ok = [&](std::size_t a, std::size_t s) {
                 return std::isfinite(result.torque[a][s]) && result.knock[a][s] <= result.knock.front()[s] + options.knockLimit;
+            };
+            // each speed's best among the cells allowed, and a cell's torque as the path weighs it: the best's, inside
+            // the floor of it
+            std::vector<double> rowBest(ns, bad);
+            for (std::size_t s = 0; s < ns; ++s)
+                for (std::size_t a = 0; a < na; ++a)
+                    if (ok(a, s))
+                        rowBest[s] = std::fmax(rowBest[s], result.torque[a][s]);
+            auto weigh = [&](std::size_t a, std::size_t s) {
+                const double t = result.torque[a][s];
+                return options.floor > 0.0 && t >= (1.0 - options.floor) * rowBest[s] ? rowBest[s] : t;
             };
             std::vector<std::vector<double>> score(ns, std::vector<double>(na, bad));
             std::vector<std::vector<std::size_t>> from(ns, std::vector<std::size_t>(na, 0));
             for (std::size_t a = 0; a < na; ++a)
                 if (ok(a, 0))
-                    score[0][a] = result.torque[a][0];
+                    score[0][a] = weigh(a, 0);
             for (std::size_t s = 1; s < ns; ++s)
                 for (std::size_t a = 0; a < na; ++a)
                 {
@@ -404,7 +515,7 @@ namespace tee
                     {
                         if (score[s - 1][b] == bad)
                             continue;
-                        const double v = score[s - 1][b] + result.torque[a][s]
+                        const double v = score[s - 1][b] + weigh(a, s)
                                          - cost * std::fabs(result.advances[a] - result.advances[b]);
                         if (v > score[s][a])
                             score[s][a] = v, from[s][a] = b;

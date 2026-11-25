@@ -841,6 +841,82 @@ TEST_CASE("the first frame of every telemetry field is a value the program wrote
     }
 }
 
+// The lead's B and C (25 Nov, from C's trace of P's knock-limit pass): the cam bake's knock gate judges the spark a
+// cell gives up (knock control's retard plus a baked table's cell), and its ties inside a point's floor go to the
+// neighbours' choice. The economy four, its cam baked twice: on knock control alone and on its own baked spark table.
+// At 1786 rpm 30 degrees made the most but knocked 4.3 degrees against parked 1.4 and was set aside on control alone;
+// with the table applied control read 0 and 35 was chosen. Now the gate's choice there is the same both ways, and at
+// every speed the two bakes' chosen torques agree within a point's floor and the knock spread
+TEST_CASE("the cam bake on the economy four: the same gate with its spark table as without, both bakes within a "
+          "point's floor",
+          "[engine][sim][bake][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/economy-four-15.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        SKIP("the program has no knock-limit table yet");
+    build.set("ecu.maps.knockLimitAuto", 1.0);
+    build.set("ecu.maps.camInAuto", 1.0);
+    // its spark table, at full throttle over the cam's speeds
+    KnockBakeOptions ko;
+    ko.pedals = {1.0};
+    ko.boostSteps = 0;
+    ko.speeds = 6;
+    ko.predict.from = 1500.0 * M_PI / 30.0;
+    ko.predict.to = 3000.0 * M_PI / 30.0;
+    KnockBakeResult kr;
+    REQUIRE(bakeKnockLimit(sim, build, ko, kr, error));
+    Build tabled(build.fields());
+    REQUIRE(tabled.load(build.save(), BuildPart::Whole, warnings, error));
+    REQUIRE(applyKnockLimit(tabled, kr, error));
+    CamBakeOptions co;
+    co.step = 5.0;
+    co.halfSteps = false;
+    co.accept = false;
+    co.predict.speeds = {1786.0 * M_PI / 30.0, 2571.0 * M_PI / 30.0};
+    CamBakeResult a, b;
+    REQUIRE(bakeIntakeCam(sim, build, co, a, error));
+    REQUIRE(bakeIntakeCam(sim, tabled, co, b, error));
+    REQUIRE(a.speeds.size() == 2);
+    REQUIRE(b.speeds.size() == 2);
+    for (std::size_t s = 0; s < 2; ++s)
+    {
+        std::printf("[e] %.0f rpm: alone %.0f deg %.1f N m, on its table %.0f deg %.1f N m; given up at the choice %.1f "
+                    "and %.1f, parked %.1f and %.1f\n",
+                    a.speeds[s] * 30.0 / M_PI, a.best[s], a.bestTorque[s], b.best[s], b.bestTorque[s],
+                    a.knock[static_cast<std::size_t>(std::find(a.advances.begin(), a.advances.end(), a.best[s]) - a.advances.begin())][s],
+                    b.knock[static_cast<std::size_t>(std::find(b.advances.begin(), b.advances.end(), b.best[s]) - b.advances.begin())][s],
+                    a.knock.front()[s], b.knock.front()[s]);
+        for (const CamBakeResult* r : {&a, &b})
+        {
+            std::printf("[e]   %s:", r == &a ? "alone" : "table");
+            for (std::size_t c = 0; c < r->advances.size(); ++c)
+                std::printf(" %.0f:%.1f/%.1f", r->advances[c], r->torque[c][s], r->knock[c][s]);
+            std::printf("\n");
+        }
+        // each choice within the gate it was judged by
+        for (const CamBakeResult* r : {&a, &b})
+        {
+            const std::size_t at = static_cast<std::size_t>(std::find(r->advances.begin(), r->advances.end(), r->best[s])
+                                                            - r->advances.begin());
+            REQUIRE(at < r->advances.size());
+            CHECK(r->knock[at][s] <= r->knock.front()[s] + co.knockLimit);
+        }
+    }
+    // the gate's choice at 1786 rpm the same both ways
+    CHECK(a.best[0] == b.best[0]);
+    // and at every speed the two bakes' chosen torques within a point's floor of each other
+    for (std::size_t s = 0; s < 2; ++s)
+        CHECK(std::fabs(a.bestTorque[s] - b.bestTorque[s]) <= co.floor * std::fmax(a.bestTorque[s], b.bestTorque[s]));
+}
+
 TEST_CASE("the calibration baked in the background: the spark, the cam on that spark, the spark again; applied, both "
           "current; an edit makes both stale",
           "[engine][sim][bake][nightly]")
