@@ -1263,7 +1263,23 @@ module BoostMachine
         float u = 0.0f;
         if (tg > 0.0f)
         {
-            const float e = (tg - boost) / tg;
+            // (the shaft's ceiling, the lead's ruling, 25 Nov: a target the turbo cannot make is one any owner can type,
+            // and the loop then drove the shaft through its over-speed relief on every re-application, 1.066 to 1.080
+            // of its limit with the vanes ringing (the truck's sets at 2000 rpm, D2's brake release). The loop's error
+            // is the lesser of the boost's and the shaft's headroom as the boost's, 1 - (omega / omegaMax)^2 (the
+            // pressure rise goes with the tip speed squared, compressor.fm): it holds the lesser of the target and the
+            // boost at which the shaft stands at its limit. omegaMax is the limit by its own definition; no new number.
+            // The relief at 1.05 stays the emergency behind it. Held at omegaMax itself, the loop's own approach carried the
+            // shaft 10.8 % over (the truck's sets stepped 1700 to 2000 rpm, the relief off) and so through the relief,
+            // whose snap open and the loop's re-closing then cycled the shaft 0.87 to 1.06 for good: the ceiling stands
+            // that approach's overshoot under the relief, 1.05 / 1.108 = 0.948 of the limit (the lead's rule: the margin
+            // is what the measured overshoot needs; shaft-ceiling.md). The margin follows the loop: when the loop's tuning is
+            // cured and its approach overshoots less, it shrinks with it)
+            float shaftMost = 0.0f;
+            if (sc == 0)
+                for (int t = 0; t < turbos; ++t)
+                    shaftMost = fmaxf(shaftMost, shaft[t].omega / fmaxf(0.948f * omegaMax[t], 1.0f));
+            const float e = fminf((tg - boost) / tg, 1.0f - shaftMost * shaftMost);
             // (gains 0.5 and 1 a second: the duty bleeds the whole boost off the actuator's signal, so a unit of duty
             // moves the gate signal / span, some 2.4 at 73 kPa: at 2.5 and 4 the loop cycled at the turbo four's top
             // with the gate's span widened; judgement against that plant, as a calibrator sets a boost PID)
