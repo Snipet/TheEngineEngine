@@ -590,6 +590,25 @@ app/Offline.cpp (B's, asleep) at A2, the exact lines to the lead first.
   and 2 on models 0 take 17.5 s at 233 K against 8 s). D2's, after this window.
 - Known remainder: `tel.ecu.fuelFlow` under-reads by the trim while cranking and with the pedal shut.
 
+## Two content findings from N1 for a content-only push after P's bake (25 Nov 11:39; one agent's, P's rows second)
+
+- **`rotary-twin-13`: the ports from the 13B-REW's cited timing**, not the cam dial at 0.55 (judgement, some 47 deg
+  of overlap). Eccentric degrees: exhaust 75 BBDC to 48 ATDC; intakes 45 (primary) and 32 (secondary) ATDC to 50
+  ABDC (the shop manual as quoted on the LinkECU forum, MotoIQ, AusRotary; agrees with the lead's recollection).
+  `rotaryPorts = (130.0, 392.0, 381.3, 573.3)`, 11 deg of overlap, the two intake ports as one (judgement, stated).
+  N1's ledger at 5000 rpm: 244.5 to 320.0 N m at the same boost (residual 0.149 to 0.076, VE on the manifold 0.72
+  to 0.97), against 294 firm to 10 %; the curve 290 to 309 from 2500 to 6200. **To check:** 309 N m at 2500 on one
+  turbo, above the card's peak. N1 predicted +6 to 10 % and got +31: under boost the overlap's backflow is the cost.
+- **`two-stage-cam-20`: the high intake lobe on the F20C's own card.** Today the stages cross at 7188 rpm (makers'
+  5500 to 5900): B fills better to bottom centre and then pushes 13 % of its charge back through a closing its
+  runner's wave no longer covers; B's air is 4.7 % short at 6000 and nothing else is. Three sourced levers (the
+  F20C's 36 / 31 valves, the K20A2 sheet's port qualities, the RBC plenum) did not move the crossing toward the
+  range. The sensitivity: duration 43 rpm a degree, the runner not monotone. **With B at 247 deg at 1 mm on a
+  centreline of 98** (the AP1 F20C's intake VTEC lobe from an S2KI thread, unverified by its poster; the card's 110
+  was copied from A) **the crossing is 5802 rpm** and B is 4 % over A at 6000. Basis "forum, unverified" unless P
+  finds the service manual's table. The owner reported this build's cam change as inaudible and invisible.
+- Next for N1: the idle residual (the V10's 0.46 and the V12's 0.61 bar at idle against 0.30 to 0.44), by a ledger.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 11:26: sim/, host/ and tools/ are FROZEN** (P re-bakes at the tip for the next `main`). ui/, app/,
