@@ -16,7 +16,9 @@
 //                          order
 //                  cancel  {id} -> {"cancelled": bool}: a waiting call is answered "cancelled", the running one stops
 //                          as soon as it can (and still answers)
-//   a reply      one line, {"id": 1, "result": ...} or {"id": 1, "error": "why"}, exactly one a request
+//   a reply      one line, {"id": 1, "result": ...} or {"id": 1, "error": "why"} (with "code", a JSON-RPC error's, when
+//                the bridge must answer its client with one: -32602 for a call of a tool that does not exist), exactly one
+//                a request
 //
 // macOS and Linux. Windows has no link in this version: every function here says so (kNoLink) and the app's switch
 // stays off.

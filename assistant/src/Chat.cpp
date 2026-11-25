@@ -218,7 +218,12 @@ namespace tee::assistant
     {
         if (transport_ == nullptr)
         {
-            why = "this build cannot reach the Claude API";
+            why = options_.noTransportWhy.empty() ? std::string("this build cannot reach the Claude API") : options_.noTransportWhy;
+            return false;
+        }
+        if (!options_.noKeyStoreWhy.empty())
+        {
+            why = options_.noKeyStoreWhy;
             return false;
         }
         if (!key_ || key_().empty())

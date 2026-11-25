@@ -17,7 +17,8 @@ target_compile_definitions(tee-tests-assistant PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim\"")
 if(TARGET tee-mcp)   # (macOS and Linux) the bridge, run by McpTest.cpp as Claude Desktop runs it
-  target_compile_definitions(tee-tests-assistant PRIVATE "TEE_MCP_EXE=\"$<TARGET_FILE:tee-mcp>\"")
+  target_compile_definitions(tee-tests-assistant PRIVATE "TEE_MCP_EXE=\"$<TARGET_FILE:tee-mcp>\""
+                             "TEE_MCPB_MANIFEST=\"${CMAKE_BINARY_DIR}/mcpb/manifest.json\"")
   add_dependencies(tee-tests-assistant tee-mcp)
 endif()
 if(TARGET CURL::libcurl AND NOT WIN32)   # the real transport, tested against a loopback server
