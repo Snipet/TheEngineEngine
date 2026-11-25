@@ -89,3 +89,14 @@ the integral and the feed-forward of a sweep's acceleration kept), or a first-or
 either takes out the step's overshoot without slowing the loop's hold of a lumpy cam. To measure first (trace the step
 on the default V8 and the two-stage), predict the change in every dyno test's print, and weigh against C's ramped
 approach (C ramps the stepped dyno's approach next window; with the ramp the overshoot may no longer matter).
+
+**Open for the next window, its FIRST item by the lead's ruling (25 Nov 22:00; core :680, first.json's two routes; a state that differs between the application's own load and an init is a real fault, however small)**: 8c0f746a (on the branch as f6c5d1ba) reads the routes settled (5 to 6 s)
+within 2.5 %, against a measured spread of 2.4 % across fourteen inits (each route's cylinders draw their own bias), with
+every model switch held exactly across the routes. The margin is thin: a later bake may go red with no fault (the lead's
+point). The sharper form, the same bias draws on both routes and the paired difference bounded, does not yet pair them:
+with the same bias the pairs differ 0.06 to 1.6 % at 5 to 6 s; with the same bias and the same states of both engine
+noise streams (noise.rs, ex.noise.rs) still 1.37 / 0.09 / -1.46 %. Some other state differs between "written after
+init" and "initialised over it" and the run diverges from it. Next: diff every field right after start between the two
+routes, pair them on what differs; if they then agree to well under 1 % bound the paired difference by its measure; if
+something real differs (a field one route sets and the other does not), it is a finding in the init order: to the lead
+before the bound moves. Changes after this note are docs only; not pushed while the branch is held.

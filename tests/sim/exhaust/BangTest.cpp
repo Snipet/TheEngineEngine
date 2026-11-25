@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 
 using namespace tee::test::exhaust;
 
@@ -359,4 +360,101 @@ TEST_CASE("measure: the exhaust's back pressure after the turbine against flow a
                         "before the muffler %.1f kPa over the air; (head) / (m^2 T) %.3g\n", thr, rd("crank.rpm"), q, tm, mdot,
                         pc / 1e3, pm / 1e3, pc / (mdot * mdot * std::max(tm, 300.0)));
         }
+}
+
+// Sample by sample on the rally five (its spark cut and anti-lag, Burned in the pipe): around the output's largest
+// steps, the heat being released, so a step can be told for a burn's start, its end or neither
+TEST_CASE("measure: the rally five's largest output steps against the burns, sample by sample", "[.][measure]")
+{
+    auto player = tee::test::enginePlayer(48000.0);
+    tee::applyBuild(*player, tee::test::engineBuild(*player, "archetypes/inline-five-turbo-rally"));
+    if (const char* b = std::getenv("PROBE_BANG"))
+    {
+        const int i = player->specIndex("exhaust.bang");
+        REQUIRE(i >= 0);
+        player->setSpec(static_cast<std::size_t>(i), std::atof(b), 0);
+    }
+    auto rd = [&](const std::string& path) {
+        double v = 0.0;
+        std::string error;
+        REQUIRE(player->read(path, v, error));
+        return v;
+    };
+    std::vector<float> l(512), r(512);
+    auto run = [&](double s) {
+        for (int b = 0; b < static_cast<int>(s * 48000.0 / 512.0 + 0.5); ++b)
+            player->process(l.data(), r.data(), 512);
+    };
+    player->controls().mode = tee::EnginePlayer::kModeBench;
+    player->controls().ignition = tee::EnginePlayer::kIgnitionStart;
+    run(1.5);
+    player->controls().ignition = tee::EnginePlayer::kIgnitionOn;
+    run(0.5);
+    player->controls().throttle = 1.0f;
+    run(2.0);
+    player->controls().throttle = 0.0f;
+    // 1.5 s of the lift sample by sample (anti-lag), then the limiter's
+    struct S
+    {
+        float out;
+        double rate, tau;
+        int burns;
+    };
+    std::vector<S> s;
+    float l1 = 0.0f, r1 = 0.0f;
+    for (int phase = 0; phase < 2; ++phase)
+    {
+        if (phase == 1)
+        {
+            player->controls().throttle = 1.0f;
+            run(0.5);
+        }
+        for (int i = 0; i < 48000; ++i)
+        {
+            player->process(&l1, &r1, 1);
+            s.push_back({0.5f * (l1 + r1), rd("exh.b.bangRate"), rd("exh.b.bangTau"),
+                         static_cast<int>(rd("exh.b.burn[0].on[0]") + rd("exh.b.burn[0].on[1]") + rd("exh.b.burn[0].on[2]") + rd("exh.b.burn[0].on[3]"))});
+        }
+    }
+    // the ten largest steps, with the heat's rate at and around them
+    std::vector<std::pair<double, std::size_t>> steps;
+    for (std::size_t i = 1; i < s.size(); ++i)
+        steps.push_back({std::fabs(s[i].out - s[i - 1].out), i});
+    std::sort(steps.rbegin(), steps.rend());
+    for (int k = 0; k < 10; ++k)
+    {
+        const std::size_t i = steps[static_cast<std::size_t>(k)].second;
+        double peak = 0.0;
+        std::size_t at = i;
+        for (std::size_t j = i > 1440 ? i - 1440 : 0; j <= i; ++j)
+            if (s[j].rate > peak)
+            {
+                peak = s[j].rate;
+                at = j;
+            }
+        int lastEnd = -1;
+        for (std::size_t j = i; j > 0 && j + 1440 > i; --j)
+            if (s[j - 1].burns > s[j].burns)
+            {
+                lastEnd = static_cast<int>(i - j);
+                break;
+            }
+        std::printf("step %.4f at sample %zu (%s): rate there %.0f kW; the last 30 ms' largest %.0f kW, %.1f ms before; a burn ended %.2f ms before; tau %.2f ms\n",
+                    steps[static_cast<std::size_t>(k)].first, i, i < 48000 ? "lift" : "limiter", s[i].rate / 1e3, peak / 1e3,
+                    (i - at) / 48.0, lastEnd / 48.0, s[i].tau * 1e3);
+        if (k == 0)
+        {
+            std::printf("  the output around it:");
+            for (std::size_t j = i - 8; j < i + 8; ++j)
+                std::printf(" %.3f", s[j].out);
+            std::printf("\n");
+        }
+    }
+    double typical = 0.0;
+    std::vector<double> all;
+    for (auto& p : steps)
+        all.push_back(p.first);
+    std::sort(all.begin(), all.end());
+    typical = all[all.size() * 99 / 100];
+    std::printf("99th percentile step %.4f\n", typical);
 }
