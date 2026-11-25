@@ -99,8 +99,8 @@ in hand: the code was written against SDL's documentation and compiled.
 
 ## A wheel and pedals
 
-**A Logitech G29** (the wheel, its pedals and the Driving Force Shifter on one USB cable) is read on **macOS** with no
-software of Logitech's installed. Never yet run with a real wheel in this repository: the owner's run is the first
+**A Logitech G29** (the wheel, its pedals and the Driving Force Shifter on one USB cable) is read on **macOS** (IOKit)
+and **Linux** (the kernel's own driver, hid-lg4ff) with no software of Logitech's installed. Never yet run with a real wheel in this repository: the owner's run is the first
 (the code is TestingPlayground's, where it drove the owner's G29: `shell/input/g29/SEED.tsv`).
 
 - **The switch on the wheel at PS3.** At PS4 it is not read (the status line says to set it to PS3). At PS3, without
@@ -122,14 +122,27 @@ software of Logitech's installed. Never yet run with a real wheel in this reposi
 | Its five shift lights | The DRIVE view's own count (the same five steps below the redline), all five flashing on the limiter. |
 | Other buttons | Nothing yet (a learn mode comes later). |
 
-**On and off:** F9, "Read the racing wheel (Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
+**On and off:** the settings page's WHEEL row (on macOS and Linux; its status line under it), or F9, "Read the racing wheel
+(Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
 the device is left open (shared: another program may read it too) but nothing is read from it or sent to it. The
 status line says what the wheel is doing ("wheel: G29 read", "wheel: set the switch on the wheel to PS3", ...), and the
 console prints each change.
 
+**On Linux** the kernel's hid-lg4ff drives the wheel: it switches a G29 at PS3 to its full mode by itself, and the
+application reads its input device (`/dev/input/event…`, never grabbed), sets the range through hid-lg4ff's `range`
+file (only when it is not 900 already: the kernel sets 900 as it takes the wheel), the spring as force feedback's
+autocentre, and the shift lights through hid-lg4ff's LED files (`…::RPM1` to `::RPM5`). The input device is yours
+while you sit at your desktop; the `range`, `alternate_modes` and LED files are root's, so without a udev rule the
+lights stay dark (the status line says so). A rule that gives them to you, in `/etc/udev/rules.d/99-g29.rules` (then
+`sudo udevadm control --reload` and plug the wheel in again; TestingPlayground's, not tried on a wheel here):
+
+    ACTION=="bind", SUBSYSTEM=="hid", DRIVER=="logitech", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c24f|c294", \
+      RUN+="/bin/sh -c 'chmod 0666 /sys%p/range /sys%p/alternate_modes /sys%p/leds/*/brightness'"
+
+`evtest` (its own package) shows what the wheel sends there; `tee-wheel-dump` is macOS's.
+
 **Not yet:** Windows (no wheel read; SDL 3.4's own HIDAPI Logitech driver, `SDL_hidapi_lg4ff`, is the likely route, off
-by default there), Linux (TestingPlayground's evdev body through the kernel's hid-lg4ff is the next port), a learn
-mode, force effects beyond the spring. A G29 is never opened as a gamepad (SDL's Logitech driver is turned off, so it
+by default there), a learn mode, force effects beyond the spring. A G29 is never opened as a gamepad (SDL's Logitech driver is turned off, so it
 cannot reset the spring).
 
 **To see what the wheel sends** (macOS): `tee-wheel-dump` beside the application (`build-release/bin/tee-wheel-dump`)

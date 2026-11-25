@@ -583,6 +583,15 @@ namespace
                 return shown.document->build().notes;
             };
             shown.window->tryFirstDone = [&now] { now.tryFirstSeen = true; };
+            shown.window->wheelOn = [&wheel] { return wheel.on(); };
+            shown.window->setWheelOn = [&wheel, &now](bool on) {
+                wheel.setOn(on);
+                now.wheelOn = on;
+            };
+            shown.window->wheelStatus = [&wheel] {
+                const std::string said = wheel.status();
+                return !said.empty() ? said : wheel.reading() ? std::string("G29 read") : std::string();
+            };
             shown.window->coldStart = [&now] { return now.coldStart; };
             shown.window->setColdStart = [&now](bool cold) { now.coldStart = cold; };
             shown.window->desktopChosen = [&now](bool on) { now.allowClaudeDesktop = on; };

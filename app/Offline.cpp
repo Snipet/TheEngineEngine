@@ -163,8 +163,9 @@ namespace tee::app
                 // The assistant (card A): its tools' jobs run on this frame (assistant.frame, below), its clock this
                 // frame count at 60 a second (tee-headless's simulated clock; about the window's). Last, so destroyed
                 // first: its destructor stops Claude Desktop's link (the call running cancelled and waited for) and
-                // closes its inbox before the document and the library it acts on go. No question can be put to the
-                // owner yet (`ask` null until U1's dialog): a load over unsaved changes is refused, never silent.
+                // closes its inbox before the document and the library it acts on go. A load over unsaved changes asks
+                // the owner first, through the frame's dialog (askOwner below: AppFrame::ask, "Load" or "Keep"); with no
+                // frame to ask (tee-headless before its frame, or after it) the answer is no: never silent.
                 std::atomic<double> frames{0.0};   // (read by the link's worker: a turn's clock)
                 // The owner's yes or no (SessionParts::ask): the frame's dialog (AppFrame::ask, U1's) while the frame
                 // lives; set once it is made, cleared before it goes (Shown::panelGoing). Without it: no.
@@ -261,6 +262,15 @@ namespace tee::app
                     if (hooks->tryFirstDone)
                         hooks->tryFirstDone();
                 };
+#if defined(__APPLE__) || defined(__linux__)
+                // the settings' WHEEL row: only where a wheel is read (macOS's IOKit, Linux's evdev: input/g29/)
+                frameServices.wheelOn = [hooks] { return hooks->wheelOn && hooks->wheelOn(); };
+                frameServices.setWheelOn = [hooks](bool on) {
+                    if (hooks->setWheelOn)
+                        hooks->setWheelOn(on);
+                };
+                frameServices.wheelStatus = [hooks] { return hooks->wheelStatus ? hooks->wheelStatus() : std::string(); };
+#endif
                 frameServices.coldStart = [hooks] { return hooks->coldStart && hooks->coldStart(); };
                 frameServices.setColdStart = [hooks](bool cold) {
                     if (hooks->setColdStart)

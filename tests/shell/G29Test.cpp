@@ -344,7 +344,8 @@ TEST_CASE("g29: the driver's decisions over fake devices: read, off, unplug, ran
 #if defined(__APPLE__)
         CHECK(denied.status() == "macOS keeps it from this app: allow it in Privacy & Security, Input Monitoring");
 #else
-        CHECK(denied.status() == "the system keeps it from this app");
+        CHECK(denied.status()
+              == "the system keeps it from this app: its device needs your read and write access (see docs/controls.md)");
 #endif
         denied.quit();
     }
