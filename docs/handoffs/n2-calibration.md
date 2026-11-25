@@ -20,9 +20,10 @@ wants pairs (cooler, spring, pipes, compressor; U3 draws them); the inlet's stif
 (X-024) and the filter's loss bounded (X-026); the knock-limit table's ECU side (ecu.maps.knockLimit, knockLimitAuto,
 knockLimitKey; tel.ecu.knockTable; advanceAsked per charge). C bakes the table (tee-dyno --bake-spark).
 
-**Open**: (1) the design-point matching rule (the lead's (a')): written and measured (design-point.md), NOT adopted;
-its code is a patch (Boost::designSpeed needs D's one line in engine.fm); spool gains on oversized petrols (+13 to
-+43 % at 0.4 of the redline), 2 to 4 % lost at the top, diesels both ways. (2) The rotary's sequential pair at 6000
+**Open**: (1) the compressor map against published maps (published-compressor-maps.md; compressor-map-model.md):
+surge/choke 0.31/0.38 at PR 1.5/2.0 against 0.22-0.26/0.26-0.34; the surge cap on the loop's target is held for the
+corrected map (1d053a48, reverted 69c1fdfa); the design-point rule is in (designShare, Boost::designSpeed).
+(2) The rotary's sequential pair at 6000
 to 7200 rpm: 26 to 39 kPa against 70 either rule; the second compressor barely flows (0.027 against 0.146 kg/s, both
 on the knee). (3) The knock-limit table's proof runs (retard under 3 degrees, torque within 2 %) when C's boost-sweep
 bake exists. (4) The pickup's top end (vanes fully open at p3/p2 1.41). (5) The boost package's CPU budget (80 s).
