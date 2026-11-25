@@ -153,3 +153,6 @@ sheet will include every registered workspace.
 - **The bake, cam too** (card C's CalibrationBakeService, 879c59f2): `ServiceBake` now bakes the intake cam, then the
   spark map, and applies each while still the build's; `sparkMap` says "baking cam", "baking spark map", "baking spark
   map again" while it works (the other words as before). The shell's wiring is unchanged.
+- **The bake in the status line** (the lead's ruling, 01:33): while FrameServices::sparkMap says the bake works, the
+  top bar's status line says its stage ("Baking the cam", "Baking the spark map"...), on every workspace, at
+  1100 px too (it takes room from the name). Test `ui.frame.bake`.

@@ -37,6 +37,28 @@
 
 ## Landed
 
+- **01:35 (25 Nov) a correction to 01:30, and what `main` now waits for.** *The lead's acceptance of the map's surge
+  line may have been of the wrong line*: N2 says the model goes unstable wherever a speed line rises with flow, which
+  is everything left of the knee `phiK`, while the figures checked (0.24 / 0.29 / 0.36 / 0.44 of choke) may be the
+  flag's locus at 0.8 `phiK`. If so the model's real line is at 0.30 / 0.36 / 0.45 / 0.55, above the published ranges
+  at every ratio. Not measured yet; N2 is to say which locus the figures are and measure where the model surges.
+  Ruled: the knee's place is part of the surge line's place and is settled before the commit; one commit (the map, the
+  sizing kept, the knee if it moves, the cap tried after), so that table L and the baked maps are re-made once. A
+  thought given to N2 to test: the truck's two states may be static (an engine's swallowing line crossing a rising
+  characteristic twice), in which case the low state exists only because the model lets a compressor sit left of its
+  peak. *N2's three trees* (turbo four at 1500 / 1800 / 2500 / 4000 / 6200, N m): head 213 / 227 / 305 / 366 / 289;
+  the map alone 231 / 257 / 394 / 367 / 290; the map with the sizing kept 222 / 239 / 319 / 366 / 289. The map alone
+  reaches the target at 2500 only by building a wheel a fifth smaller, so the engine's low end is the turbo's size:
+  hardware a build should state from a source (P asked for the IS20's wheel dimensions; nothing sized from the 350).
+  The 2.0 common-rail at 1800 gains nothing on either tree (turbine inlet 127 kPa absolute: spool). *`main` now also
+  waits for C's fix to the background bake*: U1 watched a real bake (0101e7f4): at load the DYNO ribbon reads "no
+  curve yet" for 31 to 35 s on 4 cores because the bake holds the workers ahead of the predictor, and every content
+  build bakes again at each launch (about 110 s, up to six workers) since all are stale against the program and
+  nothing keeps a result between launches. Asked of C, in order: the predictor ahead of the bake; a cache by key in a
+  folder the app gives; done and total per stage; the cells still knocking served. The owner was told, and that
+  `main` moves sooner if they say so. *Rulings*: the 7.0 takes the LS7's own cam card for table L (basis: search
+  snippets, the page refused, not read), shown three ways in the twin; N1 to size whether the low-lift reverse-flow
+  coefficient alone could carry the residual gap, as a diagnostic and no change.
 - **01:30 (25 Nov) between check-ins; `main` stays at 09c1fb4e.** The first run on a commit holding every one of
   tonight's fixes is in flight on Linux and macOS (45525224026 at fc554da; the ten commits checked as ancestors by the
   lead: 4e1c813b, 62657c07, 1ab6affe, fd6ed014, f0512a25, ee603c37, 576c1c6e, 68e683f1, a18f1bd4, f4cf2b39). The runs

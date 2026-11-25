@@ -183,7 +183,11 @@ namespace tee::ui
         sentence_ = &make<Label>([this] { return engineSentence(); }, kWidgetText, Label::Ink::text);
         // The status line, cut at whole fields ("   " apart) then whole words to its room: never part of a word.
         status_ = &make<Label>([this] {
+            // The calibration's bake first while it works (the lead's ruling: a person on any workspace knows something
+            // is happening), then the application's line.
             std::string line = services_.app.status ? firstLine(services_.app.status()) : std::string();
+            if (const std::string bake = bakeWords(); !bake.empty())
+                line = line.empty() ? bake : bake + "   " + line;
             const float room = status_ != nullptr ? status_->bounds().w : 0.0f;
             const auto fits = [&](const std::string& t) {
                 return funkgui::text::width(funkgui::FontService::get().atlas(), t.c_str(), kWidgetSmall) <= room;
@@ -294,6 +298,25 @@ namespace tee::ui
         unitsSeen_ = units_.revision();
         selectionSeen_ = selection_.revision();
         show(std::max(0, find("engine")));
+    }
+
+    std::string AppFrame::bakeWords() const
+    {
+        // FrameServices::sparkMap's state (ServiceBake) as a sentence while the bake works or failed; empty otherwise.
+        const std::string s = services_.sparkMap ? services_.sparkMap() : std::string();
+        if (s == "waiting to bake")
+            return "Calibration: waiting for the edits to rest";
+        if (s == "baking spark map")
+            return "Baking the spark map";
+        if (s == "baking spark map again")
+            return "Baking the spark map again";
+        if (s == "baking cam")
+            return "Baking the cam";
+        if (s.rfind("baking", 0) == 0)
+            return "Baking the calibration";
+        if (s == "bake failed")
+            return "Calibration bake failed";
+        return {};
     }
 
     void AppFrame::closeTryFirst()
@@ -748,6 +771,7 @@ namespace tee::ui
         right(load_, 150.0f, 5.0f, 40.0f);
         const float left = railWidth() + 16.0f;
         float statusW = 0.0f;
+        bakeShown_ = !bakeWords().empty();
         if (load_->verdict() < 1)
         {
             // The build does not fit (tight or over): the sentence and QUALITY in the status line's place, the name and
@@ -763,6 +787,8 @@ namespace tee::ui
             adviceButton_->setPlace({}, false);
             advice_->setPlace({}, false);
             statusW = std::clamp(x - left - 420.0f, 0.0f, 300.0f);
+            if (bakeShown_)   // the bake's words have room at the smallest window (the name keeps 170 px)
+                statusW = std::max(statusW, std::min(200.0f, x - left - 182.0f));
             status_->setPlace({ x - statusW, 18.0f, statusW, 14.0f }, statusW > 60.0f);
         }
         const float room = std::max(80.0f, x - statusW - 12.0f - left);
@@ -1100,6 +1126,8 @@ namespace tee::ui
             else if (sawRunning_ && std::isfinite(st) && !tryFirstNotes_.empty())
                 closeTryFirst();
         }
+        if (bakeWords().empty() == bakeShown_)
+            arrange();   // a bake began or ended: the status line's room
         if ((load_->verdict() < 1) != advice_->shown())
             arrange();   // the build stopped fitting, or fits again: the sentence comes or goes by itself
         if (engineBrakeState(*ctx_).shown != brake_->shown())
