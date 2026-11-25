@@ -199,7 +199,11 @@ module EcuSpec
         [[ui::help("Full rack up to here, then the droop line; 0: the redline")]];
     float fuelBoost [[fminus::range(0, 400000)]] [[fminus::default(150000)]] [[ui::label("Pump set for boost")]]
         [[ui::quantity("pressure")]] [[ui::help("Full rack is an equivalence ratio of 0.75 at this boost (over the air)")]];
-    float afc [[fminus::range(0, 1.2)]] [[fminus::default(0.8)]] [[ui::label("Smoke limiter")]] [[ui::quantity("ratio")]]
+    // (afc's 0.77, lambda 1.30: cited, a patent's "typically about 1.3" for a turbocharged heavy-duty diesel's smoke limit,
+    // US 7,270,089; a second patent's transient limiter's axis spans lambda 1.27 to 1.37, US 6,508,241 (axis ticks, not
+    // curve values); not a maker's calibration. Bosch's 1.4 to 1.5 is the steady full-load limit, not the transient one.
+    // Read by card P, docs/measurements/2026-11-25-0032-judgement-sources.md, 14. It was 0.8, judgement, until 25 Nov)
+    float afc [[fminus::range(0, 1.2)]] [[fminus::default(0.77)]] [[ui::label("Smoke limiter")]] [[ui::quantity("ratio")]]
         [[ui::help("The boost compensator: the most equivalence ratio of the air there; 0: removed (it smokes while the turbo spools)")]];
     int engineBrake [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Engine brake")]]
         [[ui::choices("None", "Compression release")]] [[ui::help("Opens the exhaust valve near the top of compression, fuel off: its lobe is the second exhaust event's")]];

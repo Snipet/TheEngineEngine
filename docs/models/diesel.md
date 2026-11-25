@@ -13,7 +13,15 @@ never smoke, and its lever has an idle floor of 0.12. A real pump meters fuel by
 
 - **Fuel by the rack.** `fuelFull`, the fuel a stroke at full rack, is an equivalence ratio of 0.75 of the air a
   cylinder holds at the boost the pump was set up for (`ecu.fuelBoost`, at 320 K, 0.92 filling). The boost
-  compensator (`ecu.afc`, an equivalence ratio; 0 removes it) caps it at what the air there allows. Past 0.85 the
+  compensator (`ecu.afc`, an equivalence ratio; 0 removes it) caps it at what the air there allows: 0.77 by default,
+  lambda 1.30 (cited: a patent's "typically about 1.3", US 7,270,089; a second's axis lambda 1.27-1.37, US 6,508,241;
+  not a maker's calibration; 0.8 until 25 Nov). It binds where the air is short (spooling, a lug), and there it moves settled
+  points too. Moving it from 0.8 to 0.77 (25 Nov): diesel-v8-truck's most power 3120 N m / 535 kW -> 3016 / 517 kW at
+  1637 rpm (-3.4 %): its `fuelBoost` asks for more than the reference turbo gives there, so the cap binds at its own
+  rated point (open: the fuel curve, or its turbo, to put right); the tractor archetype at 1100 rpm 2117 -> 1929 N m
+  (-9 %, boost 90 -> 79 kPa: the air short at the edge near 1060 rpm, less fuel and so less boost; a real engine holds
+  its peak there on some twice that boost: the low-speed vane loop's, card N2's); the 2.0 at 1800 166 -> 159 N m (-4 %,
+  18 kPa of boost), the same kind; every other take-up and rated point within half a per cent. Past 0.85 the
   fuel finds less oxygen: the heat levels off toward an equivalence ratio of 1 (0.85 + 0.15 (1 - e^-(phi-0.85)/0.15)),
   the rest is soot. The smoke number from what was injected: 0 at 0.6, 4 FSN at 0.9 (4 x^2, x = (phi - 0.6) / 0.3),
   at most 10 (judgement: the shape of published FSN against air-fuel ratio, as card H's `phiAt`).
