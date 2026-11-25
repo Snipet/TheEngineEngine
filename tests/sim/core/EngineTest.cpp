@@ -454,7 +454,7 @@ TEST_CASE("boost.model 1 implies the builder's exhaust, at a build and when swit
     CHECK(std::isfinite(b.tel("engine.speed")));
 }
 
-static void booksOn(const std::vector<const char*>& builds, double settle = 8.0)
+static void booksOn(const std::vector<const char*>& builds, double settle = 4.0)
 {
     // (the lead's ask, 24 Nov: the backflow test ran green while every diesel archetype was dead on the dyno; each of
     // these must make torque at full load, and its throttle's (or intake's) air, its intake valves' and its exhaust
@@ -473,10 +473,10 @@ static void booksOn(const std::vector<const char*>& builds, double settle = 8.0)
         b.ctl().mode = 2;
         b.ctl().throttle = 1.0f;
         b.ctl().dynoSpeed = float(1800.0 / 9.5492966);
-        // (a boosted diesel's plenum settles slowly: the full form gives it 10 s. The default's 8: the tractor's turbo
-        // spools from 192 to 230 kPa 4 to 8 s after the dyno takes it, and the stretch from the plenum to the valves,
-        // unbooked, fills as the boost rises: the books read -0.68 % at 4 to 6 s (32 kPa risen), -0.17 % at 6 to 8
-        // (6 kPa), within 0.07 % from 8 to 24 s (the lead's ask, 25 Nov: [.tractorbooks]; the CI's 1.006 % at 4 s)
+        // (a boosted diesel's plenum settles slowly: the full form gives it 10 s. The default's 4 s is kept short on
+        // purpose: the tractor's turbo still spools there (192 to 224 kPa 4 to 6 s in; the books -0.68 %, within 0.07 %
+        // from 8 s: [.tractorbooks], 25 Nov), so the bound reads the operating point too: it caught N2's 69c1fdfa taking
+        // a quarter of the tractor's torque (1.006 %; the lead's ruling, 25 Nov)
         b.play(settle);
         double thr = 0, fr = 0, v = 0, x = 0;
         airBooks(b, 2.0, thr, fr, v, x);
