@@ -91,6 +91,15 @@ namespace tee
         bool redo();
         bool canUndo() const noexcept { return !undo_.empty(); }
         bool canRedo() const noexcept { return !redo_.empty(); }
+        // Each step has an id, given when it is made (a gesture's when it ends), counted from 1 and never reused, kept
+        // through undo and redo: what undo() would take back now (0: nothing), and what redo() would put back. A
+        // caller that made a step (the assistant's card with its Undo) offers to undo it only while it is on top.
+        // A rebind that keeps the steps (the same fields in the same order: a quality change) keeps their ids, so
+        // undoStep() answers the same id after it; one that drops the steps drops their ids (0 until the next step).
+        std::uint64_t undoStep() const noexcept { return undoIds_.empty() ? 0 : undoIds_.back(); }
+        std::uint64_t redoStep() const noexcept { return redoIds_.empty() ? 0 : redoIds_.back(); }
+        // A gesture is open (beginGesture without its endGesture yet: a knob held): a change made now joins it.
+        bool gestureOpen() const noexcept { return gestureDepth_ > 0; }
 
         // ---- files ----------------------------------------------------------------------------------------------
         // Reads a build (or a part's file). False, with `error` saying what is wrong, when it is no build or not of
@@ -144,6 +153,8 @@ namespace tee
         std::vector<std::vector<double>> values_;   // a Spec field's, by its index in Fields::all(); empty otherwise
         std::map<std::string, std::string> unknown_;
         std::vector<std::vector<Change>> undo_, redo_;
+        std::vector<std::uint64_t> undoIds_, redoIds_;   // each step's id, beside it
+        std::uint64_t nextStep_ = 1;
         std::vector<Change> gesture_;
         int gestureDepth_ = 0;
         SimHost* host_ = nullptr;
