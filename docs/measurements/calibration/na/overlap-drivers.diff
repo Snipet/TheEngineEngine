@@ -1,0 +1,147 @@
+diff --git a/sim/core/cylinder.fm b/sim/core/cylinder.fm
+index 47803c95..024c30f5 100644
+--- a/sim/core/cylinder.fm
++++ b/sim/core/cylinder.fm
+@@ -81,6 +81,13 @@ module Cylinder
+                         // reads it (1 until a charge)
+     int lateFuel;       // 1: its fuel is injected late (a diesel's): its gas is air until it burns (phi x the burned share)
+     float xBurn;        // the share of this cycle's charge burned so far (0 from intake closing; 1 once burned)
++    // (DEBUG, local scratch only: N3-16's drivers)
++    float dbgBin[80];   // 8 bins of 10 deg from 330: dt, ppE, p, ppI, ex out, ex in, int pushed, int drawn (x dt or kg)
++    float dbgCyc[12];   // R (burned at IVO), burned at IVC, fresh at IVC, count; E actual; E ideal (actual ppE); E ideal (mean); both-open time; ppE mean acc, dt acc
++    float dbgMean;      // 1: the exhaust valve sees its port's last-cycle mean pressure while both are open
++    float dbgBSum;
++    float dbgBT;
++    float dbgBMean;
+     int conserve;       // 1 (the physical cylinder: Engine::woschniWalls): what the intake pushed back comes back as itself,
+                         // its mass at the temperature it left at; 0: the reference's, as the same volume of the air
+     float cBurn;        // how much of what could burn this cycle's burn will burn (the dilution's toll)
+@@ -370,7 +377,22 @@ module Cylinder
+         const float ivc = ivo + idur >= cyc ? ivo + idur - cyc : ivo + idur;
+         ivcNow = passed(before, a, ivc);
+         if (ivcNow)
++        {
+             xBurn = 0.0f;           // (a new charge: none of it burned)
++            dbgCyc[1] += mInert;
++            dbgCyc[2] += m - mInert;
++            dbgCyc[3] += 1.0f;
++        }
++        if (passed(before, a, ivo))
++            dbgCyc[0] += mInert;
++        if (passed(before, a, 0.0f) && dbgBT > 0.0f)
++        {
++            dbgBMean = dbgBSum / dbgBT;
++            dbgBSum = 0.0f;
++            dbgBT = 0.0f;
++        }
++        dbgBSum += bE * dt;
++        dbgBT += dt;
+         slapNow = rotary == 0 && (passed(before, a, 12.0f) || passed(before, a, 372.0f));
+         sparkNow = passed(before, a, sparkAt);
+         knockNow = false;
+@@ -404,14 +426,15 @@ module Cylinder
+         // the valves, each solved with its pipe
+         const float le = areaE < 0.0f ? areaAt(a, evo, edur) : areaE;
+         const float li = areaI < 0.0f ? areaAt(a, ivo, idur) : areaI;
+-        qE = le > 0.0f ? solveE(bE, zE, areaE < 0.0f ? aE * le : areaE, tPipe) : 0.0f;
++        const float bEuse = (dbgMean > 0.0f && le > 0.0f && li > 0.0f && dbgBT > 0.0f) ? dbgBMean : bE;
++        qE = le > 0.0f ? solveE(bEuse, zE, areaE < 0.0f ? aE * le : areaE, tPipe) : 0.0f;
+         qI = li > 0.0f ? solveI(bI, zI, areaI < 0.0f ? aI * li : areaI, tAir) : 0.0f;
+         mOnE = 0;
+         mOnI = 0;
+         qEa = le > 0.0f ? qE * vE.g : 0.0f;
+         qIa = li > 0.0f ? qI * vI.g : 0.0f;
+         // their mass flows (out of the cylinder positive) at the pipes' pressures, and the heat they carry
+-        const float ppE = fmaxf(101325.0f + 2.0f * bE + zE * qEa, 8000.0f);
++        const float ppE = fmaxf(101325.0f + 2.0f * bEuse + zE * qEa, 8000.0f);
+         const float ppI = fmaxf(101325.0f + 2.0f * bI + zI * qIa, 8000.0f);
+         float mOutE = qE >= 0.0f ? qE * ppE / (287.0f * t) : qE * ppE / (287.0f * tPipe);
+         // (conserve 1: what flows back from the header is this event's own gas first, at the temperature it left at, and
+@@ -463,6 +486,29 @@ module Cylinder
+         }
+         else
+             hOut += mOutI >= 0.0f ? cpC * t * mOutI : 287.0f * ga / (ga - 1.0f) * tAir * mOutI;
++        if (a >= 330.0f && a < 410.0f)
++        {
++            const int k = (int)((a - 330.0f) / 10.0f) * 10;
++            dbgBin[k + 0] += dt;
++            dbgBin[k + 1] += ppE * dt;
++            dbgBin[k + 2] += p * dt;
++            dbgBin[k + 3] += ppI * dt;
++            dbgBin[k + 4] += mOutE > 0.0f ? mOutE * dt : 0.0f;
++            dbgBin[k + 5] += mOutE < 0.0f ? -mOutE * dt : 0.0f;
++            dbgBin[k + 6] += mOutI > 0.0f ? mOutI * dt : 0.0f;
++            dbgBin[k + 7] += mOutI < 0.0f ? -mOutI * dt : 0.0f;
++        }
++        if (le > 0.0f && li > 0.0f)
++        {
++            const float ae = areaE < 0.0f ? aE * le : areaE;
++            const float rho = ppE / (287.0f * tPipe);
++            const float pMean = 101325.0f + 2.0f * dbgBMean;
++            dbgCyc[4] += mOutE < 0.0f ? -mOutE * dt : 0.0f;
++            dbgCyc[5] += ae * sqrtf(2.0f * rho * fmaxf(ppE - p, 0.0f)) * dt;
++            dbgCyc[6] += ae * sqrtf(2.0f * rho * fmaxf(pMean - p, 0.0f)) * dt;
++            dbgCyc[7] += dt;
++            dbgCyc[8] += pMean * dt;
++        }
+         mE = mOutE;
+         mI = mOutI;
+         // the seals' leakage (a rotary's, fuel.model 1): out to the faces beside it, choked or not, with its heat; the
+diff --git a/tests/sim/core/EngineExplore.cpp b/tests/sim/core/EngineExplore.cpp
+index 1088da6b..6db42ca2 100644
+--- a/tests/sim/core/EngineExplore.cpp
++++ b/tests/sim/core/EngineExplore.cpp
+@@ -401,3 +401,53 @@ TEST_CASE("reversion store", "[.rvstore]")
+                     rm > 1e-12 ? ri / rm : 0.0, b.field("cyl[0].mInert") / b.field("cyl[0].m"), b.tel("engine.speed") * 9.5492966);
+     }
+ }
++
++// (scratch, local only: needs cylinder.fm's dbg fields) N3-16's drivers, the lead's ask 25 Nov 01:37
++TEST_CASE("overlap drivers", "[.drivers]")
++{
++    for (const char* build : {"archetypes/v10-52", "archetypes/v12-65", "archetypes/hot-hatch-16-16v", "archetypes/economy-four-15"})
++        for (int mean = 0; mean < 2; ++mean)
++        {
++            Bench b(build);
++            std::string e;
++            REQUIRE(b.player().setSpec("car.model", 0, e));
++            b.start();
++            b.warm();
++            const int nc = int(b.tel("engine.cylinders"));
++            for (int c = 0; c < nc; ++c)
++                b.write("cyl[" + std::to_string(c) + "].dbgMean", mean);
++            b.ctl().throttle = 0.0f;
++            b.play(5.0);
++            for (int j = 0; j < 80; ++j)
++                b.write("cyl[0].dbgBin[" + std::to_string(j) + "]", 0.0);
++            for (int j = 0; j < 12; ++j)
++                b.write("cyl[0].dbgCyc[" + std::to_string(j) + "]", 0.0);
++            double s = 0, s2 = 0, n = 0, map = 0;
++            b.play(4.0, [&] {
++                const double r = b.tel("engine.speed") * 9.5492966;
++                s += r; s2 += r * r; n += 1; map += b.tel("engine.manifold");
++            });
++            const double rpm = s / n, sd = std::sqrt(std::max(s2 / n - rpm * rpm, 0.0)), cycles = 4.0 * rpm / 120.0;
++            auto c = [&](int j) { return b.field("cyl[0].dbgCyc[" + std::to_string(j) + "]"); };
++            auto bn = [&](int j) { return b.field("cyl[0].dbgBin[" + std::to_string(j) + "]"); };
++            const double nIvc = std::max(c(3), 1.0), nIvo = nIvc;
++            const double R = c(0) / nIvo, X = c(1) / nIvc, F = c(2) / nIvc;
++            std::printf("%s%s: %.0f rpm sd %.1f, manifold %.1f kPa; at IVC: share %.3f (burned %.4f g = R %.4f at IVO + %.4f after; fresh F %.4f g); "
++                        "E (exhaust back in, both open) %.4f g; ideal-orifice E with the port's pressure %.4f, with its cycle mean %.4f (%.0f %% of it); "
++                        "port mean %.1f kPa\n",
++                        build, mean ? " [port pressure held at its mean while both open]" : "", rpm, sd, map / n / 1000.0, X / (X + F), 1e3 * X,
++                        1e3 * R, 1e3 * (X - R), 1e3 * F, 1e3 * c(4) / cycles, 1e3 * c(5) / cycles, 1e3 * c(6) / cycles,
++                        100.0 * c(6) / std::max(c(5), 1e-12), c(8) / std::max(c(7), 1e-12) / 1000.0);
++            if (mean == 0)
++                for (int k = 0; k < 8; ++k)
++                {
++                    const double T = bn(k * 10);
++                    if (T <= 0)
++                        continue;
++                    std::printf("   %3d-%3d: p ex %.1f cyl %.1f int %.1f kPa; exhaust out %.4f in %.4f, intake pushed %.4f drawn %.4f g\n",
++                                330 + 10 * k, 340 + 10 * k, bn(k * 10 + 1) / T / 1e3, bn(k * 10 + 2) / T / 1e3, bn(k * 10 + 3) / T / 1e3,
++                                1e3 * bn(k * 10 + 4) / cycles, 1e3 * bn(k * 10 + 5) / cycles, 1e3 * bn(k * 10 + 6) / cycles,
++                                1e3 * bn(k * 10 + 7) / cycles);
++                }
++        }
++}
