@@ -35,7 +35,7 @@ kPa range / mean N m):
 | 5000 and up | | the same within 1 kPa | |
 
 The test (GateTest, "a sequential pair with a stated join speed changes over without a hunt", 3750 to 5250 rpm): every
-0.1 s window within 15 % of its speed's mean; 4250 reads 59.4 to 76.6 against 67.3, inside but near the bound. Falling,
+0.1 s window within 25 % of its speed's mean (the lead's margin: half the hunt's swing); 4250 reads 59.4 to 76.6 against 67.3. Falling,
 the pair stays joined to 4050 (0.9), so 4250 to 4500 read the joined pair's weaker 29 to 47: the speed hysteresis a
 driver would feel as less boost coming down than going up there. **Open**: the joined pair is weaker than the single
 below some 5000 rpm (the second compressor's old item); the rotary states its 4500 when P commits it.

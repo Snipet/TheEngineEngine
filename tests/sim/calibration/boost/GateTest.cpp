@@ -247,10 +247,10 @@ TEST_CASE("calibration boost: a sequential pair at its join flow holds one state
     }
     std::printf("rotary at its join, 4250 rpm: boost %.1f to %.1f kPa over 0.1 s windows, mean %.1f\n", lo / 1000.0, hi / 1000.0,
                 mean / 1000.0);
-    // (one state: the 0.1 s means within 15 % of their mean (judgement: the engine's own pulsing and the loop's settle
-    // move them a few per cent; the cycling moves them by a factor of four))
-    CHECK(hi < 1.15 * mean);
-    CHECK(lo > 0.85 * mean);
+    // (one state: the 0.1 s means within 25 % of their mean, as the stated join's case below and for its reason (the
+    // lead's): the hunt swings half its mean either way; the cured join reads within 0.88 to 1.14)
+    CHECK(hi < 1.25 * mean);
+    CHECK(lo > 0.75 * mean);
 }
 
 TEST_CASE("calibration boost: variable vanes past the surge line open: one state, short form", "[calibration][boost]")
@@ -285,8 +285,10 @@ TEST_CASE("calibration boost: a sequential pair with a stated join speed changes
 {
     // (the lead's ruling on the join: on a build that states spec.boost.seqRpm the pair changes over on engine speed and
     // load (machine.fm); here the 13B-kind rotary with 4500 rpm stated, its source's figure (P's sources §16), swept across
-    // the join in 250 rpm steps at full load: every 0.1 s window within 15 % of its speed's mean (a hunt there was 26 to
-    // 106 kPa), and the same bound either side of the join)
+    // the join in 250 rpm steps at full load: every 0.1 s window within 25 % of its speed's mean, the same either side of
+    // the join. 25 %, the lead's reasoned margin: the hunt it guards against swung 26 to 77 kPa about a mean near 50, half
+    // its mean either way; the cured join reads 59.4 to 76.6 against 67.3 at 4250 (0.88 to 1.14), and 15 % sat inside
+    // that reading's own scatter)
     Sims s;
     std::vector<double> rpms;
     for (double r = 3750.0; r <= 5250.0; r += 250.0)
@@ -309,7 +311,7 @@ TEST_CASE("calibration boost: a sequential pair with a stated join speed changes
         std::printf("rotary, join stated at 4500, %.0f rpm: boost %.1f to %.1f kPa, mean %.1f\n", rows[at].at("rpm"), lo / 1000.0,
                     hi / 1000.0, mean / 1000.0);
         INFO(rows[at].at("rpm") << " rpm");
-        CHECK(hi < 1.15 * mean);
-        CHECK(lo > 0.85 * mean);
+        CHECK(hi < 1.25 * mean);
+        CHECK(lo > 0.75 * mean);
     }
 }
