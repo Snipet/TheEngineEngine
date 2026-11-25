@@ -150,3 +150,6 @@ sheet will include every registered workspace.
   failed"). TUNE reads `ctx_.services->sparkMap` (may be null or empty). Test `ui.build` case `build.bake`.
 - **Engine start** (the lead's ruling: warm, cold the person's choice): `FrameServices::coldStart` / `setColdStart`
   (card B's settings key "coldStart", from the next launch): the settings page's ENGINE START row, Warm and Cold.
+- **The bake, cam too** (card C's CalibrationBakeService, 879c59f2): `ServiceBake` now bakes the intake cam, then the
+  spark map, and applies each while still the build's; `sparkMap` says "baking cam", "baking spark map", "baking spark
+  map again" while it works (the other words as before). The shell's wiring is unchanged.
