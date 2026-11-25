@@ -1,5 +1,7 @@
 // host/src/Bake.cpp: the intake cam baked by a sweep of the fast dyno (Bake.h).
 #include "tee/Bake.h"
+
+#include <nlohmann/json.hpp>
 #include "tee/SimHost.h"
 #include "tee/Timeline.h"
 #include "tee/Warm.h"
@@ -8,6 +10,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <fstream>
 #include <cstring>
 #include <limits>
 
@@ -976,6 +979,102 @@ namespace tee
 
     namespace
     {
+        const char* const kSparkFields[] = {"ecu.maps.knockLimit", "ecu.maps.knockLimitAuto", "ecu.maps.knockLimitKey"};
+        const char* const kCamFields[] = {"ecu.maps.camIn", "ecu.maps.camInAuto", "ecu.maps.camInKey"};
+
+        // The fields an apply wrote, as the build now holds them
+        template <std::size_t N>
+        BakedFields capture(const Build& build, const char* const (&paths)[N], std::int64_t key)
+        {
+            BakedFields out;
+            out.key = key;
+            for (const char* path : paths)
+                if (const int f = build.fieldOf(path); f >= 0)
+                    out.fields.emplace_back(path, build.values(f));
+            return out;
+        }
+
+        bool applyFields(Build& build, const BakedFields& baked, std::string& error)
+        {
+            build.beginGesture();
+            bool ok = true;
+            for (const auto& [path, values] : baked.fields)
+            {
+                const int f = build.fieldOf(path);
+                ok = ok && f >= 0 && build.setValues(f, values);
+            }
+            build.endGesture();
+            if (!ok)
+                error = "a baked table does not fit this program's fields";
+            return ok;
+        }
+
+        // ---- the cache: <dir>/<kind>-<key>.json, the fields and (a spark's) the cells still knocking
+        std::filesystem::path cachePath(const std::filesystem::path& dir, const char* kind, std::int64_t key)
+        {
+            return dir / (std::string(kind) + "-" + std::to_string(key) + ".json");
+        }
+
+        bool cacheRead(const std::filesystem::path& dir, const char* kind, std::int64_t key, BakedFields& out)
+        {
+            if (dir.empty())
+                return false;
+            const std::filesystem::path file = cachePath(dir, kind, key);
+            std::ifstream in(file, std::ios::binary);
+            if (!in)
+                return false;
+            const nlohmann::json j = nlohmann::json::parse(in, nullptr, false);
+            if (j.is_discarded() || !j.is_object() || j.value("key", std::int64_t{-2}) != key || !j.contains("fields"))
+                return false;
+            out = BakedFields{};
+            out.key = key;
+            out.cached = true;
+            for (const auto& f : j["fields"])
+                if (f.is_array() && f.size() == 2 && f[0].is_string() && f[1].is_array())
+                    out.fields.emplace_back(f[0].get<std::string>(), f[1].get<std::vector<double>>());
+            if (j.contains("stillKnocking") && j["stillKnocking"].is_array())
+                for (const auto& row : j["stillKnocking"])
+                    out.stillKnocking.push_back(row.get<std::vector<bool>>());
+            std::error_code ec;
+            std::filesystem::last_write_time(file, std::filesystem::file_time_type::clock::now(), ec);   // used: kept
+            return !out.fields.empty();
+        }
+
+        void cacheWrite(const std::filesystem::path& dir, std::size_t most, const char* kind, const BakedFields& baked)
+        {
+            if (dir.empty())
+                return;
+            std::error_code ec;
+            std::filesystem::create_directories(dir, ec);
+            nlohmann::json j;
+            j["format"] = "tee-bake-cache";
+            j["key"] = baked.key;
+            j["fields"] = nlohmann::json::array();
+            for (const auto& [path, values] : baked.fields)
+                j["fields"].push_back(nlohmann::json::array({path, values}));
+            j["stillKnocking"] = baked.stillKnocking;
+            const std::filesystem::path file = cachePath(dir, kind, baked.key);
+            const std::filesystem::path temp = file.string() + ".part";
+            {
+                std::ofstream out(temp, std::ios::binary);
+                out << j.dump();
+                if (!out)
+                    return;
+            }
+            std::filesystem::rename(temp, file, ec);   // whole or not at all
+            // the newest `most` kept
+            std::vector<std::pair<std::filesystem::file_time_type, std::filesystem::path>> entries;
+            for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec))
+                if (it->path().extension() == ".json")
+                    entries.emplace_back(std::filesystem::last_write_time(it->path(), ec), it->path());
+            if (entries.size() > most)
+            {
+                std::sort(entries.begin(), entries.end());
+                for (std::size_t i = 0; i + most < entries.size(); ++i)
+                    std::filesystem::remove(entries[i].second, ec);
+            }
+        }
+
         bool hasTable(const Build& build)
         {
             return build.fieldOf("ecu.maps.knockLimit") >= 0 && build.fieldOf("ecu.maps.knockLimitAuto") >= 0
@@ -1088,9 +1187,9 @@ namespace tee
     bool CalibrationBakeService::take(KnockBakeResult& out)
     {
         const std::lock_guard<std::mutex> lock(mutex_);
-        if (!ready_ || done_.hasCam || !done_.hasSpark)
+        if (!ready_ || done_.hasCam || !done_.hasSpark || done_.spark.cached)
             return false;
-        out = done_.spark;
+        out = done_.sparkMeasured;
         ready_ = false;
         return true;
     }
@@ -1103,13 +1202,13 @@ namespace tee
         bool applied = false;
         if (r.hasCam && intakeCamKey(build, *sim_) == r.cam.key)
         {
-            if (!applyIntakeCam(build, r.cam, error))
+            if (!applyFields(build, r.cam, error))
                 return false;
             applied = true;
         }
         if (r.hasSpark && knockLimitKey(build, *sim_) == r.spark.key)
         {
-            if (!applyKnockLimit(build, r.spark, error))
+            if (!applyFields(build, r.spark, error))
                 return false;
             applied = true;
             const std::lock_guard<std::mutex> lock(mutex_);
@@ -1147,7 +1246,7 @@ namespace tee
         return {done, std::max(done, total_points_.load())};
     }
 
-    bool CalibrationBakeService::lastSpark(KnockBakeResult& out) const
+    bool CalibrationBakeService::lastSpark(BakedFields& out) const
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         if (!haveLast_)
@@ -1161,9 +1260,9 @@ namespace tee
         const std::lock_guard<std::mutex> lock(mutex_);
         int n = 0;
         if (haveLast_)
-            for (const auto& column : last_.measured)
-                for (const KnockBakeCell& c : column)
-                    n += c.stillKnocking ? 1 : 0;
+            for (const auto& row : last_.stillKnocking)
+                for (const bool k : row)
+                    n += k ? 1 : 0;
         return n;
     }
 
@@ -1232,26 +1331,49 @@ namespace tee
             Build build(sim_->fields());
             std::vector<std::string> warnings;
             bool ok = build.load(json, BuildPart::Whole, warnings, error);
+            // a stage: taken from the cache by its key, else baked, applied to the copy, and kept
+            const std::filesystem::path& cache = options_.cacheDirectory;
+            const auto sparkStage = [&](const char* name) {
+                const std::int64_t key = knockLimitKey(build, *sim_);
+                if (cacheRead(cache, "spark", key, result.spark))
+                    return applyFields(build, result.spark, error);
+                at(name, sparkPoints(build));
+                if (!bakeKnockLimit(sim_, build, spark, result.sparkMeasured, error, &cancel_)
+                    || !applyKnockLimit(build, result.sparkMeasured, error))
+                    return false;
+                result.spark = capture(build, kSparkFields, result.sparkMeasured.key);
+                result.spark.stillKnocking = result.sparkMeasured.stillKnocking;
+                if (!cancel_.load())
+                    cacheWrite(cache, options_.cacheEntries, "spark", result.spark);
+                return true;
+            };
+            const auto camStage = [&] {
+                const std::int64_t key = intakeCamKey(build, *sim_);
+                if (cacheRead(cache, "cam", key, result.cam))
+                    return applyFields(build, result.cam, error);
+                at("cam", camPoints(build));
+                if (!bakeIntakeCam(sim_, build, cam, result.camMeasured, error, &cancel_)
+                    || !applyIntakeCam(build, result.camMeasured, error))
+                    return false;
+                result.cam = capture(build, kCamFields, result.camMeasured.key);
+                if (!cancel_.load())
+                    cacheWrite(cache, options_.cacheEntries, "cam", result.cam);
+                return true;
+            };
             // the spark, if stale, applied to the copy
             if (ok && !knockLimitCurrent(build, *sim_))
             {
-                at("spark map", sparkPoints(build));
-                ok = bakeKnockLimit(sim_, build, spark, result.spark, error, &cancel_)
-                     && applyKnockLimit(build, result.spark, error);
+                ok = sparkStage("spark map");
                 result.hasSpark = ok;
             }
             // the cam on that spark, if wanted and stale, applied to the copy; the spark again if that made it stale
             if (ok && camWanted(build) && !intakeCamCurrent(build, *sim_))
             {
-                at("cam", camPoints(build));
-                ok = bakeIntakeCam(sim_, build, cam, result.cam, error, &cancel_)
-                     && applyIntakeCam(build, result.cam, error);
+                ok = camStage();
                 result.hasCam = ok;
                 if (ok && !knockLimitCurrent(build, *sim_))
                 {
-                    at("spark map again", sparkPoints(build));
-                    ok = bakeKnockLimit(sim_, build, spark, result.spark, error, &cancel_)
-                         && applyKnockLimit(build, result.spark, error);
+                    ok = sparkStage("spark map again");
                     result.hasSpark = ok;
                 }
             }
