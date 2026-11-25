@@ -1,6 +1,7 @@
 // gearbox.fm: the gearbox's logic, every 16 samples: which gear is in, which is coming, and how far each coupling is
 // closed. vehicle.fm's step turns that into torques each sample.
-// (card I's; the automatic clutch's overrun hold is card D's as integrator, with the lead's leave, 25 Nov: see `overrun`)
+// (card I's; the automatic clutch's hold once synchronised is card D's as integrator, with the lead's leave, 25 Nov: see
+// `synced`)
 //
 // Five kinds (spec.car.gearbox):
 //
@@ -60,8 +61,8 @@ module VehGearbox
     float aFrom;        // how far the old gear's coupling is closed, 0 to 1
     float aTo;          // the new gear's
     float robot;        // the automatic clutch, 0 open to 1 closed
-    bool overrun;       // the automatic clutch has slipped backwards while engaged (the road driving the engine): held
-                        // closed by the road's speed until the engine leads again (card D as integrator, the lead's leave)
+    bool synced;        // the automatic clutch has synchronised in this gear (locked, either way): held closed by the road's
+                        // speed until a shift, neutral, the pedal or a stall (card D as integrator, the lead's leave)
     bool cut;           // asks the ECU to cut the ignition
     float blip;         // asks the ECU for this crank speed (rad/s), 0: nothing
     float lock;         // the lock-up clutch, 0 to 1
@@ -85,7 +86,7 @@ module VehGearbox
         aFrom = 1.0f;
         aTo = 0.0f;
         robot = 1.0f;
-        overrun = false;
+        synced = false;
         cut = false;
         blip = 0.0f;
         lock = 0.0f;
@@ -163,23 +164,26 @@ module VehGearbox
         // the automatic clutch for pulling away: it closes with the revs from just over idle (as the reference's paddles)
         const float x = fminf(fmaxf((w - idleW - 15.7f) / 94.2f, 0.0f), 1.0f);
         float launch = x * x * (3.0f - 2.0f * x);
-        // (on the overrun it is no launch: closing with the engine's own revs, the clutch passed only some 0.4 of its
-        // torque at 500 rpm over a truck's idle, so a compression brake slipped it, the engine fell to its idle and the
-        // clutch opened for good with the gear in (card D2's finding, 25 Nov: the 36 t rig down 6 %). Once it has slipped
-        // backwards while engaged, the engine more than 3 rad/s under the road's speed through the gear, it is held
-        // closed by the road's speed, opening only as that nears the idle (a guard against a stall: 50 to 250 rpm over
-        // it, as Vehicle::launch's), until the engine leads the road by 3 rad/s again, a shift begins, or neutral.
-        // Until a clutch first slips backwards nothing here changes. Card D as integrator, the lead's leave, 25 Nov)
+        // (once synchronised it is no launch: closing with the engine's own revs, the clutch passed only some 0.4 of its
+        // torque at 500 rpm over a truck's idle, so on the overrun a compression brake slipped it, the engine fell to its
+        // idle and the clutch opened for good with the gear in (card D2's finding, 25 Nov: the 36 t rig down 6 %), and in
+        // drive a floored pedal at 1070 rpm flared the engine 130 to 160 rpm over the road for 4 to 5 s. A real automated
+        // box's clutch, once it has synchronised, stays clamped. So: once it has locked in this gear (the slip under 0.5
+        // rad/s, either way, with it engaged), it is held closed by the road's speed through the gear, opening only as
+        // that nears the idle (a guard against a stall: 50 to 250 rpm over it, as Vehicle::launch's), until a shift
+        // begins, neutral, the clutch pedal goes down, or the road's speed falls to the stall band's foot (a stop: the
+        // next pull-away launches afresh). A launch from rest is unchanged until it first locks; a shift keeps its own
+        // opening and closing. Card D as integrator, the lead's leave and ruling, 25 Nov)
         const float gIn = ratioOf(gear);
-        if (gear == 0 || shifting || engage < 0.5f)
-            overrun = false;
-        else if (w < fabsf(gIn * wOut) - 3.0f)
-            overrun = true;
-        else if (w > fabsf(gIn * wOut) + 3.0f)
-            overrun = false;
-        if (overrun)
+        const float wGear = fabsf(gIn * wOut);
+        const float wR = fabsf(gIn * wRoad);
+        if (gear == 0 || shifting || engage < 0.5f || wR < idleW + 5.2f)
+            synced = false;
+        else if (fabsf(w - wGear) < 0.5f && robot > 0.1f)
+            synced = true;
+        if (synced)
         {
-            const float xr = fminf(fmaxf((fabsf(gIn * wRoad) - idleW - 5.2f) / 20.9f, 0.0f), 1.0f);
+            const float xr = fminf(fmaxf((wR - idleW - 5.2f) / 20.9f, 0.0f), 1.0f);
             launch = fmaxf(launch, xr * xr * (3.0f - 2.0f * xr));
         }
 
