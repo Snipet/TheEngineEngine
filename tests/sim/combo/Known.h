@@ -27,6 +27,10 @@ const Known kKnown[] = {
     {"X-036", "2026-11-25", "D (engine.custom) and the steward (car.model)", "+engine.custom+car.model", "turbo-v8-dual",
      "pull", "dc", "the turbo V8 dual's pull with a custom engine and car.model: the running mean 0.0057 to 0.0069 of "
      "full scale against 0.005, since the first soak (never green)"},
+    {"X-036", "2026-11-25", "D (engine.custom) and the steward (car.model)", "random 103", "fuzz", "random", "dc",
+     "a free-valve turbo with electric assist, car.model on a 28 % downhill: the running mean 0.0062 against 0.005; "
+     "each of its 11 fields is needed; the turbo V8 dual's kind as far as shown (car.model and a turbo), the same "
+     "mechanism not shown (findings/x036-random103.json)"},
     {"X-037", "2026-11-25", "N1 (the valve)", "as built", "pickup-diesel-67-inline-six", "tour", "tel-range:valve.dpOverlap",
      "valve.dpOverlap -393835 Pa at 9.41 s against +-300000, since 2f86a47a"},
     // The fuzz under stable draws (1abb05a0): X-029 (a rotary's 0.6 mm primary, from the old draws' random 245) is held
