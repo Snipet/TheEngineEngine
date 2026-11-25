@@ -175,15 +175,22 @@ TEST_CASE("boost: the wastegate holds a target across speeds, and its spring hol
     int held = 0;
     for (double rpm = 2500.0; rpm <= 7000.0; rpm += 500.0)
     {
-        // can the turbo make the target here? (its gate held shut)
+        // can the turbo make the target here? (its gate held shut: the same build, the same matched turbo, its loop
+        // asked by the ECU for far more than it can make, so that the duty holds the gate shut; read as the case reads
+        // the boost below, a mean over the fifth second. It was a 300 kPa spring with no target, which the matching
+        // sizes as a different turbo, for a ratio of 3.96 against 1.99, read at one instant at 4 s: below what the
+        // loop itself made at 2500 to 3500 rpm (N2, the lead's ruling))
         double most = 0.0;
         {
             Rig rig;
             turboFour(rig, rpm);
-            rig.set("spec.gateSpring", 300000.0);
+            rig.set("spec.target", target);
             rig.spec("rev", 0);
+            rig.set("boost.cmdTarget", 1.0e6);
             rig.run(4.0);
-            most = rig.boost();
+            rig.clear();
+            rig.run(1.0);
+            most = rig.mean("sBoost");
         }
         Rig rig;
         turboFour(rig, rpm);
