@@ -188,6 +188,46 @@ def takeup(bin_dir, slug, out_dir, build_path, peak):
     return float(v[0]), float(v[1]), float(v[2])
 
 
+HD_SLUGS = ("tractor-15-inline-six",)
+_ICCT = ("WVU for the ICCT (2018, a best-in-class US tractor's 14-15 L six, measured on a chassis dyno, steady state, "
+         "fuel weighed, the work the ECU's): at full load 177.1, 178.8, 179.5, 177.8, 181.1 and 200.4 g/kWh at 800 to 1800 "
+         "rpm (its Fig. 3.5; on the ECU's fuel, Fig. 3.6, 185.0 to 208.3); the ICCT's certification survey (2015): "
+         "\"BTE as evaluated at peak torque ... most engines are 43-44% BTE\" in 2014, 41 %% in 2012 (191 to 205 g/kWh "
+         "at 42.8 MJ/kg)")
+BSFC = {"name": "BSFC at full load, 1200 rpm (g/kWh)", "range": [175, 205], "unit": "g/kWh", "basis": "cited",
+        "source": _ICCT + "; 175 to 205 (the measured and the certified together); read by report.py: p-full-load-1200 "
+                          "rendered, ecu.fuelFlow over engine.power, their means from 8 to 10 s"}
+LAMBDA_PT = {"name": "Lambda at full load, 1200 rpm", "range": [1.25, 2.5], "unit": "", "basis": "cited",
+             "source": "a Volvo D13 (520 hp) study's smoke constraint, \"a minimum of lambda 1.25 is maintained\" "
+                       "(Chalmers MSc 2011 with Volvo Powertrain: a design constraint, not a measurement); the top 2.5 "
+                       "judgement; read by report.py on the same render, ecu.lambda's mean"}
+T3 = {"name": "Before the turbine at rated, 1800 rpm (K)", "range": [600, 950], "unit": "K", "basis": "cited",
+      "source": "the same Volvo D13 study's constraint, \"Exhaust temperature Lower than 950 K\" (a design limit, not a "
+                "measurement; no truck maker's T3 limit found); the floor 600 judgement; read by report.py: "
+                "p-full-load-1800 rendered, boost.turbineInTemp[0]'s mean from 8 to 10 s"}
+
+
+def held(bin_dir, slug, out_dir, build_path, scen, tels):
+    """The means from 8 to 10 s of telemetry fields over a rendered scenario (cached): {field: mean}."""
+    path = os.path.join(out_dir, "%s.%s.means.json" % (slug, scen))
+    if not os.path.exists(path):
+        wav = os.path.join(out_dir, "%s.%s.wav" % (slug, scen))
+        cmd = [os.path.join(bin_dir, "tee-render"), "--build", build_path, "--scenario",
+               os.path.join(ROOT, "content", "validation", "scenarios", scen + ".json"), "--out", wav,
+               "--tel", ",".join(tels)] + (["--sim", SIM] if SIM else [])
+        subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+        with open(wav[:-4] + ".csv") as f:
+            head = next(f).strip().split(",")
+            rows = [list(map(float, l.split(","))) for l in f if l.strip()]
+        rows = [r for r in rows if 8.0 <= r[0] <= 10.0]
+        means = {h: sum(r[i] for r in rows) / max(len(rows), 1) for i, h in enumerate(head)}
+        json.dump(means, open(path, "w"))
+        for x in (wav, wav[:-4] + ".csv"):
+            if os.path.exists(x):
+                os.remove(x)
+    return json.load(open(path))
+
+
 def comb_depth(x, sr, fire):
     """D2's comb depth (dB): the firing harmonics from 1 to 3 kHz against the half-way gaps, Welch, A-weighting
     cancelling in the ratio."""
@@ -435,6 +475,13 @@ def main():
                            "%.0f %% of the peak %.0f; the climb from 800 to 1300 rpm at full load (N2's take-up tool, 19 to 20 s on 25 Nov) not measured here"
                            % (ts, st_, 100.0 * st_ / peak, peak))
                 results[s_].append((row, tp, "pass" if TAKEUP["range"][0] <= tp <= TAKEUP["range"][1] else "FAIL"))
+        if s_ in HD_SLUGS and results[s_] is not None:
+            bp = os.path.join(content, docs[s_]["build"])
+            m12 = held(a.bin, s_, a.src, bp, "p-full-load-1200", ["ecu.fuelFlow", "engine.power", "ecu.lambda"])
+            m18 = held(a.bin, s_, a.src, bp, "p-full-load-1800", ["boost.turbineInTemp[0]"])
+            for row, v in ((BSFC, m12["ecu.fuelFlow"] / max(m12["engine.power"], 1.0) * 3.6e9),
+                           (LAMBDA_PT, m12["ecu.lambda"]), (T3, m18["boost.turbineInTemp[0]"])):
+                results[s_].append((row, v, "pass" if row["range"][0] <= v <= row["range"][1] else "FAIL"))
         if s_ in CROSS_SLUGS and results[s_] is not None:
             x = crossing(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]))
             if x is not None:
