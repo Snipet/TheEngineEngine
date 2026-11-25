@@ -78,12 +78,13 @@ namespace tee::ui
             x.fields->push_back(fm);
             FieldInfo fg = fm;
             fg.path = "fuel.grade";
-            fg.max = 8.0;
+            fg.max = 9.0;
             fg.def = 2.0;
             fg.label = "Fuel";
             fg.choices = { "Regular (87)", "Midgrade (89)", "Premium (91)", "Race", "E85", "Methanol", "Diesel",
-                           "Propane (untested)", "Hydrogen (untested)" };
+                           "Propane (untested)", "Hydrogen (untested)", "Premium (93)" };
             x.fields->push_back(fg);
+            // (the pump number, fuel.octane, is the base demo's: ui/app/Demo.cpp, as the Spec has it)
         }
         if (x.engine == nullptr)
             return;

@@ -834,6 +834,11 @@ two-stage build's high lobe at 247 deg on a centre of 98).
 - **25 Nov 13:43: `main` IS AT 76420f32. THE WINDOW IS OPEN for the items named here and nothing else.** Each agent
   merges the remote tip (no rebase, no force), runs the WHOLE default tier green on its merged tip, then pushes; a
   red tier is not pushed. Where an item depends on another, it waits for that one to be on the branch.
+  **Changed 14:17 (three agents were on their third run, chasing a tip that moves every few minutes): ONE green
+  whole tier on a merged state is enough. If the tip moved since, merge again and push at once when the merge is
+  clean, without another run, and report which commits were not in your run; re-run only if the merge conflicts in
+  your files or the new commits touch the files yours touch. CI on the tip judges the combination; the lead reads
+  it before the bake, and a red tip is fixed before anything else is pushed over it.**
   1. the steward: 47b69019, 884e192b (first: after it a push soaks only when its message says `[soak]`);
   2. card A: e260d2b alone, then A1, A2, the wiring, A3 (after the steward's push: A3 needs its two packages);
   3. N1: fe250071, 4e057986, b225b7a6; then C: the knock bake's version 5 with `spec.fuel.octane` in its key; then
@@ -841,7 +846,11 @@ two-stage build's high lobe at 247 deg on a centre of 98).
   4. D2: 28ac7654 only (the start's fuel). L: 327e0db0, 27eb2429 (the start's exposure);
   5. G: the exhaust's half of the pops (g/bang-wip); then N1's seam, G reviewing;
   6. ui only, any time: U1 (6e6c768e, aa711bbc; after card A, the switch row and the chat's place), U5, J2;
-  7. X: the soak's shards when ready.
+  7. X: the soak's shards when ready;
+  8. (added 14:19) the integrator: c1ab538a, the clutch's overrun hold (sim/vehicle/gearbox.fm, a case in
+     GradeTest): the paddles' robotised clutch is a smoothstep of the ENGINE's speed (0.357 of capacity at 1116
+     rpm on the truck), in drive and on the overrun alike; a clutch that slips backwards now latches closed by the
+     road's speed through the gear. Every printed number of the vehicle, bike and diesel suites identical.
 - **NOT open:** the diesel package (D2's 811c744d, c24c127e, v8; N2's (b), nozzle and guard), M's fan cure, and
   anything not named above. Ask the lead.
 - **Docs-only pushes (docs/** and *.md) are allowed at any time**: the workflow ignores them and starts no run.
