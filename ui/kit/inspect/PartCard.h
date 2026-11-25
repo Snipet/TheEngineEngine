@@ -23,6 +23,7 @@ namespace tee::ui
     public:
         static constexpr float kWidth = 300.0f;
         static constexpr int kFields = 6;    // the first fields of the part's page
+        static constexpr float kGap = 56.0f; // at least this from the press to the card's side
 
         explicit PartCard(FieldInspector& card);   // the card's FieldInspector (Style::list), hidden until opened
 
@@ -34,7 +35,7 @@ namespace tee::ui
         // selection's first page, as its rows show it) inside the stage. Closes it when the selection is no longer
         // what it was opened for.
         void update(const std::string& path, const Outline* page, const funkgui::Rect& stage);
-        // At every layout: beside its part, inside the stage.
+        // At every layout: in the half of the stage away from the press, against its far edge, inside the stage.
         void place(const funkgui::Rect& stage);
         void close();
         bool isOpen() const noexcept { return open_; }
