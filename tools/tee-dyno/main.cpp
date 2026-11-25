@@ -267,6 +267,10 @@ int main(int argc, char** argv)
             ok = number(predictOptions.minHoldSeconds);
         else if (args.is("--boost-hunt"))
             ok = number(predictOptions.boostHuntSeconds);
+        else if (args.is("--window"))
+            ok = number(predictOptions.knockWindowSeconds);
+        else if (args.is("--most"))
+            ok = number(predictOptions.knockMostSeconds);
         else if (args.is("--warmup-seconds"))
             ok = number(predictOptions.warmupSeconds);
         else if (args.is("--tolerance"))

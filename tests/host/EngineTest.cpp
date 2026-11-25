@@ -398,7 +398,8 @@ namespace
 {
     // The predicted curve against the stepped dyno with the exhaust's heat settled (both the steady state) at the
     // speeds given, on an archetype: within `bound` of the steps' largest torque.
-    void predictedMatchesSteps(const char* archetype, const std::vector<double>& speeds, double bound)
+    void predictedMatchesSteps(const char* archetype, const std::vector<double>& speeds, double bound,
+                               double settle = 4.0)
     {
         std::string error;
         const auto sim = compiled(simDir(), {}, error);
@@ -409,7 +410,7 @@ namespace
                                BuildPart::Whole, warnings, error));
         DynoPlan plan;
         plan.steps = speeds;
-        plan.settle = 4.0;
+        plan.settle = settle;
         plan.measure = 2.0;   // whole teeth of knock control's sawtooth, where it acts
         DynoCurve steps;
         REQUIRE(runDyno(sim, build, plan, steps, error));
@@ -1015,4 +1016,15 @@ TEST_CASE("a prediction asked while a calibration bake runs goes first: its time
     std::this_thread::sleep_for(std::chrono::milliseconds(200));   // the bake, past points, reads a flag still valid
     CHECK(bakes.state() != KnockBakeState::Failed);
     bakes.stopYielding();
+}
+
+TEST_CASE("a slowly spooling turbo diesel's predicted points at its lug are its long hold's within 4 %",
+          "[engine][sim][predict][dyno][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    // the tractor's VGT takes 6 to 8 s to arrive: its stepped points held 20 s. Not about 1060 rpm: there the turbo
+    // spools or not by the path to it (held 30 s: 1544 N m at 1058 rpm, 1917 to 2023 at 1061), a knife's edge of
+    // the engine's own, not a reading of the predictor's
+    predictedMatchesSteps("tractor-15-inline-six.json", {115.19, 136.14}, 0.04, 20.0);   // 1100, 1300 rpm
 }
