@@ -7,6 +7,9 @@
 #   tee_shell_files  tee_host and nlohmann/json: builds on disk, recent files, the library (files/BuildFiles)
 #   tee_shell_ref    tee_host: the reference engine and the simulator as Players (player/RefAdapter, SimAdapter)
 #   tee_shell_sdl    SDL3: the audio device (audio/AudioDevice) and SDL's events into the controls (input/SdlInput)
+#   tee_shell_wheel  the racing wheel's transport (input/g29/RacingWheel.h): macOS's IOKit HID manager
+#                    (RacingWheelMac.cpp, IOKit and CoreFoundation); elsewhere none yet (RacingWheelNone.cpp). The G29's
+#                    map and decisions (g29/G29, G29Driver, G29Input) are the core's: plain C++, tested with fakes.
 #
 # FunkGui is in none of them: FunkGui::core is an INTERFACE library whose sources compile into the target that links
 # it, so what needs it (panel/PlaceholderPanel.cpp, app/Offline.cpp) is compiled by each executable (app/CMakeLists.txt).
@@ -15,6 +18,9 @@ add_library(tee_shell_core STATIC
   input/Driver.cpp
   input/Controls.cpp
   input/WheelMap.cpp
+  input/g29/G29.cpp
+  input/g29/G29Driver.cpp
+  input/g29/G29Input.cpp
   audio/Wav.cpp
   audio/Recorder.cpp
   files/Png.cpp
@@ -47,6 +53,16 @@ add_library(tee_shell_sdl STATIC audio/AudioDevice.cpp input/SdlInput.cpp)
 add_library(Tee::shell_sdl ALIAS tee_shell_sdl)
 tee_target_defaults(tee_shell_sdl)
 target_link_libraries(tee_shell_sdl PUBLIC Tee::shell_core SDL3::SDL3)
+
+if(APPLE)
+  add_library(tee_shell_wheel STATIC input/g29/RacingWheelMac.cpp)
+  target_link_libraries(tee_shell_wheel PUBLIC Tee::shell_core "-framework IOKit" "-framework CoreFoundation")
+else()
+  add_library(tee_shell_wheel STATIC input/g29/RacingWheelNone.cpp)
+  target_link_libraries(tee_shell_wheel PUBLIC Tee::shell_core)
+endif()
+add_library(Tee::shell_wheel ALIAS tee_shell_wheel)
+tee_target_defaults(tee_shell_wheel)
 
 # The shell's own plain Panel, for app/CMakeLists.txt: every executable that shows a Panel compiles the first; the
 # second, which makes it tee::ui::makeMainPanel, only where no interface package (a target tee_ui) defines that.

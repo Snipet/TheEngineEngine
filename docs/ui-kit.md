@@ -290,7 +290,8 @@ nothing. A press hides it, and it stays away until the pointer has left what was
 
 *The owner, 25 Nov: "Are there any plans for redesigning the right-side controls on the views? I feel like they are
 relatively clunky still." Three designs, built and pictured; none is wired into the frame: the shipped inspector is
-J1's ported knobs on FieldPages until the owner picks one.*
+J1's ported knobs on FieldPages until the owner picks one. The owner picked Rows (and the card next); Dials is dropped
+from the kit (the table below keeps it as the record of what was shown).*
 
 `ui/kit/inspect/`: `Outline` reads any inspector page the frame makes (a workspace's own `.gui` or a generated page)
 back into its headings, fields, tables and notes, in order, so every design keeps each workspace's arrangement with
@@ -332,6 +333,74 @@ for ENGINE 1, TUNE's FUEL, EXHAUST 1 (and `.scrolled`), TUNE's ECU 1 (the choice
   each workspace would add `partRect(path)` (about twenty lines each, eleven workspaces, their packages'). Its fields
   are the first six of the selection's page, so a workspace chooses them by ordering its page. The card is a second
   Tab stop. Help as Rows.
+
+## Rows in the frame: the hook (J2 for U1, 25 Nov)
+
+*The owner chose Rows ("As recommended"); Dials is dropped. `ui/kit/inspect/RowsPage.h` is the pane; the frame
+(U1's `ui/app/AppFrame`) shows it in place of the FieldPage. The FieldPage is still made and kept (its controls,
+`fieldsShown()`, the tests that read `inspector()`); only what is shown and given the pointer and keys changes.*
+
+`RowsPage` is a `Board` the frame's size (as a FieldPage is, with insets) with one `FieldInspector` (Style::rows) in
+the room it is given. `RowsPage::over(fieldPage, doc, units)` reads the page back (`outlineOf`) and returns nullptr
+for a page that holds a table alone: that page stays a FieldPage, as today. Its `fields()` (the tables' too) and
+`tables()` (`{title, fields}`); `setSearchable(fields)` (the filter's reach: every page of the workspace);
+`setOnTable(fn)` (a table's row pressed, or Enter on it); `place(w, h, room)` at every layout; `drawKey()` for the
+frame's needsDraw; `rows()` for tests. Tab past the rows leaves the pane (tabWraps false); Escape is the rows' first.
+
+In `AppFrame` (seven places):
+
+1. `Page` gains `std::unique_ptr<RowsPage> rows;` (after `panel`; `rows` is destroyed first).
+2. `makeInspector()`, after the loop that makes each `page.panel`: for each page, `page.rows = RowsPage::over(
+   *page.panel, doc_, units_)`; where made: `place(width(), height(), room)`, `attach(*host())` when there is a host,
+   `setOnTable([this](const RowsPage::Table& t) { openTable(t); })`. **Tables keep their own pages**: for each table of
+   each RowsPage that no page of `pages_` holds alone (a page without `rows` whose FieldPage's fields,
+   `fieldsOf(outlineOf(*panel, doc_))`, contain `t.fields.front()`), append `{ upper(t.title), pageGui(doc_, t.fields,
+   {}), nullptr }` and make its FieldPage as the others (its `over` is nullptr). The generated pages already give each
+   table its page; this adds one only for a table inside a workspace's own `.gui` page. Then the union of every
+   RowsPage's `fields()` goes to each one's `setSearchable`.
+3. `openTable(t)` (new, private): show the first page without `rows` whose fields contain `t.fields.front()`.
+4. `setPanes()`: the pane is `page.rows ? page.rows.get() : page.panel.get()` (a new `funkgui::Panel*
+   inspectorPane() const`, the shown page's).
+5. `placeInspector()`: `if (p.rows) p.rows->place(width(), height(), room);` beside the FieldPage's resize.
+6. Wherever the shown FieldPage gets `pointerExit()` and `closeGestures()` (makeInspector, showInspectorPage,
+   openChat): the RowsPage too.
+7. `frameKey()`: `k.mix(rows->drawKey())` for the shown page's RowsPage (its values, typing, scroll, hover help).
+
+And for tests: `RowsPage* inspectorRows() const` (the shown page's; nullptr while a FieldPage is shown).
+
+## The card on the picture: the second hook (J2 for U1, 25 Nov)
+
+*An addition to Rows: press a part on the stage and a card opens beside it with the part's first six fields (typed,
+scrubbed, nudged, refused out of range as in the rows); "N MORE IN THE COLUMN" under them. ENGINE and EXHAUST first;
+it works on any workspace whose stage selects a part by a press.*
+
+`ui/kit/inspect/PartCard.h`: the frame makes a `FieldInspector` (Style::list) on its own board, drawn over the stage,
+and a `PartCard` over it. `afterPress(pathBefore, pathNow, hovered, at)` after each press on the stage: a press that
+chose a part (the selection moved, or the part under the pointer is the one selected) wants a card there; a press on
+no part closes it. `update(path, page, stage)` each tick, once the pages are made for the selection (page: the shown
+RowsPage's `rows().outline()`, nullptr when a table's FieldPage is shown): opens the card wanted; closes it when the
+selection is not the card's. `place(stage)` at every layout, `close()`, `isOpen()`, `titleOf(path)` ("CYLINDER 3").
+
+In `AppFrame`: (1) members `FieldInspector* cardItem_` (made on the board after the other items, so it is drawn over
+the stage and them) and `std::unique_ptr<PartCard> card_`; (2) `pointerDown`: remember the selection's path, call
+`Board::pointerDown`, then, when the press was on the stage and not on the card, `card_->afterPress(before,
+selection_.path(), selection_.hovered(), {e.x, e.y})`; (3) `tick`, after the selection's block: `card_->update(...)`;
+(4) `arrange`: `card_->place(stageRect())`; (5) `close()` on another workspace, the chat, the settings page; (6)
+`key`: Escape nobody took closes an open card; (7) for tests: `const PartCard& partCard() const` and
+`FieldInspector& partCardItem()`.
+
+**What each workspace owner changes: nothing, for ENGINE and EXHAUST.** Both select a part on a press
+(`selection.select(hit)`) and set `selection.hover` to the same path on a move, which is all `afterPress` reads; the
+card's fields are the first of the page the frame already makes for that selection. A card opened from the keyboard
+or from the column (no press to say where the part is) would need each workspace to say where a part is drawn (a
+`partRect(path)`, about twenty lines in each workspace's own file, and a virtual in U1's `Workspace.h`); not built,
+and not needed for the press.
+
+**The next step (not this round, the lead 25 Nov):** the card from the keyboard and from the column. U1 adds
+`virtual funkgui::Rect partRect(const std::string& path) const { return {}; }` to `Workspace`; each workspace that
+wants it returns where the part is drawn (ENGINE: a cylinder's bore, the block, the section; EXHAUST: its element's
+hit box); PartCard gains `openAt(path, rect)` and the rows a key (Enter on a field of a part with a rect) to call
+it.
 
 ## TextField for a chat, and the error colour (J2, 25 Nov, for card A)
 

@@ -156,7 +156,7 @@ module ExhaustSpec
     int flowClose [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Valve flow closed")]] [[ui::hidden]]
         [[ui::help("On (the builder): the pipes are given what the exhaust valves let out, on the mean (the valve's wave gain keeps the pulse's shape). Off: the reference's valve flow, 5 to 20 % more than the valves let out; it exists for the comparison with the reference and for listening before and after")]]
         [[ui::choices("None", "Closed")]];
-    int bang [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Bangs")]]
-        [[ui::help("How the pops and bangs in the pipe are made (the builder only). Carved: the reference's pulse and crackle. Burned in the pipe: the unburned fuel's heat released in the collector's gas over its own burn, the pipes making the sound. Only a charge that left its cylinder with its own air bangs (a spark cut, a misfire, a fuelled overrun burned late): a fuel-cut limiter and a stock lift-off make none; it needs ECU model Maps, the reference ECU's pops stay Carved")]]
+    int bang [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Bangs")]]
+        [[ui::help("How the pops and bangs in the pipe are made (the builder only). Burned in the pipe (the default): the unburned fuel's heat released in the collector's gas over its own burn, the pipes making the sound. Only a charge that left its cylinder with its own air bangs (a spark cut, a misfire, a fuelled overrun burned late): a fuel-cut limiter and a stock lift-off make none; it needs ECU model Maps, the reference ECU's pops stay Carved. Carved: the reference's pulse and crackle")]]
         [[ui::choices("Carved", "Burned in the pipe")]];
 };

@@ -61,6 +61,9 @@ namespace tee::app
             std::function<void()> audioChanged;                 // the device was opened again (its line changed)
             std::function<int()> quality;                       // the engine's quality, 0 full, 1 economy (none: no item)
             std::function<void(int)> setQuality;
+            std::function<std::string()> wheel;                 // the racing wheel's line ("on: ..."; empty: no item)
+            std::function<bool()> wheelOn;
+            std::function<void(bool)> setWheelOn;
             std::function<bool()> coldStart;                    // the engine starts cold (the settings'; none: no item)
             std::function<void(bool)> setColdStart;
         };

@@ -27,6 +27,8 @@
 #include "input/Controls.h"
 #include "input/Keys.h"
 #include "input/SdlInput.h"
+#include "input/g29/G29Input.h"
+#include "input/g29/RacingWheel.h"
 #include "player/RefAdapter.h"
 #include "player/SimAdapter.h"
 #include "settings/Settings.h"
@@ -40,6 +42,7 @@
 #include <funkgui/desktop/DesktopHost.h>
 
 #if defined(TEE_HAS_UI)
+ #include "app/Look.h"                   // look::shiftLightBefore: the DRIVE view's shift lights, the wheel's too
  #include "kit/shaders/Registry.h"       // the interface package's panel shaders (ui/)
  // U5's atmosphere shaders (shaders/fx: glow, flame, smoke, shimmer), where the build made their table
  #if __has_include("tee/ui/shaders/fx.h") && __has_include("views/fx/Fx.h")
@@ -54,7 +57,9 @@
 #include <SDL3/SDL_main.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <cmath>
 #include <csignal>
 #include <cstdlib>
 #include <cstdint>
@@ -257,6 +262,8 @@ namespace
         // the simulator's health as the host reports it (card C's HostStats): restarting after a fault; clamped (a block
         // with a sample past full scale, held to it) for a moment after it happens
         std::string health;
+        std::string wheelLine;           // the racing wheel's status ("wheel: switching to its full mode"), when it says one
+        bool wheelChanged = true;
         std::string claudeSaid;          // the status line's Claude Desktop part, as last said
         std::uint32_t clippedSeen = 0, faultsSeen = 0;
         double clampedLeft = 0.0, faultLeft = 0.0, loadHigh = 0.0, suggestLeft = 0.0;
@@ -271,6 +278,8 @@ namespace
                 line += "   " + health;
             if (stopped.empty() && !note.empty())
                 line += "   " + note;
+            if (!wheelLine.empty())
+                line += "   " + wheelLine;
 #if defined(TEE_HAS_UI_FRAME)
             if (shown.assistant != nullptr)
                 if (const std::string claude = shown.assistant->statusNote(); !claude.empty())
@@ -304,6 +313,50 @@ namespace
             audioLine = device.isOpen() ? device.info().line() : "no audio device";
             showStatus();
         };
+        // ---- the racing wheel: a Logitech G29 (input/g29/RacingWheel.h; macOS only so far) ------------------------
+        // Its five shift lights count as the DRIVE view's do (ui/views/drive/Dash.cpp: light k lit from the redline less
+        // look::shiftLightBefore(redline, k)), all five flashing about eight times a second on the limiter; none while
+        // there are no revs to count (-1: the wheel's are turned off).
+        input::g29::RacingWheel::Hooks wheelHooks;
+        wheelHooks.changed = [&wheelChanged] { wheelChanged = true; };
+        wheelHooks.lights = [&player, handles = std::array<int, 3>{ -2, -2, -2 }]() mutable {
+#if defined(TEE_HAS_UI)
+            TelemetrySource& values = player;
+            if (handles[0] == -2)
+                handles = { values.findValue(telemetry::kSpeed), values.findValue(telemetry::kRedline),
+                            values.findValue(telemetry::kFlags) };
+            if (handles[0] < 0 || handles[1] < 0)
+                return -1;
+            constexpr double kToRpm = 30.0 / 3.14159265358979323846;
+            const double rpm = values.value(handles[0]) * kToRpm, redline = values.value(handles[1]) * kToRpm;
+            if (!std::isfinite(rpm) || !std::isfinite(redline) || redline <= 0.0)
+                return 0;
+            const double flags = handles[2] >= 0 ? values.value(handles[2]) : 0.0;
+            if (std::isfinite(flags) && (std::lround(flags) & 1) != 0)
+                return (SDL_GetTicks() / 62) % 2 == 0 ? input::g29::kAllLights : 0;   // the limiter: flashing
+            int lit = 0;
+            for (int k = 0; k < input::g29::kLights; ++k)
+                if (rpm >= redline - ui::look::shiftLightBefore(redline, k))
+                    lit = k + 1;
+            return input::g29::litMask(lit);
+#else
+            (void)handles;
+            return -1;
+#endif
+        };
+        input::g29::RacingWheel wheel(std::move(wheelHooks), now.wheelOn);
+        input::g29::Input wheelInput;
+        commandsContext.wheel = [&wheel] {
+            const std::string s = wheel.status();
+            return input::g29::RacingWheel::supported()
+                       ? std::string(wheel.on() ? "on" : "off") + (s.empty() ? std::string() : ": " + s)
+                       : std::string();
+        };
+        commandsContext.setWheelOn = [&wheel, &now](bool on) {
+            wheel.setOn(on);
+            now.wheelOn = on;
+        };
+        commandsContext.wheelOn = [&wheel] { return wheel.on(); };
         app::WindowCommands commands(std::move(commandsContext));
         std::filesystem::path tryFirstFile;     // the first build a launch opened (its card is wanted while it is open)
         if (shown.document != nullptr)
@@ -398,6 +451,24 @@ namespace
                 }
                 else if (e.kind == app::ScriptEvent::Kind::expect || e.kind == app::ScriptEvent::Kind::print)
                     scriptChecks.push_back(&e);         // read after this frame's engine.frame(), below
+            }
+            // the racing wheel: its sources serviced, its state into the driver (before the frame reads the driver)
+            wheel.pump();
+            wheelInput.apply(wheel.state(), wheel.reading(), controls.driver());
+            if (wheelChanged)
+            {
+                wheelChanged = false;
+                const std::string said = wheel.status();
+                const std::string line = !wheel.present() ? std::string()
+                                       : !said.empty()     ? "wheel: " + said
+                                       : wheel.reading()   ? std::string("wheel: G29 read")
+                                                           : std::string();
+                if (line != wheelLine)
+                {
+                    wheelLine = line;
+                    std::printf("%s\n", line.empty() ? "wheel: none read" : line.c_str());
+                    showStatus();
+                }
             }
             engine.frame();
             if (shown.frame)
