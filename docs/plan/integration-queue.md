@@ -1074,6 +1074,15 @@ compiler is the owner's).
 **A note on clocks:** N1's and L's containers run about five to seven minutes ahead of the lead's and the
 server's. A time in a message is still from `date -u`, and is that container's.
 
+## Card C, for the next window (25 Nov 19:58 UTC)
+
+- **The stepped dyno approaches a held step from below where `tel.engine.hysteresis` reads 1.** N1 measured it is
+  exposed as the predictor was: the two-stage held at 597 rad/s reads stage B, 191.6 N m when the run starts from the
+  default `from` (150: the jump's overshoot, some 13 %, crosses the up switch), 184.7 when started at 590. Dyno.cpp's
+  steps are its own timeline (the absorber's set speed), not the predictor's Rig, so the predictor's `approach()` is
+  lifted into a helper both call, with a stepped-dyno test on the two-stage (each held step under the switch reads A).
+  Not in this window's push; the predictor's side did not wait for it.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 18:37: `main` HAS MOVED to 43006034.** The window is OPEN for the items below and nothing else. Rule:
