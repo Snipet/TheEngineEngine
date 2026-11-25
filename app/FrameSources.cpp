@@ -56,8 +56,9 @@ namespace tee::app
             inner_->stopRun();
     }
 
-    LateBake::LateBake(player::SimAdapter& player, const LateDyno& dyno, std::filesystem::path cache)
-        : player_(player), dyno_(dyno), cache_(std::move(cache))
+    LateBake::LateBake(player::SimAdapter& player, const LateDyno& dyno, std::filesystem::path cache,
+                       std::filesystem::path scenarios)
+        : player_(player), dyno_(dyno), cache_(std::move(cache)), scenarios_(std::move(scenarios))
     {
     }
     LateBake::~LateBake()
@@ -73,6 +74,7 @@ namespace tee::app
                 inner_.reset();
                 tee::CalibrationBakeOptions options;
                 options.cacheDirectory = cache_;
+                options.idleScenarios = scenarios_;     // C's verified reuse: a cached cam map checked on a warm idle
                 inner_ = std::make_unique<ui::ServiceBake>(now, player_.build(), options);
                 made_ = std::move(now);
                 yieldedTo_ = nullptr;
