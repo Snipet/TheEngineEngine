@@ -162,3 +162,12 @@ sheet will include every registered workspace.
   `CalibrationBakeOptions::cacheDirectory` is the shell's to set where it makes the ServiceBake (a cached bake is
   "baked" at once). `FrameServices::stillKnocking` gives the knock-limit table's cells still knocking after the last
   bake, [speed][load] on ecu.maps.knockLimit's grid (empty: none): TUNE marks them.
+- DRIVE's dash styles (the owner's ask, 25 Nov; `ui/views/drive/Dash.h`): STANDARD (the first look, unchanged),
+  CLASSIC (the two large dials and eight small ones: boost, oil pressure, oil temperature, water, exhaust, lambda, fuel,
+  knock retard; a gear window, torque, power, longitudinal g, lamps with words), DIGITAL (a segmented rev bar, the speed
+  in large digits, tiles with bars and alarm words, torque, power, g) and RACE (ten shift lights, a huge gear, alarm
+  boxes that fill and say HOT, LOW, LEAN or KNOCK). `FrameServices::driveStyle` / `setDriveStyle` (0..3); DRIVE shows
+  its DASH buttons only while both are served. app/Offline.cpp serves them and keeps the choice as a line of the
+  interface's own settings text (`drive.style=race`, beside the units' lines; STANDARD is not written), so no shell
+  change. The alarms' limits are judgement, marked in Dash.cpp. Not shown, as the simulator does not publish it: a
+  lateral g (only car.accel, the longitudinal, exists), so the g meter is longitudinal only.

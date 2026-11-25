@@ -53,6 +53,16 @@ namespace tee::ui
                             hasPointer_ ? pointer_ : far);
         if (gestures_ && host_ != nullptr)
             gestures_->poll(host_->nowSeconds());
+        // U1: hover help: the item under the pointer (none while a press holds), else the one the keyboard holds.
+        const bool byKey = !(hasPointer_ && hovered >= 0) && ring_ && focus_ >= 0;
+        const int key = pressed_ >= 0 ? -1 : (hasPointer_ && hovered >= 0 && !innerPress_) ? hovered : byKey ? focus_ : -1;
+        if (tip_.track(dt, key, byKey ? Tooltip::kFocusDwell : Tooltip::kDwell))
+        {
+            std::string title, body;
+            funkgui::Rect anchor{};
+            if (items_[static_cast<std::size_t>(key)]->help(title, body, anchor))
+                tip_.show(title, body, {}, anchor, static_cast<float>(width_), static_cast<float>(height_));
+        }
     }
 
     void Board::drawGround(funkgui::Canvas& c, const funkgui::Theme& th) const
@@ -69,6 +79,7 @@ namespace tee::ui
         for (std::size_t i = 0; i < items_.size(); ++i)
             if (items_[i]->shown())
                 items_[i]->draw(c, th, ring_ && focus_ == static_cast<int>(i));
+        tip_.draw(c, th);   // U1: hover help, over everything
     }
 
     bool Board::wantsFullRate() const
@@ -158,6 +169,7 @@ namespace tee::ui
         hasPointer_ = true;
         ring_ = false;
         pressed_ = itemAt(pointer_);
+        tip_.pressed(pressed_);   // U1: no hover help over what was just pressed
         innerPress_ = false;
         if (pressed_ < 0)
         {
