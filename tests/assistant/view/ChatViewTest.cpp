@@ -11,6 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -104,6 +105,38 @@ namespace
         v.type(e);
     }
 
+    // The view drawn by the software rasteriser.
+    funkgui::Image render(const ChatView& v, int w, int h)
+    {
+        const funkgui::Theme th = funkgui::Theme::graphite();
+        const auto& atlas = funkgui::FontService::get().atlas();
+        funkgui::Canvas c(atlas);
+        funkgui::FrameInfo info;
+        info.logicalW = w;
+        info.logicalH = h;
+        info.clear = th.ground;
+        c.begin(info);
+        v.draw(c, th, false);
+        return funkgui::rasterise(c.end(), atlas);
+    }
+
+    // The pixels inside `r` that differ between two pictures of the same size.
+    std::size_t differing(const funkgui::Image& a, const funkgui::Image& b, const funkgui::Rect& r)
+    {
+        REQUIRE(a.w == b.w);
+        REQUIRE(a.h == b.h);
+        const float sx = static_cast<float>(a.w) / 420.0f;   // (the pictures here are 420 logical points wide)
+        std::size_t n = 0;
+        for (int y = static_cast<int>(r.y * sx); y < static_cast<int>(r.bottom() * sx) && y < a.h; ++y)
+            for (int x = static_cast<int>(r.x * sx); x < static_cast<int>(r.right() * sx) && x < a.w; ++x)
+            {
+                const std::size_t i = (static_cast<std::size_t>(y) * static_cast<std::size_t>(a.w) + static_cast<std::size_t>(x)) * 4;
+                if (a.rgba[i] != b.rgba[i] || a.rgba[i + 1] != b.rgba[i + 1] || a.rgba[i + 2] != b.rgba[i + 2])
+                    ++n;
+            }
+        return n;
+    }
+
     // The view drawn by the software rasteriser, written to out/assistant/<name>.png; the count of pixels not the ground.
     std::size_t picture(const ChatView& v, const std::string& name, int w, int h)
     {
@@ -142,12 +175,34 @@ TEST_CASE("assistant: the chat panel, empty: why it cannot chat yet, and its Add
     v.press(*v.centreOfAddKey());
     CHECK(dialogs == 1);
     CHECK(picture(v, "chat-empty", 420, 560) > 1000);
+    // the button is drawn where it is pressed: its place differs from the same chat with no key dialog to offer (no
+    // button), over most of its area (the words' line above it is not in it)
+    {
+        const auto button = v.addKeyButton();
+        REQUIRE(button.has_value());
+        ChatView bare({});
+        bare.attach(&port);
+        bare.setBounds({0.0f, 0.0f, 420.0f, 560.0f});
+        tick(bare);
+        CHECK_FALSE(bare.addKeyButton().has_value());
+        CHECK_FALSE(bare.centreOfAddKey().has_value());
+        const std::size_t changed = differing(render(v, 420, 560), render(bare, 420, 560), *button);
+        INFO("pixels of the button's place that differ: " << changed);
+        CHECK(changed > static_cast<std::size_t>(button->w * button->h * 0.5f));
+        // a press beside it, in the words, opens nothing
+        v.press({button->right() + 40.0f, button->centreY()});
+        CHECK(dialogs == 1);
+        std::vector<funkgui::A11yItem> a11y;
+        v.accessibility(a11y);
+        CHECK(std::any_of(a11y.begin(), a11y.end(), [](const funkgui::A11yItem& i) { return i.title == "Add a key"; }));
+    }
     // with a key: what the chat is for, and no dialog on a press
     port.canChat = true;
     ++port.rev;
     tick(v);
     CHECK(v.shownText().find("Ask Claude about the engine") != std::string::npos);
-    v.press(*v.centreOfAddKey());
+    CHECK_FALSE(v.addKeyButton().has_value());   // nothing to add: no button
+    v.press({60.0f, 60.0f});
     CHECK(dialogs == 1);
 }
 
