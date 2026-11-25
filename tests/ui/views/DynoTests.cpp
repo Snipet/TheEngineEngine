@@ -522,7 +522,13 @@ namespace
                 const funkgui::Rect copy = tee::ui::dynoControl(*rig.ws, "copy");
                 rig.host->click(copy.centreX(), copy.centreY());
                 const std::string csv = rig.host->clipboardText();
-                CHECK_MSG(csv.find(",knock_limited,retard_min_deg,retard_max_deg\n") != std::string::npos, csv.substr(0, 120));
+                CHECK_MSG(csv.find(",knock_limited,retard_min_deg,retard_max_deg") != std::string::npos, csv.substr(0, 120));
+                // The rev limiter's points (the demo's past 6600 rpm): said in their own column, 1 where cut.
+                CHECK_MSG(csv.find(",rev_limited\n") != std::string::npos, csv.substr(0, 140));
+                int cut = 0;
+                for (std::size_t i = 0; i < t.speed.size(); ++i)
+                    cut += t.limitedAt(i) ? 1 : 0;
+                CHECK(cut > 0);
             }
         }
         return 0;

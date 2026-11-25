@@ -34,6 +34,11 @@
   words ("knock-limited, retard 5 to 9 deg"). The CSV adds `knock_limited,retard_min_deg,retard_max_deg`. Points are
   read by speed, so card C's upward stepped runs need nothing else.
 
+- **Rev-limited points.** A point the rev limiter acted on (`DynoTrace::limited`, card C's `PredictPoint::limited`) is
+  the cut's torque, no measure of the engine: the curve breaks there and the point is a dim ring alone, "LIMITER, NOT
+  MEASURED" in the legend (or between the axis titles when the legend's line is full); the peaks leave it out; the CSV
+  adds `rev_limited`.
+
 ## What is clickable
 
 A row (chooses it: the header's readouts, the NAME field and COPY CSV follow it); a row's box (shows or hides it);

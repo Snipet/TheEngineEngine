@@ -16,8 +16,16 @@ namespace
     {
         std::vector<std::string> warnings;
         std::string error;
+        // first.json, its spark and cam tables then put back to the program's defaults (as an unbaked build: content
+        // ships baked since P's 066165a0, and this case watches a bake), as card C's unbaked() in tests/host.
         const auto loadFirst = [&] {
             CHECK_MSG(rig.build->loadFile(std::filesystem::path(TEE_UI_BUILDS_DIR) / "first.json", tee::BuildPart::Whole, warnings, error), error);
+            const tee::Build fresh(rig.build->fields());
+            const auto& all = rig.build->fields().all();
+            for (std::size_t i = 0; i < all.size(); ++i)
+                if (all[i].block == "spec" && (all[i].path.find("ecu.maps.knockLimit") != std::string::npos
+                                               || all[i].path.find("ecu.maps.camIn") != std::string::npos))
+                    CHECK(rig.build->setValues(static_cast<int>(i), fresh.values(static_cast<int>(i))));
         };
         loadFirst();
         // A cache folder of the test's own, empty at the start: the second load below finds its bake there.
