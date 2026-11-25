@@ -99,8 +99,10 @@ TEST_CASE("a warm start on p-idle-warm: every archetype runs at 14 s", "[nightly
 // wildest) lopes, the dilution recursion's period near 0.4 s, sd 113 rpm on the reference alone. The ECU's idle valve read
 // that lope's swing as far off the target and doubled its gain on air that arrives half a lope late: sd 151 rpm, the valve
 // 0.04 to 0.52. With the gain read over 0.5 s (idle.fm), 127. Held under 140: the fix, with a tenth's room, short of the
-// 151 before. The speed every block (512 samples at 48 kHz) over 6 to 14 s.
-TEST_CASE("the turbo six's lope on the bench is not fed by the idle valve under the models", "[calibration][na]")
+// 151 before. The speed every block (512 samples at 48 kHz) over 5 to 9 s (old 155, new 127). Nightly for now: its own
+// process compiles the program (some 6 of its 7 s) and the fast tier is over its budget (the steward, 00:19); it moves to
+// the fast tier when calibration-na's fast cases share one process
+TEST_CASE("the turbo six's lope on the bench is not fed by the idle valve under the models", "[nightly][calibration][na]")
 {
     std::string error;
     static const std::shared_ptr<Sim>* const kept = new std::shared_ptr<Sim>(Sim::compile(kRoot / "sim", {}, error));
@@ -110,7 +112,7 @@ TEST_CASE("the turbo six's lope on the bench is not fed by the idle valve under 
     Timeline t;
     t.rate = 48000.0;
     t.block = 512;
-    t.seconds = 14.0;
+    t.seconds = 9.0;
     const auto at = [&](double time, const char* name, double value) {
         t.events.push_back({time, TimelineEvent::Kind::Control, name, value, {}, 0.0});
     };
@@ -141,7 +143,7 @@ TEST_CASE("the turbo six's lope on the bench is not fed by the idle valve under 
     double s = 0.0, q = 0.0;
     int n = 0;
     for (std::size_t r = 0; r < run.rowCount(); ++r)
-        if (run.rowTime[r] >= 6.0)
+        if (run.rowTime[r] >= 5.0)
         {
             const double rpm = run.at(r, std::size_t(cs)) * 9.5492966;
             s += rpm, q += rpm * rpm, ++n;
