@@ -21,4 +21,7 @@ namespace tee::ui
     std::string valvesOilWords(const Workspace& w);
     // For tests: the overlap's pressure as the ring says it ("-63 kPa BACK-FILLS", "+12 kPa SCAVENGES"; "" none).
     std::string valvesOverlapWords(const Workspace& w);
+    // For tests: words the page draws from the build: 0 the intake phaser's band ("INTAKE PHASER 60 DEG"), 1 the
+    // exhaust's, 2 the stage's speed ("B from 3100 rpm"); "" where the build has none.
+    std::string valvesPageWords(const Workspace& w, int which);
 }

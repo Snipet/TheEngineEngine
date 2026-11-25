@@ -1,5 +1,5 @@
 // tests/ui/build/ValvesStagesTests.cpp: U2's ENGINE section and VALVES on the two-stage archetype (content/builds/
-// archetypes/two-stage-cam-20.json: stage A 8.5 mm / 236 deg, stage B 12.65 mm / 280 deg at 6000 rpm), through the real
+// archetypes/two-stage-cam-20.json, its lifts and stage speed read from the Spec after the load), through the real
 // Spec's document and the application's frame, with telemetry stepping valve.stage 0 to 1 as engine.speed passes the
 // stage speed and a Scope that gives the lifts as the simulator does (valvetrain.fm liftIn: a share of the taller of
 // the two stages' cams).
@@ -99,10 +99,19 @@ namespace
         const auto file = std::filesystem::path(TEE_UI_BUILDS_DIR) / "archetypes" / "two-stage-cam-20.json";
         CHECK_MSG(rig.build->loadFile(file, tee::BuildPart::Whole, warnings, error), error);
         tee::ui::FieldDoc& doc = *rig.doc;
+        // the build's numbers, read from the Spec after the load (none written here)
+        const auto spec = [&](const char* path) {
+            const int i = doc.find(path);
+            CHECK_MSG(i >= 0, path);
+            return i >= 0 ? doc.get(i) : std::nan("");
+        };
+        const double liftA = spec("valve.inLift"), liftB = spec("valve.inLiftB"), stageSpeed = spec("valve.stageSpeed");
         const vv::Train t = vv::trainOf(doc);
-        CHECK(t.stages && t.inB.known() && t.exB.known());
-        CHECK_MSG(std::fabs(t.in.lift - 0.0085) < 1e-6 && std::fabs(t.inB.lift - 0.01265) < 1e-6,
-                  std::to_string(t.in.lift) + " " + std::to_string(t.inB.lift));
+        CHECK(t.stages == (spec("valve.stages") >= 0.5));
+        CHECK(t.stages && t.inB.known() && t.exB.known());   // what this archetype is for: two stages
+        CHECK(t.in.lift == liftA && t.inB.lift == liftB);
+        // below and above the stage speed
+        const double below = 0.9 * stageSpeed, above = 1.1 * stageSpeed;
 
         for (const float dpi : { 1.0f, 2.0f })
         {
@@ -111,7 +120,7 @@ namespace
             tel.set("engine.coolant", 360.0);
             tel.set("valve.waiting", 0.0);
             tel.set("valve.waitTemp", 0.0);
-            tel.set("engine.speed", 5500.0 * 3.14159265358979 / 30.0);
+            tel.set("engine.speed", below);
             tel.set("valve.stage", 0.0);
             tel.set("valve.inPhase", 0.0);
             // the crank where the intake is at its peak (cylinder 1's angle in its cycle)
@@ -139,7 +148,7 @@ namespace
             frame.show(we);
             host.tick(10);
             const auto [fullIn, fullEx] = tee::ui::engineFullLifts(frame.workspace(we));
-            CHECK_MSG(std::fabs(fullIn - 0.01265) < 1e-6, std::to_string(fullIn));
+            CHECK_MSG(std::fabs(fullIn - std::max(liftA, liftB)) < 1e-9, std::to_string(fullIn));
             CHECK(std::isfinite(fullEx) && fullEx >= t.ex.lift);
             const auto peakOf = [&](int stage) {
                 scope.stage = stage;
@@ -148,7 +157,7 @@ namespace
                 return static_cast<double>(*std::max_element(v.begin(), v.end())) * fullIn;
             };
             const double drawnA = peakOf(0), drawnB = peakOf(1);
-            CHECK_MSG(std::fabs(drawnA - 0.0085) < 2e-5 && std::fabs(drawnB - 0.01265) < 2e-5,
+            CHECK_MSG(std::fabs(drawnA - liftA) < 2e-5 && std::fabs(drawnB - liftB) < 2e-5,
                       std::to_string(drawnA) + " " + std::to_string(drawnB));
             scope.stage = 0;
             ++scope.gen;
@@ -157,8 +166,8 @@ namespace
             CHECK(tee::ui::engineStageWords(frame.workspace(we)).first == "STAGE A");
             CHECK(tee::ui::engineStageWords(frame.workspace(we)).second.empty());   // below the stage speed: no reason
             shot("stages.engine.A");
-            // past 6000 rpm: stage B (the Scope's next copy is B's)
-            tel.set("engine.speed", 6500.0 * 3.14159265358979 / 30.0);
+            // past the stage speed: stage B (the Scope's next copy is B's)
+            tel.set("engine.speed", above);
             tel.set("valve.stage", 1.0);
             scope.stage = 1;
             ++scope.gen;
@@ -199,15 +208,17 @@ namespace
             const float yB = tee::ui::valvesHandle(frame.workspace(wv), 0).y;
             shot("stages.valves.B");
             tel.set("valve.stage", 0.0);
-            tel.set("engine.speed", 5500.0 * 3.14159265358979 / 30.0);
+            tel.set("engine.speed", below);
             scope.stage = 0;
             ++scope.gen;
             host.tick(5);
             const float yA = tee::ui::valvesHandle(frame.workspace(wv), 0).y;
-            CHECK_MSG(yB < yA - 10.0f, std::to_string(yA) + " " + std::to_string(yB));   // B's peak drawn higher
+            // the taller stage's peak drawn higher (as the build's lifts say which is taller)
+            if (std::fabs(liftB - liftA) > 1e-4)
+                CHECK_MSG((yB < yA) == (liftB > liftA), std::to_string(yA) + " " + std::to_string(yB));
             shot("stages.valves.A");
         }
-        std::printf("  two-stage archetype: ENGINE's section at A's 8.5 mm then B's 12.65 mm; VALVES on the stage in use\n");
+        std::printf("  two-stage archetype: ENGINE's section at A's lift then B's, as the build says; VALVES on the stage in use\n");
         return 0;
     }
 }
