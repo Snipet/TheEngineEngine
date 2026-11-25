@@ -316,3 +316,20 @@ labelled 0.66 and 0.62 at the lower right: not assigned line by line.
 
 *For N2's model (computed here from the READ peaks, not a source's):* the peak ratio against corrected tip speed falls on one
 curve for both wheels within the reading's error: at U = 370 m/s, 2.25 (S400) and 2.34 (S300); at 561 m/s, 4.63 and 4.71.
+
+## 22. The 2.0 diesel's and the turbo four's production turbos (the lead's ask for N2, 25 Nov 14:40 UTC)
+
+- **The 2.0 common-rail diesel.** The build stands for the VW 2.0 TDI common rail (81 x 95.5 mm, 1968 cc; its notes: "103 to
+  125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750"). **Its torque rows:** no row at 1750 rpm; "Peak torque" 320 to 380 N m
+  and "Speed at peak torque" 1700 to 3000 rpm (`content/validation/archetypes/diesel-20-common-rail.json`); the published
+  figure at 1750 is the plateau's start: VW's Mk7 Golf Estate presentation, "320 Nm is available from 1,750 rpm (and up to
+  3,000 rpm)" for the 110 kW 2.0 TDI (section 20). **Its turbo:** sellers list a BorgWarner **BV43** as the OE turbo of the
+  US common-rail 2.0 TDI (engine codes CBEA, CJAA: turbochargersdirect.com listings); **its compressor wheel's diameters were
+  not found** on a maker's sheet or a parts catalogue (the listings give none). Garrett's GT1749V / GTA1749V kits are for the
+  earlier pump-injection engines (BEW, BKD), not this one. Not found: the BV43's wheel and its map.
+- **The turbo four (first.json).** Its `is20` wheels, compressor **42.5 mm inducer / 54.0 mm exducer**, turbine about 50 mm,
+  came from table L's application of the EA888 sources file (`docs/measurements/validation/2026-11-24-2314-ea888-gen3-sources.md`,
+  "The turbo's hardware"): mygolfmk7.com's table and a blog, a vwvortex and a NAM forum post (snippets); an eBay seller's
+  41.8 / 53.96. **42.5 is the inducer.** No maker's figure. The turbo: **IHI IS20, 06K145874M** for the Golf GTI 2013-19
+  (Garrett's PowerMax 898199 datasheet's OE table, read 25 Nov). **No published IS20 map found** (Garrett's PowerMax sheet
+  maps its own replacement, not the IS20; IHI publishes none found).

@@ -48,6 +48,8 @@ namespace tee::ui
             t.power.push_back(p.power);
             t.limited.push_back(p.limited ? 1 : 0);
             t.knock.push_back(p.knockLimited ? 1 : 0);
+            t.torqueSe.push_back(p.torqueSe);
+            t.settledCycles.push_back(p.settledCycles);
             t.retardMin.push_back(p.retardMin);
             t.retardMax.push_back(p.retardMax);
         }

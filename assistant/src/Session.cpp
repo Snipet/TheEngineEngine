@@ -17,8 +17,11 @@ namespace tee::assistant
         // the key chat: made now, idle (no thread, no connection, no read of the store) until it is used
         transport_ = makeTransport(transportWhy_);
         keys_ = makeSystemKeyStore(keysWhy_);
+        ChatOptions chatOptions;
+        chatOptions.noTransportWhy = transportWhy_;   // (Windows: "the chat by API key is for macOS and Linux ...")
+        chatOptions.noKeyStoreWhy = keys_ ? std::string() : keysWhy_;
         chat_ = std::make_unique<Chat>(*tools_, drivers_, transport_.get(), [this] { return currentKey(); },
-                                       systemPromptFor(parts.document.build().fields()), clock);
+                                       systemPromptFor(parts.document.build().fields()), clock, std::move(chatOptions));
     }
 
     std::string Session::currentKey()

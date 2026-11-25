@@ -829,30 +829,112 @@ two-stage build's high lobe at 247 deg on a centre of 98).
   pressure plot lies over the knock-by-cylinder row its own text points to (U5, a later ui push); DYNO's "none yet:
   edit the build" runs past its panel's right edge (U4, with the octane number's push).
 
+## 25 Nov 15:23: the window closed for sim; the bake done; what was found while it ran
+
+**On the branch since `main` (76420f32), all in P's bake (tools sha 758bb12f's):** the steward's packages and the
+soak by request only; U5's stage help; N1's 93 grade and `spec.fuel.octane`; C's knock bake version 5; U4's octane
+number; D2's start fuel; L's start exposure; G's bangs burned in the pipe with N1's seam (default still Carved);
+the integrator's clutch held closed on the overrun (c1ab538a); card A's assistant through A3 with its fixes (the
+manifest's valid JSON, the link's state under `!_WIN32`, the name rule: c457e849); J2's three inspector designs and
+the kit's draft field and error colour; X's soak shards; U1's ribbon marks, CLASSIC dials and a tab for every
+inspector page (cb3e97a9); B's SIGPIPE ignored in the app's mains (fb33cb9a). The lead's own runs: 581 of 581 on
+88ebef01; the 79 affected cases on the frozen tip. P: pre-bake tier 577 of 577; the bake 14:56 to 15:14, 28 knock
+tables and 14 cam maps, the gate's 31 idles before and after, five builds Current at once.
+
+**Process, the lead's faults and their cures.** (1) "A whole tier on the merged tip before every push" could not
+converge with a dozen pushers (three agents on a third run): changed to one green tier on a merged state, then
+merge a moved tip and push, CI judging the combination. (2) U1's permission check allows only a pure fast-forward
+of a fully tested state; it was not worked around: the tip was held still for it (two runs lost to pushes that
+crossed the notice; the third, on a named sha, went in). For U1 the tip is held from its merge to its push.
+
+**CI on the assistant (card A), each found by the first build on that platform:** Windows: unused private fields
+(clang-cl), cured in A3; macOS and Windows: the save-as test on a case-blind disk: ruled that a name differing only
+in case is the same name on every platform, new names plain ASCII, the test reading the folder's listing (macOS
+584 of 584 on c457e849); macOS: `assistant.sim` killed by SIGPIPE: the link never raises it (c5ef4d7: SO_NOSIGPIPE
+on every socket, the wake channel a socketpair, EPIPE = the peer is gone, a test that fails on any SIGPIPE) and the
+application ignores it (B); the `.mcpb`'s manifest was not valid JSON (the steward's first build of it), cured with
+a parse test. **Never run against Claude Desktop or the API.** Unverified until the owner tries: which MCP revision
+Claude Desktop speaks (the bridge answers the handshake of 2025-11-25; a client of 2026-07-28 alone fails);
+Gatekeeper on a CI-downloaded `.mcpb` (the quarantine flag); the Keychain and a real key.
+
+**GARAGE lists the test suite's fixtures** (app/GarageLibrary.cpp walks content/builds recursively: combo/'s five
+archetypes, pack/ and findings/ x001 to x040, builds reduced to diverge; in `main` today). Now: U5's filter with a
+test. Next window: the fixtures leave content/ in one step (X moves; N1 repoints BoostInletTest.cpp, Probe.cpp,
+X022Test.cpp; the integrator core/EngineTest.cpp:566; P the manual's table).
+
+**The soak has never been green; X's triage** (each bisected, none a pop, no bound moved; Known.h): X-030, X-031
+(the spark's ramp after the cut, c035fe75; the downshift under fuel.model 1): the steward; X-032 (576c1c6e, the
+idle valve's integral through start), X-034 (68e683f1, the valve's area), X-037 (valve.dpOverlap on the pickup):
+N1; X-033 (5c85736b): N2 finding whose; X-035 (custom engine without boost, the large diesel): the integrator and
+D2; X-036 (turbo V8 dual, running mean 0.0057 to 0.0069 against 0.005): the integrator and the steward; X-029,
+X-038 (a primary or tail of hundredths of a millimetre): G, T, N2; X-039 (a 50 cc single with a 4 L blower): N2;
+X-040 (a 0.025 mm runner): L. One cure to weigh across the near-zero pipes: the Spec's lower bounds on diameters.
+Shards: 16 triples and 4 fuzz ranges; about 53 minutes on the runner where it took 92 (first sharded run pending).
+
+**The compressor map (N2 on P's sources, sections 21 and 22).** Two judgement coefficients were low against the
+BorgWarner S300SX3 and S400SX-E (the rise 0.45 against 0.51 to 0.54 back-solved; the choke flow); a flat correction
+was refuted by the same maps' lower lines; the surge line at speed sat 1.5 times too far left. Fitted to all seven
+cited maps with a hold-out (one heavy-duty map predicting the other): c(M) = 0.608 - 0.157(M - 1); the knee
+(0.349 + 0.551(M - 1)) kAr; the fall 0.652; choke 0.506; mean error of the peak ratio 3 % (today's 14 %), of the
+surge flow 6 % (26 %); the two heavy-duty wheels disagree beyond reading precision (trim, not entered). **Ruled:
+that map, with one floor at the lowest cited line (Mach 0.67) for the knee and the efficiency.** The lead's wrong
+guesses on the way, each refuted by N2's measurement: the turbo four's loss as surge or class (it was the
+efficiency law read at Mach 0.30, under every cited line); the 2.0's vanes as a control fault (the back-pressure
+limit holds them, and forced shut the pumping takes the gain back); the nozzle matched at the torque peak (it is
+matched at rated on the flat target).
+**THE DIESEL PACKAGE, N2's half final (668c642e local; docs/handoffs/patches/n2-package.patch):** the ruled map,
+(b), the whole-flow nozzle, no guard, the taper from the fuel curve or ceiling. Tractor 72.4 mm: 2397 / 2580 / 2721
+N m at 900 / 1000 / 1100; rated on the taper 482 kW at 0.899 of the shaft's limit, no flags (a flat 260: 0.986 to
+0.990). Truck's sets 69.8 mm: 2507 / 2653 / 1867 at 1000 / 1300 / 2100, a choke flag at 2100 (known limit). The
+2.0 38.4 mm: 252 N m at 1750 against VW's 320 (a miss, to be a row; the branch as shipped reads 154), rated clear.
+Pickup 64.7 mm. Boosted validation rows: misses 45 to 46. MapTest's two knee cases restated on the cited
+heavy-duty lines (not loosened). **Research after it, replacing (b) only if every build keeps both ends:** rule (c)
+(the smallest wheel that clears rated) with the turbine's open area matched on its own efficiency at rated; first,
+why the engine flags choke where the rule's check passes.
+**D2's half:** its builds off the 88 deg dial (811c744d), the fixture's target, **the torque and power ceiling**
+(`ecu.torqueMax`, `ecu.powerMax`: the ECU's fuel ceiling for electronically governed engines; the truck's fuel
+curve, computed from its own published torque and power, was the forbidden kind and goes; **rows a ceiling holds
+by construction leave the validation counts**; a mechanical pump states a delivery, not a torque), the brake
+retuned once, GradeTest's check that the brake is still on at the end.
+
+**The clutch (the integrator).** The paddles' robotised clutch followed the engine's own speed (0.357 of capacity
+at 1116 rpm on the truck). In the bake: held closed by the road's speed once it slips backwards (c1ab538a).
+Measured on `main`'s law: a forward slip of 130 to 160 rpm for 4 to 5 s under a floored pedal at 1070 rpm. Local
+for the next window: one latch for both directions (87629688; set on the first lock, released by a shift, neutral,
+the clutch pedal or the stall band); all 46 vehicle cases and the combination's fast tier identical; the dog box's
+case and the grade's case move as the law says; a patch for bike.fm (B2's).
+
+**The bangs.** G's clips are with the owner (in G's session): Carved against Burned for first.json's fuel-cut
+limiter (Burned: 0 bangs), the flat-plane V8's spark cut (peaks -3.0 dBFS against -10.7; 10 dB over the body),
+a fuelled overrun (1 bang in 7.5 s), the rally five's anti-lag (19 dB over the body). Local: 8c9f4c20 (a bang's
+turbulence from the flow the ports let in, capped at sound: each bang's own waves had stirred the next one's flame)
+and BangTest's books (222 kJ for 5.3 g at 42.2 MJ/kg). The auto level is pulled down 8 to 13 dB by the bangs: L's
+rule to measure (a part over twice the window's 80th-percentile part does not raise the exposure). The turbine's
+books do not see the burns ahead of it (for N2's lane). The default flips only on the owner's ear.
+
+**The 2.3 kHz "mode"** (L, G): the ground's reflection at the Tailpipe camera (a path difference of 0.262 m:
+notches at 650, 1957, 3270 Hz), not a pipe or the body. Candidates for a later window: a reflection falling with
+frequency; a few millimetres of slow jitter on the image's path.
+
+**For the owner to choose:** the inspector (J2's three designs; Rows recommended, the card next); the bangs'
+default after the clips; the idle's level; the listening questions.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 13:43: `main` IS AT 76420f32. THE WINDOW IS OPEN for the items named here and nothing else.** Each agent
-  merges the remote tip (no rebase, no force), runs the WHOLE default tier green on its merged tip, then pushes; a
-  red tier is not pushed. Where an item depends on another, it waits for that one to be on the branch.
-  **Changed 14:17 (three agents were on their third run, chasing a tip that moves every few minutes): ONE green
-  whole tier on a merged state is enough. If the tip moved since, merge again and push at once when the merge is
-  clean, without another run, and report which commits were not in your run; re-run only if the merge conflicts in
-  your files or the new commits touch the files yours touch. CI on the tip judges the combination; the lead reads
-  it before the bake, and a red tip is fixed before anything else is pushed over it.**
-  1. the steward: 47b69019, 884e192b (first: after it a push soaks only when its message says `[soak]`);
-  2. card A: e260d2b alone, then A1, A2, the wiring, A3 (after the steward's push: A3 needs its two packages);
-  3. N1: fe250071, 4e057986, b225b7a6; then C: the knock bake's version 5 with `spec.fuel.octane` in its key; then
-     U4: the octane number in TUNE;
-  4. D2: 28ac7654 only (the start's fuel). L: 327e0db0, 27eb2429 (the start's exposure);
-  5. G: the exhaust's half of the pops (g/bang-wip); then N1's seam, G reviewing;
-  6. ui only, any time: U1 (6e6c768e, aa711bbc; after card A, the switch row and the chat's place), U5, J2;
-  7. X: the soak's shards when ready;
-  8. (added 14:19) the integrator: c1ab538a, the clutch's overrun hold (sim/vehicle/gearbox.fm, a case in
-     GradeTest): the paddles' robotised clutch is a smoothstep of the ENGINE's speed (0.357 of capacity at 1116
-     rpm on the truck), in drive and on the overrun alike; a clutch that slips backwards now latches closed by the
-     road's speed through the gear. Every printed number of the vehicle, bike and diesel suites identical.
-- **NOT open:** the diesel package (D2's 811c744d, c24c127e, v8; N2's (b), nozzle and guard), M's fan cure, and
-  anything not named above. Ask the lead.
-- **Docs-only pushes (docs/** and *.md) are allowed at any time**: the workflow ignores them and starts no run.
-- The lead writes **FROZEN FOR THE BAKE** here when sim/, host/ and tools/ close; then P bakes and nobody else
-  pushes code until `main` has moved again.
+- **25 Nov 15:46: P'S BAKED PUSH IS IN: 9c36dbd1** (the bake 15152e0b at tools sha 758bb12f's; sim/, host/ and
+  tools/ 0 lines from it by the lead's diff; on top of U1's switch row and chat panel fc0e9b0a, X's 08b796c8 and
+  U5's GARAGE filter 731f7bbf).
+- **25 Nov 16:23: macOS is RED on 9c36dbd1, 586 of 587** (Linux green, 587 of 587; Windows running):
+  `assistant.sim`, card A's own new case (a peer gone mid-reply): a connect refused inside its loop of 20 (the
+  listener's backlog of 4; macOS refuses at once where Linux queues); intermittent (green on b7840f64). **Card A
+  alone is released for ONE fix** (the backlog; the test made deterministic). `main` then moves to card A's
+  commit, not 9c36dbd1, when it is green on all three; sim/, host/ and tools/ stay the bake's.
+- **CODE PUSHES ARE STOPPED FOR EVERYONE ELSE until the lead writes here that `main` has moved** (run 45648571240 on
+  9c36dbd1 must be green on linux-x64, macos-arm64 AND windows-x64; a push that builds would replace its waiting
+  jobs). The only exception: a fix the lead releases by name for a red job on that sha.
+- **Docs-only pushes (docs/** and *.md) are allowed**: the workflow ignores them and starts no run.
+- Held for after `main`: the steward's .mcpb artifact; X's tools/ commit. Then the next window, as the section of
+  15:23 lists it (the diesel package in its order; the one latch for both directions with bike.fm's patch; G's
+  8c9f4c20 and BangTest; L's exposure against the bangs; the fixtures' move out of content/; the soak's findings to
+  their owners; card A: the assistant's listing covering the archetypes GARAGE shows, the chat's "Add a key" action
+  drawn, the yes/no dialog with U1; M's fan cure).

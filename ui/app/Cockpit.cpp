@@ -450,6 +450,15 @@ namespace tee::ui
                     c.disc(x, y, 4.0f, look::kClear, 1.5f, p.warning);
                     c.segment(x, a.bottom() - 6.0f, x, a.bottom(), 2.0f, p.warning);
                 }
+            // Unsettled points (DynoTrace::unsettledAt): an open square on the torque curve, the shape its own sign; the
+            // speeds in the plot's accessible text ("unsettled at 6500 rpm").
+            for (std::size_t i = 0; i < now.speed.size() && i < now.torque.size(); ++i)
+                if (now.unsettledAt(i))
+                {
+                    const float x = a.x + a.w * static_cast<float>((now.speed[i] - x0) / (x1 - x0));
+                    const float y = a.bottom() - a.h * static_cast<float>(std::clamp(now.torque[i] / t1, 0.0, 1.0));
+                    c.rrect(x - 4.0f, y - 4.0f, 8.0f, 8.0f, 0.0f, look::kClear, 1.5f, p.value);
+                }
         }
     }
 
@@ -478,7 +487,12 @@ namespace tee::ui
     void DynoRibbon::accessibility(std::vector<funkgui::A11yItem>& out) const
     {
         const std::string k = knockText();
+        std::string unsettled;
+        const DynoTrace& d = dyno_.predicted();
+        for (std::size_t i = 0; i < d.speed.size(); ++i)
+            if (d.unsettledAt(i))
+                unsettled += "; unsettled at " + std::to_string(static_cast<int>(std::lround(d.speed[i] * 30.0 / kPi))) + " rpm";
         out.push_back(a11yOf(id_, funkgui::A11yRole::image, bounds_, "Predicted torque and power",
-                             peaksText() + (k.empty() ? std::string() : "; " + k)));
+                             peaksText() + (k.empty() ? std::string() : "; " + k) + unsettled));
     }
 }

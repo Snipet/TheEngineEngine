@@ -168,7 +168,7 @@ namespace
         {
             const long id = nextId_++;
             const std::string line = json({{"id", id}, {"method", method}, {"params", std::move(params)}}).dump() + "\n";
-            if (!writeAll(app_, line))
+            if (!wire::sendAll(app_, line.data(), line.size()))   // (to the app: never a signal, the app gone is EPIPE)
             {
                 if (method != "cancel")
                     pending_[id] = std::move(p);
@@ -291,6 +291,8 @@ namespace
             }
             if (msg.contains("result") && msg["result"].is_object())
                 reply(p.clientId, msg["result"]);
+            else if (msg.contains("code") && msg["code"].is_number_integer())
+                fail(p.clientId, msg["code"].get<int>(), msg.value("error", std::string("refused")));   // (an unknown tool)
             else
                 reply(p.clientId, toolError(msg.contains("error") && msg["error"].is_string() ? msg["error"].get<std::string>()
                                                                                               : std::string("the app refused")));

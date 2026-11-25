@@ -41,7 +41,13 @@
     },
     "valve": {
       "model": "Lab",
-      "cam": 0.55
+      "cam": 0.55,
+      "inKind": "Free valve",
+      "exKind": "Free valve",
+      "freeExOpen": 130.0,
+      "freeExClose": 392.0,
+      "freeInOpen": 381.3,
+      "freeInClose": 573.3
     },
     "intake": {
       "model": 1
