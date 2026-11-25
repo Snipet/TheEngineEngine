@@ -336,12 +336,16 @@ namespace
         std::printf("%-34s idle peak %.2f, free rev peak %.2f (its largest %.2f), whole run %.2f, auto level %+.1f dB\n", name,
                     r.idle, r.rev, r.revMax, r.all, b.tel("sound.autoGain"));
         CHECK(r.finite);
-        // the rev's largest in the lead's band (0.3 to 0.6; a crack or an onset faster than a part to the limiter); its
-        // typical peaks under 0.6 and over 0.15 (the tractor's governed rev is only some 3 dB over its idle: 0.18)
-        CHECK(r.revMax > 0.28);
-        CHECK(r.revMax < 0.76);         // at most the limiter's ceiling with the resampler's ripple (0.73 to 0.75):
-                                        // a transient it catches (the tractor's onset at the tailpipe: 0.70) is its job
-        CHECK(r.rev > 0.15);
+        // what the auto level exposes for: the louder of the rev's largest peak and 12 dB over the idle's (its floor,
+        // four times the steady level), at its target 0.4 (-8 dBFS): within -11 dB (a camera whose rev hardly rises
+        // over its idle is held by the floor: the tractor's governed rev, some 3 dB over its idle; its largest peak
+        // rests on how the start went, 0.28 to 0.35, the floor does not) and the limiter's ceiling with the
+        // resampler's ripple, 0.76 (a crack faster than a 16-sample part goes to the limiter: its job). The rev's
+        // typical peaks under 0.6
+        const double exposed = std::max(r.revMax, 4.0 * r.idle);
+        std::printf("%-34s exposed for %.1f dBFS (target -8.0)\n", name, 20.0 * std::log10(exposed));
+        CHECK(exposed > 0.28);
+        CHECK(r.revMax < 0.76);
         CHECK(r.rev < 0.6);
         CHECK(r.idle > 0.05);           // within some 20 dB of the rev
         CHECK(r.all < 1.0);
@@ -363,8 +367,16 @@ TEST_CASE("the level at the defaults, quick: first.json and the tractor (a quiet
 
 TEST_CASE("the auto level: cameras near and far brought together; off, each its true level", "[listen][engine]")
 {
+    // With true levels the cabin is under the Rear. With the auto level, each camera is exposed for its own loudest
+    // moment (the louder of the rev's largest peak and 12 dB over the idle's): that lands at the target, 0.4 (-8 dBFS),
+    // within -11 dB and the limiter's ceiling, at both. What it does not keep is the typical level's order: Rear's rev
+    // carries the exhaust's cracks 5 dB over its typical peaks, the cabin's 2 (its floor takes them), so exposed for
+    // its cracks the Rear's typical level ends under the cabin's (1.5 dB on first.json, 2.6 after the re-bake): the
+    // crests' difference, checked below with what remains
     double rev[2][2];
-    const int cams[] = {1, 4};          // Rear, Driver (the cabin, some 3 to 7 dB down in truth)
+    double largest[2][2];
+    double exposed[2][2];
+    const int cams[] = {1, 4};          // Rear, Driver (the cabin, some 2 to 3 dB down in truth)
     for (int on = 0; on < 2; ++on)
         for (int c = 0; c < 2; ++c)
         {
@@ -373,15 +385,32 @@ TEST_CASE("the auto level: cameras near and far brought together; off, each its 
             sound(b, "autoLevel", on);
             const Rev r = freeRev(b);
             rev[on][c] = 20.0 * std::log10(r.rev);
+            largest[on][c] = 20.0 * std::log10(r.revMax);
+            exposed[on][c] = 20.0 * std::log10(std::max(r.revMax, 4.0 * r.idle));
             CHECK(r.finite);
             CHECK(r.all < 1.0);
             if (on == 0)
                 CHECK(std::fabs(b.tel("sound.autoGain")) < 0.01);
         }
-    std::printf("free rev, camera Rear and Driver: true levels %.1f and %.1f dB, auto %.1f and %.1f dB\n", rev[0][0],
-                rev[0][1], rev[1][0], rev[1][1]);
-    CHECK(rev[0][1] < rev[0][0] - 1.5);  // the cabin under the Rear (3.2 to 3.4 dB by the rev's typical peaks)
-    CHECK(std::fabs(rev[1][1] - rev[1][0]) < 2.0);
+    std::printf("free rev, camera Rear and Driver: typical peaks, true levels %.1f and %.1f dB, auto %.1f and %.1f dB; "
+                "exposed for, auto, %.1f and %.1f dBFS\n", rev[0][0], rev[0][1], rev[1][0], rev[1][1], exposed[1][0], exposed[1][1]);
+    // true levels: the cabin under the Rear (by 3.1 dB on first.json; the margin, 1.5, half of it)
+    CHECK(exposed[0][1] < exposed[0][0] - 1.5);
+    for (int c = 0; c < 2; ++c)
+    {
+        CHECK(exposed[1][c] > -11.0);
+        CHECK(exposed[1][c] < -2.4);        // the limiter's ceiling, 0.76
+    }
+    // With the auto level, the gap in typical levels (cabin less Rear) is the difference of the two crests (the rev's
+    // largest peak over its typical, Rear's less the cabin's) plus what is left of the gap in largest peaks, which the
+    // exposure brings together: that remainder is the property. 1.8 dB on first.json (the cabin's exposure is its
+    // idle's floor, 1.1 dB over its largest); a camera that drifts from the other for any reason but its crest moves it.
+    // The tolerance, 3.5 dB, about 2 over the reading
+    const double gapTypical = rev[1][1] - rev[1][0];
+    const double crestDiff = (largest[1][0] - rev[1][0]) - (largest[1][1] - rev[1][1]);
+    std::printf("auto level, cabin less Rear: typical %+.1f dB = crests' difference %+.1f dB %+.1f (the largest peaks' gap)\n",
+                gapTypical, crestDiff, gapTypical - crestDiff);
+    CHECK(std::fabs(gapTypical - crestDiff) < 3.5);
 }
 
 namespace
@@ -627,4 +656,20 @@ TEST_CASE("the engine's tilt through Places: every fitted camera against the ref
     tiltHeld("Engine bay / Engine", 3, 3, -1, 7.0, 9.0);
     tiltHeld("Rear / Rear (the camera: see listen.md)", 1, 1, -1, 9.0, 9.0);
     tiltHeld("Driver / Cabin (to 4 kHz)", 4, 4, -1, 9.0, 9.0, 5);
+}
+
+TEST_CASE("explore: the auto level by camera on four builds", "[listen][engine][.explore]")
+{
+    for (const char* name : {"first", "archetypes/kei-660-triple-turbo", "archetypes/v12-65", "archetypes/tractor-15-inline-six"})
+        for (int c : {1, 4})
+            for (int on = 0; on < 2; ++on)
+            {
+                Bench b(name);
+                sound(b, "camera", c);
+                sound(b, "autoLevel", on);
+                const Rev r = freeRev(b);
+                std::printf("%-34s %-6s %-4s idle %6.1f  rev typical %6.1f  largest %6.1f dB  auto gain %+.1f\n", name,
+                            c == 1 ? "Rear" : "Driver", on ? "auto" : "true", 20.0 * std::log10(r.idle),
+                            20.0 * std::log10(r.rev), 20.0 * std::log10(r.revMax), b.tel("sound.autoGain"));
+            }
 }

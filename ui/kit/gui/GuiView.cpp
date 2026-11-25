@@ -77,6 +77,14 @@ namespace tee::ui
             control(slot).setMidi(mapped, learning, std::move(spec));
     }
 
+    int GuiView::slotOfItem(int item) const
+    {
+        for (std::size_t s = 0; s < controls_.size(); ++s)
+            if (controls_[s] == item)
+                return static_cast<int>(s);
+        return -1;
+    }
+
     GuiControlItem& GuiView::control(int slot)
     {
         return static_cast<GuiControlItem&>(*items_[static_cast<std::size_t>(controls_[static_cast<std::size_t>(slot)])]);

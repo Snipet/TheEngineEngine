@@ -152,6 +152,7 @@ namespace tee::ui
 
     private:
         static std::vector<int> fieldsOf(const FieldDoc& doc, const Sources& files);
-        static Options withBinding(Options o, FieldDoc& doc, const Units& units, TelemetrySource& telemetry);
+        static Options withBinding(Options o, FieldDoc& doc, const Units& units, TelemetrySource& telemetry,
+                                   const FieldParams& params);
     };
 }

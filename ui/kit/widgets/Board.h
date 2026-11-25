@@ -13,6 +13,7 @@
 #pragma once
 
 #include "kit/gui/Items.h"
+#include "kit/gui/Tooltip.h"
 
 #include <funkgui/panel/HostServices.h>
 #include <funkgui/panel/Panel.h>
@@ -92,6 +93,10 @@ namespace tee::ui
         void setTabWraps(bool wraps) noexcept { tabWraps_ = wraps; }
         void setFocus(int item);
 
+    public:
+        // U1: the hover help shown now (an item's Item::help, after a short rest).
+        const Tooltip& tooltip() const noexcept { return tip_; }
+
     private:
         int itemAt(funkgui::Point p) const;
         bool moveFocus(int step);
@@ -104,5 +109,6 @@ namespace tee::ui
         bool hasPointer_ = false, innerPress_ = false, ring_ = false, tabWraps_ = true;
         int pressed_ = -1, focus_ = -1;
         uint32_t revision_ = 1;
+        Tooltip tip_;
     };
 }

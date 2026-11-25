@@ -64,6 +64,17 @@ namespace tee::ui
         void setBounds(const funkgui::Rect& r) noexcept { bounds_ = r; }
         void setShown(bool s) noexcept { shown_ = s; }
         void setTitle(std::string t) { title_ = std::move(t); }
+        // U1: its hover help (a true sentence of what it does or shows); "" (the default): none.
+        void setHelp(std::string h) { help_ = std::move(h); }
+        bool help(std::string& title, std::string& body, funkgui::Rect& anchor) const override
+        {
+            if (help_.empty() || !shown())
+                return false;
+            title = title_;
+            body = help_;
+            anchor = bounds_;
+            return true;
+        }
         const std::string& title() const noexcept { return title_; }
 
         // Item
@@ -103,6 +114,7 @@ namespace tee::ui
         uint32_t id_;
         funkgui::Rect bounds_{};
         bool shown_ = true;
+        std::string help_;
         float hover_ = 0.0f;
         bool focused_ = false;
         funkgui::Point pointer_{};
