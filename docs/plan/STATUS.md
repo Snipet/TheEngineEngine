@@ -37,6 +37,36 @@
 
 ## Landed
 
+- **05:24 (25 Nov) the lead's check-in; `main` stays at e7e58973 (green on three platforms); the branch has been red
+  since 04:06 on N2's commits and its cure is in hand.** *The red*: (1) exhaust.engine, EngineTest.cpp:317, the
+  collectors' pressure 6 s after the key off on a twin-turbo V8: 61 Pa at e7e58973, 146 from N2's sizing commit (the
+  steward's bisect). N2 pushed after the boost, calibration and diesel tiers only. **N2's finding: the case was
+  reading a simulator that had gone to sleep** (engine.fm's `audible()` stops all stepping some seconds after the
+  engine is quiet) with the rotors still at 9,600 rpm on the old tree and 13,700 on the new; kept stepping while a
+  shaft turns, the collectors follow the rotors down (72.9 Pa at 6 s, 20 at 15) and G's case passes unedited. Ruled:
+  that cure (`boost.spinning()`, one line in `audible()`, the lead's leave for D's file), 543 of 543 on N2's machine;
+  a turbo heard running down after shutdown is new. (2) N2's short form of the truck's one-state case (a2de1df6):
+  3.0, 3.8 and 5.4 kPa apart on three machines against 5 %: ruled onto a reasoned 15 % (the two states were 25
+  against 58 kPa), same push. **New rule: a push that touches sim/ runs the whole default tier, chained on "100 %
+  passed", not only its package's tiers**; the steward reports a red fast job at once and then only when the failing
+  set changes. *Landed since 04:36*: N2's overshoot cure (a7cda791: a feed-forward at the gate's balance with a
+  windowed, bounded integral; first.json's tip-in peak +39 / +56 / +48 % to +4 / +11 / +14 % at 2500 / 3500 / 4500
+  with the arrival times unchanged; the remaining 14 % for 2.8 s at 4500 recorded; F's case unmarked); D2's `ecu.afc`
+  0.77 (9c6977a0, which went out with a red case on a chain that could not fail: owned and fixed), the clatter case
+  restated on its mechanism (4e406033), **which found the spread delivering 0.58 of its cited 0.559 degrees**
+  (`Noise::gauss()` is 0.577 a sigma, its comment said a unit normal; corrected on D2's term; the diesels' comb in
+  the mix 6.4 to 7.0 dB down to 1.9 / 3.2 / 3.5; N1 checked every other use: all the reference's own numbers, none
+  from a source), the full-load fuel curve (e43e228b; the truck 455 kW at 1858 rpm against a cited 451, a zero-fuel
+  curve to the bit), D2's one-state and brake cases unmarked (213aa90b, 19e29bda: the brake measured after a climb,
+  365 kW). C's 9c622135: the predictor agrees with 30 s holds within 2 % on the tractor; the lead's "the predictor
+  reads slow engines early" withdrawn. *Table L is running*, pinned at e43e228b on content 1efa3282 (every card
+  change, 14 cam maps re-baked, the tractor's fuel curve with its torque and power rows out of the counts); new
+  rows with sources: the tractor's BSFC 175 to 205 g/kWh (ICCT/WVU's measured 177 to 189; the model 205.4 at 1200),
+  lambda at least 1.25, turbine inlet under 950 K. The twin on K's content after; then the knock-limit pass on the 16
+  naturally aspirated builds. *Not going well yet*: the rotary's join: N2's first build narrowed the hunt at 4250
+  (19 to 37 kPa) and collapsed 2500 to 4000 (66 to 70 down to 5 to 17); set aside, diagnosis after the red is cured,
+  nothing pushed until the whole sweep is better.
+
 - **04:36 (25 Nov) the lead's check-in; `main` at e7e58973, green on all three platforms** (its own run 45543212713:
   542 of 542 on each, packed). `main` waits for N2's cure of the wastegate loop's overshoot. **N2's map commits are
   on the branch** (9d55f503: 7e9bee72 the knee 0.40 + 0.178 (M - 1) floored at Mach 0.8, the flag and the guard at
