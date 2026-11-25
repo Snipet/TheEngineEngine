@@ -37,6 +37,35 @@
 
 ## Landed
 
+- **10:33 (25 Nov) `main` moved to 7f64dac1** (fast-forward from 5548dcf8; run 45592657103: linux-x64, macos-arm64
+  and windows-x64 green; the soak still running). P's bake at tools sha ed025908, whose sim/, host/ and tools/ the
+  lead diffed against 6bac7c78 and the tip: 0 lines. P: 540 of 540 before the bake and after it; 28 petrol knock
+  tables and 14 cam maps in the app's order, no step fallen back; gate 31 idle warm and cold; first.json, the V10,
+  the tractor, the hot hatch and the rotary "Current at once" on an empty cache. **New in `main`:** the rotary's
+  rising hunt at 4250 cured (`seqRpm` visible, 4500 stated); the predictor ending 300 rpm under the limiter with
+  limited points as rings; the cam bake's cures (kCamBakeVersion 3); the predictor's settled-cycle mean with its
+  standard error (kKnockBakeVersion 4); verified reuse of a table baked under another program; cells still knocking
+  marked in TUNE. **P's rows on this content** (local, one agent's): 115 of 847 missed (120 on the last), no
+  invariant failing; into range: the peak-power speeds of the 3.2, the flat-plane 4.5 and the V10, the big block's
+  peak-torque speed, the 3.9 twin turbo's power, the pickup's trap; out: the 3.0 twin turbo's peak-power speed (6860
+  against 6800); the rotary's torque shortfall (239 N m against 290 to 315) is not its join.
+- **The fleet stopped on the account's usage limit at about 09:12** and the owner said at about 09:30 that usage was
+  back. Since then only P, N2 and D2 have been woken, each for named work; the rest sleep.
+- **Found 10:04 (D2's ledger; the lead read the code): the reference's idle spark trim scales a governed diesel's
+  heat on the dyno** (`sim/ecu/ecu.fm:209` into `chargeDiesel`): below the ECU's idle + 450 rpm with drive == 0 a
+  diesel at full pedal burns about half its metered fuel (tractor at 1000: 3330 J released of 6365 reported a
+  cylinder-cycle, 40 % brake on what burned). One fault upstream of the turbo: the tractor's hole below about 1100,
+  its take-up, "the turbine cannot hold 1000", C's knife's edge at 1060. **Not cured in 7f64dac1.** Ruled: under the
+  metered governor the charge does not take the trim; D2 pushes it on a green tier (told 10:33), then one re-key by
+  P. Open: whether the trim cuts a petrol's full-pedal dyno torque in the same band (D2's read).
+- **N2, measured and unpushed** (docs on the branch: nozzle-sensitivity.md, vane-guard-off.md): (b), the governed
+  diesel's compressor sized at the maker's torque-peak speed, is right in form (tractor 1100: 1910 N m surging to
+  2722 steady) but its 10 % margin is used up in the model's own terms by fresh-air VE (0.836 against 0.9) and the
+  pulse (the flag reads the instantaneous flow, 5 % under the mean's); the nozzle's inlet factor stays 1.247 (no
+  cure, one source); the vane surge guard both makes holes (tractor, pickup, the 2.0) and saves the truck from its
+  second state, so it stays and its replacement is open. **The lead ruled the guard's removal at 09:40 on principle
+  and withdrew it at 09:58 on N2's truck table.** All of it is judged again on the engine after D2's cure.
+
 - **09:13 (25 Nov) GO to P for the next `main`'s bake, at tip 6bac7c78** (read by the lead on the branch:
   `kCamBakeVersion` 3, `kKnockBakeVersion` 4). C's predictor mean is in (1db8dcd2: a settled point is the mean of its
   settled cycles, at least six, with `PredictPoint::torqueSe` and `settledCycles`; the economy four's cam row at 4786

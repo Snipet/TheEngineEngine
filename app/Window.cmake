@@ -24,7 +24,13 @@ if(APPLE)
     MACOSX_BUNDLE_INFO_STRING "TheEngineEngine ${PROJECT_VERSION}"
     MACOSX_BUNDLE_COPYRIGHT "GPL-3.0-only")
   # The simulator's source and the content into the bundle, then the signature over all of it (a file added after
-  # the signature would break its seal).
+  # the signature would break its seal). A POST_BUILD step runs only when the executable is linked, so the link
+  # depends on every file of sim/ and content/: an edited .fm or build file links again, and the copy and the
+  # signature follow it. Without this the bundle kept the engine of its last link (tee_app_data's copy beside the
+  # executables is not the one a bundle reads). A file deleted from sim/ or content/ stays in an old bundle: the
+  # copy only adds and replaces.
+  file(GLOB_RECURSE _tee_bundle_data CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/sim/*" "${PROJECT_SOURCE_DIR}/content/*")
+  set_property(TARGET TheEngineEngine APPEND PROPERTY LINK_DEPENDS ${_tee_bundle_data})
   add_custom_command(TARGET TheEngineEngine POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${PROJECT_SOURCE_DIR}/sim"
             "$<TARGET_BUNDLE_CONTENT_DIR:TheEngineEngine>/Resources/sim"

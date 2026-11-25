@@ -505,3 +505,33 @@ idles, and the whole default tier; **pushed on the lead's word after `main` has 
 low-speed cells, P's take-up and table L's low diesel points are read again, and (b) and the guard are judged on
 the engine as it then is. **Open, asked of D2 as a read:** whether the same trim cuts a petrol's full-pedal torque
 on the dyno below idle + 450, and which predictor points or table L rows sit in that band.
+
+## The owner's five todos (25 Nov, about 10:58 UTC; from running the Mac app the night before, "might not reflect the current project state")
+
+Checked against the tree at d0a7330e by the lead. None was already whole.
+
+1. **Fuel controls for octane.** Exists: `spec.fuel.grade` (Regular 87, Midgrade 89, Premium 91, Race, E85, Methanol,
+   Diesel, Propane, Hydrogen) under `fuel.model` 1, with `knockDelay`; the knock-limit table's key hashes the fields,
+   so a change of grade re-bakes. Missing: no view names `grade` (grep of ui/views, ui/app, app: nothing), so the
+   owner cannot reach it but through the generic inspector; no 93; no octane as a number. To do: the grade as a
+   first-class control in TUNE (and what it costs or gains shown on the DYNO ribbon and the knock cells), an octane
+   number (AKI and RON shown), the bake following it. Owner to be named after the diesel `main` (U4's TUNE, with C
+   for the bake and N1 for the knock model's octane term). Touches sim/ only if the octane becomes a number.
+2. **A Claude chat in the app**, by an Anthropic API key or by Claude Desktop over MCP; the logic to come from the
+   TestingPlayground repository (public; cloned read-only at /home/user/snipet/testingplayground, 47bac40). A local
+   read-only agent is mapping its chat and MCP code (files, transport, tools, key storage, what needs JUCE). Then a
+   plan (the app has no JUCE and no HTTP client yet: FMinus's web library, libcurl on Mbed TLS, is the candidate),
+   reviewed, then one implementation session. Keys never in the repository, the logs or a build file.
+3. **The DRIVE view: more gauges, analog and digital, in several styles.** U1's (ui/views/drive). Telemetry that
+   exists only; a gauge that wants a channel the simulator does not publish is listed, not added.
+4. **The exhaust pops sound artificial.** They are: `sim/exhaust/pop.fm` is the reference's carved Pop, "a sharp
+   pressure pulse and a crackle after it" (random clicks on a decay), fired by H's fuel account
+   (`spec.ecu.overrun.fuel`, `retard`) at a bank's collector (`slots.fm` `pop`, `popAt`). To do: the bang as late
+   heat release in the pipe's gas (the unburned charge's own energy, lit by the gas's temperature, shaped by the
+   pipe it burns in), no synthesized crackle; which shipped builds pop at all at their defaults; before-and-after
+   clips for the owner's ear, since nobody in the fleet can hear. A sim/ change: batched with a re-key. Owner: G.
+5. **Hover help on dials.** Exists: every field's `ui::help` text reaches the kit (`ui/kit/bind/host/BuildDoc.cpp`,
+   `info.help`), and the kit's items know `hovered`. Missing: nothing draws it. U1's, first.
+
+**Order, the fleet kept thin (the owner's word, 10:53):** U1 now on 5 then 3 (ui/ and app/ only, no re-key);
+after the diesel `main`: G on 4 and the octane control (1), in one sim/ window with one re-key; 2 as a plan first.
