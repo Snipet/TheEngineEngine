@@ -78,6 +78,9 @@ namespace tee::ui
         // U1: hover help (Tooltip.h): its title and sentence of help and the rect it describes; false: none (the
         // default). A Board shows it after a short rest of the pointer or the keyboard's focus.
         virtual bool help(std::string& /*title*/, std::string& /*body*/, funkgui::Rect& /*anchor*/) const { return false; }
+        // J2: which part of it help() describes now (a row of a list): a change of part is a change of what the pointer
+        // rests on, so the help hides and dwells again. 0 for an item that is one thing.
+        virtual int helpPart() const { return 0; }
     };
 
     // A draw key's mix (Item::drawKey, Panel::needsDraw): FNV-1a over what is added, in order.
