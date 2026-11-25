@@ -183,7 +183,7 @@ namespace tee::ui
     {
         if (card_)
             return 34.0f;
-        return style_ == Style::dials ? 0.0f : 56.0f;
+        return 56.0f;
     }
 
     Rect FieldInspector::contentRect() const noexcept
@@ -194,14 +194,14 @@ namespace tee::ui
 
     Rect FieldInspector::filterRect() const noexcept
     {
-        if (card_ || style_ == Style::dials)
+        if (card_)
             return {};
         return { bounds_.x + kPad, bounds_.y + 8.0f, bounds_.w - 2.0f * kPad - 96.0f, 26.0f };
     }
 
     Rect FieldInspector::changedRect() const noexcept
     {
-        if (card_ || style_ == Style::dials)
+        if (card_)
             return {};
         return { bounds_.right() - kPad - 88.0f, bounds_.y + 8.0f, 88.0f, 26.0f };
     }
@@ -221,18 +221,6 @@ namespace tee::ui
         const bool compact = style_ == Style::list;
         float y = 4.0f;
         bool folded = false;
-        // dials: the grid's open row
-        int col = 0;
-        float rowTop = 0.0f, rowH = 0.0f;
-        const float cellW = (w - 2.0f * kPad - 10.0f) * 0.5f;
-        const auto closeGrid = [&] {
-            if (col > 0)
-            {
-                y = rowTop + rowH + 8.0f;
-                col = 0;
-                rowH = 0.0f;
-            }
-        };
         for (std::size_t i = 0; i < filtered_.size(); ++i)
         {
             const OutlineEntry& e = filtered_[i];
@@ -242,7 +230,6 @@ namespace tee::ui
             {
                 case OutlineEntry::Kind::heading:
                 {
-                    closeGrid();
                     folded = std::find(folded_.begin(), folded_.end(), e.text) != folded_.end() && filter_.buffer.empty();
                     r.kind = Row::Kind::heading;
                     r.folded = folded;
@@ -256,7 +243,6 @@ namespace tee::ui
                 {
                     if (folded)
                         continue;
-                    closeGrid();
                     r.kind = Row::Kind::note;
                     const std::size_t chars = static_cast<std::size_t>((w - 2.0f * kPad) / (10.0f * kWrap));
                     const float h = 8.0f + 13.0f * static_cast<float>(wrap(e.text, chars).size());
@@ -269,7 +255,6 @@ namespace tee::ui
                 {
                     if (folded)
                         continue;
-                    closeGrid();
                     r.kind = Row::Kind::table;
                     const float h = compact ? 30.0f : 40.0f;
                     r.rect = { x0, y, w, h };
@@ -285,35 +270,6 @@ namespace tee::ui
             r.kind = Row::Kind::field;
             r.field = e.field;
             const FieldInfo& f = doc_.info(e.field);
-            if (style_ == Style::dials)
-            {
-                const bool dial = numberKind(f);
-                const float h = dial ? 128.0f : 74.0f;
-                if (col == 0)
-                {
-                    rowTop = y;
-                    rowH = 0.0f;
-                }
-                const float cx = x0 + kPad + static_cast<float>(col) * (cellW + 10.0f);
-                r.col = col;
-                r.rect = { cx, rowTop, cellW, h };
-                if (dial)
-                {
-                    const float d = 64.0f;
-                    r.value = { cx + (cellW - d) * 0.5f, rowTop + 22.0f, d, d };
-                    const float tw = std::min(cellW - 16.0f, 132.0f);
-                    r.typed = { cx + (cellW - tw) * 0.5f, rowTop + 94.0f, tw, 26.0f };
-                }
-                else if (f.kind == FieldKind::toggle)
-                    r.value = { cx + (cellW - 44.0f) * 0.5f - 12.0f, rowTop + 34.0f, 44.0f, 22.0f };   // ON / OFF beside it
-                else
-                    r.value = { cx + 8.0f, rowTop + 30.0f, cellW - 16.0f, 28.0f };
-                rowH = std::max(rowH, h);
-                rows_.push_back(r);
-                if (++col == 2)
-                    closeGrid();
-                continue;
-            }
             const float h = compact ? 30.0f : (numberKind(f) ? 42.0f : 36.0f);
             r.rect = { x0, y, w, h };
             const float bw = compact ? 112.0f : 122.0f, bh = compact ? 22.0f : 24.0f;
@@ -324,7 +280,6 @@ namespace tee::ui
             y += h;
             rows_.push_back(r);
         }
-        closeGrid();
         contentH_ = y + 8.0f;
         scrollTo(scroll_);
         if (focus_ >= static_cast<int>(rows_.size()))
@@ -373,7 +328,7 @@ namespace tee::ui
             if (r.kind == Row::Kind::field && r.field == field)
             {
                 row = onScreen(r.rect);
-                value = onScreen(style_ == Style::dials && r.typed.w > 0.0f ? r.typed : r.value);
+                value = onScreen(r.value);
                 return row.bottom() > c.y && row.y < c.bottom();
             }
         return false;
@@ -585,7 +540,7 @@ namespace tee::ui
     // ---- time --------------------------------------------------------------------------------------------------------
     void FieldInspector::step(float dt)
     {
-        if (doc_.revision() != docSeen_ && changedOnly_ && editing_ < 0 && !scrubbing_ && !dialing_ && wheelField_ < 0)
+        if (doc_.revision() != docSeen_ && changedOnly_ && editing_ < 0 && !scrubbing_ && wheelField_ < 0)
             rebuild();                       // CHANGED holds what is changed now
         docSeen_ = doc_.revision();
         shownScroll_ = funkgui::ease::toward(shownScroll_, scroll_, dt, 0.06f, 0.25f);
@@ -603,8 +558,6 @@ namespace tee::ui
     {
         if (scrubbing_)
             return funkgui::Cursor::leftRight;
-        if (dialing_)
-            return funkgui::Cursor::upDown;
         if (filterRect().contains(p))
             return funkgui::Cursor::normal;
         const int i = rowAt(p);
@@ -616,9 +569,7 @@ namespace tee::ui
         if (r.kind != Row::Kind::field)
             return funkgui::Cursor::normal;
         const FieldInfo& f = doc_.info(r.field);
-        if (style_ == Style::dials && numberKind(f) && onScreen(r.value).contains(p))
-            return funkgui::Cursor::upDown;
-        if (numberKind(f) && onScreen(style_ == Style::dials ? r.typed : r.value).contains(p))
+        if (numberKind(f) && onScreen(r.value).contains(p))
             return funkgui::Cursor::leftRight;
         return onScreen(r.value).contains(p) ? funkgui::Cursor::pointingHand : funkgui::Cursor::normal;
     }
@@ -627,7 +578,7 @@ namespace tee::ui
     {
         const funkgui::Point p{ e.x, e.y };
         pressRow_ = -1;
-        scrubbing_ = dialing_ = false;
+        scrubbing_ = false;
         if (e.popup)
             return;
         if (filterRect().contains(p))
@@ -670,11 +621,10 @@ namespace tee::ui
             return;
         focus_ = i;
         const FieldInfo& f = doc_.info(r.field);
-        const Rect value = onScreen(r.value), typed = onScreen(r.typed);
+        const Rect value = onScreen(r.value);
         if (f.kind == FieldKind::toggle)
         {
-            if (value.contains(p) || style_ != Style::dials)
-                setValue(r.field, doc_.get(r.field) >= 0.5 ? 0.0 : 1.0);
+            setValue(r.field, doc_.get(r.field) >= 0.5 ? 0.0 : 1.0);
             return;
         }
         if (f.kind == FieldKind::choice)
@@ -685,14 +635,11 @@ namespace tee::ui
         }
         if (!numberKind(f))
             return;
-        const bool onFace = style_ == Style::dials && value.contains(p);
-        const bool onBox = style_ == Style::dials ? typed.contains(p) : value.contains(p);
-        if (onFace || onBox)
+        if (value.contains(p))
         {
             pressRow_ = i;
             pressAt_ = p;
             press01_ = norm01(f, doc_.get(r.field));
-            dialing_ = false;
         }
     }
 
@@ -702,34 +649,32 @@ namespace tee::ui
             return;
         const Row& r = rows_[static_cast<std::size_t>(pressRow_)];
         const FieldInfo& f = doc_.info(r.field);
-        const bool face = style_ == Style::dials && onScreen(r.value).contains(pressAt_);
-        const float dx = e.x - pressAt_.x, dy = e.y - pressAt_.y;
-        if (!scrubbing_ && !dialing_)
+        const float dx = e.x - pressAt_.x;
+        if (!scrubbing_)
         {
-            if (face ? std::fabs(dy) < 3.0f && std::fabs(dx) < 3.0f : std::fabs(dx) < 3.0f)
+            if (std::fabs(dx) < 3.0f)
                 return;
             if (editing_ >= 0)
                 editing_ = -1;
             doc_.beginGesture();             // the drag is one undo step
-            (face ? dialing_ : scrubbing_) = true;
+            scrubbing_ = true;
         }
         const float fine = e.mods.shift ? 0.1f : 1.0f;
-        const float v01 = face ? press01_ - dy / 200.0f * fine : press01_ + dx / 240.0f * fine;
+        const float v01 = press01_ + dx / 240.0f * fine;
         doc_.set(r.field, plainOf01(f, std::clamp(v01, 0.0f, 1.0f)));
     }
 
     void FieldInspector::pointerUp(const funkgui::PointerEvent& e, funkgui::GestureController&)
     {
-        if (scrubbing_ || dialing_)
+        if (scrubbing_)
             doc_.endGesture();
         else if (pressRow_ >= 0)
         {
             const Row& r = rows_[static_cast<std::size_t>(pressRow_)];
-            const Rect box = onScreen(style_ == Style::dials ? r.typed : r.value);
-            if (box.contains({ e.x, e.y }) || (style_ == Style::dials && onScreen(r.value).contains({ e.x, e.y })))
+            if (onScreen(r.value).contains({ e.x, e.y }))
                 beginTyping(r.field);       // a click on a value types it
         }
-        scrubbing_ = dialing_ = false;
+        scrubbing_ = false;
         pressRow_ = -1;
     }
 
@@ -739,7 +684,7 @@ namespace tee::ui
         if (i < 0 || rows_[static_cast<std::size_t>(i)].kind != Row::Kind::field)
             return;
         const Row& r = rows_[static_cast<std::size_t>(i)];
-        if (!onScreen(r.value).contains({ e.x, e.y }) && !onScreen(r.typed).contains({ e.x, e.y }))
+        if (!onScreen(r.value).contains({ e.x, e.y }))
             return;
         if (doc_.info(r.field).kind == FieldKind::toggle)
             return;
@@ -759,7 +704,7 @@ namespace tee::ui
         {
             const Row& r = rows_[static_cast<std::size_t>(i)];
             const bool on = r.kind == Row::Kind::field
-                         && (onScreen(r.value).contains(p) || onScreen(r.typed).contains(p));
+                         && onScreen(r.value).contains(p);
             if (on && doc_.info(r.field).kind != FieldKind::toggle)
             {
                 if (wheelField_ != r.field)
@@ -796,7 +741,7 @@ namespace tee::ui
             {
                 filtering_ = false;
                 for (std::size_t i = 0; i < rows_.size(); ++i)
-                    if (rows_[i].kind == Row::Kind::field)
+                    if (rows_[i].kind == Row::Kind::field || rows_[i].kind == Row::Kind::table)
                     {
                         focusRow(static_cast<int>(i));
                         break;
@@ -850,13 +795,32 @@ namespace tee::ui
                 i = i < 0 ? (dir > 0 ? 0 : static_cast<int>(rows_.size()) - 1) : i + dir;
                 if (i < 0 || i >= static_cast<int>(rows_.size()))
                     return;
-                if (rows_[static_cast<std::size_t>(i)].kind == Row::Kind::field)
+                const Row::Kind kind = rows_[static_cast<std::size_t>(i)].kind;
+                if (kind == Row::Kind::field || kind == Row::Kind::table || kind == Row::Kind::heading)
                 {
                     focusRow(i);
                     return;
                 }
             }
         };
+        // A heading folds (Enter, Space, Left folds, Right opens); a table opens (Enter, Space).
+        const Row* at = focus_ >= 0 && focus_ < static_cast<int>(rows_.size()) ? &rows_[static_cast<std::size_t>(focus_)] : nullptr;
+        if (at != nullptr && at->kind == Row::Kind::heading)
+        {
+            const std::string heading = filtered_[static_cast<std::size_t>(at->entry)].text;
+            const bool folded = at->folded;
+            if (e.key == Key::enter || e.key == Key::space || (e.key == Key::left && !folded) || (e.key == Key::right && folded))
+            {
+                fold(heading, !folded);
+                return true;
+            }
+        }
+        if (at != nullptr && at->kind == Row::Kind::table && (e.key == Key::enter || e.key == Key::space))
+        {
+            if (onTable_)
+                onTable_(filtered_[static_cast<std::size_t>(at->entry)]);
+            return true;
+        }
         switch (e.key)
         {
             case Key::down: move(1); return true;
@@ -905,7 +869,7 @@ namespace tee::ui
                 }
                 return false;
             case Key::character:
-                if (e.ch == '/' && !card_ && style_ != Style::dials)
+                if (e.ch == '/' && !card_)
                 {
                     filtering_ = true;
                     return true;
@@ -944,8 +908,6 @@ namespace tee::ui
                 textAt(c, cardMore_, bounds_.x + kPad + 4.0f, bounds_.bottom() - 13.0f, kWidgetSmall, l.label);
             return;
         }
-        if (style_ == Style::dials)
-            return;
         const Rect fr = filterRect();
         c.rrect(fr.x, fr.y, fr.w, fr.h, 5.0f, filtering_ ? l.ground : l.face, 1.0f, filtering_ ? l.text : l.edge);
         // a magnifier
@@ -1026,7 +988,7 @@ namespace tee::ui
             c.disc(on ? box.right() - 3.0f - k * 0.5f : box.x + 3.0f + k * 0.5f, box.centreY(), k * 0.5f, on ? l.value : l.text);
             return;
         }
-        const Col edge = refused ? l.accent : typing ? l.text : hot ? l.dim : l.edge;
+        const Col edge = refused ? l.error : typing ? l.text : hot ? l.dim : l.edge;
         c.rrect(box.x, box.y, box.w, box.h, 4.0f, typing ? l.ground : (hot ? l.faceHi : l.face), 1.0f, edge);
         const Canvas::ClipScope clip(c, box.reduced(1.0f));
         if (typing)
@@ -1069,7 +1031,11 @@ namespace tee::ui
             const bool hot = static_cast<int>(i) == hoverRow_;
             switch (r.kind)
             {
-                case Row::Kind::heading: drawHeading(c, l, r, at); break;
+                case Row::Kind::heading:
+                    if (static_cast<int>(i) == focus_)
+                        c.rrect(at.x + 4.0f, at.y + 1.0f, at.w - 8.0f, at.h - 2.0f, 4.0f, l.over(l.edge, 0.55f));
+                    drawHeading(c, l, r, at);
+                    break;
                 case Row::Kind::note:
                 {
                     const OutlineEntry& e = filtered_[static_cast<std::size_t>(r.entry)];
@@ -1085,8 +1051,9 @@ namespace tee::ui
                 case Row::Kind::table:
                 {
                     const OutlineEntry& e = filtered_[static_cast<std::size_t>(r.entry)];
-                    if (hot)
-                        c.rrect(at.x + 4.0f, at.y + 1.0f, at.w - 8.0f, at.h - 2.0f, 4.0f, l.over(l.edge, 0.35f));
+                    if (hot || static_cast<int>(i) == focus_)
+                        c.rrect(at.x + 4.0f, at.y + 1.0f, at.w - 8.0f, at.h - 2.0f, 4.0f,
+                                static_cast<int>(i) == focus_ ? l.over(l.edge, 0.55f) : l.over(l.edge, 0.35f));
                     std::string what;
                     if (e.widget == "array")
                         what = std::to_string(e.fields.size()) + " VALUES";
@@ -1124,7 +1091,7 @@ namespace tee::ui
                         // where it sits in its range, a tick at its default; or what a refusal said
                         const float x0 = at.x + 14.0f, x1 = v.x - 16.0f, y = at.y + 32.0f;
                         if (refusedField_ == r.field && !refusal_.empty())
-                            textAt(c, fitText(c, refusal_, kWidgetSmall, at.w - 28.0f), x0, y, kWidgetSmall, l.accent);
+                            textAt(c, fitText(c, refusal_, kWidgetSmall, at.w - 28.0f), x0, y, kWidgetSmall, l.error);
                         else if (x1 > x0 + 20.0f)
                         {
                             const float t = norm01(f, doc_.get(r.field)), td = norm01(f, clampTo(f, f.def));
@@ -1137,64 +1104,10 @@ namespace tee::ui
                     }
                     else if (refusedField_ == r.field && !refusal_.empty())
                         textAt(c, fitText(c, refusal_, kWidgetSmall, v.x - at.x - 26.0f), at.x + 14.0f, at.bottom() - 6.0f,
-                               kWidgetSmall, l.accent);
+                               kWidgetSmall, l.error);
                     break;
                 }
                 case Row::Kind::empty: break;
-            }
-        }
-    }
-
-    void FieldInspector::drawDials(Canvas& c, const Look& l) const
-    {
-        const Rect content = contentRect();
-        for (std::size_t i = 0; i < rows_.size(); ++i)
-        {
-            const Row& r = rows_[i];
-            const Rect at = onScreen(r.rect);
-            if (at.bottom() < content.y || at.y > content.bottom())
-                continue;
-            const bool hot = static_cast<int>(i) == hoverRow_;
-            if (r.kind != Row::Kind::field)
-                continue;                    // headings, notes and tables: drawRows' way (below)
-            const FieldInfo& f = doc_.info(r.field);
-            const bool focused = static_cast<int>(i) == focus_;
-            c.rrect(at.x, at.y, at.w, at.h, 6.0f, focused ? l.over(l.edge, 0.6f) : (hot ? l.over(l.edge, 0.4f) : l.over(l.edge, 0.22f)));
-            const std::string label = f.label.empty() ? f.path : f.label;
-            if (changed(r.field))
-                c.disc(at.x + 9.0f, at.y + 12.0f, 2.6f, l.accent);
-            textAt(c, fitText(c, upper(label), kWidgetLabel, at.w - 24.0f), at.centreX(), at.y + 12.0f, kWidgetLabel,
-                   changed(r.field) ? l.value : l.text, Align::centre);
-            if (numberKind(f))
-            {
-                const Rect face = onScreen(r.value);
-                const funkgui::Point o{ face.centreX(), face.centreY() };
-                const float rad = face.w * 0.5f - 3.0f;
-                const float t = norm01(f, doc_.get(r.field)), td = norm01(f, clampTo(f, f.def));
-                c.arc(o, rad, Gauge::kA0, Gauge::kA1, 3.0f, l.edge);
-                if (t > 0.0f)
-                    c.arc(o, rad, Gauge::kA0, Gauge::angleOf(t), 3.0f, changed(r.field) ? l.value : l.text);
-                const float ad = Gauge::angleOf(td);
-                c.segment(o.x + std::cos(ad) * (rad + 3.0f), o.y + std::sin(ad) * (rad + 3.0f), o.x + std::cos(ad) * (rad + 8.0f),
-                          o.y + std::sin(ad) * (rad + 8.0f), 1.3f, l.label);
-                const float a = Gauge::angleOf(t);
-                c.disc(o.x, o.y, rad - 8.0f, hot ? l.faceHi : l.face);
-                c.segment(o.x + std::cos(a) * (rad * 0.25f), o.y + std::sin(a) * (rad * 0.25f), o.x + std::cos(a) * (rad - 10.0f),
-                          o.y + std::sin(a) * (rad - 10.0f), 2.2f, l.value);
-                Row box = r;
-                drawValueBox(c, l, box, onScreen(r.typed), hot);
-                if (refusedField_ == r.field && !refusal_.empty())
-                {
-                    const Rect tb = onScreen(r.typed);
-                    textAt(c, fitText(c, refusal_, kWidgetSmall, at.w - 8.0f), at.centreX(), tb.y - 6.0f, kWidgetSmall,
-                           l.accent, Align::centre);
-                }
-            }
-            else
-            {
-                drawValueBox(c, l, r, onScreen(r.value), hot);
-                if (f.kind == FieldKind::toggle)
-                    textAt(c, valueText(r.field), onScreen(r.value).right() + 8.0f, onScreen(r.value).centreY(), kWidgetLabel, l.text);
             }
         }
     }
@@ -1212,43 +1125,7 @@ namespace tee::ui
         const Rect content = contentRect();
         {
             const Canvas::ClipScope clip(c, { c.snapX(content.x), c.snapY(content.y), content.w, content.h });
-            if (style_ == Style::dials)
-            {
-                drawDials(c, l);
-                // headings, notes and tables of the dials' page are drawn as the rows' are
-                for (std::size_t i = 0; i < rows_.size(); ++i)
-                {
-                    const Row& r = rows_[i];
-                    const Rect at = onScreen(r.rect);
-                    if (r.kind == Row::Kind::heading && at.bottom() >= content.y && at.y <= content.bottom())
-                        drawHeading(c, l, r, at);
-                }
-                // tables and notes
-                std::vector<Row> rest;
-                for (const Row& r : rows_)
-                    if (r.kind == Row::Kind::table || r.kind == Row::Kind::note)
-                        rest.push_back(r);
-                if (!rest.empty())
-                {
-                    // drawRows draws only what rows_ holds; draw these few the same way
-                    for (const Row& r : rest)
-                    {
-                        const Rect at = onScreen(r.rect);
-                        const OutlineEntry& e = filtered_[static_cast<std::size_t>(r.entry)];
-                        if (r.kind == Row::Kind::note)
-                            c.text(e.text.c_str(), at.x + kPad, at.y + 4.0f, kWidgetSmall, l.accent);
-                        else
-                        {
-                            textAt(c, e.text, at.x + kPad + 4.0f, at.centreY(), kLabelText, l.text);
-                            const Rect v = onScreen(r.value);
-                            c.rrect(v.x, v.y, v.w, v.h, 4.0f, l.face, 1.0f, l.edge);
-                            textAt(c, "OPEN", v.centreX(), v.centreY(), kWidgetLabel, l.text, Align::centre);
-                        }
-                    }
-                }
-            }
-            else
-                drawRows(c, l);
+            drawRows(c, l);
             // The heading of what is at the top stays there while its group scrolls under it (pushed up by the next).
             int top = -1;
             for (std::size_t i = 0; i < rows_.size(); ++i)
