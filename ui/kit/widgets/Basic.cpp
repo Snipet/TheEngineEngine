@@ -351,9 +351,21 @@ namespace tee::ui
 
     void TextField::beginEdit()
     {
+        if (options_.enterOnly && draft_)
+        {
+            editing_ = true;                             // the draft taken up again, where it was
+            return;
+        }
         edit_.set(value_ ? value_() : std::string(), maxLength_);
         editing_ = true;
         refused_ = false;
+    }
+
+    void TextField::leave()
+    {
+        draft_ = !edit_.buffer.empty() && edit_.buffer != (value_ ? value_() : std::string());
+        edit_.allSelected = false;
+        editing_ = false;
     }
 
     bool TextField::commit()
@@ -365,8 +377,16 @@ namespace tee::ui
             refused_ = true;
             return false;
         }
-        editing_ = false;
         refused_ = false;
+        if (options_.enterOnly)
+        {
+            // taken: the field empties back to value() and stays open for the next
+            edit_.set(value_ ? value_() : std::string(), maxLength_);
+            edit_.allSelected = false;
+            draft_ = false;
+            return true;
+        }
+        editing_ = false;
         return true;
     }
 
@@ -377,13 +397,49 @@ namespace tee::ui
         const float lw = labelled ? std::max(70.0f, c.textWidth(upper(title_).c_str(), kWidgetLabel) + 12.0f) : 0.0f;
         if (labelled)
             textAt(c, upper(title_), bounds_.x, bounds_.centreY(), kWidgetLabel, funkgui::mix(l.label, l.text, hover_));
-        const float h = std::min(24.0f, bounds_.h);
+        const float h = options_.multiline ? bounds_.h : std::min(24.0f, bounds_.h);
         const Rect box{ bounds_.x + lw, bounds_.centreY() - h * 0.5f, bounds_.w - lw, h };
-        const Col edge = refused_ ? l.accent : (editing_ ? l.text : funkgui::mix(l.edge, l.dim, hover_));
+        const Col bad = options_.enterOnly ? l.error : l.accent;
+        const Col edge = refused_ ? bad : (editing_ ? l.text : funkgui::mix(l.edge, l.dim, hover_));
         c.rrect(box.x, box.y, box.w, box.h, 4.0f, editing_ ? l.ground : l.face, 1.0f, edge);
         const float tx = box.x + 7.0f;
         const Canvas::ClipScope clip(c, box.reduced(1.0f));
-        if (!editing_)
+        if (options_.multiline || (options_.enterOnly && draft_))
+        {
+            // Lines (multiline) or a kept draft: the text as it is, the caret's line in view.
+            const std::string& s = editing_ || draft_ ? edit_.buffer : (value_ ? value_() : std::string());
+            std::vector<std::string> lines;
+            std::size_t at = 0;
+            int caretLine = 0;
+            float caretX = tx;
+            const int caret = std::clamp<int>(edit_.caret, 0, static_cast<int>(s.size()));
+            while (true)
+            {
+                const std::size_t nl = std::min(s.find('\n', at), s.size());
+                if (caret >= static_cast<int>(at) && caret <= static_cast<int>(nl))
+                {
+                    caretLine = static_cast<int>(lines.size());
+                    caretX = tx + c.textWidth(s.substr(at, static_cast<std::size_t>(caret) - at).c_str(), kWidgetText);
+                }
+                lines.push_back(s.substr(at, nl - at));
+                if (nl >= s.size())
+                    break;
+                at = nl + 1;
+            }
+            constexpr float kLine = 16.0f;
+            const int fits = std::max(1, static_cast<int>((box.h - 6.0f) / kLine));
+            const int first = std::max(0, caretLine - fits + 1);
+            const float top = options_.multiline ? box.y + 4.0f : box.centreY() - kLine * 0.5f;
+            for (int i = first; i < static_cast<int>(lines.size()) && i < first + fits; ++i)
+                c.text(lines[static_cast<std::size_t>(i)].c_str(), tx, top + kLine * static_cast<float>(i - first) + 2.0f, kWidgetText,
+                       editing_ ? l.value : l.text);
+            if (editing_)
+            {
+                const float y = top + kLine * static_cast<float>(caretLine - first);
+                c.segment(caretX, y + 1.0f, caretX, y + kLine - 1.0f, 1.5f, l.accent);
+            }
+        }
+        else if (!editing_)
         {
             textAt(c, value_ ? value_() : std::string(), tx, box.centreY(), kWidgetText, l.value);
         }
@@ -419,6 +475,24 @@ namespace tee::ui
             }
             return false;
         }
+        if (e.key == funkgui::Key::enter && options_.multiline && e.mods.shift)
+        {
+            // a new line where the caret is (over the selection, when it is all selected)
+            if (edit_.allSelected)
+            {
+                edit_.buffer.clear();
+                edit_.caret = 0;
+                edit_.allSelected = false;
+            }
+            if (static_cast<int>(edit_.buffer.size()) < maxLength_)
+            {
+                const auto at = static_cast<std::size_t>(std::clamp<int>(edit_.caret, 0, static_cast<int>(edit_.buffer.size())));
+                edit_.buffer.insert(at, 1, '\n');
+                edit_.caret = static_cast<int>(at) + 1;
+            }
+            refused_ = false;
+            return true;
+        }
         if (e.key == funkgui::Key::enter)
         {
             commit();
@@ -426,11 +500,21 @@ namespace tee::ui
         }
         if (e.key == funkgui::Key::escape)
         {
-            editing_ = refused_ = false;
+            if (options_.enterOnly)
+                leave();                                 // the draft kept
+            else
+                editing_ = refused_ = false;
             return true;
         }
         if (e.key == funkgui::Key::tab)
+        {
+            if (options_.enterOnly)
+            {
+                leave();
+                return false;                            // Tab goes on; the draft stays
+            }
             return !commit();                            // Tab leaves a field that took its text
+        }
         refused_ = false;
         edit_.key(e, maxLength_);
         return true;
@@ -438,6 +522,11 @@ namespace tee::ui
 
     void TextField::focusChanged(bool focused)
     {
+        if (!focused && editing_ && options_.enterOnly)
+        {
+            leave();                                     // only Enter commits: the text is kept as the draft
+            return;
+        }
         if (!focused && editing_ && !commit())
             editing_ = refused_ = false;                 // left with text it would not take: given up
     }
@@ -445,7 +534,7 @@ namespace tee::ui
     void TextField::accessibility(std::vector<funkgui::A11yItem>& out) const
     {
         funkgui::A11yItem it = a11yBase(id_, funkgui::a11yrole::editableText, bounds_, title_);
-        it.value = editing_ ? edit_.buffer : (value_ ? value_() : std::string());
+        it.value = editing_ || draft_ ? edit_.buffer : (value_ ? value_() : std::string());
         out.push_back(std::move(it));
     }
 
@@ -459,7 +548,8 @@ namespace tee::ui
 
     uint64_t TextField::drawKey() const
     {
-        return DrawKey{}.mix(value_ ? value_() : std::string()).mix(edit_.buffer).mix(edit_.caret).mix(editing_).h;
+        return DrawKey{}.mix(value_ ? value_() : std::string()).mix(edit_.buffer).mix(edit_.caret).mix(editing_).mix(draft_)
+            .mix(refused_).h;
     }
 
     // ---- List --------------------------------------------------------------------------------------------------------

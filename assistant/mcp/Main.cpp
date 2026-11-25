@@ -291,6 +291,8 @@ namespace
             }
             if (msg.contains("result") && msg["result"].is_object())
                 reply(p.clientId, msg["result"]);
+            else if (msg.contains("code") && msg["code"].is_number_integer())
+                fail(p.clientId, msg["code"].get<int>(), msg.value("error", std::string("refused")));   // (an unknown tool)
             else
                 reply(p.clientId, toolError(msg.contains("error") && msg["error"].is_string() ? msg["error"].get<std::string>()
                                                                                               : std::string("the app refused")));

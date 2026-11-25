@@ -236,6 +236,10 @@ TEST_CASE("assistant: Claude Desktop's path, bridge to app: tools, a change with
     for (const json& m : bridge.seen)
         CHECK_FALSE((m.contains("id") && m["id"] == 5));
 
+    // a tool that does not exist: a protocol error (MCP: -32602), not a tool's failure
+    const json unknown = bridge.ask(&app.rig, 9, "tools/call", {{"name", "delete_everything"}});
+    REQUIRE(unknown.contains("error"));
+    CHECK(unknown["error"]["code"] == -32602);
     CHECK(bridge.ask(&app.rig, 7, "ping").contains("result"));
     CHECK(bridge.ask(&app.rig, 8, "no/such")["error"]["code"] == -32601);
 }

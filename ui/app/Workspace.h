@@ -144,6 +144,23 @@ namespace tee::ui
             const double lo = i < retardMin.size() ? retardMin[i] : 0.0, hi = i < retardMax.size() ? retardMax[i] : lo;
             return "knock-limited, retard " + deg(lo) + (std::lround(hi) != std::lround(lo) ? " to " + deg(hi) : std::string()) + " deg";
         }
+        // A predicted point's torque's standard error (N m) and the settled cycles its mean is of (card C's
+        // PredictPoint::torqueSe, settledCycles; 0 cycles: it did not settle). Empty when the source says nothing.
+        std::vector<double> torqueSe;
+        std::vector<int> settledCycles;
+        // A point whose torque is not to be trusted as drawn: it did not settle, or twice its standard error is more
+        // than 2 % of its torque. The 2 % is judgement (the lead's ruling, 25 Nov: about the change an edit of one
+        // setting makes, so a point less sure than that cannot show it), not card C's. The ribbon marks it with an
+        // open square and says "unsettled at N rpm". A limiter's point is not: it is apart already.
+        bool unsettledAt(std::size_t i) const noexcept
+        {
+            if (i >= settledCycles.size() || limitedAt(i))
+                return false;
+            if (settledCycles[i] <= 0)
+                return true;
+            const double se = i < torqueSe.size() ? torqueSe[i] : 0.0, tq = i < torque.size() ? torque[i] : 0.0;
+            return std::isfinite(se) && 2.0 * se > 0.02 * std::fabs(tq);
+        }
         const char* wallsWord() const noexcept { return settled > 0 ? "walls settled" : settled == 0 ? "cold walls" : ""; }
         bool empty() const noexcept { return speed.empty(); }
         // The peak of torque or power: its value and the speed at it (NaN, NaN when empty).

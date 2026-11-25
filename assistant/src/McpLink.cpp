@@ -73,8 +73,15 @@ namespace tee::assistant
     }
 
     McpLink::McpLink(Tools& tools, Drivers& drivers, Cards& cards, std::function<double()> clock, Options options)
-        : tools_(tools), drivers_(drivers), cards_(cards), clock_(std::move(clock)), options_(std::move(options))
+        : tools_(tools),
+#if !defined(_WIN32)
+          drivers_(drivers),
+#endif
+          cards_(cards), clock_(std::move(clock)), options_(std::move(options))
     {
+#if defined(_WIN32)
+        (void)drivers;   // no link on Windows in this version: nothing drives through it
+#endif
     }
 
     McpLink::~McpLink()
@@ -425,6 +432,22 @@ namespace tee::assistant
             if (!params.contains("name") || !params["name"].is_string())
             {
                 refuse(*client, id, "a call names its tool");
+                return;
+            }
+            if (tools_.find(params["name"].get<std::string>()) == nullptr)
+            {
+                // an unknown tool is a protocol error in MCP (-32602), not a tool's failure: the bridge says so
+                const std::string out = "{\"id\":" + id + ",\"error\":" + json("no tool named " + params["name"].get<std::string>().substr(0, 64)).dump()
+                                         + ",\"code\":-32602}\n";
+                std::lock_guard<std::mutex> lock(client->write);
+                if (client->fd >= 0)
+                {
+ #if defined(MSG_NOSIGNAL)
+                    [[maybe_unused]] const ssize_t n = send(client->fd, out.data(), out.size(), MSG_NOSIGNAL);
+ #else
+                    [[maybe_unused]] const ssize_t n = send(client->fd, out.data(), out.size(), 0);
+ #endif
+                }
                 return;
             }
             Job j{client, id, params["name"].get<std::string>(),
