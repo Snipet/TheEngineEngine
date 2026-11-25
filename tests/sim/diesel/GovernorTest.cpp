@@ -240,8 +240,10 @@ TEST_CASE("diesel governor: an electronic governor's torque ceiling holds a plat
         Engine e("archetypes/diesel-20-common-rail");
         e.spec("env.temperature", 300.0);
         e.spec("env.pressure", 101325.0);
-        if (k == 1)
-            e.spec("ecu.torqueMax", ceiling);
+        // (both arms set explicitly: the "none" arm is none whatever the build states, so the case tests the
+        // mechanism even once an archetype states its ceiling (P's 2.0 states VW's 320))
+        e.spec("ecu.torqueMax", k == 1 ? ceiling : 0.0);
+        e.spec("ecu.powerMax", 0.0);
         e.start();
         // (held warm, as the dyno's rows are (host/include/tee/Warm.h), 512 samples a step)
         auto play = [&](double sec) {
