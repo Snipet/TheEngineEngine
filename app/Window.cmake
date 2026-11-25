@@ -42,3 +42,12 @@ if(APPLE)
     COMMENT "sim/ and content/ into TheEngineEngine.app, and its ad-hoc signature"
     VERBATIM)
 endif()
+
+# tee-wheel-dump (app/WheelDump.cpp): a connected Logitech G29's HID elements and their live values beside what
+# shell/input/g29/G29.h's table makes of them, for checking the table on a wheel (docs/controls.md). macOS only (IOKit).
+# Built with the application (not EXCLUDE_FROM_ALL) so that CI's macOS build compiles it; never installed or packed.
+if(APPLE)
+  add_executable(tee-wheel-dump "${CMAKE_CURRENT_LIST_DIR}/WheelDump.cpp")
+  target_link_libraries(tee-wheel-dump PRIVATE Tee::shell_core "-framework IOKit" "-framework CoreFoundation")
+  tee_target_defaults(tee-wheel-dump)
+endif()

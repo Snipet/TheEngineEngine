@@ -132,6 +132,12 @@ by default there), Linux (TestingPlayground's evdev body through the kernel's hi
 mode, force effects beyond the spring. A G29 is never opened as a gamepad (SDL's Logitech driver is turned off, so it
 cannot reset the spring).
 
+**To see what the wheel sends** (macOS): `tee-wheel-dump` beside the application (`build-release/bin/tee-wheel-dump`)
+lists the G29's HID elements with the row of the application's table each one maps to, then prints the elements that
+change and what the application reads of them (the pedals, the steering, the gear, the buttons). `--list` only lists;
+`--switch` switches a G29 at PS3 to its full mode; `--spring` sets 900 degrees and the spring while it runs; `--leds`
+tries each shift light, then lets the throttle light them. Ctrl-C ends it, with the spring and the lights off.
+
 **To see what the computer sees** of any controller: `TheEngineEngine --probe-input` (macOS:
 `./TheEngineEngine.app/Contents/MacOS/TheEngineEngine --probe-input`). It opens no window; it lists every game
 controller SDL sees (name, ids, SDL's type, axes, buttons, hats, force feedback) and prints their changes for 60 s
