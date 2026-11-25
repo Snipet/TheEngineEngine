@@ -9,8 +9,9 @@
 #   tee_shell_sdl    SDL3: the audio device (audio/AudioDevice) and SDL's events into the controls (input/SdlInput)
 #   tee_shell_wheel  the racing wheel's transport (input/g29/RacingWheel.h): macOS's IOKit HID manager
 #                    (RacingWheelMac.cpp, IOKit and CoreFoundation); Linux's evdev and sysfs over the kernel's hid-lg4ff
-#                    (RacingWheelLinux.cpp, G29Evdev.cpp); Windows none yet (RacingWheelNone.cpp). The G29's
-#                    map and decisions (g29/G29, G29Driver, G29Input) are the core's: plain C++, tested with fakes.
+#                    (RacingWheelLinux.cpp, G29Evdev.cpp); Windows: SDL's joystick API, read only (RacingWheelWin.cpp,
+#                    SDL3); elsewhere none (RacingWheelNone.cpp). The G29's map and decisions (g29/G29, G29Driver,
+#                    G29Input, G29Joystick) are the core's: plain C++, tested with fakes.
 #
 # FunkGui is in none of them: FunkGui::core is an INTERFACE library whose sources compile into the target that links
 # it, so what needs it (panel/PlaceholderPanel.cpp, app/Offline.cpp) is compiled by each executable (app/CMakeLists.txt).
@@ -21,7 +22,7 @@ add_library(tee_shell_core STATIC
   input/WheelMap.cpp
   input/g29/G29.cpp
   input/g29/G29Driver.cpp
-  input/g29/G29Input.cpp
+  input/g29/G29Input.cpp input/g29/G29Joystick.cpp
   audio/Wav.cpp
   audio/Recorder.cpp
   files/Png.cpp
@@ -63,6 +64,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(tee_shell_wheel STATIC input/g29/RacingWheelLinux.cpp input/g29/G29Evdev.cpp
               input/g29/G29EvdevOpen.cpp)
   target_link_libraries(tee_shell_wheel PUBLIC Tee::shell_core)
+elseif(WIN32)
+  # a plain joystick through SDL, read only (g29/G29Joystick.h: on Windows nothing can be sent to the wheel)
+  add_library(tee_shell_wheel STATIC input/g29/RacingWheelWin.cpp)
+  target_link_libraries(tee_shell_wheel PUBLIC Tee::shell_core PRIVATE SDL3::SDL3)
 else()
   add_library(tee_shell_wheel STATIC input/g29/RacingWheelNone.cpp)
   target_link_libraries(tee_shell_wheel PUBLIC Tee::shell_core)
