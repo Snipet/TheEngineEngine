@@ -39,3 +39,9 @@ The test (GateTest, "a sequential pair with a stated join speed changes over wit
 the pair stays joined to 4050 (0.9), so 4250 to 4500 read the joined pair's weaker 29 to 47: the speed hysteresis a
 driver would feel as less boost coming down than going up there. **Open**: the joined pair is weaker than the single
 below some 5000 rpm (the second compressor's old item); the rotary states its 4500 when P commits it.
+
+**Correction (the same day).** `spec.boost.seqRpm` was first made hidden, and a hidden field is not read from a build's
+file (host/src/Build.cpp, `inFile`): the rotary's stated 4500 (P, bbd7e631) was silently ignored and the rotary went on
+joining on its air, hunting 27 to 80 kPa at 4250, while the case above set the field directly and passed. The field is
+now visible; with the build's own 4500 the rotary reads 59 to 75 kPa at 4250, and the case at the join comes unmarked
+(59.3 to 76.3 against 67.1; predicted within 15 %, within 25 %, the lead's bound).
