@@ -333,3 +333,21 @@ curve for both wheels within the reading's error: at U = 370 m/s, 2.25 (S400) an
   41.8 / 53.96. **42.5 is the inducer.** No maker's figure. The turbo: **IHI IS20, 06K145874M** for the Golf GTI 2013-19
   (Garrett's PowerMax 898199 datasheet's OE table, read 25 Nov). **No published IS20 map found** (Garrett's PowerMax sheet
   maps its own replacement, not the IS20; IHI publishes none found).
+
+## 23. The 13B-REW's two turbos: their models and the boost through the join (N2's ask, the lead's ruling, 25 Nov 19:47 UTC)
+
+- **The models: both Hitachi HT-12, the same model** (most sources: drifted.com's 13B guide, "both turbos on the FD3S are
+  Hitachi HT-12s", the primary spooling first as a single, feeding only minimal exhaust energy to the secondary; RX7Club
+  threads). One page (projectjdm.org) has the primary an HT-10: contradicted by the rest, its other details doubtful: not used.
+  **Not found:** the HT-12's part numbers or wheel diameters from Hitachi or Mazda (forum codes such as "HT12-3KAI" name a later
+  aftermarket update, not the stock pair).
+- **The boost through the join** (enthusiast sources, agreeing): **about 10 psi (0.7 bar) on the primary alone, dipping to
+  about 8 psi (0.55 bar) at the changeover near 4500 rpm, then back to a steady 10 psi on the pair to the redline**
+  (whichcar.com.au, "shouldn't register more than 10psi until around 4500rpm, then dips to around 8psi as the second turbocharger
+  spools up and then blips back up to a steady 10psi"; drifted.com, "10 psi, before dropping to 8 psi around 4,700 rpm";
+  car-collection's wiki, the dip at 4500, flagged unsourced there; RX7Club, "10 psi from 3000 to 4500 rpm, dips to 8, then
+  climbs back to 10"). The primary's onset: "from just 1,800 rpm" (one) or about 2500 (another): not agreed. The charge
+  control valve "should be open at the 4500 transition, it remains closed below that" (an owner, RX7Club). **Not found:** the
+  workshop manual's own boost and switching figures (section 16's 4500 rpm comes from a forum's quote of it).
+- **Each turbo's share once joined:** not stated anywhere read. With two of the same model at one boost, an even split is
+  the natural reading (JUDGEMENT, not a source).
