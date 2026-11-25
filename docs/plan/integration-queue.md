@@ -380,3 +380,21 @@ diameter, so B's 49 % more lift buys 5.6 % more area; nothing floats. To do, in 
 pressures through the intake stroke and the same with the runner too short to ring (the runner's 0.30 m is
 judgement); P looking for real dyno curves with each stage held. Not to be fixed by moving the switch or the lobes
 toward the engine's ratings.
+
+## Open, audible in main: the rotary's sequential join hunts (N2, 25 Nov 03:10)
+
+`archetypes/rotary-twin-13`, full load, swept in 250 rpm steps: steady at 4000 (67 to 73 kPa) and at 4500 (42 to 46);
+at 4250 the boost runs 26 to 110 kPa and the torque 170 to 263 N m, on a18f1bd4 as on N2's working tree. The join is
+decided on a flow band (0.8 to 1.0 of the join flow) that the join itself moves the engine out of: it joins, boost
+falls, it closes. F's case passed by when its snapshot looked. A real pair spins the second turbo up before it joins
+and stays joined on speed with hysteresis; its fault is a dip. N2: a marked case at the join citing the rotary; the
+cure proposed to the lead after the map's commit, before the cap.
+
+## Open: the matching's design flow (N2, 25 Nov 03:08; the old "match the charge system", X-021)
+
+`machine.fm`: `mMatch = vd nDesign/120 x 1.204 x PR x 0.9`, a charge at ambient temperature. Ruled 03:10: the charge's
+temperature at the design point from the build's own compressor and `icEffect`, in N2's map commit, table first.
+The truck (GateTest's build, no intercooler stated) is sized for 0.86 kg/s and passes 0.494. first.json's matched
+inducer is 8 % over the IS20's area today (29 % with the sizing kept) and by the lead's arithmetic comes to about the
+IS20's under the correction on today's formula. The 1.15 and the flat boost target at the design speed remain F's
+judgement; first.json will state its own wheel (compInducer 0.0425, compExducer 0.054, turbWheel 0.050).

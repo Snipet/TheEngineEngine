@@ -173,3 +173,13 @@ Forums and an owner's blog only: the S2000 manifold "about 15.5 cm or about 6 in
 So the builds' φ 0.80 (λ 1.25) sits at the rich edge of the patents' 1.27 to 1.37.
 
 **Time to boost or rated torque.** Detroit DD15 (14.8 L), the maker's spec sheet (penskeanz.com, PDF read): "90% peak torque in 1.5 seconds", "At just over 1100 RPM, you're at 90% peak torque"; TRUCKiNG Info (2007, the maker's figures repeated): "four seconds on the S60, where it is only 1.5 seconds for the new engine", torque response defined as "the time the engine takes from mashing the throttle to reaching its torque output peak"; full boost "in about 1.5 seconds, compared to three or four seconds on other engines"; a Detroit brochure: competitors "up to 4.4 seconds" (snippet). A medium-duty turbo diesel's lag "12 engine cycles or 1.17 s" (Giakoumis, Frontiers 2016, a review). Not found: any ISX15/X15, D13, Scania, C15 or OM471 figure in seconds; any SAE load-step test on a 15 L engine. So the class's maker's figures are 1.5 s (a modern engine, the maker's claim) to about 4 s (the older ones), against the model truck's some 20 s.
+
+## 15. 15 L truck diesels' rated torque curves (the lead's ask, 25 Nov 03:13 UTC)
+
+Makers' documents; values at 1100-1300 rpm read off their charts (no numeric tables), printed figures marked "printed".
+- **Detroit DD15 455 bhp @ 1625 / 1550 lb-ft @ 975** (brochure DDC-EMC-BRO-0192-0820, 2020, a mirror at xr793.com): flat at 1550 from about 975 to 1500 rpm; 1550 at 1100, 1200, 1300 (read, about 20 lb-ft); printed 1471 lb-ft at 1625. Its ratings table: every torque "@ 975 RPM" (1550 to 1750 lb-ft).
+- **DD15 455 bhp @ 1800 / 1550 lb-ft @ 1100** (spec sheet DDC-EMC-FLY-0001-1011): plateau about 1000 to 1400-1500 rpm; 1550, 1550, 1545 at 1100, 1200, 1300 (read); printed 1328 at 1800. Its table: every torque "@ 1100 RPM".
+- **DD15 Gen 5 505 bhp / 1850 lb-ft** (spec sheet DDC-EMC-FLY-0121-1121, freightliner.com): peaked, printed 1850 at about 1100 rpm; about 1820 at 1200 and 1300 (read).
+- **Cummins X15 Efficiency Series** (Bulletin 5410582, mart.cummins.com): "peak torque starting at 950 rpm"; 500 hp / 1850 flat about 950 to 1400 rpm, 450 / 1750 about 950 to 1300-1350, 400 / 1650 about 950 to 1300; each flat through 1100-1300 (read).
+- **Cummins ISX15 560 / 1850** (Bulletin 4971488): "runs from 1150 rpm to 1500 rpm at the full 1850 lb-ft of peak torque"; its table's ratings "@ 1200"; the 2013 ISX15 450 "1650 (2237) @ 1000".
+So at 1100 to 1300 rpm an engine of the class makes 0.98 to 1.00 of its peak, its plateau starting at 950 to 1150 rpm. Rows (report.py, the tractor): the least torque from 1100 to 1300 over the peak, at least 0.95; where the torque first reaches 0.98 of its peak, 900 to 1200 rpm (the margins judgement).

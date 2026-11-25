@@ -37,6 +37,52 @@
 
 ## Landed
 
+- **03:55 (25 Nov) `main` moved 78cdd2f5 to e7e58973**, fast-forward: run 45539104538, Linux and macOS green outright
+  (checked on the run's own jobs; Windows' job on it still running, main's own run to follow). Against 78cdd2f5 it
+  adds N1's four-valve low-lift curtain (6771c402), D2's diesel telemetry (a90cd20f: fuelFlow the fuel injected,
+  lambda filled), N2's two test and tool commits, and P's rows and cards (the cards behind CAM_RULE, so no build
+  changes): the tractor's take-up and lug rows (least torque from 1100 to 1300 over the peak: 0.64 against 0.95 or
+  more on five makers' curves; the plateau from about 1476 rpm against 900 to 1200). Since 03:13: D2's baseline
+  splits the tractor archetype's shortfall in two (boost at 1100 to 1300, the vanes open: 29 and 94.5 kPa; above
+  about 1400 the single `fuelBoost` sized for 108 kPa, burning at 0.51 of stoichiometric at 238 kPa) and D2's own
+  truck is flat where a real one falls a quarter to rated. **Ruled: a full-load fuel curve for governed diesels**
+  (`fuelCurveRpm[8]`, `fuelCurveMg[8]`, mass a stroke at full rack, used where set, the flat line and the null test
+  untouched otherwise; the compensator still caps it), built after N2's commit, tables first; where a curve is derived
+  from its engine's published torque those torque and power rows are marked "set by the fuel curve" and leave the
+  counts, and the model is tested there by boost, lambda, BSFC, turbine inlet temperature and the take-up. The take-up
+  row is (b): held at 1100 rpm, the pedal stepped, 90 % of the build's own peak within 5 s; the pedal's own response
+  at a held 1300 is 0.41 s and the 19 to 20 s is the climb from 800, which the lead had run together for the owner
+  and has corrected. N2 working on the tip (knee, flag, the matching's charge temperature); nothing of it pushed yet.
+
+- **03:13 (25 Nov) the lead's check-in; `main` at 78cdd2f5, green on all three platforms** (its own run 45532730896:
+  macOS, Linux and Windows each 542 of 542, application and build packed; the steward). *Landed since 02:24*: N1's
+  6771c402, four-valve heads' low-lift curtain at the sheets' medians (0.66 intake, 0.63 exhaust of the curtain, nine
+  heads at 0.100 in; two-valve heads on the old line to the bit), approved on its table (full load 0 to +4 %, the
+  four-valve idles 1 to 3 kPa nearer their rows, the two-stage crossing 8012 to 7298 rpm, the 7.0 identical) and
+  pushed with nothing flipped (542, 14 and 15); a single predicted dyno point is good to about half a per cent (the
+  predictor's stop tolerance; C told). D2's db4bcaa7: `tel.ecu.fuelFlow` on a governed diesel is the fuel injected,
+  lambda filled. N2's f7fe9e70 (the wastegate case tests what it says) and b4ff2e56 (the take-up tool's `--from` and
+  time-to-90 %). P's cards under CAM_RULE: the two-stage's low stage as the K20A's two low lobes meaned (a32ebdd7; an
+  aggregator's unlabelled rows, the lead's reading), the hot hatch as the 4A-GE whole, the 7.0's ports from the LS7's
+  sheet, the F20C's 5850. **Two things the lead told the owner that were wrong, both corrected with them**: "the
+  truck is fuelled to twice its air" (N2's reading of a telemetry field that reported the rack's ask; D2's code read:
+  the compensator holds 0.80 of stoichiometric throughout), and "the turbo four's wheel may be half again the real
+  one" (the lead's arithmetic at the wrong boost; measured: 44.2 / 59.6 mm today, 48.3 / 65.1 with the sizing kept,
+  against the IS20's 42.5 / 54.0). **N2, nothing of the map committed yet; rulings given**: (1) the surge figures
+  accepted at 01:30 were the flag's locus (0.8 of the knee); the model's measured onset is 0.9 of the knee, so the
+  knee's law is scaled by 0.8 / 0.9 and the flag moved to 0.9 of the knee: one locus, the published middles; no
+  reshaping. (2) **The matching sizes every wheel for a charge at ambient temperature** (`mMatch` = displacement flow
+  x 1.204 x PR x 0.9): the truck's wheel is sized for 0.86 kg/s where the engine passes 0.494, so its whole line is
+  left of the knee, the surge guard holds the vanes open, and the climb from 800 to 1300 rpm takes 19 to 20 s (one
+  state, not two; a real tractor engine reaches 90 % of peak torque in 1.5 to 4.4 s by makers' claims, P's section
+  14). Ruled into the same commit: the design flow takes the charge's temperature from the build's compressor and
+  `icEffect`; table first. (3) The sizing stays kept; EngineTest:124 re-read after. (4) first.json states the IS20's
+  wheel after the commit, as content, with a prediction first. *Found on the way, in `main` today*: **the twin-turbo
+  rotary hunts at its sequential join** (4250 rpm, full load: 26 to 110 kPa, 170 to 263 N m; steady at 4000 and
+  4500); a marked case at the join citing it, the cure to be proposed after the map. D2 after N2: `ecu.afc` 0.8 to
+  0.77 (a patent's "typically about 1.3"), the tractor's take-up as a validation row (5 s; 20 s today, a recorded
+  miss).
+
 - **02:24 (25 Nov) `main` moved 09c1fb4e to 78cdd2f5**, fast-forward. Run 45529977919: Linux 542 of 542, macOS 542 of
   542 (checked by the lead on the run's own jobs; Windows' job on this commit was cancelled by later pushes, so main's
   own run is its first Windows build). It holds the ten fixes of fc554da and the bake's wiring (C's 648e7fca, 7f2ddfa1,

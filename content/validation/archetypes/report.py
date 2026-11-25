@@ -102,6 +102,82 @@ def crossing(bin_dir, slug, out_dir, build_path):
     return lo[0][0] if d[0] >= 0 else lo[-1][0]
 
 
+TAKEUP = {"name": "Take-up: 90 % of peak torque after the pedal, at a lug (s)", "range": [0, 5], "unit": "s",
+          "basis": "cited",
+          "source": "the lead's ruling (03:11, D2's reading 03:13): held at 1100 rpm on the dyno (a loaded truck's speed "
+                    "barely moves in the seconds the makers quote), the pedal from a fifth (light load) to the floor at 6 s, the time to 90 %% "
+                    "of the build's own peak torque (its predicted curve's top). The makers' claims: Detroit's DD15 spec "
+                    "sheet \"90%% peak torque in 1.5 seconds\", \"At just over 1100 RPM\"; the older engines' \"four "
+                    "seconds\" (the S60, TRUCKiNG Info 2007) and competitors' \"up to 4.4 seconds\" (Detroit's "
+                    "brochure); 5 s their slowest with margin (judgement). Not reached in the 34 s read: 34. Printed "
+                    "beside it: the time to 90 %% of what it settles at, and the settled torque over the peak"}
+TAKEUP_SLUGS = ("tractor-15-inline-six",)
+_HD = ("the makers' rated curves of the class (sources section 15): Detroit's DD15 455 bhp / 1550 lb-ft flat from about "
+       "975 to 1500 rpm (brochure DDC-EMC-BRO-0192-0820) and the older 1550 lb-ft @ 1100 from about 1000 to 1400-1500 "
+       "(DDC-EMC-FLY-0001-1011); the Gen 5 505 / 1850 peaked at about 1100, some 1820 at 1200-1300 (DDC-EMC-FLY-0121-"
+       "1121); Cummins' X15 Efficiency Series \"peak torque starting at 950 rpm\", flat to 1300-1400 (Bulletin 5410582), "
+       "the ISX15 560 \"from 1150 rpm to 1500 rpm at the full 1850 lb-ft\" (Bulletin 4971488); values at 1100 to 1300 "
+       "read off the makers' charts")
+LUG = {"name": "Lug: the least torque from 1100 to 1300 rpm over the peak", "range": [0.95, 1.0], "unit": "",
+       "basis": "cited",
+       "source": _HD + ": 0.98 to 1.00 of the peak there; at least 0.95 (judgement, the charts' reading); read by "
+                 "report.py on the build's predicted full-load curve (tee-dyno --predict, 600 rpm to its top step), "
+                 "interpolated at 1100, 1200 and 1300 rpm"}
+LUG_FROM = {"name": "Lug: where the torque first reaches 0.98 of its peak (rpm)", "range": [900, 1200], "unit": "rpm",
+            "basis": "cited",
+            "source": _HD + ": the plateau starts at 950 to 1150 rpm; 900 to 1200 (judgement, the margin); read by "
+                      "report.py on the same predicted curve, interpolated"}
+
+
+def lug(pts):
+    """LUG and LUG_FROM from a predicted curve [(rad/s, N m, W)]: min torque at 1100-1300 rpm over the peak, and the
+    speed (rpm) where the torque first reaches 0.98 of the peak."""
+    c = [(w / RPM, q) for w, q, _ in pts]
+    peak = max(q for _, q in c)
+
+    def at(r):
+        for (r0, q0), (r1, q1) in zip(c, c[1:]):
+            if r0 <= r <= r1:
+                return q0 + (q1 - q0) * (r - r0) / (r1 - r0)
+        return None
+    share = min(at(r) or 0.0 for r in (1100.0, 1200.0, 1300.0)) / peak
+    first = c[-1][0]
+    for (r0, q0), (r1, q1) in zip(c, c[1:]):
+        if q1 >= 0.98 * peak:
+            first = r0 + (r1 - r0) * max(0.0, (0.98 * peak - q0)) / max(q1 - q0, 1e-9) if q0 < 0.98 * peak else r0
+            break
+    return share, first
+
+
+def takeup(bin_dir, slug, out_dir, build_path, peak):
+    """TAKEUP: seconds from the pedal to 90 % of `peak` (N m), and to 90 % of the settled torque, and settled / peak."""
+    path = os.path.join(out_dir, slug + ".takeup.txt")
+    if not os.path.exists(path):
+        wav = os.path.join(out_dir, slug + ".takeup.wav")
+        cmd = [os.path.join(bin_dir, "tee-render"), "--build", build_path, "--scenario",
+               os.path.join(ROOT, "content", "validation", "scenarios", "p-takeup-1100.json"), "--out", wav,
+               "--tel", "engine.torque"] + (["--sim", SIM] if SIM else [])
+        subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+        rows = []
+        with open(wav[:-4] + ".csv") as f:
+            next(f)
+            for line in f:
+                t, q = line.split(",")[:2]
+                rows.append((float(t), float(q)))
+        for x in (wav, wav[:-4] + ".csv"):
+            if os.path.exists(x):
+                os.remove(x)
+        end = [q for t, q in rows if t >= 36.0]
+        settled = sum(end) / max(len(end), 1)
+        after = [(t - 6.0, q) for t, q in rows if t >= 6.0]
+        t_peak = next((t for t, q in after if q >= 0.9 * peak), 34.0)
+        t_set = next((t for t, q in after if q >= 0.9 * settled), 34.0)
+        with open(path, "w") as fh:
+            fh.write("%.2f %.2f %.1f\n" % (t_peak, t_set, settled))
+    v = open(path).read().split()
+    return float(v[0]), float(v[1]), float(v[2])
+
+
 def comb_depth(x, sr, fire):
     """D2's comb depth (dB): the firing harmonics from 1 to 3 kHz against the half-way gaps, Welch, A-weighting
     cancelling in the ratio."""
@@ -330,6 +406,23 @@ def main():
                                 else "FAIL"))
     content = a.content or os.path.join(ROOT, "content")
     for s_ in slugs:
+        if s_ in TAKEUP_SLUGS and results[s_] is not None:
+            # the build's own peak torque: its predicted curve from 600 rpm to its rows' top dyno step (a governed
+            # diesel's rows are stepped; its peak sits low, near 1000 rpm)
+            tops = [max(t["dyno"]["steps"]) for t in docs[s_]["targets"] if "dyno" in t and "steps" in t["dyno"]]
+            plan_ = {"from": 600 * RPM, "to": max(tops)} if tops else None
+            if plan_:
+                pts_ = curve(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), plan_)
+                peak = max(p[1] for p in pts_)
+                sh, fr = lug(pts_)
+                results[s_].append((LUG, sh, "pass" if LUG["range"][0] <= sh <= LUG["range"][1] else "FAIL"))
+                results[s_].append((LUG_FROM, fr, "pass" if LUG_FROM["range"][0] <= fr <= LUG_FROM["range"][1]
+                                    else "FAIL"))
+                tp, ts, st_ = takeup(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), peak)
+                row = dict(TAKEUP, source=TAKEUP["source"] + "; read: to 90 %% of settled %.2f s, settled %.0f N m = "
+                           "%.0f %% of the peak %.0f; the climb from 800 to 1300 rpm at full load (N2's take-up tool, 19 to 20 s on 25 Nov) not measured here"
+                           % (ts, st_, 100.0 * st_ / peak, peak))
+                results[s_].append((row, tp, "pass" if TAKEUP["range"][0] <= tp <= TAKEUP["range"][1] else "FAIL"))
         if s_ in CROSS_SLUGS and results[s_] is not None:
             x = crossing(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]))
             if x is not None:
