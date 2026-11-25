@@ -38,6 +38,8 @@ omegaMax on the truck's sets is 11902 rad/s: the shaft the ceiling holds with th
   so with the relief on the cycle remains.
 - So the ceiling stands that overshoot under the relief: 1.05 / 1.108 = 0.948, the margin the measured overshoot
   needs (the lead's rule). Its peaks are 1.049-1.051: at the relief, not past it.
+- **The margin follows the loop:** when the loop's tuning is cured (the +16 % peak, the 6 s ring) and its approach
+  overshoots less, the margin shrinks with it.
 
 **2. The package's cells, the last 30 of 60 s, before -> after:**
 

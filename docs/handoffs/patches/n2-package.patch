@@ -1044,7 +1044,7 @@ index 00000000..a660b7a5
 2.43.0
 
 
-From c961745f8f161a4a4fd36829963d694172ca555a Mon Sep 17 00:00:00 2001
+From a546e1a0f98e85255974a9ee58b9cff6b57dce58 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 17:20:08 +0000
 Subject: [PATCH 11/11] boost: the shaft's ceiling in the boost loop (the
@@ -1057,14 +1057,14 @@ Subject: [PATCH 11/11] boost: the shaft's ceiling in the boost loop (the
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
 ---
- sim/boost/machine.fm | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+ sim/boost/machine.fm | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
 
 diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
-index a6d71c4d..0556cb85 100644
+index a6d71c4d..05621063 100644
 --- a/sim/boost/machine.fm
 +++ b/sim/boost/machine.fm
-@@ -1311,7 +1311,22 @@ module BoostMachine
+@@ -1311,7 +1311,23 @@ module BoostMachine
          float u = 0.0f;
          if (tg > 0.0f)
          {
@@ -1079,7 +1079,8 @@ index a6d71c4d..0556cb85 100644
 +            // shaft 10.8 % over (the truck's sets stepped 1700 to 2000 rpm, the relief off) and so through the relief,
 +            // whose snap open and the loop's re-closing then cycled the shaft 0.87 to 1.06 for good: the ceiling stands
 +            // that approach's overshoot under the relief, 1.05 / 1.108 = 0.948 of the limit (the lead's rule: the margin
-+            // is what the measured overshoot needs; shaft-ceiling.md))
++            // is what the measured overshoot needs; shaft-ceiling.md). The margin follows the loop: when the loop's tuning is
++            // cured and its approach overshoots less, it shrinks with it)
 +            float shaftMost = 0.0f;
 +            if (sc == 0)
 +                for (int t = 0; t < turbos; ++t)
