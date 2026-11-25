@@ -104,6 +104,10 @@ namespace tee::assistant
         long long turnOutputTokens = 200000;    // output tokens of a turn in all
         int continuations = 5;                  // pause_turn resumes in one turn
         double askSeconds = 300.0;              // the owner's answer to ask_user
+        // Why there is no transport, or no key store, in this build (the platform's own words: "the chat by API key is
+        // for macOS and Linux in this version"); ready() says it rather than asking for a key it could not keep.
+        std::string noTransportWhy;
+        std::string noKeyStoreWhy;
         // Waits `seconds` unless `cancel` is raised first (tests give one that does not wait). Empty: the real clock.
         std::function<void(double seconds, const std::atomic<bool>& cancel)> sleep;
     };

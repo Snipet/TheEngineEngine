@@ -268,8 +268,12 @@ TEST_CASE("assistant: save-as refuses a name that is already a build's, and over
         CHECK(r.value["error"].get<std::string>().find("exists") != std::string::npos);
     }
     CHECK(readAll(mine) == was);
-    CHECK_FALSE(fs::exists(rig.user / "v8.json"));
-    CHECK_FALSE(fs::exists(rig.user / "MINE.json"));
+    // the folder holds the one file, by its own name (fs::exists would not tell MINE.json from mine.json on a disk
+    // that does not tell cases apart: macOS's)
+    std::vector<std::string> names;
+    for (const auto& e : fs::directory_iterator(rig.user))
+        names.push_back(e.path().filename().string());
+    CHECK(names == std::vector<std::string>{"mine.json"});
     // no tool removes a build
     for (const ToolInfo& t : rig.tools->list())
     {
