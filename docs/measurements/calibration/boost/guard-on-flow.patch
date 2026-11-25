@@ -1,0 +1,43 @@
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index 4b66dea2..a21fa6dd 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -167,6 +167,8 @@ module BoostMachine
+     float bpLimit;      // a variable nozzle's limit on the pressure before the turbine over the boost (absolute)
+     float bpOpen[BOOST_TURBOS];  // the limit's opening of the vanes, each turbo
+     float surgeOpen[BOOST_TURBOS];  // the surge guard's opening of the vanes, each turbo
++    float mGuardMean[BOOST_TURBOS]; // the guard's view of each compressor's flow: its 50 ms mean
++    float mGuardDev[BOOST_TURBOS];  // and the mean of its swing about that
+     float bovAt;        // the blow-off valve's opening the air sees: bovLift followed every sample by two 1 ms stages
+     float bovMid;
+     float kAt;          // that following's step a sample
+@@ -335,6 +337,8 @@ module BoostMachine
+             turb[t].vanesMid = 1.0f;
+             bpOpen[t] = 0.0f;
+             surgeOpen[t] = 0.0f;
++            mGuardMean[t] = 0.0f;
++            mGuardDev[t] = 0.0f;
+             gateMass[t] = 0.0f;
+             gateTemp[t] = tOut;
+         }
+@@ -1276,11 +1280,18 @@ module BoostMachine
+                     // 8bb2c80f, 0.3 left them on it and the truck's spool hunted 140 to 187 kPa for 2 s; 2 a second
+                     // put the 15 L tractor at 1000 rpm off its boost). Judgement, as the limit above is: a maker's
+                     // vane map keeps its own margin)
+-                    const float phiS = comp[t].mdot / fmaxf(comp[t].mc, 1.0e-5f);
+                     // (only the loop's own surge counts: with the pedal down (the plenum not under the throttle's
+                     // vacuum, as the assist's test) and the boost short of what is asked; a lift's surge on a closed
+                     // throttle is the blow-off valve's matter, and then the guard only gives back)
+-                    const int surging = (comp[t].mdot < 0.0f || (phiS < 0.9f * comp[t].phiK && comp[t].pr > 1.15f)) &&
++                    // (on what the compressor does, not on the flag (the lead's ruling): the flag is decided by the
++                    // ratio the vanes make, and at a low tip speed the model sits steady left of it: the 15 L tractor
++                    // at 1000 rpm, steady at 0.82 of the knee, its ratio pinned at the flag's own 1.15 gate with the
++                    // vanes held open, 651 N m against 1502 at 1058. Surging: the flow reversing, or its swing about its
++                    // 50 ms mean beyond 0.3 of that mean (judgement: firing pulses move a steady compressor's flow 2 to
++                    // 4 %, a surge cycle by more than its mean))
++                    mGuardMean[t] += (comp[t].mdot - mGuardMean[t]) * (1.0f - expf(-d16 / 0.05f));
++                    mGuardDev[t] += (fabsf(comp[t].mdot - mGuardMean[t]) - mGuardDev[t]) * (1.0f - expf(-d16 / 0.05f));
++                    const int surging = (comp[t].mdot < 0.0f || mGuardDev[t] > 0.3f * fmaxf(mGuardMean[t], 1.0e-4f)) &&
+                                                 pPlenum > 0.85f * pOut && boost < want
+                                             ? 1
+                                             : 0;
