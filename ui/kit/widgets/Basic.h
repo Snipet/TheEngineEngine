@@ -133,6 +133,22 @@ namespace tee::ui
         const std::string& buffer() const noexcept { return edit_.buffer; }
         void beginEdit();
 
+        // J2, for card A's chat (the defaults are the field as it always was):
+        //   enterOnly   only Enter commits. Leaving the field (a press elsewhere, Tab, Escape, the focus going) keeps
+        //               the typed text as a draft, neither committed nor dropped, shown in the field and taken up again
+        //               when it is entered; a commit that is taken empties it back to value() and typing goes on.
+        //   multiline   Shift+Enter starts a new line ('\n' in the text); the field shows as many lines as its height
+        //               holds, the caret's line in view.
+        struct Options
+        {
+            bool enterOnly = false;
+            bool multiline = false;
+        };
+        void setOptions(Options o) noexcept { options_ = o; }
+        const Options& options() const noexcept { return options_; }
+        bool hasDraft() const noexcept { return draft_; }
+        bool refused() const noexcept { return refused_; }
+
         void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool focusRing) const override;
         funkgui::Cursor cursorAt(funkgui::Point) const override { return funkgui::Cursor::normal; }
         void pointerDown(const funkgui::PointerEvent& e, funkgui::GestureController&, funkgui::HostServices&) override;
@@ -154,6 +170,9 @@ namespace tee::ui
         int maxLength_;
         funkgui::text::LineEdit edit_;
         bool editing_ = false, refused_ = false;
+        Options options_{};
+        bool draft_ = false;                             // enterOnly: text kept from the last time it was left
+        void leave();                                    // enterOnly: stop editing, the text kept as the draft
     };
 
     // Rows of text, one chosen: a click or the arrow keys choose (onSelect), the wheel scrolls, the chosen row is kept

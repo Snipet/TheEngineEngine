@@ -506,7 +506,7 @@ chambers (wave 2, from these parts).
 
 ## Bangs: heat released in the pipe
 
-`spec.exhaust.bang` (the builder only): **Carved** (the default until the account's seam is in) is the reference's
+`spec.exhaust.bang` (the builder only): **Carved** (the default until the owner has heard both) is the reference's
 pulse and crackle; **Burned in the pipe** releases a burn's heat in its bank's collector gas. The owner heard the carved pops as
 artificial (25 Nov). The inventory found the cause: on first.json's fuel-cut limiter the account lit 25 to 50 bangs a
 second, nearly all at its 30 kPa ceiling, each with the same click tail.
@@ -548,9 +548,10 @@ second, nearly all at its 30 kPa ceiling, each with the same click tail.
   - At idle the gas runs at 14 to 17 m/s, and the burn takes 17 to 18 ms folded or about 41 ms as one front.
   - The held rig, its flows a third of the engine's, gave 3 to 4.5 ms folded at 3000 to 6000 rpm, and 17 to 19 ms at
     1000.
-- **The account's side** (`sim/ecu/overrun.fm`: charges kept by cylinder until their exhaust valve opens, premixed
-  slugs lit by a flame or a hot blowdown while still flammable) is card N1's (docs/handoffs/g-exhaust.md, "The pops'
-  seam"). **Until it is in, nothing feeds Burned in the pipe: picking it today, a person hears exactly Carved** (the
-  account still fires the carved pulse under either setting). The default turns to Burned with the seam.
+- **The account's side** (`sim/ecu/overrun.fm`, `sim/combustion/combustion.fm`: card N1's seam, 991a00d3 to
+  682ba1fe, from docs/handoffs/g-exhaust.md, "The pops' seam") feeds it under `ecu.model` 1. Charges are kept by
+  cylinder until their exhaust valve opens; premixed slugs are lit by their own flame or by the bank's held blowdown
+  while still flammable. The default stays Carved until the owner has heard the clips (the lead's ruling, 25 Nov); the
+  reference ECU's dice (`ecu.model` 0) fire the carved pulse under either setting.
 - Cost: one Wiebe step per burn alight, about 8 ns while one burns; nothing otherwise. `exhaust.model` 0 never reads
   it (the engine identity test passes with `bang` at its default).

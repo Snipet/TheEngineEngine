@@ -324,18 +324,18 @@ namespace
         picture("tune.fuel", *rig.host);
         for (const std::string& clash : tee::test::u4::textClashesOf(rig.host->draw(), 1100.0f, 700.0f))
             CHECK_MSG(false, clash);
-        // Next: Race (one gesture), the knock-limit table shown, its bake said.
+        // Next: by octane, Premium (93) (one gesture), the knock-limit table shown, its bake said.
         const int steps = doc.steps();
         const funkgui::Rect next = tee::ui::tuneFuelButton(*rig.ws, 1);
         CHECK(!next.isEmpty());
         rig.host->click(next.centreX(), next.centreY());
         state = "baking spark map 3 of 9";
         rig.settle();
-        CHECK(std::lround(doc.get(grade)) == 3);
+        CHECK(std::lround(doc.get(grade)) == 9);
         CHECK(doc.steps() == steps + 1);
         CHECK(tee::ui::tuneShownMap(*rig.ws) == 7);
         t = tee::ui::tuneFuelText(*rig.ws);
-        CHECK_MSG(has(t, "Race | AKI 100   RON 104   MON 96 | Premium (91) to Race: the knock-limit table re-bakes (baking spark map 3 of 9)."), t);
+        CHECK_MSG(has(t, "Premium (93) | AKI 93   RON 98   MON 88 | Premium (91) to Premium (93): the knock-limit table re-bakes (baking spark map 3 of 9)."), t);
         picture("tune.fuel.baking", *rig.host);
         // The bake lands: the table (baked before at 4 deg everywhere, now 3 off boost and 1 on it) in degrees.
         const int kl = doc.find("ecu.maps.knockLimit"), kla = doc.find("ecu.maps.knockLimitAuto");
@@ -348,7 +348,7 @@ namespace
         m.y[1] = 1.8;
         m.z[0][0] = m.z[0][1] = m.z[1][0] = m.z[1][1] = 4.0;
         doc.beginGesture();
-        doc.set(grade, 2.0);                 // back to Premium with a baked table, then Race again
+        doc.set(grade, 2.0);                 // back to Premium (91) with a baked table, then Premium (93) again
         doc.setMap(kl, m);
         doc.set(kla, 0.0);
         doc.endGesture();
@@ -364,11 +364,11 @@ namespace
         state = "baked";
         rig.settle();
         t = tee::ui::tuneFuelText(*rig.ws);
-        CHECK_MSG(has(t, "Premium (91) to Race: 1.0 deg more advance off boost, 3.0 deg more advance on boost"), t);
+        CHECK_MSG(has(t, "Premium (91) to Premium (93): 1.0 deg more advance off boost, 3.0 deg more advance on boost"), t);
         picture("tune.fuel.baked", *rig.host);
         for (const std::string& clash : tee::test::u4::textClashesOf(rig.host->draw(), 1100.0f, 700.0f))
             CHECK_MSG(false, clash);
-        // Up to the untested grades: marked; past the end, nothing moves.
+        // Up the octanes (E85, Methanol, Race, then the untested grades): marked; past the end, nothing moves.
         for (int i = 0; i < 6; ++i)
         {
             rig.host->click(next.centreX(), next.centreY());
@@ -419,4 +419,99 @@ namespace
         CHECK(table.exponent > 3.0 && table.exponent < 4.0);
         return 0;
     }
+
+    // The octane as a number (spec.fuel.octane, the pump's AKI; 0: the grade's own) beside the grade: typed in the band
+    // (one gesture; a word that is no number in range refused), its RON and MON as the simulator derives them (by the
+    // grade's sensitivity, fuels.fm fuelOctaneAt), a mark in words past the knock law's fit (fuelOctaneExtrapolated's
+    // limits, read from the simulator's text), the change re-baking as a grade's does, one press back to the grade's
+    // own; none for a diesel.
+    VIEW_TEST(testTuneOctane, "tune.octane")
+    {
+        StageRig rig(tee::ui::makeTuneWorkspace, 1100, 700, 1.0f, 4.6);
+        auto& doc = rig.demo.doc;
+        const int grade = doc.find("fuel.grade"), octane = doc.find("fuel.octane");
+        CHECK(grade >= 0 && octane >= 0);
+        tee::ui::FrameServices svc;
+        std::string state = "baked";
+        svc.simSource = simSource;
+        svc.sparkMap = [&state] { return state; };
+        rig.demo.ctx.services = &svc;
+        {
+            // the knock-limit table baked, as the shipped builds have it (its unbaked note lies over the cells)
+            doc.beginGesture();
+            doc.set(doc.find("ecu.maps.knockLimitAuto"), 0.0);
+            doc.endGesture();
+        }
+        rig.settle();
+        // The grade's own: empty, its AKI shown dim over the field.
+        std::string t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Premium (91) | AKI 91   RON 96   MON 86 | Against"), t);
+        const funkgui::Rect field = tee::ui::tuneFuelButton(*rig.ws, 2), own = tee::ui::tuneFuelButton(*rig.ws, 3);
+        CHECK(!field.isEmpty() && !own.isEmpty());
+        picture("tune.octane.own", *rig.host);
+        // 95: RON 95 + (96 - 86) / 2 = 100, inside the fit; one gesture.
+        const int steps = doc.steps();
+        rig.host->click(field.centreX(), field.centreY());
+        typeKeys(*rig.host, "9 5 enter");
+        state = "baking spark map 1 of 9";
+        rig.settle();
+        CHECK_NEAR(doc.get(octane), 95.0, 1e-9);
+        CHECK(doc.steps() == steps + 1);
+        CHECK(tee::ui::tuneShownMap(*rig.ws) == 7);
+        t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Premium (91) | AKI 95   RON 100   MON 90 | Premium (91) to Premium (91) at 95: the knock-limit table re-bakes (baking spark map 1 of 9)."), t);
+        CHECK_MSG(!has(t, "EXTRAPOLATED"), t);
+        // 97: RON 102, past the fit: marked in words.
+        rig.host->click(field.centreX(), field.centreY());
+        typeKeys(*rig.host, "9 7 enter");
+        rig.settle();
+        t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "AKI 97   RON 102   MON 92 | EXTRAPOLATED: the knock fit is RON 80 to 100 | Premium (91) at 95 to Premium (91) at 97"), t);
+        picture("tune.octane", *rig.host);
+        for (const std::string& clash : tee::test::u4::textClashesOf(rig.host->draw(), 1100.0f, 700.0f))
+            CHECK_MSG(false, clash);
+        // Not a number, or out of the field's range: refused, nothing moves.
+        const int before = doc.steps();
+        rig.host->click(field.centreX(), field.centreY());
+        typeKeys(*rig.host, "x enter");
+        typeKeys(*rig.host, "escape");
+        rig.settle();
+        CHECK_NEAR(doc.get(octane), 97.0, 1e-9);
+        CHECK(doc.steps() == before);
+        // One press back to the grade's own.
+        rig.host->click(own.centreX(), own.centreY());
+        rig.settle();
+        CHECK(doc.get(octane) == 0.0);
+        t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Premium (91) | AKI 91   RON 96   MON 86 | Premium (91) at 97 to Premium (91):"), t);
+        // A diesel: no octane, no field.
+        doc.beginGesture();
+        doc.set(octane, 95.0);
+        doc.set(grade, 6.0);
+        doc.endGesture();
+        rig.settle();
+        t = tee::ui::tuneFuelText(*rig.ws);
+        CHECK_MSG(has(t, "Diesel | No octane: lit by compression |"), t);
+        CHECK(tee::ui::tuneFuelButton(*rig.ws, 2).isEmpty() && tee::ui::tuneFuelButton(*rig.ws, 3).isEmpty());
+        // The smallest stage: the numbers on a row of their own, nothing over anything.
+        {
+            StageRig small(tee::ui::makeTuneWorkspace, tee::test::views::FrameSize::smallest, 1.0f, 4.6);
+            small.demo.ctx.services = &svc;
+            auto& d = small.demo.doc;
+            d.beginGesture();
+            d.set(d.find("fuel.octane"), 97.0);
+            d.set(d.find("ecu.maps.knockLimitAuto"), 0.0);
+            d.endGesture();
+            small.settle();
+            picture("tune.octane.small", *small.host);
+            for (const std::string& clash : tee::test::u4::textClashesOf(small.host->draw(), 1100.0f, 700.0f))
+                CHECK_MSG(false, clash);
+        }
+        // The fit's limits, read from the simulator's text.
+        const tee::ui::fuel::Table table = tee::ui::fuel::parse(simSource("combustion/fuels.fm"), simSource("combustion/knock.fm"));
+        CHECK(table.fitLo == 80.0 && table.fitHi == 100.0);
+        CHECK(!table.extrapolated(2, 0.0) && !table.extrapolated(6, 200.0));
+        return 0;
+    }
 }
+

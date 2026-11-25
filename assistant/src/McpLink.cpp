@@ -124,6 +124,10 @@ namespace tee::assistant
 
     bool McpLink::start(std::string& why)
     {
+        (void)drivers_;   // (the link's, on macOS and Linux)
+        (void)listen_;
+        (void)wake_;
+        (void)workerStop_;
         why = wire::kNoLink;
         return false;
     }

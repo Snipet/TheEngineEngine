@@ -12,8 +12,8 @@ namespace tee::ui
     void tuneChoose(Workspace& w, int map);
     // Where the BAKE button is (empty: not shown).
     funkgui::Rect tuneBakeButton(Workspace& w);
-    // The fuel band's Prev (dir < 0) and Next buttons (empty: not shown), its words ("name | octane | effect"), and
-    // which map is shown.
+    // The fuel band's Prev (dir < 0) and Next (1) buttons, its octane field (2) and its GRADE'S OWN button (3) (empty:
+    // not shown); its words ("name | octane | [mark |] effect"), and which map is shown.
     funkgui::Rect tuneFuelButton(Workspace& w, int dir);
     std::string tuneFuelText(Workspace& w);
     int tuneShownMap(Workspace& w);

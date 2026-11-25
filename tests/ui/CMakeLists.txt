@@ -28,7 +28,7 @@ endif()
 target_link_libraries(tee_ui_test_funkgui PUBLIC tee_ui_funkgui_headers
                       $<TARGET_PROPERTY:FunkGuiCore,INTERFACE_LINK_LIBRARIES>)
 
-add_executable(tee-ui-tests Tests.cpp MockPlayer.h MockSpec.h RefTests.inc WidgetTests.inc BindTests.inc AppTests.inc)
+add_executable(tee-ui-tests Tests.cpp MockPlayer.h MockSpec.h RefTests.inc WidgetTests.inc BindTests.inc AppTests.inc InspectTests.inc)
 target_link_libraries(tee-ui-tests PRIVATE tee_ui_app tee_ui_ref tee_ui_kit tee_ui_test_funkgui)
 tee_ui_warnings(tee-ui-tests)
 target_compile_definitions(tee-ui-tests PRIVATE
@@ -50,7 +50,9 @@ set(TEE_UI_TESTS
   widgets.gallery
   fieldport fieldparams page.generated gui.auto gui.widgets page.split
   display.tail
-  gui.element page.array page.array.narrow)
+  gui.element page.array
+  inspect.type inspect.scrub inspect.filter inspect.keys inspect.dials
+  textfield.draft look.error page.array.narrow)
 foreach(_t IN LISTS TEE_UI_TESTS)
   add_test(NAME ui.${_t} COMMAND tee-ui-tests ${_t})
 endforeach()

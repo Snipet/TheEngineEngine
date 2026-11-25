@@ -58,6 +58,15 @@ an untested grade is in amber and says so in words. One line of what it changes:
 the end gas waits than on Regular (knock.fm's exponent, read from its text); after a change, the knock-limit map is
 shown, the line gives the bake's state as the host says it, and once the table is re-baked, its change in degrees off
 boost (load up to 1) and on boost (above 1), the mean over its cells. With `fuel.model` on Reference it says the grade
-is not read. Pressing the band (off its buttons) selects `fuel.grade`: the inspector's menu.
+is not read. Pressing the band (off its buttons) selects `fuel.grade`: the inspector's menu. PREV FUEL and NEXT FUEL go in the
+order of the table's AKI (so Premium (93) follows Premium (91)), the index where the table has no number.
 
-Tests: `ui.tune.fuel`, `ui.build.tune.fuel` (the real Spec: the grade changed in the band re-keys the knock limit, undone the same key), `ui.tune.stage`, `ui.tune.large` (with `tune.paper`), `ui.tune.edit`, `ui.tune.inspector`, `ui.tune.absent`, `ui.tune.bake`, `ui.tune.knocklimit`.
+The octane as a number (`fuel.octane`, the pump's AKI; card N1): OCTANE and a field beside the grade, empty while it is
+0 (the grade's own, whose AKI is drawn dim in the field), GRADE'S OWN to go back in one press. Typed: a number in the
+field's range, one gesture; anything else is refused and the field stays open. Its RON and MON are derived as the
+simulator derives them (fuels.fm `fuelOctaneAt`: RON = AKI + (RON - MON) / 2 by the grade's own sensitivity); past the
+knock law's fit (`fuelOctaneExtrapolated`'s limits, read from its text) an amber EXTRAPOLATED says so in words. A change
+of number is followed as a change of grade is ("Premium (91) to Premium (91) at 95: ..."). A diesel has no field. On a
+narrow stage the numbers and the mark take a row of their own.
+
+Tests: `ui.tune.fuel`, `ui.tune.octane`, `ui.build.tune.fuel` (the real Spec: the grade changed in the band re-keys the knock limit, undone the same key), `ui.tune.stage`, `ui.tune.large` (with `tune.paper`), `ui.tune.edit`, `ui.tune.inspector`, `ui.tune.absent`, `ui.tune.bake`, `ui.tune.knocklimit`.

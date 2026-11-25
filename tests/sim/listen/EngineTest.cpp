@@ -673,3 +673,36 @@ TEST_CASE("explore: the auto level by camera on four builds", "[listen][engine][
                             20.0 * std::log10(r.rev), 20.0 * std::log10(r.revMax), b.tel("sound.autoGain"));
             }
 }
+
+TEST_CASE("the auto level after a start: the same idle whether the starter is heard or not", "[listen][engine]")
+{
+    // The start must not set the exposure: the starter's crank (loud) or no starter at all (the first sound faint)
+    // leave the idle at one gain. The engine catches some 0.5 s after the key; from 2 s on the two gains agree within
+    // 1 dB, and each is within 1 dB of where it settles (the gain at 8 s). Before the cure, a start whose starter was
+    // not heard left the floor at the first faint sound (Q, rising 0.3 dB a second) and the exposure on the catch's
+    // peak: +15.6 dB against +10.1 with the starter
+    std::vector<double> g[2];
+    for (int k = 0; k < 2; ++k)
+    {
+        Bench b("first");
+        b.write("spec.voices.starterLevel", k == 0 ? 0.0 : -60.0);
+        b.write("spec.voices.rev", b.field("spec.voices.rev") + 1);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        for (int i = 0; i < 32; ++i)
+        {
+            if (i == 7)
+                b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+            b.play(0.25);
+            g[k].push_back(b.tel("sound.autoGain"));
+        }
+    }
+    std::printf("the gain after a start, starter heard / muted:");
+    for (std::size_t i = 3; i < g[0].size(); i += 4)
+        std::printf("  %.2f s %+.1f / %+.1f", 0.25 * double(i + 1), g[0][i], g[1][i]);
+    std::printf("\n");
+    for (std::size_t i = 7; i < g[0].size(); ++i)        // from 2 s
+        CHECK(std::fabs(g[0][i] - g[1][i]) < 1.0);
+    for (int k = 0; k < 2; ++k)
+        for (std::size_t i = 15; i < g[k].size(); ++i)   // from 4 s
+            CHECK(std::fabs(g[k][i] - g[k].back()) < 1.0);
+}
