@@ -30,13 +30,13 @@ command -v gh >/dev/null || { echo "ci-status: no gh on the PATH" >&2; exit 1; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 fetch_jobs() {
   gh api "repos/$repo/actions/runs/$1/jobs" \
-    --jq '.jobs[] | "\(.name) \(.id) \(.status) \(.conclusion // "-") "
+    --jq '.jobs[] | "\(.name) \(.id) \(.status) \(.conclusion // "-") \(.steps | length) "
           + ([.steps[]? | select(.conclusion == "failure") | .name] | join("; "))' > "$tmp/$1" 2>/dev/null || true
 }
 export -f fetch_jobs; export repo tmp
 
 echo "CI on $branch of $repo (https://github.com/$repo/actions)"
-declare -A found=() report=()
+declare -A found=() report=() noted=()
 done_yet() { for p in "${required[@]}"; do [ -n "${found[$p]:-}" ] || return 1; done; }
 page=1; seen=0
 while ! done_yet && [ "$page" -le "${TEE_CI_PAGES:-10}" ]; do
@@ -63,8 +63,15 @@ while read -r run status sha created; do
     [ -z "${found[$platform]:-}" ] || continue
     line=$(echo "$jobs" | grep "^$platform " || true)
     [ -n "$line" ] || continue
-    read -r _ job jobStatus conclusion step <<< "$line"
+    read -r _ job jobStatus conclusion steps step <<< "$line"
     [ "$jobStatus" = completed ] || continue
+    # a job cancelled before any step ran because no hosted runner took it (macOS arm64 at busy hours) is no result: it
+    # is named once, so that nobody reads it as one, and the search goes on for the platform's newest finished job
+    if [ "$conclusion" = cancelled ] && [ "$steps" = 0 ] && [ -z "${noted[$platform]:-}" ] &&
+       gh api "repos/$repo/check-runs/$job/annotations" --jq '.[].message' 2>/dev/null | grep -q 'not acquired'; then
+      noted[$platform]=1
+      echo "  ($platform: not acquired (runner capacity) at $sha, run $run: no runner took the job; not a result)"
+    fi
     case "$conclusion" in success|failure) ;; *) continue ;; esac   # a skipped or cancelled job says nothing
     found[$platform]=1
     text="$platform: $conclusion, at $sha ($created), run $run"$'\n'"  https://github.com/$repo/actions/runs/$run/job/$job"
