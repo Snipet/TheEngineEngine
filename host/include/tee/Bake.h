@@ -210,7 +210,9 @@ namespace tee
     //   5  pedals 0.15 and 0.08 below 0.25, run where 0.25 still knocks: a low speed's row measured down to a load that
     //      does not knock, not copied flat from the lowest knocking cell (the V12's 1000 rpm row read 23.2 deg down to
     //      0.2 atm, its idle at -2 deg of spark: N1's find); and spec.fuel.octane in the knock and cam keys (when not 0)
-    inline constexpr int kKnockBakeVersion = 5;
+    //   6  a point reached as an upward sweep reaches it where a part with hysteresis could latch (the two-stage cam's
+    //      band: tel.engine.latched let down, rises ramped; card N1's find)
+    inline constexpr int kKnockBakeVersion = 6;
 
     // The fields that move the knock limit (card N2's list): the engine's compression, displacement, bore and stroke,
     // cylinders and layout; the fuel's kind, grade and model, and its octane number when not 0; the boost section;

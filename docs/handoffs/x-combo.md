@@ -1,4 +1,4 @@
-# X: the whole program under test (handoff, 2026-11-24 17:40 UTC)
+# X: the whole program under test (handoff, 2026-11-25 20:45 UTC)
 
 Package X, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `tests/sim/combo/**`, `content/builds/combo/**`,
 `content/scenarios/combo/**`, `tools/tee-fuzz*`, `scripts/listening-pack.*`, `docs/checkpoints/M2.md`, this file.
@@ -6,17 +6,25 @@ Package X, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `tests/sim/
 **Done, by test** (`tee-tests-combo`; ctest `-R '^combo\.'`; the fast tier is combo.fast-1 to fast-3 (combo's CI share: 165 s scaled) and combo.fast-tags; 84 default cases, each under 30 s; 32 `[nightly]`). The
 harness (`tests/sim/combo/Combo.h`) finds the switches in the Schema (every `spec.<section>.model`, `engine.custom`,
 `engine.wallHeat`: 11 now), so a package's switch is covered the day it lands. Judged in every run: finite, within
-full scale, no guard trip nor FLAG_FAULT, DC under 0.005 FS, largest step within twice the same build's own reference
-(a bang: within the largest of three reference copies with pops on), starts, idles 450 to 1800 rpm, nears its redline,
-moves, stops; every telemetry column finite, in its declared range, else physical by its quantity.
+full scale, no guard trip nor FLAG_FAULT, DC under 0.005 FS, no click, starts, idles 450 to 1800 rpm, nears its
+redline, moves, stops; every telemetry column finite, in its declared range, else physical by its quantity.
+A click (the lead's ruling, 25 Nov 17:24) is a step its neighbouring firing periods lack: where the engine fires, the
+worst step's excess over the median of the same measure in the periods t +- kT (k = 1-4) against twice the reference's
+own (a bang: the largest of three reference copies with pops on); where no period exists, the step over the local
+level against twice the reference's step. Both are printed in a click's detail. Proof it bites: X-015 and X-014 on
+their old tree (62a6a7fd) 7.33/3.19, 4.07/3.64 (its weakest), 7.77/4.60. An upshift's cut with ecu.model 1 under
+fuel.model 0 is bounded at a step of 42 (the lead's ruling, 24 Nov 23:15; "click-shift-cut").
 - archetypes (`content/builds/combo/`: small four, V8, turbo six, large diesel, turbo V8 dual) through the tour with
   nothing and everything on; nightly: through all four scenarios (tour, pull, launch, cold; `content/scenarios/combo/`)
-- every switch alone (V8 tour, six pull); nightly: every pair, every triple
+- every switch alone (V8 tour, six pull); nightly: every pair, every triple (16 ctest shards by subset index mod 16;
+  the soak 66 min on CI's 4 cores with everything in, every shard every night)
 - every switch flipped under load, singly and all in one block; every choice of 10 Spec sections stepped while running;
   builds loaded over each other, with nothing and everything on
 - targeted: turbo with both ECUs (anti-lag, nitrous switched), launch control, dog box, traction on wet (standstill,
   rolling), the four limiter kinds, the engine dyno; the 30-build archetype corpus (6 by default, all nightly)
-- fuzz: random and corner Specs (2 seeds by default, 1-6 and 100-299 nightly, with bounds checks); nothing allocates
+- fuzz: random and corner Specs (2 seeds by default with bounds checks; 1-6 and 100-299 nightly without, in 4 ctest
+  shards of 50 seeds); a seed draws each field from the seed and its path, so it names the same Spec across commits;
+  nothing allocates
   in process with every switch on (operator new; not on Windows); the 10-minute soak (nightly) and an hour by hand
 - decisions (`DecisionsTest.cpp`, fast): each switch written while stopped (D's stopped-switch sequence) reaches the
   engine the build with it on reaches; every switch loaded over every switch off reaches the fresh build; on the
@@ -25,12 +33,19 @@ moves, stops; every telemetry column finite, in its declared range, else physica
 - X-020 closed (N2 896c4b3) and out of Known.h; X-021 closed by the build: large-diesel.json carries D2's truck boost
   (gateSpring 220000, icFlow 0.8, chargeVolume 0.02): boost.model on, 2000 rpm, 1865 N m against the reference's 1933
 - fixed findings held as tests: X-001, X-003, X-007 (`[fixed]`)
-- `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype> <scenario> <switches>`, `--checks`, `--match`
+- `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype|build.json> <scenario> <switches> [--set path=value]`
+  (prints the step and the excess against the reference's), `--checks`, `--match`
 
-**Findings**: 18 filed today. Closed: X-001 (D), X-002 (not a defect), X-003 (H), X-004 (L, C), X-005 (Q), X-006 (H),
-X-007 (D, I), X-008, X-009 (D), X-010 and X-014 and X-015 (N2, G), X-012 (T), X-013 (G), X-018 (H). Open (`Known.h`):
-X-011 standstill (I), X-016 (the four-rotor rotary, the contract's reported heavy case, Q), X-017 (N1, D: charge
-temperature 0 K before the first charge).
+**Findings** (X-001 to X-040; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
+it so it fails again if it returns). Open: X-016 (the heavy case's cost, Q), X-030 and X-031 (the new ECU's shift cut
+and downshift under fuel.model 1: a firing unlike its neighbours as the spark returns; the steward), X-032 (the turbo
+six's lift, N1), X-036 (a DC with car.model and a turbo: the turbo V8 dual, random 103; D and the steward), X-037
+(the pickup diesel's valve.dpOverlap, N1), X-038 (near-zero exhaust pipes, G), X-039 (a supercharged 50 cc single
+with a recirculating blow-off, N2: cured in its held package), X-040 (a near-zero intake runner, N1). X-029, X-038 and
+X-040 run finite at G's and N1's bore floors (5ff6b27d, 28d4df13): they retire on the soak of P's baked push. Closed
+on 25 Nov: X-027 (a bang, under the ruled 42), X-028 (D's 1842d7cd: voices leave the engine bit-equal), X-033, X-034,
+X-035 (the large diesel's firing train, not a click, under the restated check). The reduced builds:
+`content/builds/combo/findings/`.
 
 **Measured** (this container, shared 4 cores; R from the same process; docs/measurements/combo/2026-11-24.md): tour,
 off / every switch on: small four 0.52 / 0.98 R; V8 1.00 / 1.57; turbo six 0.80 / 1.32; large diesel 0.77 / 1.19; the
@@ -41,10 +56,10 @@ built 0.59 to 1.81 R. Soak: 600 s of everything on, 236 s wall, 0 failures, 1.71
 groups, an optional define column); `--quick` rendered 10 files in 90 s here. `docs/checkpoints/M2.md`: what to
 hear in each group and the yes-or-no lines.
 
-**Not run**: the .ps1 (no Windows here), the whole pack (only --quick), the hour soak, the nightly triples; nothing
+**Not run**: the .ps1 (no Windows here), the whole pack (only --quick), the hour soak; nothing
 on macOS or Windows by me (CI only). Nobody has listened to anything. **Outside my paths**: none. **FMinus**: no issue.
 
-**Moving the fixtures out of content/** (the lead's ruling, 25 Nov 15:09; one coordinated step in the next window, the
+**Moving the fixtures out of content/** (the lead's ruling, 25 Nov 15:09; one coordinated step after P's bake, the
 lead calls the order). `content/builds/combo/findings/` (x001 to x040), `pack/` and the five combo archetypes go to
 `tests/sim/combo/builds/`. U5's GarageLibrary already lists nothing under `content/builds/combo/`. Every path that
 reads them today (grep of the tip at 15:08):
