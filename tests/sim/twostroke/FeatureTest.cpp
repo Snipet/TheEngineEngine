@@ -107,12 +107,18 @@ TEST_CASE("the inlets: a disc spits back at low speed and matches the reed high 
     };
     const double reedLow = delivered(nullptr, 0, 4000), discLow = delivered("spec.tsInletKind", 1, 4000);
     const double reedHigh = delivered(nullptr, 0, 13000), discHigh = delivered("spec.tsInletKind", 1, 13000);
-    const double soft = delivered("spec.tsReedHz", 200, 13000);
-    std::printf("delivered at 4000 rpm: reed %.1f mg, disc %.1f mg; at 13 000: reed %.1f, disc %.1f, a 200 Hz reed %.1f mg\n",
-                reedLow * 1e6, discLow * 1e6, reedHigh * 1e6, discHigh * 1e6, soft * 1e6);
+    const double soft = delivered("spec.tsReedHz", 200, 13000), softer = delivered("spec.tsReedHz", 100, 13000);
+    std::printf("delivered at 4000 rpm: reed %.1f mg, disc %.1f mg; at 13 000: reed %.1f, disc %.1f, a 200 Hz reed %.1f mg, a 100 Hz "
+                "reed %.1f mg\n", reedLow * 1e6, discLow * 1e6, reedHigh * 1e6, discHigh * 1e6, soft * 1e6, softer * 1e6);
     CHECK(discLow < 0.9 * reedLow);
     CHECK(std::abs(discHigh - reedHigh) < 0.05 * reedHigh);
-    CHECK(soft < 0.97 * reedHigh);
+    // A reed whose own frequency is near or under the firing frequency (217 Hz at 13 000 rpm) lags each opening and closing,
+    // so it delivers less, and less the softer it is. Measured (the rig, 40 cycles): 550 Hz (the default) 103.6 mg, 200 Hz
+    // 98.5 (-5 %), 100 Hz 88.5 (-15 %); 300 to 800 Hz lie within 2 % of the default. The property is the order, so the checks
+    // are strict orderings; the one ratio, 0.9 for the 100 Hz reed, has a third of its effect as margin.
+    CHECK(softer < soft);
+    CHECK(soft < reedHigh);
+    CHECK(softer < 0.9 * reedHigh);
 }
 
 TEST_CASE("the power valve fills in below the band and leaves the band alone", "[twostroke][powervalve]")
