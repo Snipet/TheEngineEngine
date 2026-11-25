@@ -441,3 +441,19 @@ wheels: torque and boost with the 1 s spread at 1000 / 1100 / 1300 / 1900, p3/p2
 command, and whether the build models EGR there. One patent's 0.90 to 0.93 (no EGR) is the only source; P found no
 second. Then: if 1000 holds on 76.8, (b) and the nozzle go in at the maker's point; if not, the tractor and truck
 state 1100, marked. Pushed only after the next `main`, on the lead's word.
+
+## Ruled 25 Nov 09:40: the nozzle factor stays; the vane surge guard is the defect (N2's nozzle-sensitivity.md, 44878e30)
+
+One agent's table, read by the lead on the branch, not re-measured. **The nozzle's inlet factor stays 1.247:** one
+source (a patent's estimate), no cure for 1000 rpm, an effect only at rated (BSFC 190 to 183, take-up slower).
+**The vane surge guard** (opens the vanes on the surge flag) pins on the 80.6 mm wheel (657 N m at 1000 against 873
+with its gain at 0) and cycles at 1 Hz on the 76.8 (775 pulsing 17 to 75 kPa against 947 at 73 kPa steady): the
+cap's self-reference again, and no cure in principle, because at one engine speed the swallowing line and the surge
+line both run toward the origin. A real VGT has a vane map and a matched wheel, not a surge detector. So "state 1100
+on the tractor and truck" is withdrawn; **(b) goes in at the makers' speeds together with the guard's removal** if
+N2's next table holds (tractor, truck, 2.0 common rail at 36.9 mm with its rated cell, the pickup; the flags in every
+cell; the default-tier cases that name the guard). A wheel too big then surges and says so (U3's oversize warning).
+Asked from the same runs: the turbo's energy ledger at the tractor's 1000 cell (by the lead's unchecked arithmetic
+73 kPa should need p3/p2 near 1.03 at eta_c 0.65, eta_t 0.60, T3 900 K; the model needs 1.40), and why the engine
+sits at phi/knee 0.88 where the rule's flow law put it near 0.99. Before any push: a second measurement of the key
+cells by another agent, and `main` moved.
