@@ -90,3 +90,31 @@ map-and-sizing.patch's companion below; the change itself is held, uncommitted i
 | present tree | 164 / 17 | 336 / 172 | 289 / 173 |
 | map only | 172 / 21 | 337 / 171 | 288 / 171 |
 | map and sizing | 168 / 19 | 332 / 172 | 290 / 174 |
+
+## The held change's final form (the lead's ruling on the sizing; measured, not yet in)
+
+`map-and-sizing.patch` now holds: the knee's law (floored at a tip Mach of 0.8, under the published maps' lowest
+lines: at an idle the knee moved with each firing pulse and the tractor's no-spread clatter comb fell 12.3 -> 3.7 dB),
+the choke's growth to 1.63, the island at 0.58 of the way to choke (the ridge 0.60 / 0.62 / 0.69 / 0.78 at ratios
+1.5 to 3, inside the published ranges, at their edges at 2 and 3; surge/choke unchanged), the sizing rule's 1.15
+read at the design point's tip speed (F's 1.15, its wording under the new law), F's map cases read at each speed's
+own knee, and the sequential case's low point at 2000 rpm (at 2500 the engine now draws the join flow and the valve
+cycles: a finding).
+
+| turbo four, N m / charge kPa g | 1500 | 1800 | 2500 | 4000 | 6200 |
+|---|---|---|---|---|---|
+| a18f1bd4 | 213 / 14 | 227 / 20 | 305 / 75 | 366 / 124 | 289 / 88 |
+| map alone | 218 / 16 | 242 / 26 | 394 / 123 | 364 / 124 | 290 / 88 |
+| map and sizing | 209 / 13 | 227 / 20 | 313 / 80 | 364 / 124 | 289 / 88 |
+
+The diesels' take-ups (settled N m, a18f1bd4 -> map and sizing): tractor 1300 1939 -> 2245, 2.0 at 2500 249 -> 331,
+pickup 1600 654 -> 693; the other six within 1 %.
+
+**The truck at 1300, held 30 s** (heat settled 1 s into each speed; 1 s windows): one state, reached slowly from
+below: from 800 16.1, 19.5, 26.8, 50.7, 55.3, 53.2 kPa at 5 to 30 s; from 2000 52 to 56 kPa throughout. The 5 s case
+reads the climb. Fuel 20.18 g/s on the rack's maximum in both (not a smoke limit: an air-fuel ratio near 7 low and 10
+high). The prediction above (one state within 5 % in the case's window) **failed**: 28.3 / 62.1 kPa then, 15.5 / 52.3
+on the final form, against the 45-60 it said.
+
+Open for the lead's ruling: F's EngineTest's shaft speed at 3500 rpm (79,668 against its 80,000 class bound: the wheel
+the sizing rule now builds is some 9 % larger), and the truck case's window.

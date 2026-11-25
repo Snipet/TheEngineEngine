@@ -1,8 +1,8 @@
 diff --git a/sim/boost/compressor.fm b/sim/boost/compressor.fm
-index 3d0a9c34..d10ce6f5 100644
+index 3d0a9c34..4cc8f7ca 100644
 --- a/sim/boost/compressor.fm
 +++ b/sim/boost/compressor.fm
-@@ -11,13 +11,22 @@
+@@ -11,15 +11,27 @@
  //     The map is written in that rise, tau = PR^(1/3.5) - 1, so the ratio is (1 + tau)^3.5: a cube and a root a
  //     sample, no power function, and the outlet's temperature T2 = T1 (1 + tau / eta) follows at once.
  //   - The flow's scale is the choke flow, mc = 0.45 rho01 a01 A_inducer (the eye's annulus, its hub 0.3 of it) at a
@@ -20,16 +20,23 @@ index 3d0a9c34..d10ce6f5 100644
  //     what makes surge); from the knee down to choke (phi 1) a quarter ellipse to tauC = 0.35 tauK, vertical there;
  //     past choke a steep fall (the wheel a restriction); below phi 0 the reversed flow's branch, a rise with phi^2
  //     (Moore and Greitzer's: pushing air back through a spinning wheel takes pressure).
+-//   - Efficiency: an island, etaMax less 0.9 (phi - phiB)^2 less 0.25 (M - 1.1)^2, phiB 0.45 of the way from the knee
+-//     to choke, M the tip Mach number; never under 0.3. (Judgement: the shape real islands have, with their peak
 +//     (The knee's law from published-compressor-maps.md: with the flag's surge line at 0.8 of the knee it puts surge
 +//     at 0.24, 0.29, 0.36, 0.44 of the choke at the last contour at ratios 1.5, 2, 2.5, 3, against the published
 +//     middles 0.24, 0.30, 0.37, 0.44 (the four small petrol maps and the S400; the 2 L diesel VGT has no published
 +//     map and takes these ranges). A fixed 0.5 put it at 0.31 and 0.38 at 1.5 and 2: surge too far right, its flow
 +//     climbing only 1.22 times from 1.5 to 2 where the published climb 1.45. Read in the file's terms by a mirror of
 +//     this map: docs/measurements/calibration/boost/compressor-map-model.md)
- //   - Efficiency: an island, etaMax less 0.9 (phi - phiB)^2 less 0.25 (M - 1.1)^2, phiB 0.45 of the way from the knee
- //     to choke, M the tip Mach number; never under 0.3. (Judgement: the shape real islands have, with their peak
++//   - Efficiency: an island, etaMax less 0.9 (phi - phiB)^2 less 0.25 (M - 1.1)^2, phiB 0.58 of the way from the knee
++//     to choke (published-compressor-maps.md: the ridge at 0.60, 0.62, 0.69, 0.78 of the choke at the last contour at
++//     ratios 1.5 to 3 against 0.51-0.61, 0.62-0.76, 0.62-0.91, 0.75-0.78, at the edges at 2 and 3; 0.45 put it at
++//     0.56 and 0.72 there, left of every map; the efficiency a tenth of choke right of surge then 0.66-0.69 against
++//     the small wheels' 61-69 %), M the tip Mach number; never under 0.3. (Judgement: the shape real islands have, with their peak
  //     near a ratio of 2.) Past choke the wheel's work a kilogram stays the choke point's (Euler's work does not fall
-@@ -41,8 +50,9 @@ module BoostCompressor
+ //     with the ratio; what the ratio loses is heat), so a compressor driven past choke still loads its shaft.
+ //
+@@ -41,8 +53,9 @@ module BoostCompressor
      float rTip;         // exducer radius, m
      float aInd;         // the inducer's annulus, m^2
      float arWide;       // (A/R / 0.6)^0.25: the choke flow's widening
@@ -41,7 +48,7 @@ index 3d0a9c34..d10ce6f5 100644
      float etaMax;
      float kDuct;        // dt A / L, m s
      // the speed's part (speed(), every 16 samples)
-@@ -71,8 +81,8 @@ module BoostCompressor
+@@ -71,8 +84,8 @@ module BoostCompressor
          rTip = 0.5f * fmaxf(dEx, dInd * 1.05f);
          aInd = 3.14159265f * ri * ri * 0.91f;
          arWide = expf(0.25f * logf(fmaxf(ar, 0.2f) / 0.6f));
@@ -52,7 +59,7 @@ index 3d0a9c34..d10ce6f5 100644
          etaMax = etaPeak;
          const float len = 10.0f * 2.0f * ri + 0.2f;
          kDuct = dt * aInd / len;
-@@ -83,7 +93,14 @@ module BoostCompressor
+@@ -83,7 +96,18 @@ module BoostCompressor
      {
          const float a01 = sqrtf(1.4f * kBoostR * t);
          const float rho01 = p / (kBoostR * t);
@@ -63,12 +70,16 @@ index 3d0a9c34..d10ce6f5 100644
 +    // The knee and the island at a tip Mach number m (published-compressor-maps.md, above)
 +    void knee(float m)
 +    {
-+        phiK = fminf(fmaxf((0.45f + 0.2f * (m - 1.0f)) * kAr, 0.2f), 0.7f);
-+        phiB = phiK + 0.45f * (1.0f - phiK);
++        // (below a tip Mach number of 0.8, under the published maps' lowest speed lines (a ratio near 1.5), the knee is
++        // held at that line's: the law is read from those maps only, and at an idle's few hundred m/s the knee moved
++        // with every firing pulse, its 16-sample steps sounding between the firing harmonics (the diesel clatter case:
++        // 12.3 -> 3.7 dB at the tractor's warm idle))
++        phiK = fminf(fmaxf((0.45f + 0.2f * (fmaxf(m, 0.8f) - 1.0f)) * kAr, 0.2f), 0.7f);
++        phiB = phiK + 0.58f * (1.0f - phiK);
      }
  
      // Every 16 samples: the map at this shaft speed (rad/s) and inlet
-@@ -95,6 +112,7 @@ module BoostCompressor
+@@ -95,6 +119,7 @@ module BoostCompressor
          const float a01 = sqrtf(1.4f * kBoostR * t1);
          mach = u / a01;
          mc = chokeFlow(mach, p1, t1);
@@ -77,19 +88,23 @@ index 3d0a9c34..d10ce6f5 100644
          tau0 = 0.88f * tauK;
          tauC = 0.35f * tauK;
 diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
-index ac4127e4..ed75b21b 100644
+index ac4127e4..07484472 100644
 --- a/sim/boost/machine.fm
 +++ b/sim/boost/machine.fm
-@@ -450,13 +450,20 @@ module BoostMachine
+@@ -450,13 +450,24 @@ module BoostMachine
          const float p3Design = 1.247f * prDesign * pOut;
          const float tDesign = dsl != 0 ? 900.0f : 1150.0f;
          mMatch = fmaxf(vd * nDesign / 120.0f * 1.204f * prDesign * 0.9f, 0.01f);
-+        // (the inducer's choke is the design point's own: the choke flow grows with the tip Mach number to the tip
-+        // limit's (compressor.fm), so the full choke is what a wheel makes only at its limit; the 1.15 below is read
-+        // at the design ratio's tip speed, its operating point taken on the island (phiB: tau 0.93 of the knee's,
-+        // tauK = 0.45 x 0.4 M^2 against the air's): docs/measurements/calibration/boost/compressor-map-model.md)
++        // (the sizing rule's wording under the corrected map, the lead's ruling, not a new constant: F's rule is that
++        // the choke is 1.15 x the design flow (F's judgement, unchanged), meaning the choke the wheel has at its design
++        // speed. Under the old map the full choke came at a tip Mach of 1.2, so the full choke was that; the choke now
++        // grows to the tip limit's 1.63 (compressor.fm, published-compressor-maps.md), and a turbo near a ratio of 2
++        // has 0.82 of the full there: the rule as written left its choke at 1.15 x 0.82 = 0.94 of its own design flow.
++        // So the 1.15 is read at the design ratio's tip speed, the operating point taken on the island (phiB, 0.58 of
++        // the way to choke: tau 0.88 of the knee's, tauK = 0.45 x 0.4 M^2 against the air's):
++        // docs/measurements/calibration/boost/compressor-map-model.md)
 +        const float tauD = expf(logf(prDesign) / 3.5f) - 1.0f;
-+        const float machD = fminf(sqrtf(tauD / (0.93f * 0.18f)), 1.63f);
++        const float machD = fminf(sqrtf(tauD / (0.88f * 0.18f)), 1.63f);
 +        const float chokeAt = 0.3f + 0.7f * machD / 1.63f;
          const float share = layout == BOOST_TWIN ? 0.5f : (layout == BOOST_QUAD ? 0.25f : (layout == BOOST_SEQUENTIAL ? 0.5f : 1.0f));
          for (int t = 0; t < BOOST_TURBOS; ++t)
@@ -102,7 +117,7 @@ index ac4127e4..ed75b21b 100644
              float dInd = s->compInducer > 0.0f ? s->compInducer : 2.0f * sqrtf(aAnn / (0.91f * 3.14159265f));
              float dEx = s->compExducer > 0.0f ? s->compExducer : dInd / 0.7416f;
              if (sc == 3 && s->compExducer <= 0.0f)
-@@ -470,7 +477,7 @@ module BoostMachine
+@@ -470,7 +481,7 @@ module BoostMachine
              if (t == 0)
                  compFlowHas = 0.0f;
              if (t < turbos && !(layout == BOOST_COMPOUND && t == 0))
@@ -111,6 +126,31 @@ index ac4127e4..ed75b21b 100644
              const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
              const float rc = 0.6f * dT;
              float aNoz = 0.0f;
+diff --git a/tests/sim/boost/LayoutTest.cpp b/tests/sim/boost/LayoutTest.cpp
+index 9368e925..9be86b91 100644
+--- a/tests/sim/boost/LayoutTest.cpp
++++ b/tests/sim/boost/LayoutTest.cpp
+@@ -38,13 +38,18 @@ namespace
+ 
+ TEST_CASE("boost: a sequential pair's second turbo joins above its flow", "[boost][layout]")
+ {
++    // (the low point is one whose engine draws under the join flow: on the corrected compressor map
++    // (published-compressor-maps.md) the first turbo makes 67 kPa at 2500 rpm, which draws 0.069 to 0.073 kg/s against
++    // the join flow's 0.0727, and the valve cycles there (a finding sent to the lead); at 2000 the draw is well under
++    // it. The property is the join's flow, not a speed: checked below)
+     Rig low;
+-    build(low, 3, 2500.0);
++    build(low, 3, 2000.0);
+     low.run(3.0);
++    CHECK(low.get("boost.drawMean") < 0.8 * low.get("boost.seqFlow"));
+     Rig high;
+     build(high, 3, 6500.0);
+     high.run(3.0);
+-    std::printf("sequential at 2500 rpm: valve %.2f, shafts %.0f and %.0f rpm, %.1f kPa; at 6500: valve %.2f, %.0f and %.0f "
++    std::printf("sequential at 2000 rpm: valve %.2f, shafts %.0f and %.0f rpm, %.1f kPa; at 6500: valve %.2f, %.0f and %.0f "
+                 "rpm, %.1f kPa\n", low.get("boost.seqOpen"), low.shaftRpm(0), low.shaftRpm(1), low.boost() / 1000.0,
+                 high.get("boost.seqOpen"), high.shaftRpm(0), high.shaftRpm(1), high.boost() / 1000.0);
+     CHECK(low.get("boost.seqOpen") < 0.05);
 diff --git a/tests/sim/boost/MapTest.cpp b/tests/sim/boost/MapTest.cpp
 index 087ccf03..84af4102 100644
 --- a/tests/sim/boost/MapTest.cpp
