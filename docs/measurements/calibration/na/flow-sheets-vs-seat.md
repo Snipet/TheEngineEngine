@@ -99,6 +99,41 @@ On the K20A2, from the two-stage build's stage A lift (8.5 mm) to stage B (12.65
 here. The form of the limit is the lead's to rule. The 7.0's 6 % shortfall at high lift is content (its port quality,
 P's).
 
+## A second form tried and refuted: valve and port in series (the lead's proposal, 02:12)
+
+The form tested was the curtain at its coefficient (Ac = n 0.73 pi d L) and the port's throat (Ap) as two
+restrictions in series: A = Ac Ap / sqrt(Ac^2 + Ap^2). It adds no new constant. Each head's Ap was read from its own
+sheet's top, so the form passes through the last point. For fairness, the tip's min(q A0, Ac) was anchored the same
+way, with q through the last point. The K20A2's valves are 2 x 35 mm from memory.
+
+Model over sheet, as series | tanh-min:
+
+| lift | LS7 in | LS7 ex | K20A2 in | 882 in | 882 ex |
+|---|---|---|---|---|---|
+| 0.10 in | 1.03 \| 1.04 | 1.06 \| 1.09 | 0.84 \| 0.86 | 0.90 \| 0.93 | 0.83 \| 0.87 |
+| 0.20 in | 0.98 \| 1.02 | 0.84 \| 0.90 | 0.85 \| 0.95 | 0.92 \| 1.03 | 0.79 \| 0.94 |
+| 0.30 in | 0.91 \| 1.00 | 0.88 \| 1.03 | 0.86 \| 1.07 | 0.87 \| 0.95 | 0.82 \| 0.93 |
+| 0.40 in | 0.93 \| 1.09 | 0.88 \| 1.08 | 0.91 \| 1.04 | 0.87 \| 0.92 | 0.89 \| 0.96 |
+| 0.50 in | 0.93 \| 1.05 | 0.93 \| 1.04 | 0.96 \| 1.02 | 0.95 \| 0.97 | 0.96 \| 0.99 |
+| 0.60 in | 0.94 \| 0.99 | 0.95 \| 1.00 | 1.00 \| 1.00 | 1.00 \| 1.00 | 1.00 \| 1.00 |
+
+The port areas read from the tops, as a share of the valves' area: LS7 0.86 / 0.91, K20A2 0.88, 882 0.56 / 0.62.
+
+**Refuted:** the series form under-reads every column through mid-lift, by 7 to 21 % at 0.2 to 0.4 in. A head
+saturates more sharply than two equal restrictions in series. The tanh-min, anchored the same way, stays within -8 to
++9 % from 0.2 in up. The sheets' shape lies between the two. A blend (a power mean with its exponent) would be a
+constant fitted to three heads, so it is not proposed.
+
+**No change to the area law.** The question waits for further production four-valve sheets with stated valve sizes
+and depression (asked of P). If they agree on a shape, it is brought then.
+
+The 7.0's port quality from the LS7 sheet, under today's law (content, P's): least squares on the relative error over
+0.300 to 0.600 in gives portIn 1.44 and portEx 1.68. The model over the sheet at 0.300 / 0.400 / 0.500 / 0.550 /
+0.600 in:
+
+- intake: +0.2 / +7.5 / 0.0 / -2.8 / -5.6 %;
+- exhaust: +3.1 / +4.3 / +0.6 / -1.7 / -3.3 %.
+
 ## Tests
 
 Two integrated valvetrain cases that the trial flipped are kept restated on their properties, and they pass on the
