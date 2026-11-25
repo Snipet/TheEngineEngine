@@ -219,7 +219,9 @@ TEST_CASE("assistant: loading over unsaved changes asks the owner first", "[assi
     Result r = rig.call("load_build", {{"name", "v10"}});
     CHECK(r.isError);
     CHECK(r.value["error"].get<std::string>().find("said no") != std::string::npos);
-    CHECK(rig.questions.size() == 1);
+    REQUIRE(rig.questions.size() == 1);
+    // the frame's dialog (U1's AppFrame::ask) knows a load's question by its start and offers LOAD / KEEP for it
+    CHECK(rig.questions[0].rfind("Claude asks to load \"v10\"", 0) == 0);
     CHECK(rig.build().hash() == hash);
     CHECK(rig.build().name == name);
 

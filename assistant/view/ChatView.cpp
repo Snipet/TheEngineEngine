@@ -195,9 +195,11 @@ namespace tee::assistant::view
                                             "for more low-end torque, what the curve says. Each change it makes is one "
                                             "step you can undo."
                                           : why;
-            markdown::flow(empty_, metrics_, tee::ui::asciiText(words), markdown::Role::dim, kPad, w, yy,
-                           tee::ui::style::kBodyLine, false);
+            yy = markdown::flow(empty_, metrics_, tee::ui::asciiText(words), markdown::Role::dim, kPad, w, yy,
+                                tee::ui::style::kBodyLine, false);
+            addKeyY_ = yy + kGap;
         }
+        addKeyShown_ = emptyShown_ && !canChat && hooks_.addKey != nullptr;
         // Claude's question, over the box
         question_ = markdown::Layout{};
         asking_ = !question.empty();
@@ -263,6 +265,12 @@ namespace tee::assistant::view
         const float top = area.y - scroll_.offset;
         if (emptyShown_)
             markdown::draw(c, th, p, empty_, metrics_, bounds_.x, top, area);
+        if (const auto ak = addKeyButton(); ak.has_value())
+        {
+            const bool hotKey = ak->contains(pointer_);
+            c.rrect(ak->x, ak->y, ak->w, ak->h, 6.0f, p.accent, hotKey ? 2.0f : 0.0f, p.text);
+            markdown::drawText(c, "Add a key", ak->x + 12.0f, ak->y, ak->h, markdown::Role::smallStrong, p.onAccent);
+        }
         for (const Block& b : blocks_)
         {
             if (top + b.y + b.h < area.y || top + b.y > area.bottom())
@@ -290,7 +298,9 @@ namespace tee::assistant::view
 
     funkgui::Cursor ChatView::cursorAt(funkgui::Point pt) const
     {
-        return sendButton().contains(pt) ? funkgui::Cursor::pointingHand : funkgui::Cursor::normal;
+        const auto ak = addKeyButton();
+        return sendButton().contains(pt) || (ak.has_value() && ak->contains(pt)) ? funkgui::Cursor::pointingHand
+                                                                                  : funkgui::Cursor::normal;
     }
 
     void ChatView::pointerDown(const funkgui::PointerEvent& e, funkgui::GestureController&, funkgui::HostServices&)
@@ -308,11 +318,9 @@ namespace tee::assistant::view
                 submit();
             return;
         }
-        if (emptyShown_ && hooks_.addKey && port_ != nullptr)
+        if (const auto ak = addKeyButton(); ak.has_value() && ak->contains(pt))
         {
-            std::string why;
-            if (!port_->ready(why) && conversation().contains(pt))
-                hooks_.addKey();
+            hooks_.addKey();
             return;
         }
         scroll_.press(pt, conversation());
@@ -427,10 +435,24 @@ namespace tee::assistant::view
         send.bounds = sendButton();
         send.title = busy_ ? "Stop Claude" : "Send";
         out.push_back(send);
+        if (const auto ak = addKeyButton(); ak.has_value())
+        {
+            funkgui::A11yItem add;
+            add.id = a11yBase_ + 3;
+            add.role = funkgui::A11yRole::button;
+            add.bounds = *ak;
+            add.title = "Add a key";
+            out.push_back(add);
+        }
     }
 
     bool ChatView::a11yAction(uint32_t id, funkgui::A11yAction, double, funkgui::GestureController&)
     {
+        if (id == a11yBase_ + 3 && addKeyButton().has_value())
+        {
+            hooks_.addKey();
+            return true;
+        }
         if (id != a11yBase_ + 2)
             return false;
         if (busy_ && port_ != nullptr)
@@ -449,7 +471,7 @@ namespace tee::assistant::view
     uint64_t ChatView::drawKey() const
     {
         tee::ui::DrawKey k;
-        k.mix(seen_).mix(draft_).mix(hint_).mix(scroll_.key()).mix(bounds_).mix(pointer_).mix(busy_ ? 1 : 0);
+        k.mix(seen_).mix(addKeyShown_ ? 1 : 0).mix(draft_).mix(hint_).mix(scroll_.key()).mix(bounds_).mix(pointer_).mix(busy_ ? 1 : 0);
         return k.h;
     }
 
@@ -478,11 +500,22 @@ namespace tee::assistant::view
         return funkgui::Point{r.centreX(), r.centreY()};
     }
 
+    std::optional<funkgui::Rect> ChatView::addKeyButton() const
+    {
+        if (!addKeyShown_)
+            return std::nullopt;
+        const funkgui::Rect area = conversation();
+        const funkgui::Rect r{area.x + kPad, area.y - scroll_.offset + addKeyY_, 104.0f, 28.0f};
+        if (r.y < area.y || r.bottom() > area.bottom())
+            return std::nullopt;   // scrolled out of the conversation's part: not pressable where it is not drawn
+        return r;
+    }
+
     std::optional<funkgui::Point> ChatView::centreOfAddKey() const
     {
-        if (!emptyShown_)
+        const auto r = addKeyButton();
+        if (!r.has_value())
             return std::nullopt;
-        const funkgui::Rect r = conversation();
-        return funkgui::Point{r.centreX(), r.y + kPad + tee::ui::style::kBodyLine};
+        return funkgui::Point{r->centreX(), r->centreY()};
     }
 }
