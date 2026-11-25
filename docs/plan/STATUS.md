@@ -43,6 +43,14 @@
 
 ## Landed
 
+- **25 Nov 22:05 UTC: the bake is on the branch at 223f4301** (abadfb4b; not in `main`). Every build re-baked
+  (knock 6, cam 4): 28 knock tables, 14 cam maps, 31 builds gated warm and cold, five proofs. With it on the
+  branch since `main`: the diesel package; the clutch's latch; bangs Burned in the pipe by default with the
+  exposure rule; the bores' floors; the fan's tone; the predictor's approach from below (the two-stage's notch);
+  the Logitech G29 on macOS and Linux with its WHEEL row, `tee-wheel-dump` and the input probe (never yet on a
+  wheel); the assistant's build list and yes/no dialog; DRIVE's dials with numbers clear of the needle and
+  tight round scales; Rows as the inspector, live at launch, with the part card. `main` waits on CI for the
+  baked commit and on one macOS-only red in a shell test of the assistant's question (B).
 - **25 Nov 20:41 UTC: frozen for the bake at 9c33806c** (not in `main`). The window landed: the diesel package;
   the clutch's latch; bangs Burned in the pipe as the default with G's fix and L's exposure rule for them; the
   bores' floors; the fan's tone; the predictor reading a point as an upward sweep reaches it (the two-stage's

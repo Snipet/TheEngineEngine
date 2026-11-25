@@ -1136,16 +1136,61 @@ next message boundary: C announced a push while "holding" was still unread, and 
 the turn stopped it. So: the hold is asked first, every answer is collected, and a session that has not answered
 is interrupted, not assumed.
 
+## 25 Nov 22:05 UTC: THE BAKE IS ON THE BRANCH (223f4301); what it met; what `main` waits for
+
+**The baked commit:** abadfb4b (P; `[soak]` alone on its last line), on the branch at 223f4301. Full bake, knock
+version 6 and cam version 4: 28 knock tables, 14 cam maps, all 31 builds gated idle, warm and cold; the five
+proofs (first.json, the V10, the tractor, the hot hatch, the rotary) read Current at once on an empty cache.
+The trees are the frozen ones: `sim` 94c3c479, `host` 80df52e0, `tools` 50b8ac3a. P's rows and report follow.
+
+**Two default-run tests met the content at their bounds, and neither was the bake's fault:**
+- #348 `diesel.governor-injection` (before the bake): its "none" arm assumed the 2.0 archetype states no ceiling;
+  the archetype now states VW's 320 N m. D2 made both arms explicit (ea1480e4), shown to hold and to bite.
+- #337 `core: the engine's cases`, "the application's first build, written after a default init, runs as an init
+  with it would" (after the bake): 2.6 % against 2 %. The integrator measured: 1.7 % on the old tables already;
+  the read (3 to 4 s after full throttle) sat on a turbo still rising 7 %; with the same six bias draws on each
+  route the routes pair within 1 %, so not the init order. Restated (8c0f746a): read at 5 to 6 s; bound 2.5 % from
+  the spread of fourteen inits (2.4 %); a new EXACT check that every model switch is the same on all routes,
+  which catches a dropped field a torque bound cannot (three shown). Baked: 349.2 / 346.7 / 349.2 N m, 0.7 %.
+- **OPEN, the integrator's first item of the next window:** with the same bias draws AND the same states of both
+  noise streams the two routes still part by up to 1.5 % at 5 to 6 s. Some other starting state differs between
+  "written after init" (what the application does on every load) and "initialised over it". Find it by the diff
+  of every field right after start; a field one route sets and the other does not is a fault. Until then the
+  2.5 % bound sits 0.1 % over the measured spread and may go red at a later bake with no fault.
+
+**Landed after FROZEN (ui, app, shell, tests, docs only):** B's WHEEL row (f4ac7487; macOS and Linux), the G29 on
+Linux (7cc11146: evdev, the kernel's hid-lg4ff; never on a wheel), the lint fix for its three files (cbc78cfb:
+B's Linux push failed scripts/lint.sh, the Linux CI job's first step; B found it, the lead ran the lint to
+confirm), the whole-chain test for the assistant's question (8f0359fe) and its waiting-on-state form with a
+print at a miss (9eb0dc09); U1's dial scales (8b6eae90: round steps filling three quarters of the sweep), Rows
+attached at launch (1ce8d1b0: J2 found the launch workspace's rows dead until a workspace switch), J2's full
+stop with U1's two re-blessed frame.help goldens (b79ac48e); J2's build.rows and the part card in the half of
+the stage away from the press (3aaf92fd, b08060ad).
+
+**RED on macOS, and it gates `main`:** `shell.app.cases`, tests/shell/app/AskChainTest.cpp:157 (the assistant's
+load over a dirtied document: the frame's question never opens), 2 of 2 macOS runs (f1f60ab8, 67a4ebe5); green
+on Linux and Windows. So not a slow runner: on macOS the question does not reach the frame, or the call returns
+without asking. B's 9eb0dc09 prints the call's reply, the dialog, the document and the engine at the miss; the
+next macOS run says which. If it is in the tools, card A's.
+
+**Process faults of this stretch, each told by the one who made it:** J2 pushed 63131c17 on a tier count read
+from a stale log (its watch matched the previous run's "EXIT" line); the real tier then passed 593 of 593; J2
+now waits on the process and writes fresh logs. B's Linux push went out without the lint; B found it. The lead
+"assigned" G another card's files (the intake's): a session's paths are not the lead's to widen; N1, who holds
+them, did the work. A hold sent into a running turn is not read until that turn ends: the lead now breaks in
+(priority now) on any session that may be mid-push.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 20:41 UTC: FROZEN FOR THE BAKE at 9c33806c.** Nothing is pushed under `sim/`, `host/` or `tools/`
-  until P's baked commit is on the branch. The trees: `sim` 94c3c479, `host` 80df52e0, `tools` 50b8ac3a. Both
-  bake versions moved (knock 6, cam 4): P bakes every build.
-- **Open during the bake:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, docs. Push rule as before (one
-  green whole default tier on a merged state, then merge a moved tip and push, saying what was not in the run).
-  A test that needs a change under sim/, host/ or tools/ to pass waits.
-- **P's push is ONE push**, with `[soak]` alone on its own last line. While P is in its final merge, tier and
-  push (P says when), nobody pushes: the lead asks for "holding" then, as for U1.
-- **`main`** is at 43006034 and moves, fast-forward, to the baked commit when Linux, macOS and Windows are each
-  green on a commit whose `sim/`, `host/`, `tools/` equal the bake's.
-- **After the bake:** the fixtures' move; then the next window opens here.
+- **25 Nov 22:05 UTC: THE BAKE IS ON THE BRANCH at 223f4301** (abadfb4b). `sim/`, `host/` and `tools/` STAY
+  CLOSED: `main` first. The trees: `sim` 94c3c479, `host` 80df52e0, `tools` 50b8ac3a.
+- **`main`** is at 43006034 and moves, fast-forward, to the first commit that (a) contains abadfb4b, (b) has
+  those three trees, and (c) is green on Linux, macOS and Windows. Today that needs the macOS red in
+  `shell.app.cases` (B; perhaps card A) understood and cured.
+- **Open now:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, docs. Push rule as before (one green whole
+  default tier on a merged state, then merge a moved tip and push, saying what was not in the run; run
+  `scripts/lint.sh` before pushing: it is CI's first step on Linux).
+- **U1** pushes only a pure fast-forward of a tested state: it tells the lead when ready; the lead collects a
+  "holding" from every pusher (breaking into running turns), then names the tip.
+- **After `main`:** the fixtures out of content/ (X, N1, the integrator, P); then the lead opens the next window
+  here with its list (the integrator's starting state first).
