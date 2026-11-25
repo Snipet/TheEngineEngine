@@ -16,10 +16,16 @@
 // have yet reads NaN and draws a dash; the car then turns its wheels by the road speed. Clicking the car selects "car",
 // the road "env", the tree "car" (its strip settings live there). Canvas primitives only: the body is a polyline and
 // capsules (no rotation, no filled polygon), the wheels discs with spokes, the road a line with marks that pass.
+//
+// The dash above the car has styles (Dash.h; the owner's ask, 25 Nov): STANDARD (the instruments above), CLASSIC,
+// DIGITAL and RACE. The driver picks one with the DASH buttons at the stage's top right, which show where the shell
+// keeps the choice (FrameServices::driveStyle); STANDARD's layout is the first one, the same to the pixel.
 #include "app/Cockpit.h"
 #include "app/Look.h"
 #include "app/Workspace.h"
+#include "kit/widgets/Basic.h"
 #include "kit/widgets/Gauge.h"
+#include "views/drive/Dash.h"
 
 #include <algorithm>
 #include <array>
@@ -58,6 +64,79 @@ namespace tee::ui
             speedo_->setTicks(6, 2);
             speedo_->setClearNumerals(true);
             speedo_->setReadout([](double v) { return look::num(v, "%.0f"); });
+            tach_->setHelp("The engine's speed; the red band from its redline");
+            speedo_->setHelp("The car's speed on the road");
+            // CLASSIC's small dials (Dash.h's table): each reads its channel in the user's unit.
+            for (int i = 0; i < dash::kDials; ++i)
+            {
+                const dash::Dial& d = dash::dial(i);
+                Gauge& g = make<Gauge>(d.title, [this, i] {
+                    const dash::Dial& dd = dash::dial(i);
+                    return ctx_.units.toUser(dd.quantity, ctx_.live.get(dd.name));
+                }, 0.0, 1.0);
+                g.setTicks(4, 2);
+                g.setClearNumerals(true);
+                g.setReadout([dec = d.decimals](double v) { return std::isfinite(v) ? formatNumber(v, dec) : std::string("-"); });
+                g.setHelp(d.help);
+                dials_[static_cast<std::size_t>(i)] = &g;
+            }
+            // The style's buttons (shown only where the shell keeps the choice).
+            for (int s = 0; s < dash::kStyles; ++s)
+            {
+                Button& b = make<Button>(dash::styleName(s), [this, s] { setStyle(s); });
+                b.setLit([this, s] { return style() == s; });
+                b.setHelp(dash::styleHelp(s));
+                styles_[static_cast<std::size_t>(s)] = &b;
+            }
+            a11yBase_ = nextId();   // the drawn dashes' readouts (accessibility()): past every item's ids
+        }
+
+        // The dash's style: the shell's choice where it keeps one, else this workspace's own.
+        int style() const
+        {
+            const FrameServices* f = ctx_.services;
+            const int s = f != nullptr && f->driveStyle ? f->driveStyle() : style_;
+            return std::clamp(s, 0, dash::kStyles - 1);
+        }
+        void setStyle(int s)
+        {
+            style_ = std::clamp(s, 0, dash::kStyles - 1);
+            if (ctx_.services != nullptr && ctx_.services->setDriveStyle)
+                ctx_.services->setDriveStyle(style_);
+            place(stage_);
+        }
+        // The buttons show where the shell serves the choice (a test's rig may serve it too).
+        bool chooser() const { return ctx_.services != nullptr && ctx_.services->driveStyle && ctx_.services->setDriveStyle; }
+
+        void accessibility(std::vector<funkgui::A11yItem>& out) const override
+        {
+            Board::accessibility(out);
+            const int st = style();
+            if (st != dash::kDigital && st != dash::kRace)
+                return;
+            // The drawn dash's readouts, as a screen reader hears them.
+            const dash::Values v = dash::Values::read(ctx_.live);
+            const Units& u = ctx_.units;
+            uint32_t id = a11yBase_;
+            const auto add = [&](std::string title, std::string value) {
+                funkgui::A11yItem it;
+                it.id = id++;
+                it.role = funkgui::A11yRole::staticText;
+                it.bounds = dash_;
+                it.title = std::move(title);
+                it.value = std::move(value);
+                it.readOnly = true;
+                out.push_back(std::move(it));
+            };
+            add("Gear", dash::gearText(v.gear));
+            add("Engine", look::num(v.rpm, "%.0f") + " rpm" + (v.limiter ? ", on the limiter" : ""));
+            add("Road speed", std::isfinite(v.speed) ? u.format(Quantity::speed, v.speed, 0) : "-");
+            add("Shift lights", std::to_string(v.lights) + " of 5" + (v.shift ? ", shift" : ""));
+            for (const dash::Channel& ch : dash::channels(v, u))
+                add(ch.label, ch.value + (ch.unit.empty() ? "" : " " + ch.unit) + (ch.alarm != nullptr ? std::string(", ") + ch.alarm : ""));
+            add("Torque", std::isfinite(v.torque) ? u.format(Quantity::torque, v.torque, 0) : "-");
+            add("Power", std::isfinite(v.power) ? u.format(Quantity::power, v.power, 0) : "-");
+            add("Longitudinal g", look::num(std::isfinite(v.accel) ? v.accel / 9.80665 : v.accel, "%+.2f"));
         }
 
         const char* id() const override { return "drive"; }
@@ -82,6 +161,13 @@ namespace tee::ui
             const EngineBrakeState eb = engineBrakeState(ctx_);
             k.mix(eb.shown ? 1 : 0).mix(eb.stage).mix(eb.armed).mix(eb.exhaustOn ? 1 : 0).mix(eb.exhaust ? 1 : 0);
             k.mix(roll_).mix(squat_).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
+            if (const int st = style(); st != dash::kStandard)
+            {
+                k.mix(st);
+                for (const char* n : { "engine.speed", "engine.redline", "engine.flags", "engine.torque", "engine.power",
+                                       "exhaust.portTemperature", "ecu.fuelFlow", "ecu.knockRetard", "car.accel" })
+                    k.mix(static_cast<float>(ctx_.live.get(n)));
+            }
             return k.h;
         }
 
@@ -102,11 +188,40 @@ namespace tee::ui
         const funkgui::Rect& treeRect() const noexcept { return tree_; }
         const Gauge& tach() const { return *tach_; }
         const Gauge& speedo() const { return *speedo_; }
+        const Gauge& smallDial(int i) const { return *dials_[static_cast<std::size_t>(i)]; }
+        const funkgui::Rect& dashRect() const noexcept { return dash_; }
+        const Button& styleButton(int s) const { return *styles_[static_cast<std::size_t>(s)]; }
 
     protected:
-        void layout(const funkgui::Rect& s) override
+        void layout(const funkgui::Rect& stage) override
         {
             const float pad = 16.0f;
+            // The style's buttons at the top right, the rest under them.
+            const bool chooser = this->chooser();
+            float bx = stage.right() - pad;
+            for (int i = dash::kStyles - 1; i >= 0; --i)
+            {
+                const float w = 74.0f;
+                styles_[static_cast<std::size_t>(i)]->setPlace({ bx - w, stage.y + 8.0f, w, 24.0f }, chooser);
+                bx -= w + 6.0f;
+            }
+            chooserX_ = bx;
+            funkgui::Rect s = stage;
+            if (chooser)
+            {
+                s.y += 34.0f;
+                s.h -= 34.0f;
+            }
+            const int st = style();
+            laidStyle_ = st;
+            for (Gauge* d : dials_)
+                d->setPlace({}, false);
+            if (st != dash::kStandard)
+            {
+                layoutDash(s, st);
+                return;
+            }
+            dash_ = {};
             const float topH = std::floor(s.h * 0.52f);
             const float side = std::clamp(s.w * 0.30f, 210.0f, 300.0f);
             const float g = std::floor(std::min(topH - 2.0f * pad, (s.w - side - 3.0f * pad) / 2.0f - 8.0f));
@@ -120,6 +235,52 @@ namespace tee::ui
             scene_ = { s.x + pad, by, s.w - stripW - 3.0f * pad, s.bottom() - by - pad };
             strip_ = { scene_.right() + pad, by, stripW, scene_.h };
             // What a press hits: the car (as drawn at rest) and the tree.
+            const Geometry g0 = geometry();
+            carHit_ = { g0.x0, g0.roadY - g0.r * 3.6f, g0.x1 - g0.x0, g0.r * 3.6f };
+            tree_ = { strip_.x, strip_.y, 110.0f, 26.0f + 6.0f * 19.0f + 12.0f };
+        }
+
+        // CLASSIC, DIGITAL, RACE: the dash across the stage's top (a little taller than STANDARD's), the car and the
+        // strip under it as before.
+        void layoutDash(const funkgui::Rect& s, int st)
+        {
+            const float pad = 16.0f;
+            float topH = std::floor(s.h * 0.56f);
+            dash_ = { s.x + pad, s.y + pad, s.w - 2.0f * pad, topH - pad - 8.0f };
+            instruments_ = {};
+            if (st == dash::kClassic)
+            {
+                // Four large-dial squares in a row: eight small dials (two by two) at either end, the tachometer and
+                // the speedometer between; the band (gear, torque, power, g, lamps) under them.
+                const float gap = 12.0f, bandH = 54.0f;
+                const funkgui::Rect a{ dash_.x + 10.0f, dash_.y + 10.0f, dash_.w - 20.0f, dash_.h - 20.0f - bandH - 6.0f };
+                const float b = std::floor(std::min(a.h, (a.w - 3.0f * gap) / 4.0f)), m = std::floor((b - 6.0f) * 0.5f);
+                const float total = 4.0f * b + 3.0f * gap, x0 = a.x + std::floor((a.w - total) * 0.5f);
+                const float y0 = a.y;
+                for (int i = 0; i < dash::kDials; ++i)
+                {
+                    const int k = i % 4;
+                    const float bxo = i < 4 ? x0 : x0 + 3.0f * (b + gap);
+                    dials_[static_cast<std::size_t>(i)]->setPlace(
+                        { bxo + static_cast<float>(k % 2) * (m + 6.0f), y0 + static_cast<float>(k / 2) * (m + 6.0f), m, m }, true);
+                }
+                tach_->setPlace({ x0 + b + gap, y0, b, b }, true);
+                speedo_->setPlace({ x0 + 2.0f * (b + gap), y0, b, b }, true);
+                band_ = { x0, y0 + b + 10.0f, total, bandH };
+                // The dash as tall as the cluster (the car's scene takes the rest).
+                dash_.h = std::min(dash_.h, band_.bottom() + 10.0f - dash_.y);
+                topH = dash_.bottom() + 8.0f + pad - s.y;
+            }
+            else
+            {
+                tach_->setPlace({}, false);
+                speedo_->setPlace({}, false);
+                band_ = {};
+            }
+            const float by = s.y + topH;
+            const float stripW = std::clamp(s.w * 0.34f, 220.0f, 320.0f);
+            scene_ = { s.x + pad, by, s.w - stripW - 3.0f * pad, s.bottom() - by - pad };
+            strip_ = { scene_.right() + pad, by, stripW, scene_.h };
             const Geometry g0 = geometry();
             carHit_ = { g0.x0, g0.roadY - g0.r * 3.6f, g0.x1 - g0.x0, g0.r * 3.6f };
             tree_ = { strip_.x, strip_.y, 110.0f, 26.0f + 6.0f * 19.0f + 12.0f };
@@ -196,12 +357,44 @@ namespace tee::ui
             speedo_->setRange(0.0, std::ceil(vmax / every) * every);
             speedo_->setTicks(static_cast<int>(std::ceil(vmax / every)), 2);
             speedo_->setUnit(upper(ctx_.units.unit(Quantity::speed).name));
+            // The small dials' spans in the user's units (a unit chosen moves them).
+            for (int i = 0; i < dash::kDials; ++i)
+            {
+                const dash::Dial& d = dash::dial(i);
+                Gauge& g = *dials_[static_cast<std::size_t>(i)];
+                const double lo = ctx_.units.toUser(d.quantity, d.lo), hi = ctx_.units.toUser(d.quantity, d.hi);
+                g.setRange(lo, hi);
+                g.setRedline(std::isfinite(d.red) ? ctx_.units.toUser(d.quantity, d.red) : d.red);
+                g.setUnit(ctx_.units.unit(d.quantity).name);
+                const bool fine = std::fabs(hi - lo) < 10.0;
+                g.setNumerals([fine](double v) { return look::num(v, fine ? "%.1f" : "%.0f"); });
+            }
+            // The shell's choice moved (another window, a reload): lay out again.
+            if (style() != laidStyle_ && !stage_.isEmpty())
+                place(stage_);
         }
 
         void drawStage(funkgui::Canvas& c, const funkgui::Theme& th) const override
         {
             const look::Palette p = look::Palette::of(th);
-            drawInstruments(c, p);
+            if (chooser())
+                c.text("DASH", chooserX_, stage_.y + 15.0f, look::kCaps, p.label, funkgui::Align::right);
+            const int st = style();
+            if (st == dash::kStandard)
+                drawInstruments(c, p);
+            else
+            {
+                const dash::Values v = dash::Values::read(ctx_.live);
+                if (st == dash::kClassic)
+                {
+                    c.rrect(dash_.x, dash_.y, dash_.w, dash_.h, look::kRadius, p.panel, 1.0f, p.edge);
+                    dash::drawClassicBand(c, p, band_, v, ctx_.units);
+                }
+                else if (st == dash::kDigital)
+                    dash::drawDigital(c, p, dash_, v, ctx_.units);
+                else
+                    dash::drawRace(c, p, dash_, v, ctx_.units);
+            }
             drawScene(c, p);
             drawStrip(c, p);
         }
@@ -434,6 +627,12 @@ namespace tee::ui
         }
 
         Gauge *tach_ = nullptr, *speedo_ = nullptr;
+        std::array<Gauge*, dash::kDials> dials_{};
+        std::array<Button*, dash::kStyles> styles_{};
+        int style_ = dash::kStandard, laidStyle_ = -1;
+        uint32_t a11yBase_ = 0;
+        float chooserX_ = 0.0f;
+        funkgui::Rect dash_{}, band_{};
         funkgui::Rect instruments_{}, scene_{}, strip_{};
         funkgui::Rect carHit_{}, tree_{};
         float spin_ = 0.0f, roll_ = 0.0f, squat_ = 0.0f, qsFlash_ = 0.0f, blipFlash_ = 0.0f;

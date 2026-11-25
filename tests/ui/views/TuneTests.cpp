@@ -393,10 +393,26 @@ namespace
         doc.endGesture();
         rig.settle();
         CHECK(has(tee::ui::tuneFuelText(*rig.ws), "The reference burn does not read the grade"));
+        // The literals' reader, whatever the platform's stream parser does with a suffix (libc++'s took 'f' into the
+        // number): suffixed, capital, bare and exponent forms read; a malformed list reads as nothing.
+        {
+            const std::vector<double> v = tee::ui::fuel::numberList("{ 91.0f, 96.0f, 100.0F, 87 }");
+            CHECK(v.size() == 4);
+            if (v.size() == 4)
+                CHECK(v[0] == 91.0 && v[1] == 96.0 && v[2] == 100.0 && v[3] == 87.0);
+            const std::vector<double> e = tee::ui::fuel::numberList("{1100.0e3f, -3.402f}");
+            CHECK(e.size() == 2 && e[0] == 1100.0e3 && e[1] == -3.402);
+            CHECK(tee::ui::fuel::numberList("{ 91.0f, x, 87 }").empty());
+            CHECK(tee::ui::fuel::numberList("{ 91.0f 96.0f }").empty());
+            CHECK(tee::ui::fuel::numberList("{ 91.0ff }").empty());
+            CHECK(tee::ui::fuel::numberList("91.0f, 87").empty());
+        }
         // The table's reader on the simulator's file itself: every grade a row, the diesel none, two untested.
         const tee::ui::fuel::Table table = tee::ui::fuel::parse(simSource("combustion/fuels.fm"), simSource("combustion/knock.fm"));
         // (every grade a row: ten since the 93 was appended last, card N1 25 Nov; it a tested spark-lit grade)
         CHECK(table.rows.size() == 10);
+        if (table.rows.size() < 10)
+            return 0;                                    // (said above; never indexed past what was read)
         CHECK(!table.rows[9].compression && !table.rows[9].untested && table.aki(9) == 93.0);
         CHECK(std::isnan(table.aki(6)) && table.rows[6].compression);
         CHECK(table.rows[7].untested && table.rows[8].untested && !table.rows[2].untested);

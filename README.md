@@ -57,8 +57,10 @@ scripts/fetch-llvm.sh                         # FMinus's prebuilt LLVM and WinFl
 cmake --workflow --preset dev-verify
 ```
 
-macOS and Windows are built and tested by CI ([.github/workflows/build.yml](.github/workflows/build.yml)) and by
-nobody's hands yet: say so before relying on either.
+macOS and Windows are built and tested by CI ([.github/workflows/build.yml](.github/workflows/build.yml)). By hand: the
+owner runs the app on macOS (Apple silicon), and on 25 Nov 2026 reported that it launches and runs on Windows (`main`
+at d0a7330e). Nothing more than that has been checked by a person on Windows (the audio device, input, high-DPI
+scaling, the load it runs at): say so before relying on it.
 
 | Preset | Build type | Tree | Workflow (configure, build, test) |
 |---|---|---|---|
