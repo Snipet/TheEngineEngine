@@ -535,3 +535,63 @@ Checked against the tree at d0a7330e by the lead. None was already whole.
 
 **Order, the fleet kept thin (the owner's word, 10:53):** U1 now on 5 then 3 (ui/ and app/ only, no re-key);
 after the diesel `main`: G on 4 and the octane control (1), in one sim/ window with one re-key; 2 as a plan first.
+
+## The pops: G's inventory and the design ruled (25 Nov 11:24; the owner's todo 4)
+
+**Inventory (G's probe, one agent's; nothing changed):** every path ends in the carved `Pop` (a half-sine of 0.25
+to 0.85 ms, then single-sample random clicks dying over 4 to 16 ms). Under `ecu.model` 1 the account's store lights
+when a blowdown is over 900 K and its pulse is `30 kPa (1 - exp(-m / 7 mg))`: 16 mg and 70 mg both give about 30
+kPa. At the defaults what feeds it is the **fuel-cut limiter** (fired cylinders at lambda 0.87, the cut cylinders'
+air beside them): first.json held on its limiter fires 25 to 50 bangs a second at about 26 kPa; the rally five's
+spark cut 212 a second at the ceiling; the overrun itself is silent after 0.3 s. `ecu.pops` does nothing under
+model 1. So the owner most likely heard first.json on its limiter.
+
+**Ruled, to be built by G (sim/exhaust, and with the lead's word the seams in `sim/ecu/overrun.fm` and
+combustion.fm's account call; H has no live session):**
+- A bang is heat released in the collector's gas, fed to the junction as a volume source
+  `q = (gamma - 1) / (gamma p) Qdot`; its energy the account's own fuel mass times the LHV; no pulse shape, no
+  crackle, no ceiling formula.
+- The store split: **premixed** (a charge that never burned: spark cut, misfire, an overrun charge lit late)
+  burns as a flame through its slug; **unmixed** (a rich charge's excess meeting a cut charge's air) burns only as
+  the slugs mix, slowly: heat, not a report. A stock fuel-cut limiter then has no bangs to speak of.
+- The flame speed from the slug's own state (a published laminar-speed correlation at its temperature and
+  pressure, the pipe flow's turbulence, the burned gas's expansion, a slug burning both ways), not a flat 20 m/s:
+  by the lead's unchecked arithmetic about 7 ms for a 0.9 m slug where the flat figure gives 45.
+- `exhaust.bang` appended and **visible** (Carved / Burned in the pipe; the new one the default under
+  `exhaust.model` 1), so the owner compares by ear in the app; `exhaust.model` 0 and the reference ECU's dice to
+  the bit. Anti-lag's heat into the turbine waits.
+- Clips for the owner (first.json: the limiter held 2 s, a lift from 6000, a full-throttle upshift; the rally five
+  on its spark cut), both ways; scenario files in content/scenarios and rows in the listening pack, with the lead's
+  permission. Pushed on the lead's word, in the re-key after D2's.
+
+## Card A's first asks, ruled 11:21
+
+`add_subdirectory(assistant)` after shell: yes. `Build::undoStep()`, `redoStep()`, `gestureOpen()` (ids from 1,
+never reused; append-only): yes, pushed early and alone with the library's skeleton and the step-id tests so the
+host/ change is on the branch before the next bake starts. Added: the assistant's `predict_curve` and `run_dyno`
+join the predictor's and the bake's sharing (`yieldTo`), with a test. The frame's drain calls in app/Main.cpp and
+app/Offline.cpp (B's, asleep) at A2, the exact lines to the lead first.
+
+## D2's two cures are on the branch (25 Nov 11:25; diffs read by the lead)
+
+- **2cf55103, the diesel:** `trimD = diesel.metered != 0 && ecu->pedal >= 0.02f ? 1.0f : ecu->trim` in
+  `chargeDiesel`. Cranking (the reference ECU's pedal 0) keeps its 1.35; cold starts identical to the reading.
+  Tractor at full pedal on the dyno, 800 / 900 / 1000 rpm: 792 / 603 / 638 to 1176 / 1309 / 1552 N m (D2's table).
+  The listen case passes unsplit (the tractor's largest 0.35; its old onset falls at 965 to 995 rpm, not at the
+  trim's step, so that comment's cause was not the trim).
+- **c16af6a2, the petrols (`ecu.model` 1, `sim/ecu/idle.fm`):** on the bench with the pedal open the trim is
+  `clamp(tr, 1.0, 1.35)` below target + 450, as the driven branch already was. Full-load dyno inside the band, N m:
+  small-block 5.7 at 800 / 950 / 1100: 325 / 253 / 151 to 380 / 395 / 409; economy four at 850 / 1000 / 1150: 85 /
+  69 / 43 to 93 / 101 / 107; V12 at 1000 / 1150 / 1300: 489 / 368 / 218 to 566 / 566 / 591; unchanged above the
+  band. Bench free revs come close to the in-car ones (first.json to 97 % of the redline 1.48 to 1.31 s). Idles and
+  cold starts identical to the reading.
+- Whole default tier on the merged tip 28e41156: 540 of 540 (D2).
+- **Found, not caused, not chased:** the nightly "diesel cold, full" case is red on `main` as it stands (governors 1
+  and 2 on models 0 take 17.5 s at 233 K against 8 s). D2's, after this window.
+- Known remainder: `tel.ecu.fuelFlow` under-reads by the trim while cranking and with the pedal shut.
+
+## FREEZE STATE (the lead keeps this the last section; read it before every push)
+
+- **25 Nov 11:26: sim/, host/ and tools/ are FROZEN** (P re-bakes at the tip for the next `main`). ui/, app/,
+  assistant/, tests/ and docs/ pushes are allowed until the line below changes.
+- When P's baked content is pushed, **all pushes freeze** until `main` has moved; the lead will write it here.
