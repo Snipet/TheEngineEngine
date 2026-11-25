@@ -187,6 +187,8 @@ namespace tee
             const double m = manAt < p.fields.size() ? p.fields[manAt] : nan;
             return p.knockRetard + (table.on ? table.at(p.speed, m) : 0.0);
         };
+        // (a point on the rev limiter, PredictPoint::limited, card C's: its torque is no measure, so a missing cell,
+        // as a fault's, wherever the bake reads one)
         const double step = std::max(options.step, 1.0);
         for (double a = 0.0; a <= range + 1e-9; a += step)
             result.advances.push_back(a);
@@ -214,7 +216,7 @@ namespace tee
             std::vector<double> torque, knock;
             for (const PredictPoint& p : curve.points)
             {
-                torque.push_back(p.valid ? p.torque : std::numeric_limits<double>::quiet_NaN());
+                torque.push_back(p.valid && !p.limited ? p.torque : std::numeric_limits<double>::quiet_NaN());
                 knock.push_back(givenUp(p));
             }
             result.torque.push_back(std::move(torque));
@@ -244,7 +246,7 @@ namespace tee
                     return false;
                 for (const PredictPoint& p : curve.points)
                 {
-                    tAt[a].push_back(p.valid ? p.torque : nan);
+                    tAt[a].push_back(p.valid && !p.limited ? p.torque : nan);
                     kAt[a].push_back(givenUp(p));
                 }
             }
@@ -347,7 +349,7 @@ namespace tee
                     return false;
                 for (const PredictPoint& p : curve.points)
                 {
-                    tAt[a].push_back(p.valid ? p.torque : std::numeric_limits<double>::quiet_NaN());
+                    tAt[a].push_back(p.valid && !p.limited ? p.torque : std::numeric_limits<double>::quiet_NaN());
                     kAt[a].push_back(givenUp(p));
                 }
             }
@@ -442,7 +444,7 @@ namespace tee
                 std::vector<double> torque(result.speeds.size(), nan), knock(result.speeds.size(), nan);
                 for (std::size_t k = 0; k < curve.points.size() && k < where.size(); ++k)
                 {
-                    torque[where[k]] = curve.points[k].valid ? curve.points[k].torque : nan;
+                    torque[where[k]] = curve.points[k].valid && !curve.points[k].limited ? curve.points[k].torque : nan;
                     knock[where[k]] = givenUp(curve.points[k]);
                 }
                 std::size_t pos = 0;
@@ -558,7 +560,7 @@ namespace tee
             {
                 const PredictPoint& pa = autoC.points[s];
                 const PredictPoint& pm = mapC.points[s];
-                if (!pa.valid || !pm.valid || pa.torque <= 0.0)
+                if (!pa.valid || !pm.valid || pa.limited || pm.limited || pa.torque <= 0.0)
                     continue;
                 if (pm.torque < (1.0 - options.acceptLoss) * pa.torque && !pa.fields.empty())
                 {

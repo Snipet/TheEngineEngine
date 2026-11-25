@@ -55,7 +55,14 @@ namespace tee
         double acceptLoss = 0.02;
         PredictOptions predict;       // the curves' (their range, speeds: 8 by default here)
 
-        CamBakeOptions() { predict.points = 8; predict.coarse = 8; }
+        // the top speed redline less 300 rpm: at the default 100 the top point sat on the rev limiter on three builds
+        // (card C: economy four -36 N m, v6-35-na -81, flat-plane -155; at 300 all clean), its torque no measure
+        CamBakeOptions()
+        {
+            predict.points = 8;
+            predict.coarse = 8;
+            predict.redlineMarginRpm = 300.0;
+        }
     };
 
     struct CamBakeResult
