@@ -149,18 +149,20 @@ the reference's clatter (sim/sound/extras.fm: six panel modes, 900 to 4800 Hz, l
 its 1900 Hz mode, the pickup's on 1661, the tractor's on 1454 and 1989). The tractor's and the pickup's exhaust note
 is also some 20 dB quiet at idle: the VGT's vanes sit near shut there and reflect the pulses (G's measure; N2's). Under
 the physical diesel (fuel.model 1) the start of combustion now takes the ignition delay's cycle-to-cycle spread, a
-standard deviation of `socSpread` (0.172) times the model's own delay (`DieselFields::socSpread`, chargeDiesel): at the
-tractor's warm idle (3.73 degrees of delay) 0.64 degrees. The tractor's firing harmonics from 1 to 3 kHz over the
-spectrum midway between them: 9.3 dB without it, 5.5 with it (ClatterTest); card P's measure: the 2.0's line goes
+standard deviation of `socSpread` (0.150) times the model's own delay (`DieselFields::socSpread`, chargeDiesel): at the
+tractor's warm idle (3.60 to 3.73 degrees of delay) some 0.55 degrees. The tractor's firing harmonics from 1 to 3 kHz over the
+spectrum midway between them: 14.2 dB without it, 6.0 with it on 25 Nov's tip (9.3 and 5.5 on 24 Nov's, at 0.172) (ClatterTest); card P's measure: the 2.0's line goes
 (-8.6 to -11.9 dB, a pass), the pickup's +1.4 to -2.4, the tractor's unmoved (its exhaust's blowdown carries its
 harmonics there too). A cold start's long delay varies more: the cold starts on H's models take longer (233 K, the
 mechanical governor, 5.2 to 9.4 s; 253 K up to 2.5 s), within their bounds.
 
-**Open**: the spread's size is not cited. It is sigma 0.64 degrees of the peak-pressure angle on a Perkins
-1104D-E44TA, recalled from a search summary, the paper unread (Energies 2025, doi 10.3390/en19051343), its conditions
-not seen; the peak-pressure angle's spread holds the burn's own variation too, so it likely overstates the start of
-combustion's. Its growth with the delay: the trend of a Fischer-Tropsch-fuelled diesel's study (Appl. Sci. 2019, doi
-10.3390/app9102032), unread. A measured sigma of the start of combustion or of the ignition delay at idle replaces it.
+**Open**: the spread's size is read but not of the right quantity. Szpica and Kluczynski, Energies 2026, 19, 1343 (read
+by card P, docs/measurements/2026-11-25-0032-judgement-sources.md, 2), Table A3: a Perkins 1104D-E44TA at idle (800
+rpm, no load, 500 cycles), the crank angle of peak pressure, sigma 0.559 degrees (range 1 to 4, about 1 degree's
+resolution); k = 0.559 / 3.73, the tractor's idle delay when it was set. The peak's angle holds the burn's own
+variation too, so it likely overstates the start of combustion's; no measured spread of the start of combustion or the
+ignition delay at idle has been found. Its growth with the delay: the trend of a Fischer-Tropsch-fuelled diesel's
+study (Appl. Sci. 2019, doi 10.3390/app9102032), unread.
 
 ## Measured (tee-tests-diesel; the 15 L six, 300 K, 101325 Pa; 24 Nov evening)
 

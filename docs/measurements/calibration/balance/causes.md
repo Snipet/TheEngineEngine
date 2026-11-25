@@ -1365,3 +1365,95 @@ model's VE runs 0.95 to 1.13 from 5000 up on this NA four (torque 164 N m at 500
 148 at 4000); the paper's grid study reads 0.89. The ram's *height* against a measured engine remains unbounded by any
 source read here; the level question sits with the cam timing's reference lift (not stated in the paper) and the intake
 lift (not given), so it is not sized.
+
+## N3-16. The big engines' burned share at a warm idle, against a published residual correlation (00:39 `date -u`, 2026-11-25)
+
+The lead's item (from N1's idle work: the V10's and V12's 1 Hz wander at a warm idle, and the 7.0's).
+*The source.* Fox, Cheng and Heywood, "A Model for Predicting Residual Gas Fraction in Spark-Ignition Engines", SAE
+931025 (1993): exists (SAE Mobilus), calibrated on in-cylinder hydrocarbon sampling at varied intake pressure, speed and
+overlap, and it carries the overlap's backflow explicitly. Its equation as reproduced (eq. 2.2 and 2.3) in a University of
+Wisconsin thesis, "Residual gas effects on combustion in an air-cooled utility engine" (read in full here):
+  y_r = 1.266 (OF / N) (p_i / p_e)^-0.87 sqrt|p_e - p_i| + 0.632 (phi / r_c) (p_i / p_e)^-0.74,
+  OF = [D_in * integral(L_in dtheta, IVO to the lifts' crossing) + D_ex * integral(L_ex dtheta, the crossing to EVC)] / V_d,
+D the inner seat diameters, L the lifts, V_d the displaced volume; OF in degrees per metre (the thesis's table 4.2). The
+units of N and p are not printed there: rpm and kPa taken from Heywood's text as I recall it (a check: p_i 35, p_e 100,
+OF 1, 800 rpm gives 0.17, an ordinary idle residual). Fox's data spanned 0.52 < OF < 1.43; the thesis found the
+correlation over-predicting well above that (its production cam OF 3.66). The same thesis measured y_r up to about 0.4
+on that small engine at large overlap (OF 27). Heywood's own measured residuals against overlap: not read here (N1's
+0.15 to 0.25 stays a recollection).
+*The definitions.* Fox's y_r is the burned-gas mass fraction of the charge at intake closing, backflow included (the
+sampling reads all burned gas in the cylinder). The model's share (my probe: the cylinder's mInert over m at each
+intake closing) is the same quantity: the last cycle's products left in, what came back from the header, and what the
+intake pushed back during the overlap and drew in again (cylinder.fm's mInert). Lined up; no definition gap.
+
+*At the warm idle* (the probe's new bench mode: started as tee-dyno starts it, then the dyno released and the pedal at 0,
+the ECU's idle control holding the speed; 4 s, then 2 s measured; lambda 1, the phasers parked). OF from each build's
+own generated lift curves (cam.fm's family, at its fatness), D the valve heads (the inner seats some 10 % less: OF about
+10 % high), the valves of one side summed:
+
+| engine | rpm | p_i / p_e kPa | r_c | OF deg/m | Fox: backflow + clearance = y_r | model's share | at q 1.0 |
+|---|---|---|---|---|---|---|---|
+| v10-52 | 896 | 54.8 / 101.7 | 12.5 | 1.38 | 0.023 + 0.080 = **0.103** | **0.469** | 0.395 |
+| v12-65 | 904 | 73.6 / 101.4 | 13.5 | 2.65 | 0.026 + 0.059 = **0.085** | **0.528** | 0.486 |
+| big-bore-70-pushrod-v8 | 752 | 65.6 / 101.4 | 11.0 | 2.16 | 0.032 + 0.079 = **0.111** | **0.518** | 0.481 |
+| economy-four-15 | 750 | 33.0 / 101.7 | 11.0 | 0.02 | 0.001 + 0.132 = **0.133** | **0.170** | |
+
+(The V12 and the 7.0 sit above Fox's range, where it over-predicts: the published figure for them, if anything, lower.)
+The four agrees within 0.04, its share nearly all clearance gas; the three big engines read 4 to 6 times the correlation.
+
+*Where it lives.* One cylinder of the V10 traced over a cycle at idle (grams a cycle, by crank window):
+
+| window (degrees, 360 = overlap TDC) | exhaust out | exhaust back in | intake drawn | intake pushed back |
+|---|---|---|---|---|
+| 0-300 (exhaust stroke) | 0.173 | 0.121 | | |
+| 300-340 | 0.068 | 0 | | |
+| **340-380 (the overlap)** | 0.007 | **0.054** | | **0.066** |
+| 380-420 | | 0.002 | 0.051 | |
+| 420-540 | | | 0.167 | 0.024 |
+| 540-640 (after BDC, before the late closing) | | | 0.024 | 0.079 |
+
+The burned gas in the cylinder: 0.020 g at the overlap's TDC (the clearance), 0.108 g at BDC, 0.079 of 0.156 g trapped
+at closing (0.51). The overlap takes 0.054 g of exhaust back through the cylinder into the intake runner and the intake
+draws it in again: against Fox's backflow term, 0.023 x 0.156 = 0.0036 g, about **15 times**. A plain orifice at the full
+manifold difference (47 kPa) across the valves' curtains for the whole overlap (Cd 0.6, exhaust gas at 800 K) gives about
+0.05 g: the model's backflow runs at that bound, where the measured correlation says a fifteenth of it. The late closing's
+push-back (0.079 g at share 0.5) recirculates the share through the runner, which holds the level up once it is there.
+
+*The three candidates the lead named:*
+1. **The backflow through the overlap at a low manifold pressure** (D's cylinder, N1's valvetrain): this is where the gap
+   is, 15 times the correlation's backflow. Measured part of it: area.fm's low-lift area is 0.73 of the curtain times
+   the port's quality q, and q multiplies the low-lift (curtain-limited) part too: the V10 and V12 carry q 1.65 / 1.8
+   (1.2 to 1.3 times the geometric curtain at low lift, more than any valve flows); the 7.0 and the four 1.35 / 1.5.
+   At q 1.0 (one change) the shares fall 0.04 to 0.07: a part, not the gap. The rest: how the overlap's flow is driven
+   (the full manifold difference seen across both valves in series, with the cylinder between at 92 kPa at TDC), unsized.
+2. **The share's definition**: lined up with Fox's y_r; not the gap.
+3. **The toll's threshold** (0.56, combustion.fm): with a share at the correlation's 0.09 to 0.11 these engines would
+   sit far below it; the threshold is not where the gap is, though the wander lives on the slope near it.
+Owners: D (the cylinder's overlap flow) and N1 (area.fm's low-lift area and q). The economy four's agreement is the
+control: an engine with almost no lift at TDC reads the correlation.
+
+**N3-16, the correlation's units as the source states them, and the overlap factors** (00:43 `date -u`; the lead's 00:42).
+*Units.* The thesis prints eq. 2.2 without units beside it; its nomenclature lists "N Engine Speed", "P Pressure", "kPa
+Kilo-Pascal", "RPM Revolutions Per Minute", every pressure in the text is in kPa and every speed in RPM, and its table 4.2
+gives OF in "[°/m]". So: OF in degrees per metre, *stated*; N in RPM and p in kPa, the thesis's own convention but *not
+printed at the equation*. The other readings, computed: N in revolutions a second makes the V10's backflow term 1.37 (a
+residual over 1: impossible), so rpm; p in bar instead of kPa divides the backflow term by 10, the clearance term
+unchanged:
+
+| engine | OF deg/m | in Fox's 0.52 to 1.43? | Fox, kPa and rpm | Fox, bar and rpm | model |
+|---|---|---|---|---|---|
+| v10-52 | 1.38 | inside | 0.023 + 0.080 = 0.103 | 0.002 + 0.080 = 0.082 | 0.469 |
+| v12-65 | 2.65 | beyond (over-predicts there: the thesis) | 0.026 + 0.059 = 0.085 | 0.003 + 0.059 = 0.062 | 0.528 |
+| big-bore-70-pushrod-v8 | 2.16 | beyond | 0.032 + 0.079 = 0.111 | 0.003 + 0.079 = 0.082 | 0.518 |
+| economy-four-15 | 0.02 | below | 0.001 + 0.132 = 0.133 | 0.000 + 0.132 = 0.132 | 0.170 |
+
+Either way the gap stands (bar only widens it). *How OF was computed* (scratchpad fox.py, for D and N1): each lobe the
+build's own generated curve (cam.fm's family: the build's seat and 1 mm durations, lift and centre, fatness 0.5, the
+phasers parked as at idle), the overlap's angles from the intake's leaving zero lift to the exhaust's reaching it (the
+curves' ends, not the 0.15 mm seat); the integral of the intake's lift from its opening to the lifts' crossing, and of the
+exhaust's from the crossing to its closing, each times the valve's head diameter times its valves a cylinder (2 on the
+four-valves, 1 on the 7.0), over one cylinder's swept volume. The heads stand in for the inner seat diameters, which are
+some 10 % smaller: the OFs about 10 % high, and the backflow terms with them.
+
+*Referee:* I hold the four idles (BAL_BENCH=1, 4 s settle, 2 s window) and will re-run them on each change D or N1 sends,
+with the share, the plenum's pressure, the overlap's backflow by window (the V10's traced cylinder) and the speed.

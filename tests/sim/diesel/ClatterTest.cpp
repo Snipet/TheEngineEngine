@@ -139,10 +139,10 @@ namespace
 TEST_CASE("diesel clatter: at a warm idle the tractor's clatter is a hump, not a comb", "[diesel][injection][sound]")
 {
     // (the bounds, judgement: with the spread the firing harmonics from 1 to 3 kHz stand at most 7 dB over the spectrum
-    // midway between them, and some 2 dB less than without it. Measured 24 Nov: 9.3 dB without, 5.5 with the model's
-    // 0.64 degrees at the tractor's 3.73-degree idle delay, 2.2 with 2 a degree of delay (7.5 degrees). What remains
-    // with the spread is not only the clatter: the exhaust's blowdown, as periodic as the revs, has its own harmonics
-    // there, as a real engine's)
+    // midway between them, and some 2 dB less than without it. Measured 25 Nov: 14.2 dB without, 6.0 with the model's
+    // (0.150 a degree of the 3.60-degree idle delay: 0.54 degrees); on 24 Nov's tip 9.3 and 5.5. What remains with the
+    // spread is not only the clatter: the exhaust's blowdown, as periodic as the revs, has its own harmonics there, as
+    // a real engine's)
     const Idle off = warmIdle("archetypes/tractor-15-inline-six", 0.0);
     const Idle on = warmIdle("archetypes/tractor-15-inline-six", -1.0);
     std::printf("tractor warm idle %.0f rpm, ignition delay %.2f deg: the firing harmonics 1-3 kHz over the spectrum between "
