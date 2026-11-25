@@ -100,7 +100,8 @@ module BoostMachine
     float vd;           // the engine's displacement, m^3, and its redline, rpm (for matched sizes)
     float redRpm;
     float designRpm;    // a governed diesel's rated speed, rpm (Engine's, Boost::designSpeed); below 0: spark ignition
-    float peakRpm;      // its torque peak, rpm (Boost::peakSpeed; 0: none): the compressor sized along the climb there
+    float curvePeakRpm; // its fuel curve's plateau start, rpm (Boost::peakSpeed; 0: no curve)
+    float peakRpm;      // its torque peak, rpm, the compressor sized along the climb there (apply: stated, the curve's, 0.6 of rated)
     float compression;  // the engine's compression ratio (for the back pressure's cost to its fresh air)
     float sizePeak;     // (telemetry for the sizing table: the annulus by the rule at rated and at the torque peak, m^2)
     float sizeRated;
@@ -292,6 +293,7 @@ module BoostMachine
         redRpm = redIn;
         designRpm = -1.0f;
         peakRpm = 0.0f;
+        curvePeakRpm = 0.0f;
         compression = 17.0f;
         structure = -1;
         kind = 0;
@@ -458,6 +460,7 @@ module BoostMachine
         // (the old match's 2.4 bar at 1.9 atm), its gas 1150 K, a diesel's 900 K)
         const int dsl = designRpm > 0.0f ? 1 : 0;
         const float nDesign = dsl != 0 ? designRpm : s->designShare * redRpm;
+        peakRpm = dsl != 0 ? (s->peakRpm > 0.0f ? s->peakRpm : (curvePeakRpm > 0.0f ? curvePeakRpm : 0.6f * nDesign)) : 0.0f;
         const float asked = s->target > 0.0f ? s->target : s->gateSpring;
         const float prDesign = fmaxf((pOut + asked) / pOut, 1.3f);
         const float p3Design = 1.247f * prDesign * pOut;
@@ -494,9 +497,10 @@ module BoostMachine
             // the engine to avoid the surge area at torque peak"); F's 1.15 at rated kept where it gives the smaller
             // wheel. The engine's air there in the model's own terms: VE 0.9 (F's) less the back pressure's cost to the
             // fresh charge, the ideal cycle's (Heywood, Internal Combustion Engine Fundamentals, ch. 6, the ideal
-            // volumetric efficiency rc/(rc-1) - (pe/pi)/(gamma (rc-1)), read against its own value at pe = pi:
-            // (gamma rc - pe/pi) / (gamma rc - 1)) at the build's back-pressure limit (the tractor at 1.4, 17:1: 0.982,
-            // the model 0.879 against 0.9 x 0.982 = 0.884 measured at 1000 rpm, after-burn-cure.md); the charge at each
+            // volumetric efficiency for the exhaust-to-intake pressure ratio, as the lead recalled it and N2 rearranged
+            // it: rc/(rc-1) - (pe/pi)/(gamma (rc-1)), read against its own value at pe = pi: (gamma rc - pe/pi) /
+            // (gamma rc - 1); THE PAGE NOT CHECKED) at the build's back-pressure limit (the tractor at 1.4, 17:1: 0.982;
+            // measured 0.879 against its 0.9 x 0.982 = 0.884 at 1000 rpm, after-burn-cure.md); the charge at each
             // ratio as tCharge's; the speed line through each ratio's flag point the map's own (tau at 0.9 of the knee
             // 0.1794 M^2: compressor.fm's rise at x = 0.9); no pulse term (0.998 measured at the boosted state))
             float aAnn = aRated;

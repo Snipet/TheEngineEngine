@@ -32,6 +32,7 @@
 #include "lib/noise.fm"
 #include "spec/telemetry.fm"
 #include "spec/scope.fm"
+#include "spec/ecu.fm"
 #include "machine.fm"
 
 module Boost
@@ -422,11 +423,25 @@ module Boost
         mach.designRpm = rpm;
     }
 
-    // (N2, (b)) A governed diesel's torque-peak speed (rpm, above 0) and its compression ratio, for the compressor's
-    // sizing along the climb there (machine.fm, apply); before applyMachine
-    void peakSpeed(float rpm, float compression)
+    // (N2, the lead's ruling (b), 25 Nov) For a governed diesel's compressor sizing (machine.fm, apply), before
+    // applyMachine: its full-load fuel curve's plateau start, the lowest speed within 2 % of the curve's most (torque
+    // goes with the fuel there; 0: no curve, and the machine takes 0.6 of rated, judgement, unless spec.boost.peakRpm
+    // states a maker's speed), and the compression ratio (the back pressure's cost to the fresh air)
+    void peakSpeed(EcuSpec* e, float compression)
     {
-        mach.peakRpm = rpm;
+        float most = 0.0f;
+        for (int i = 0; i < 8; ++i)
+            most = fmaxf(most, e->fuelCurveMg[i]);
+        float at = 0.0f;
+        if (most > 0.0f)
+        {
+            for (int i = 7; i >= 0; --i)
+            {
+                if (e->fuelCurveMg[i] > 0.0f && e->fuelCurveMg[i] >= 0.98f * most)
+                    at = e->fuelCurveRpm[i];
+            }
+        }
+        mach.curvePeakRpm = at;
         mach.compression = compression;
     }
 
