@@ -56,6 +56,50 @@ COMB = {"name": "Idle: the clatter's comb (diesel)", "range": [0, 8], "unit": "d
                   "prominence threshold above 1 kHz of ECMA-74 Annex D (recalled by D2, not read)"}
 
 
+CROSS = {"name": "Stages: where the high cam passes the low (rpm)", "range": [5500, 5900], "unit": "rpm",
+         "basis": "recalled",
+         "source": "the lead's ruling (02:17): on a stock engine of the kind the two stages' full-load torque curves cross "
+                   "within some 300 rpm of the factory switch: Hondata's tuning help (hondata.com, a tuner's, looked up: "
+                   "\"Set the VTEC point to the intersection of the high speed cam and the low speed cam\"; \"stock "
+                   "engine 5500-5700 rpm\") and an S2000 owner's \"torque curve intersection to 5800-5900\" (S2KI, a "
+                   "forum, a search snippet); measured by report.py: tee-dyno --predict from 3000 to 8500 rpm every 250 "
+                   "with each stage held (valve.stageSpeed 1100 rad/s: the low stage throughout; 100: the high), the "
+                   "first speed where the high stage's torque passes the low's, interpolated; past 8500 reads 8500"}
+CROSS_SLUGS = ("two-stage-cam-20",)
+
+
+def crossing(bin_dir, slug, out_dir, build_path):
+    """CROSS: where the held high stage's full-load torque first passes the held low stage's, rpm (cached)."""
+    b = json.load(open(build_path))
+    curves = {}
+    for tag, sp in (("low", 1100.0), ("high", 100.0)):
+        path = os.path.join(out_dir, "%s.stage-%s.txt" % (slug, tag))
+        if not os.path.exists(path):
+            bb = json.loads(json.dumps(b))
+            bb["spec"]["valve"]["stageSpeed"] = sp
+            src = os.path.join(out_dir, "%s.stage-%s.json" % (slug, tag))
+            json.dump(bb, open(src, "w"))
+            cmd = [os.path.join(bin_dir, "tee-dyno"), "--predict", "--points", "23", "--from", str(3000 * RPM),
+                   "--to", str(8500 * RPM), "--build", src] + (["--sim", SIM] if SIM else [])
+            r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+            open(path, "w").write(r.stdout)
+        pts = []
+        for line in open(path):
+            m = re.match(r"\s+(\d+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+\d+\s+\w+", line)
+            if m:
+                pts.append((float(m.group(1)), float(m.group(2))))
+        curves[tag] = sorted(pts)
+    lo, hi = curves["low"], curves["high"]
+    if not lo or len(lo) != len(hi):
+        return None
+    d = [h[1] - l[1] for l, h in zip(lo, hi)]
+    for i in range(1, len(d)):
+        if d[i - 1] < 0 <= d[i]:
+            f = -d[i - 1] / (d[i] - d[i - 1])
+            return lo[i - 1][0] + f * (lo[i][0] - lo[i - 1][0])
+    return lo[0][0] if d[0] >= 0 else lo[-1][0]
+
+
 def comb_depth(x, sr, fire):
     """D2's comb depth (dB): the firing harmonics from 1 to 3 kHz against the half-way gaps, Welch, A-weighting
     cancelling in the ratio."""
@@ -283,6 +327,11 @@ def main():
             results[s_].append((dict(TONE, line=hz), d, "pass" if TONE["range"][0] <= d <= TONE["range"][1]
                                 else "FAIL"))
     content = a.content or os.path.join(ROOT, "content")
+    for s_ in slugs:
+        if s_ in CROSS_SLUGS and results[s_] is not None:
+            x = crossing(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]))
+            if x is not None:
+                results[s_].append((CROSS, x, "pass" if CROSS["range"][0] <= x <= CROSS["range"][1] else "FAIL"))
     for s_ in slugs:
         plan = next((t["dyno"] for t in docs[s_]["targets"] if "dyno" in t and "steps" not in t["dyno"]), None)
         if plan and results[s_] is not None:
