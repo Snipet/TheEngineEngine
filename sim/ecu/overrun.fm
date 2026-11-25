@@ -22,7 +22,31 @@
 // largest pop (its pops are 10 to 30 kPa; a spark cut's whole charge, some 40 mg, would otherwise make 150 kPa, a step five
 // times the reference's, finding X-006). Whatever does not burn flows on out of the pipe (both stores empty over 0.25 s,
 // judgement for the gas's stay in the system at an overrun's flow).
+//
+// Burned in the pipe (exhaust.bang 1: the exhaust sets Pop::burnPipe; card N1 with G, 25 Nov, the owner's "pops" todo;
+// docs/handoffs/g-exhaust.md, "The pops' seam"): no hazard, no ceiling, no pulse. What a charge lets out unburned is
+// split as combustion knows it (hold, at its intake closing) and kept by its cylinder until its exhaust opens
+// (release): the PREMIXED share, a charge that never burned (a spark cut, a misfire) or an overrun charge's late
+// remainder, its fuel at most what its own air burns; the rest UNMIXED (a rich charge's excess, its free air). At the
+// opening a premixed slug still burning is a burn at once (its own flame); one not burning waits, flammable for some
+// 16 ms (kSlugLife: a stoichiometric slug mixing with an equal mass of air passes lambda 1.8 at 0.8 of a 20 ms mixing
+// time; judgement, G's), and at each later opening of its bank lights with the chance (T - 900) / 300 of the hottest
+// gas it meets there, that blowdown's or the bank's recent one held (Ecu::blow: the account's own ramp and hold,
+// judgement, G's review: under a hard spark cut no charge fires for a while, and the last fired ones' gas, still hot
+// in the pipe, lights what follows them. It is not the re-fire: the first fired blowdown after the cut lights what is
+// still waiting by the same rule, not by a rule of its own); past its life it joins the unmixed store. The unmixed store only
+// flushes (0.25 s): it mixes too slowly to bang (Coward and Jones's limits, G's side). Each burn is handed over whole
+// (out*: combustion passes them to Pop::burnEvent): heat its fuel times the fuel's lower heating value.
 #pragma once
+
+enum
+{
+    ACCT_CYL = 16,      // cylinders held, at most
+    ACCT_SLUGS = 4,     // premixed slugs waiting in a bank's pipe, at most
+    ACCT_OUT = 8        // burns handed over at one opening, at most
+};
+
+const float kSlugLife = 0.016f;
 
 module OverrunCut
 {
@@ -60,6 +84,29 @@ module FuelAccount
     float total;        // fuel burned in the pipe since the reset, kg
     int bangs;
     float kFlush;       // the stores' emptying, a step
+    // Burned in the pipe (above): set by combustion each sample from the exhaust's Pop::burnPipe
+    int pipe;
+    float hFuelP[ACCT_CYL];     // each cylinder's charge held from its intake closing: premixed fuel and its air
+    float hAirP[ACCT_CYL];
+    float hFuelU[ACCT_CYL];     // and its unmixed fuel and free air
+    float hAirU[ACCT_CYL];
+    float hXb[ACCT_CYL];        // its burned-gas share
+    float hPhi[ACCT_CYL];       // the charge's own equivalence ratio
+    int sN[2];                  // premixed slugs waiting in each bank's pipe
+    float sFuel[2][ACCT_SLUGS];
+    float sAir[2][ACCT_SLUGS];
+    float sMass[2][ACCT_SLUGS];
+    float sT[2][ACCT_SLUGS];
+    float sXb[2][ACCT_SLUGS];
+    float sPhi[2][ACCT_SLUGS];
+    float sAge[2][ACCT_SLUGS];
+    int nOut;                   // the burns of the last release: fuel kg, slug mass kg, T, phi, x_b, own flame
+    float outFuel[ACCT_OUT];
+    float outMass[ACCT_OUT];
+    float outT[ACCT_OUT];
+    float outPhi[ACCT_OUT];
+    float outXb[ACCT_OUT];
+    int outOwn[ACCT_OUT];
 
     void setup(float d16)
     {
@@ -78,6 +125,99 @@ module FuelAccount
         }
         total = 0.0f;
         bangs = 0;
+        pipe = 0;
+        for (int c = 0; c < ACCT_CYL; ++c)
+        {
+            hFuelP[c] = 0.0f;
+            hAirP[c] = 0.0f;
+            hFuelU[c] = 0.0f;
+            hAirU[c] = 0.0f;
+            hXb[c] = 0.0f;
+            hPhi[c] = 0.0f;
+        }
+        sN[0] = 0;
+        sN[1] = 0;
+        nOut = 0;
+    }
+
+    // Burned in the pipe: cylinder ci's charge at its intake closing. fuel and air its unburned outputs (combustion's),
+    // late the fuel of them that never burned in the cylinder (a cut or misfired charge's whole fuel, an overrun charge's
+    // late remainder), xb its burned share, afr the fuel's stoichiometric ratio
+    void hold(int ci, float fuel, float air, float late, float xb, float afr)
+    {
+        const int c = ci < ACCT_CYL ? ci : ACCT_CYL - 1;
+        const float f = fmaxf(fuel, 0.0f);
+        const float a = fmaxf(air, 0.0f);
+        const float pf = fminf(fminf(fmaxf(late, 0.0f), f), a / afr);
+        hFuelP[c] = pf;
+        hAirP[c] = pf * afr;
+        hFuelU[c] = f - pf;
+        hAirU[c] = fmaxf(a - pf * afr, 0.0f);
+        hXb[c] = xb;
+        hPhi[c] = a > 0.0f ? f * afr / a : 0.0f;
+    }
+
+    void handOut(float f, float mass, float t, float phi, float xb, int own)
+    {
+        if (nOut >= ACCT_OUT || f <= 0.0f)
+            return;
+        outFuel[nOut] = f;
+        outMass[nOut] = mass;
+        outT[nOut] = t;
+        outPhi[nOut] = phi;
+        outXb[nOut] = xb;
+        outOwn[nOut] = own;
+        nOut += 1;
+        total += f;
+        bangs += 1;
+    }
+
+    // Burned in the pipe: cylinder ci of bank b opens its exhaust, its gas `mass` kg at `t` K; tLight the blowdown's
+    // heat that lights what waits (a charge still burning: its flame, 2000 K, as the account's hold takes it); own 1 when
+    // its charge is still burning (its flame goes with it), u a uniform number in [0, 1). Fills out* with the burns this
+    // opening lights
+    void release(int ci, int b, float mass, float t, float tLight, int own, float u)
+    {
+        nOut = 0;
+        const int c = ci < ACCT_CYL ? ci : ACCT_CYL - 1;
+        const int k = b == 1 ? 1 : 0;
+        // the gas this opening meets lights the slugs already waiting, by its heat
+        const float chance = fminf(fmaxf((tLight - 900.0f) / 300.0f, 0.0f), 1.0f);
+        if (sN[k] > 0 && u < chance)
+        {
+            for (int i = 0; i < sN[k]; ++i)
+                handOut(sFuel[k][i], sMass[k][i], sT[k][i], sPhi[k][i], sXb[k][i], 0);
+            sN[k] = 0;
+        }
+        // this charge's own: its unmixed part to the store; its premixed slug lit by its own flame, else waiting
+        fuel[k] += hFuelU[c];
+        air[k] += hAirU[c];
+        if (hFuelP[c] > 0.0f)
+        {
+            if (own != 0)
+                handOut(hFuelP[c], mass, t, hPhi[c], hXb[c], 1);
+            else if (sN[k] < ACCT_SLUGS)
+            {
+                const int i = sN[k];
+                sFuel[k][i] = hFuelP[c];
+                sAir[k][i] = hAirP[c];
+                sMass[k][i] = mass;
+                sT[k][i] = t;
+                sXb[k][i] = hXb[c];
+                sPhi[k][i] = hPhi[c];
+                sAge[k][i] = 0.0f;
+                sN[k] += 1;
+            }
+            else
+            {
+                fuel[k] += hFuelP[c];
+                air[k] += hAirP[c];
+            }
+        }
+        hFuelP[c] = 0.0f;
+        hAirP[c] = 0.0f;
+        hFuelU[c] = 0.0f;
+        hAirU[c] = 0.0f;
     }
 
     // A cylinder of bank b let out `f` kg of fuel and `a` kg of air unburned
@@ -91,6 +231,41 @@ module FuelAccount
     // Every 16 samples: each bank's gas temperature (K) where it lights, the fuel's stoichiometric ratio
     void control(float t0, float t1, float afr, float d16)
     {
+        if (pipe != 0)
+        {
+            // Burned in the pipe: the slugs age, and past their flammable life join the unmixed store; the store flushes
+            for (int b = 0; b < 2; ++b)
+            {
+                burned[b] = 0.0f;
+                pulse[b] = 0.0f;
+                hazard[b] = 0.0f;
+                int keep = 0;
+                for (int i = 0; i < sN[b]; ++i)
+                {
+                    sAge[b][i] += d16;
+                    if (sAge[b][i] > kSlugLife)
+                    {
+                        fuel[b] += sFuel[b][i];
+                        air[b] += sAir[b][i];
+                    }
+                    else
+                    {
+                        sFuel[b][keep] = sFuel[b][i];
+                        sAir[b][keep] = sAir[b][i];
+                        sMass[b][keep] = sMass[b][i];
+                        sT[b][keep] = sT[b][i];
+                        sXb[b][keep] = sXb[b][i];
+                        sPhi[b][keep] = sPhi[b][i];
+                        sAge[b][keep] = sAge[b][i];
+                        keep += 1;
+                    }
+                }
+                sN[b] = keep;
+                fuel[b] -= fuel[b] * kFlush;
+                air[b] -= air[b] * kFlush;
+            }
+            return;
+        }
         for (int b = 0; b < 2; ++b)
         {
             burned[b] = 0.0f;

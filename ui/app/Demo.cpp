@@ -131,7 +131,12 @@ namespace tee::ui
         add("intake.filter", FieldKind::number, 0, 1, 0.2, "Filter loss", Quantity::fraction);
 
         choice("fuel.kind", "Fuel", { "Petrol", "E85", "Methanol", "Diesel" });
-        add("fuel.octane", FieldKind::number, 85, 110, 95, "Octane").decimals = 0;
+        {
+            // as sim/spec/fuel.fm has it (card N1): the pump number, AKI; 0: the grade's own
+            FieldInfo& o = add("fuel.octane", FieldKind::number, 0, 120, 0, "Octane");
+            o.decimals = 0;
+            o.unit = "AKI";
+        }
 
         group = "Intake cam";
         add("valve.intakeDuration", FieldKind::number, 180, 320, 248, "Duration").unit = "deg";
