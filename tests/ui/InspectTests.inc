@@ -149,6 +149,27 @@
         std::string title, body;
         funkgui::Rect anchor;
         CHECK(rig.col->help(title, body, anchor) && title == "Boost" && body.find("Range 0.0 to 200.0 kPa") != std::string::npos);
+        // A field's help without a full stop and its facts: two sentences.
+        {
+            std::vector<tee::ui::FieldInfo> fields = tee::test::mockFields();
+            for (tee::ui::FieldInfo& fi : fields)
+                if (fi.path == "boost.level")
+                    fi.help = "How far the turbo pushes over the air at the top ";
+            tee::ui::MemoryDoc doc(std::move(fields));
+            tee::ui::Board board{ 600, 900 };
+            funkgui::HeadlessHost host{ board, 0, 1.0f };
+            tee::ui::FieldInspector& col = board.make<tee::ui::FieldInspector>(doc, rig.units, tee::ui::FieldInspector::Style::rows);
+            col.setOutline(tee::ui::outlineOf(doc, tee::ui::sectionFields(doc, "boost")));
+            col.setPlace({ 20, 20, 340, 820 }, true);
+            host.tick(2);
+            funkgui::Rect r, v;
+            CHECK(col.fieldRect(doc.find("boost.level"), r, v));
+            host.move(r.x + 30.0f, r.centreY());
+            std::string t, b;
+            funkgui::Rect at;
+            CHECK(col.help(t, b, at));
+            CHECK_MSG(b.rfind("How far the turbo pushes over the air at the top. Range 0.0 to 200.0 kPa", 0) == 0, b);
+        }
         const int part = rig.col->helpPart();
         rig.col->fieldRect(rig.f("boost.size"), row, value);
         rig.host.move(row.x + 30.0f, row.centreY());
@@ -288,7 +309,7 @@
         card.update("engine", &engine, stage);
         CHECK(card.isOpen() && item.shown() && item.shownFields() == tee::ui::PartCard::kFields);
         const funkgui::Rect r = item.bounds();
-        CHECK(r.x >= 224.0f && r.right() <= stage.right() && r.y >= stage.y && r.bottom() <= stage.bottom());
+        CHECK(r.x >= 256.0f && r.right() == stage.right() - 8.0f && r.y >= stage.y && r.bottom() <= stage.bottom());
         CHECK(r.h < 400.0f);
         host.tick(2);
         funkgui::Rect row, value;
@@ -297,7 +318,7 @@
         // Near the stage's right edge: to the part's left.
         card.afterPress("engine", "engine", "engine", { 700, 600 });   // the part already selected, pressed again
         card.update("engine", &engine, stage);
-        CHECK(card.isOpen() && item.bounds().right() <= 676.0f && item.bounds().bottom() <= stage.bottom());
+        CHECK(card.isOpen() && item.bounds().x == stage.x + 8.0f && item.bounds().bottom() <= stage.bottom());
         // A press on nothing (the selection kept, no part under the pointer) closes it.
         card.afterPress("engine", "engine", "", { 400, 400 });
         CHECK(!card.isOpen() && !item.shown());

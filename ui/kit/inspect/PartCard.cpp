@@ -84,10 +84,11 @@ namespace tee::ui
             return;
         card_.setPlace({ 0.0f, 0.0f, kWidth, 2000.0f }, true);   // laid out at its width, then as tall as it holds
         const float h = std::min(34.0f + 26.0f + card_.contentHeight(), stage.h - 16.0f);
-        float x = at_.x + kGap;                  // to the right of the part, else to its left
-        if (x + kWidth > stage.right() - 8.0f)
-            x = at_.x - kGap - kWidth;
-        x = std::clamp(x, stage.x + 8.0f, std::max(stage.x + 8.0f, stage.right() - 8.0f - kWidth));
+        // In the half of the stage away from the press, against its far edge (a part is wider than any gap from the
+        // press: ENGINE's block), and at least kGap from the press when the stage is narrow.
+        const float lo = stage.x + 8.0f, hi = std::max(lo, stage.right() - 8.0f - kWidth);
+        float x = at_.x < stage.centreX() ? std::max(hi, at_.x + kGap) : std::min(lo, at_.x - kGap - kWidth);
+        x = std::clamp(x, lo, hi);
         const float y = std::clamp(at_.y - 40.0f, stage.y + 8.0f, std::max(stage.y + 8.0f, stage.bottom() - 8.0f - h));
         card_.setPlace({ x, y, kWidth, h }, true);
     }
