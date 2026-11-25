@@ -83,6 +83,7 @@ namespace tee::ui
         {
             std::string text;
             float x = 0.0f, y = 0.0f, hw = 0.0f, hh = 0.0f;   // its centre, its box's half sizes (the backing's)
+            float t = 0.0f;                                     // where on the scale, 0..1
             bool red = false;
         };
         // The numerals for `g`'s face; sets g.ra, the tick ring's radius (the needle ends 3 px inside it).

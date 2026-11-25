@@ -634,7 +634,11 @@ namespace tee::ui
         for (auto& ws : workspaces_)
             ws->attach(*host());
         for (Page& p : pages_)
+        {
             p.panel->attach(*host());
+            if (p.rows)   // Rows made before the host (the launch workspace's) need it too (J2's finding)
+                p.rows->attach(*host());
+        }
     }
 
     int AppFrame::find(std::string_view id) const

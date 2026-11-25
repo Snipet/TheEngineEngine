@@ -333,6 +333,21 @@ namespace
         rig.settle();
         picture(name, *rig.host);
         int dials = 0;
+        // Each small dial's scale (its accessible range) covers its real range (Dash.h's table, in the unit shown) with
+        // the real range filling at least three quarters of it (the lead's rule, 25 Nov: no scale wasting its sweep).
+        for (int i = 0; i < tee::ui::dash::kDials && style == 1; ++i)
+        {
+            const tee::ui::dash::Dial& d = tee::ui::dash::dial(i);
+            const double lo = rig.demo.units.toUser(d.quantity, d.lo), hi = rig.demo.units.toUser(d.quantity, d.hi);
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.title == d.title && it.role == funkgui::A11yRole::progressBar)
+                {
+                    const double fill = (hi - lo) / (it.hi - it.lo);
+                    CHECK_MSG(it.lo <= lo + 1e-9 && it.hi >= hi - 1e-9 && fill >= 0.75,
+                              name + ": " + d.title + " reads " + std::to_string(it.lo) + " to " + std::to_string(it.hi) + " for "
+                                  + std::to_string(lo) + " to " + std::to_string(hi));
+                }
+        }
         if (check)
             for (int i = 0; i < rig.ws->count(); ++i)
                 if (const auto* g = dynamic_cast<const tee::ui::Gauge*>(&rig.ws->item(i)); g != nullptr && g->shown())
@@ -360,6 +375,8 @@ namespace
                 rig.demo.units.choose(tee::ui::Quantity::pressure, "psi");
                 rig.demo.units.choose(tee::ui::Quantity::temperature, "F");
                 rig.demo.units.choose(tee::ui::Quantity::speed, "mph");
+                rig.demo.units.choose(tee::ui::Quantity::torque, "lb.ft");
+                rig.demo.units.choose(tee::ui::Quantity::power, "hp");
             }
             CHECK(dialsAt(rig, 1, "drive.dials.owner." + units, true) == 10);
             CHECK(dialsAt(rig, 0, "drive.dials.standard." + units, true) == 2);
@@ -369,6 +386,8 @@ namespace
                 small.demo.units.choose(tee::ui::Quantity::pressure, "psi");
                 small.demo.units.choose(tee::ui::Quantity::temperature, "F");
                 small.demo.units.choose(tee::ui::Quantity::speed, "mph");
+                small.demo.units.choose(tee::ui::Quantity::torque, "lb.ft");
+                small.demo.units.choose(tee::ui::Quantity::power, "hp");
             }
             CHECK(dialsAt(small, 1, "drive.dials.small." + units, true) == 6);
         }
