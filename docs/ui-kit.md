@@ -162,7 +162,7 @@ pictures it; none of it reads a clock or the environment, and every motion goes 
 | `ui/kit/widgets/Widget.h` | `Widget`: an `Item` (J1's) its owner places (`setPlace`), with a hover eased, a focus ring and the theme's colours (`Look`: dark, one accent). |
 | `ui/kit/widgets/Board.*` | `Board`: a `funkgui::Panel` of items its owner places, with an optional inner Panel under them (hover, press and drag, focus and Tab, keys, wheel, accessibility, one `GestureController`). |
 | `ui/kit/widgets/Basic.*` | `Button` (press, hold, lit), `Toggle`, `Stepper`, `TextField` (over `LineEdit`), `List`, `Bar`, `Lamp`, `Label`. |
-| `ui/kit/widgets/Gauge.*` | `Gauge`: a 270-degree arc, ticks, numerals, a red band, a needle eased, the value in digits. |
+| `ui/kit/widgets/Gauge.*` | `Gauge`: a 270-degree arc, ticks, numerals, a red band, a needle eased, the value in digits. `setReadoutClear(true)` sets the digits low in the arc's open wedge, below the end numerals, so the needle never crosses them (`readoutClearOfSweep()` checks it). |
 | `ui/kit/widgets/Plot.*` | `Plot`: linear and log axes with round ticks, a grid, series as polylines and area strips, a cursor with a readout, pan (drag), zoom (wheel, pinch), double-click back. |
 | `ui/kit/widgets/Tables.*` | `Curve16`, `Map16` as the editors hold them; `CurveEdit` (a `Plot` with points to drag), `MapEdit` (table and heat map, typed or dragged cells, typed axes, the live cell). Each writes through a `CurveSource` or `MapSource`, an edit one gesture. |
 | `ui/kit/bind/Units.*` | `Units`: a quantity's SI value to the chosen unit's text and back (offsets too: C, F), the choices as settings lines. |

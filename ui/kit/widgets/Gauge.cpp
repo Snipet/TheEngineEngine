@@ -1,6 +1,9 @@
 // ui/kit/widgets/Gauge.cpp: see Gauge.h.
 #include "kit/widgets/Gauge.h"
 
+#include <funkgui/text/FontService.h>
+#include <funkgui/text/TextFit.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -38,6 +41,89 @@ namespace tee::ui
     }
 
     std::string Gauge::readoutText() const { return readout_ ? readout_(value_) : plain(value_); }
+
+    namespace
+    {
+        funkgui::TextStyle valueStyle(float side) { return { std::clamp(side * 0.13f, 12.0f, 26.0f), 0.0f, 0.0f, true }; }
+        float widthOf(const std::string& t, const funkgui::TextStyle& s)
+        {
+            return funkgui::text::width(funkgui::FontService::get().atlas(), t.c_str(), s);
+        }
+    }
+
+    Gauge::Geometry Gauge::geometry() const
+    {
+        Geometry g;
+        const float titleH = title_.empty() ? 0.0f : 16.0f;
+        g.side = std::min(bounds_.w, bounds_.h - titleH);
+        g.r = g.side * 0.5f - 3.0f;
+        g.ra = g.r - 7.0f;
+        g.hub = { bounds_.centreX(), bounds_.y + g.side * 0.5f + 2.0f };
+        return g;
+    }
+
+    funkgui::Rect Gauge::readoutBox(const std::string& text) const
+    {
+        const Geometry g = geometry();
+        const funkgui::TextStyle value = valueStyle(g.side);
+        const std::string unit = upper(unit_);
+        const float wd = widthOf(text, value), wu = unit.empty() ? 0.0f : widthOf(unit, kWidgetLabel);
+        if (readoutClear_)
+        {
+            // Below the hub by half the widest line and a margin (the needle's half-width, a gap): inside the wedge;
+            // and below the end numerals.
+            const float w = std::max(wd, wu);
+            float top = std::max(g.r * 0.30f, w * 0.5f + 4.0f);
+            for (const funkgui::Rect& n : endNumerals())
+                if (n.x < g.hub.x + w * 0.5f + 2.0f && g.hub.x - w * 0.5f - 2.0f < n.right())
+                    top = std::max(top, n.bottom() + 2.0f - g.hub.y);
+            const float h = value.px + (unit.empty() ? 0.0f : 1.0f + kWidgetLabel.px);
+            return { g.hub.x - w * 0.5f, g.hub.y + top, w, h };
+        }
+        const float top = g.hub.y + g.r * 0.42f - value.px * 0.5f;
+        const float h = value.px * 1.25f + 4.0f + (unit.empty() ? 0.0f : kWidgetLabel.px);
+        const float w = std::max(wd, wu);
+        return { g.hub.x - w * 0.5f, top, w, h };
+    }
+
+    std::vector<funkgui::Rect> Gauge::endNumerals() const
+    {
+        // As draw() places them (its numeral's size and radius).
+        std::vector<funkgui::Rect> out;
+        const Geometry g = geometry();
+        if (g.side < 90.0f)
+            return out;
+        const funkgui::TextStyle numeral{ std::clamp(g.side * 0.075f, 10.0f, 16.0f), 0.0f, 0.0f, false };
+        for (const double v : { lo_, hi_ })
+        {
+            const float a = v == lo_ ? kA0 : kA1, ca = std::cos(a), sa = std::sin(a);
+            const std::string t = numerals_ ? numerals_(v) : plain(v);
+            const float w = widthOf(t, numeral), hw = w * 0.5f, hh = numeral.px * 0.5f;
+            const float rn = clearNumerals_ ? g.ra - 9.0f - 6.0f - (hw * std::fabs(ca) + hh * std::fabs(sa))
+                                            : g.ra - 9.0f - numeral.px * 0.9f;
+            const float x = g.hub.x + ca * rn, y = g.hub.y + sa * rn;
+            out.push_back({ x - hw - 3.0f, y - hh - 2.0f, w + 6.0f, numeral.px + 4.0f });
+        }
+        return out;
+    }
+
+    bool Gauge::readoutClearOfSweep() const
+    {
+        const Geometry g = geometry();
+        const std::vector<funkgui::Rect> ends = endNumerals();
+        for (const double v : { lo_, hi_, value_ })
+        {
+            const funkgui::Rect box = readoutBox(readout_ ? readout_(v) : plain(v)).expanded(1.25f);   // the needle's half-width
+            for (const funkgui::Rect& n : ends)
+                if (n.x < box.right() && box.x < n.right() && n.y < box.bottom() && box.y < n.bottom())
+                    return false;
+            for (const float a : { kA0, kA1 })
+                for (float d = 0.0f; d <= g.ra + 1.0f; d += 0.5f)
+                    if (box.contains({ g.hub.x + std::cos(a) * d, g.hub.y + std::sin(a) * d }))
+                        return false;
+        }
+        return true;
+    }
 
     void Gauge::draw(funkgui::Canvas& c, const funkgui::Theme& th, bool) const
     {
@@ -103,9 +189,18 @@ namespace tee::ui
         if (!clearNumerals_)
             drawNumerals();
         // The readout, then the needle over it, then the hub.
-        const funkgui::TextStyle value{ std::clamp(side * 0.13f, 12.0f, 26.0f), 0.0f, 0.0f, true };
-        c.text(readoutText().c_str(), o.x, c.capCentreTop(o.y + r * 0.42f, value), value, l.value, funkgui::Align::centre);
-        if (!unit_.empty())
+        const funkgui::TextStyle value = valueStyle(side);
+        if (readoutClear_)
+        {
+            const std::string text = readoutText();
+            const funkgui::Rect box = readoutBox(text);
+            c.text(text.c_str(), o.x, box.y, value, l.value, funkgui::Align::centre);
+            if (!unit_.empty())
+                c.text(upper(unit_).c_str(), o.x, box.y + value.px + 1.0f, kWidgetLabel, l.label, funkgui::Align::centre);
+        }
+        else
+            c.text(readoutText().c_str(), o.x, c.capCentreTop(o.y + r * 0.42f, value), value, l.value, funkgui::Align::centre);
+        if (!unit_.empty() && !readoutClear_)
             c.text(upper(unit_).c_str(), o.x, c.capCentreTop(o.y + r * 0.42f + value.px * 0.75f + 4.0f, kWidgetLabel),
                    kWidgetLabel, l.label, funkgui::Align::centre);
         const float a = angleOf(needle_), tail = clearNumerals_ ? 0.05f : 0.12f;
