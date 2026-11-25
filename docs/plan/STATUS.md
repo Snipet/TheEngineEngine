@@ -43,6 +43,12 @@
 
 ## Landed
 
+- **25 Nov 13:43 UTC: `main` at 76420f32** (from d0a7330e, fast-forward; Linux 545 of 545 and macOS green on run
+  45623044537, sim/host/tools equal the bake's dbd64a5c). New in `main`: the idle spark trim's two cures (the dyno's
+  low end), P's bake on them, hover help, DRIVE's three new styles, the fuel control (octane grades; its macOS fault
+  caught by CI before `main` moved and cured). The window for the held items is open (the queue's FREEZE STATE has
+  the order); the diesel package stays out of it, its rated end unruled (the queue, 13:43).
+
 - **12:20 (25 Nov) the owner: "Windows was able to launch and run"** (`main` at d0a7330e; the first run of the app by
   a person on Windows; what beyond launching and running was tried is not known yet). README's line updated to say
   exactly that. **The owner also asked whether the right-side controls are to be redesigned ("relatively clunky
