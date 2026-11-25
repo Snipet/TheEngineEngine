@@ -178,7 +178,10 @@ namespace tee::assistant
         const mode_t was = umask(077);
         const bool bound = bind(fd, reinterpret_cast<const sockaddr*>(&a), sizeof a) == 0;
         umask(was);
-        if (!bound || ::listen(fd, 4) != 0 || !wire::wakePair(wake_))
+        // The system's largest backlog: macOS refuses a connect at once (ECONNREFUSED) when the queue is full, where
+        // Linux holds it, and the poll thread accepts only as fast as it is woken: a few bridges (or one reconnecting
+        // as Claude Desktop restarts it) must never be turned away for arriving together.
+        if (!bound || ::listen(fd, SOMAXCONN) != 0 || !wire::wakePair(wake_))
         {
             close(fd);
             unlink(path_.c_str());
@@ -287,6 +290,7 @@ namespace tee::assistant
                         clients.push_back(c);
                         std::lock_guard<std::mutex> lock(viewMutex_);
                         view_.connections = static_cast<int>(clients.size());
+                        ++view_.accepted;
                     }
                 }
             }

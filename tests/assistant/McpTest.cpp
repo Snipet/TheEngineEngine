@@ -454,15 +454,26 @@ TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app 
     REQUIRE(app.link.start(why));
     // a peer that asks for a large answer and leaves before reading it, many times over: the poll thread's own replies
     // (tools: several KB) and the worker's (a call) both go to a closed socket
+    // Each peer is accepted and seen gone before the next connects: the loop tests a peer's going, not the listener's
+    // queue (a burst would hang on the backlog's size, which differs between systems).
     for (int i = 0; i < 20; ++i)
     {
         const int fd = wire::connectTo(dir, why);
+        const int err = errno;
+        INFO("peer " << i << ": " << why << " (errno " << err << ")");
         REQUIRE(fd >= 0);
         const std::string ask = "{\"id\":1,\"method\":\"tools\"}\n{\"id\":2,\"method\":\"call\",\"params\":{\"name\":\"get_status\"}}\n";
         wire::sendAll(fd, ask.data(), ask.size());
         close(fd);
-        for (int f = 0; f < 3; ++f)
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while ((app.link.view().accepted < static_cast<std::uint64_t>(i + 1) || app.link.view().connections != 0)
+               && std::chrono::steady_clock::now() < until)
+        {
             app.rig.frame();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        REQUIRE(app.link.view().accepted == static_cast<std::uint64_t>(i + 1));
+        REQUIRE(app.link.view().connections == 0);
     }
     // the link sees every one go
     for (int f = 0; f < 600 && (app.link.view().connections != 0 || app.link.view().running); ++f)
