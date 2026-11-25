@@ -175,6 +175,8 @@ module XNet
     int drawOrder[XN_BANDS];    // the bands in the order their noise is drawn (the reference's, for its topology)
     int popExt;             // 1: the pops' gas comes from popIn (the owner's Pops, which others fire), not from pop[]
     float popIn[XN_POPS];
+    int popQOn;             // exhaust.bang 1: popQ adds to a collector's source
+    float popQ[XN_POPS];    // a burn's volume source there (m^3/s: (gamma - 1) / (gamma p) times its heat's rate)
     float rate;
     float outL;
     float outR;
@@ -217,7 +219,11 @@ module XNet
         shared = 0;
         popExt = 0;
         for (int i = 0; i < XN_POPS; ++i)
+        {
             popIn[i] = 0.0f;
+            popQ[i] = 0.0f;
+        }
+        popQOn = 0;
         nj = 0;
         ne = 0;
         np = 0;
@@ -502,7 +508,11 @@ module XNet
         }
         float src = 0.0f;
         if (jPop[j] >= 0)
+        {
             src = (popExt != 0 ? popIn[jPop[j]] : pop[jPop[j]].tick()) * sy;
+            if (popQOn != 0)
+                src += popQ[jPop[j]];
+        }
         const float pj = xNode(n, na, nz, nt, nkf, nkr, ns, nal, nq, src);
         jP[j] = pj;
         for (int b = 0; b < n; ++b)
