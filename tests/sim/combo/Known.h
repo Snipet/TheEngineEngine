@@ -39,9 +39,9 @@ const Known kKnown[] = {
      "valve.dpOverlap -393835 Pa at 9.41 s against +-300000, since 2f86a47a"},
     // The fuzz under stable draws (1abb05a0): X-029 (a rotary's 0.6 mm primary, from the old draws' random 245) is held
     // by its build alone, content/builds/combo/findings/x029-rotary-tiny-primary.json
-    {"X-038", "2026-11-25", "N2 (boost.model) and G (the pipes)", "random 167", "fuzz", "random", "*",
+    {"X-038", "2026-11-25", "G (the builder's exhaust; N2 found it, 16:17)", "random 167", "fuzz", "random", "*",
      "boost.model 1 with a 0.07 mm tailpipe diverges (findings/x038-boost-tiny-tailpipe.json)"},
-    {"X-038", "2026-11-25", "N2 (boost.model) and G (the pipes)", "random 298", "fuzz", "random", "*",
+    {"X-038", "2026-11-25", "G (the builder's exhaust; N2 found it, 16:17)", "random 298", "fuzz", "random", "*",
      "boost.model 1 with a 0.011 mm primary diverges (findings/x038-boost-tiny-primary.json)"},
     {"X-039", "2026-11-25", "N2 (the supercharger)", "corners 205", "fuzz", "corners", "*",
      "a supercharged 50 cc single, blow-off kind 2, diverges at 0.27 s (findings/x039-single-blower-blowoff.json)"},
