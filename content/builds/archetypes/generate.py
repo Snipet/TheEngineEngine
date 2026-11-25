@@ -294,7 +294,8 @@ arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L"
      grade="Premium (91)", car="roadster", timing="Chain", lifters="Solid",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
            "(the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the "
-           "B16A's switch point of 5500 rpm: global.honda). In a light rear-drive roadster.")
+           "B16A's switch point of 5500 rpm: global.honda). Its high-stage cam and its 6000 rpm switch are the K20A "
+           "Type R's (the DC5's), borrowed onto the F20C's bore, stroke and ratings. In a light rear-drive roadster.")
 arch(slug="kei-660-triple-turbo", runner=0.28, convK=24.0, name="Kei 660 cc triple turbo", geo="ref-04-inline-3", layout="Inline 3",
      bore=68.0, stroke=60.4, rod=110.0, cr=8.6, valves=4, dIn=24.5, dEx=21.0,
      cam=(240, 208, 7.5, 110, 236, 204, 7.0, 112), train="Bucket", redline=8000, idle=850,
