@@ -20,8 +20,8 @@ repo=${TEE_CI_REPO:-Snipet/TheEngineEngine}
 branch=${1:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)}
 case "$branch" in ''|HEAD) branch=claude/awesome-gates-ntdb58 ;; esac   # a detached checkout: the integration branch
 platforms=(linux-x64 macos-arm64 windows-x64)                     # the fast tier: the default tests
-soaks=(linux-x64-soak macos-arm64-soak windows-x64-soak)           # the soak tier: [nightly] (macOS, Windows on [soak])
-required=("${platforms[@]}" linux-x64-soak)                         # what the search waits for
+soaks=(linux-x64-soak macos-arm64-soak windows-x64-soak)           # the soak tier: [nightly], only when asked
+required=("${platforms[@]}")                                        # what the search waits for (a soak is rare)
 command -v gh >/dev/null || { echo "ci-status: no gh on the PATH" >&2; exit 1; }
 
 # The Build runs of the branch, newest first, a page of 100 at a time until every platform and tier has a finished
@@ -89,10 +89,10 @@ for platform in "${platforms[@]}"; do
   echo "${report[$platform]:-$platform: no finished job among the last $seen runs}"
 done
 echo
-echo "== the soak tier ([nightly] tests: Linux every push; macOS and Windows when a commit says [soak])"
+echo "== the soak tier ([nightly] tests, when asked: [soak] Linux, [soak-all] all three, by hand, each night)"
 for platform in "${soaks[@]}"; do
   if [ -n "${report[$platform]:-}" ]; then echo; echo "${report[$platform]}"
-  elif [ "$platform" = linux-x64-soak ]; then echo; echo "$platform: no finished job among the last $seen runs"
+  elif [ "$platform" = linux-x64-soak ]; then echo; echo "$platform: no finished soak among the last $seen runs"
   fi
 done
 

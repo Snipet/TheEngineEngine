@@ -17,8 +17,8 @@
 - LISTEN (`ui/views/listen/`, registered; `docs/ui/listen.md`): `listen.stage`(+`.dpi1`, `.paper`), `.framestage`, `.cameras`,
   `.drag`, `.reference`, `.absent`, `.rest`. Asked of L: Spec `listenerX/Y`, `facing`; tel `srcX/srcY/srcLevel[10]`,
   `listenerX/Y`, `facing`, `rearAxleY`, `path*`; until then the model's documented places, said in words.
-- Pictures: `out/ui/scope.*.png`, `listen.*.png`, `garage.*.png`, `fx.software.png`, contact sheet `out/ui/sheet.u5.png`. Docs: `docs/ui/scope.md`,
-  `garage.md`, `fx.md`.
+- Hover help on every stage (lead's leave, 25 Nov): `stages.help` fails on any item the pointer can rest on with no line;
+  the lines are `setHelp` calls in each view; `stages.help.pictures`. Pictures `out/ui/{scope,listen,garage,stages}.*.png`.
 
 **Read, all on the branch now** (14:10): telemetry `engine.speed`, `engine.redline`, `engine.crank`, `ecu.advance`,
 `sound.rate`; Scope `degrees`, `pressure`, `volume`, `liftIntake`, `liftExhaust`, `portIntake`, `portExhaust`;

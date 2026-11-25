@@ -65,6 +65,10 @@ namespace tee::ui
                 tabs_[i] = &make<Button>(names[i], [this, i] { tab_ = i; });
                 tabs_[i]->setLit([this, i] { return tab_ == i; });
             }
+            // Hover help (the owner's ask, 25 Nov).
+            tabs_[0]->setHelp("Show the flow bench: each valve's flow against its lift, the lift now marked");
+            tabs_[1]->setHelp("Show the phasers and stages: each phaser's place in its range, which stage is engaged");
+            tabs_[2]->setHelp("Show the springs and cylinders: the speed the valves float at, the cylinders resting");
         }
 
         const char* id() const override { return "valves"; }

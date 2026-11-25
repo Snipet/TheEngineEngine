@@ -411,7 +411,7 @@ module Combustion
             // (running only: cranking's slow squeeze loses its heat to the walls, which the isentropic end gas does not
             // know, and Douaud and Eyzat's fit is a running engine's)
             if (q > 0.0f && ecu->state == 2)
-                gas[ci].start(cy->p, one.tEnd, fuelOctane(fuel->grade), fuel->knockDelay);
+                gas[ci].start(cy->p, one.tEnd, fuelOctaneAt(fuel->grade, fuel->octane), fuel->knockDelay);
             else
                 gas[ci].stop();
             return;
