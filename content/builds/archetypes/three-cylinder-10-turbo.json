@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.0 L three-cylinder turbo",
-  "notes": "A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Inline 3",
@@ -51,11 +51,11 @@
       "dEx": 0.023,
       "train": "Finger",
       "inDurSeat": 232,
-      "inDur1mm": 200,
+      "inDur1mm": 194.0,
       "inLift": 0.008,
       "inCentre": 132.0,
       "exDurSeat": 228,
-      "exDur1mm": 196,
+      "exDur1mm": 190.0,
       "exLift": 0.0075,
       "exCentre": 112,
       "inPhaseRange": 50,
@@ -137,38 +137,32 @@
             [
               0.0,
               0.0,
-              50.0,
-              50.0
+              45.0,
+              45.0
             ],
             [
               0.0,
               0.0,
-              45.59731674194336,
-              45.59731674194336
+              45.630001068115234,
+              45.630001068115234
             ],
             [
               0.0,
               0.0,
-              34.36579895019531,
-              34.36579895019531
+              34.16685485839844,
+              34.16685485839844
             ],
             [
               0.0,
               0.0,
-              22.643646240234375,
-              22.643646240234375
+              45.0,
+              45.0
             ],
             [
               0.0,
               0.0,
-              15.0,
-              15.0
-            ],
-            [
-              0.0,
-              0.0,
-              10.0,
-              10.0
+              40.0,
+              40.0
             ],
             [
               0.0,
@@ -179,8 +173,14 @@
             [
               0.0,
               0.0,
-              20.0,
-              20.0
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              30.0,
+              30.0
             ]
           ]
         }

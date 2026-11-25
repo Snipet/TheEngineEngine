@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.5 L twin-turbo V6 pickup",
-  "notes": "A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' figures). Four-wheel drive, ten-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' figures). Four-wheel drive, ten-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "V6",
@@ -64,11 +64,11 @@
       "dEx": 0.028,
       "train": "Finger",
       "inDurSeat": 236,
-      "inDur1mm": 204,
+      "inDur1mm": 198.0,
       "inLift": 0.0095,
       "inCentre": 132.0,
       "exDurSeat": 232,
-      "exDur1mm": 200,
+      "exDur1mm": 194.0,
       "exLift": 0.009,
       "exCentre": 112,
       "inPhaseRange": 50,
@@ -157,26 +157,20 @@
             [
               0.0,
               0.0,
-              46.30205154418945,
-              46.30205154418945
+              46.47457504272461,
+              46.47457504272461
             ],
             [
               0.0,
               0.0,
-              35.91181564331055,
-              35.91181564331055
+              36.524478912353516,
+              36.524478912353516
             ],
             [
               0.0,
               0.0,
-              40.0,
-              40.0
-            ],
-            [
-              0.0,
-              0.0,
-              15.0,
-              15.0
+              25.0,
+              25.0
             ],
             [
               0.0,
@@ -187,14 +181,20 @@
             [
               0.0,
               0.0,
-              20.0,
-              20.0
+              30.0,
+              30.0
             ],
             [
               0.0,
               0.0,
-              20.0,
-              20.0
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              30.0,
+              30.0
             ]
           ]
         }

@@ -398,3 +398,25 @@ The truck (GateTest's build, no intercooler stated) is sized for 0.86 kg/s and p
 inducer is 8 % over the IS20's area today (29 % with the sizing kept) and by the lead's arithmetic comes to about the
 IS20's under the correction on today's formula. The 1.15 and the flat boost target at the design speed remain F's
 judgement; first.json will state its own wheel (compInducer 0.0425, compExducer 0.054, turbWheel 0.050).
+
+## Open, for N2 in this order (lead, 25 Nov 04:36)
+
+1. **The wastegate loop's overshoot** (new with the map's commits; `main` waits on it): the test's four at 3500 makes
+   129 kPa against 100 and settles after about 8 s; not windup at a stop. To try: an integral that acts only in a
+   window about the target over a feed-forward duty, and a limit on its authority. Shown on first.json's tip-in at
+   2500, 3500 and 4500 with and without the IS20's wheel, the take-ups unchanged.
+2. **The sequential join** (the rotary hunts at 4250 in `main`): as proposed and ruled 04:08.
+3. **The tractor's low-speed end**: the knife's edge at about 1060 rpm, the hole under it (11 to 16 kPa; 697 N m at
+   1000) and the dip at 905; the take-up of 7.86 s against the makers' 1.5 to 4.4; with `ecu.afc` 0.77 the settled
+   torque at 1100 is air-limited (1929 N m on 79 kPa). Whether a guard that opens the vanes on a flag fed by the
+   flow the vanes control is the cap's self-reference again.
+4. Recorded, not chased: the turbo four at 1500 and 1800 with the IS20's wheel (232 and 270 N m against the maker's
+   350 from 1500): the turbine side, no housing figure found; the truck test build passing 66 % of its design flow
+   (in surge cycles at its design speed); F's 0.9 against the diesels' 106 and 110 %.
+
+## Open, for D2 (lead, 25 Nov 04:36)
+
+`ecu.afc` 0.77 in (a patent's "typically about 1.3"), with what it moved recorded; then the full-load fuel curve as
+designed (tables to the lead before its push; torque and power rows of a build whose curve comes from its published
+torque marked "set by the fuel curve" and out of the counts); diesel-v8-truck's rated point air-limited under the
+cap (its own open item).

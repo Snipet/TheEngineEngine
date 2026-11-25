@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Twin-turbo 4.0 L hot-vee V8",
-  "notes": "A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -72,11 +72,11 @@
       "dEx": 0.028,
       "train": "Finger",
       "inDurSeat": 244,
-      "inDur1mm": 212,
+      "inDur1mm": 206.0,
       "inLift": 0.0105,
       "inCentre": 130.0,
       "exDurSeat": 240,
-      "exDur1mm": 208,
+      "exDur1mm": 202.0,
       "exLift": 0.0095,
       "exCentre": 112,
       "inPhaseRange": 42,
@@ -160,6 +160,30 @@
             [
               0.0,
               0.0,
+              25.0,
+              25.0
+            ],
+            [
+              0.0,
+              0.0,
+              25.0,
+              25.0
+            ],
+            [
+              0.0,
+              0.0,
+              38.47926330566406,
+              38.47926330566406
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ],
+            [
+              0.0,
+              0.0,
               20.0,
               20.0
             ],
@@ -172,38 +196,14 @@
             [
               0.0,
               0.0,
-              39.14117431640625,
-              39.14117431640625
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              27.695096969604492,
-              27.695096969604492
-            ],
-            [
-              0.0,
-              0.0,
-              10.0,
-              10.0
-            ],
-            [
-              0.0,
-              0.0,
-              10.0,
-              10.0
-            ],
-            [
-              0.0,
-              0.0,
-              15.0,
-              15.0
-            ],
-            [
-              0.0,
-              0.0,
-              15.0,
-              15.0
+              20.0,
+              20.0
             ]
           ]
         }

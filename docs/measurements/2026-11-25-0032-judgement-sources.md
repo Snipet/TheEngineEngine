@@ -183,3 +183,22 @@ Makers' documents; values at 1100-1300 rpm read off their charts (no numeric tab
 - **Cummins X15 Efficiency Series** (Bulletin 5410582, mart.cummins.com): "peak torque starting at 950 rpm"; 500 hp / 1850 flat about 950 to 1400 rpm, 450 / 1750 about 950 to 1300-1350, 400 / 1650 about 950 to 1300; each flat through 1100-1300 (read).
 - **Cummins ISX15 560 / 1850** (Bulletin 4971488): "runs from 1150 rpm to 1500 rpm at the full 1850 lb-ft of peak torque"; its table's ratings "@ 1200"; the 2013 ISX15 450 "1650 (2237) @ 1000".
 So at 1100 to 1300 rpm an engine of the class makes 0.98 to 1.00 of its peak, its plateau starting at 950 to 1150 rpm. Rows (report.py, the tractor): the least torque from 1100 to 1300 over the peak, at least 0.95; where the torque first reaches 0.98 of its peak, 900 to 1200 rpm (the margins judgement).
+
+**The tractor's rows read for the record** (the lead, 04:07), the archetype as committed, report.py's measures:
+
+| | before (tools 164009a1, 25 Nov 03:15) | after N2's map and sizing (tools 9d55f503, 04:15) | target |
+|---|---|---|---|
+| predicted peak torque | 2310 N m at about 1516 rpm | 2253 at about 1363 | |
+| least torque 1100-1300 over the peak (predicted curve) | 0.64 | 0.735, CORRECTED to **0.98** (below) | 0.95 to 1.0 |
+| where it first reaches 0.98 of the peak | about 1476 rpm | about 1204, CORRECTED to **about 1100** (below) | 900 to 1200 |
+| take-up at 1100 held, to 90 % of the peak | not reached (34 s) | 7.86 s | 0 to 5 s |
+| beside it: to 90 % of the settled | 0.42 s | 6.21 s | |
+| beside it: settled at 1100 held, over the peak | 1495 N m, 0.65 | 2149 N m, 0.95 | |
+
+Note: held at 1100 rpm for 34 s the engine settles at 2149 N m, where the predicted curve (tee-dyno --predict, its own settle) reads some 1435 at 1058 rpm and 2243 at 1211: the curve's short settle under-reads the lug while the boost is still rising, so the lug rows read lower than the held test. The predicted curve also dips to some 650 N m at 905 rpm (1056 at 600, 1435 at 1058) before and after. **Correction (card C, 04:24):** the predictor matches 30 s holds within 2.3 % at 1000, 1100 and 1300 rpm on the tip; what is real is the engine's own spool knife-edge near 1060 rpm (held 30 s: 1544 N m at 1058, about 2000 at 1061), and the two lug rows had interpolated across it from the curve's point at 1058. They now read the curve's own points from 1100 to 1300 rpm (2211 to 2258 N m): the least over the peak **0.98**, the plateau reached by **about 1100** (its first point; the edge near 1060 is not resolved by them: "spool edge"). The 0.735 and 1204 above were that artefact. The dip near 905 rpm holds after 30 s (card C; the lead is routing it).
+
+## 16. The 13B-REW's sequential turbos: when the second joins (the lead's ask, 25 Nov 04:08 UTC)
+
+**No Mazda text with numbers read directly.** Mazda's 1994 RX-7 repair manual text (a third-party copy, autorepairshq.com; a search snippet, the page 503): "To prevent a drop of boost pressure when the secondary turbocharger begins to operate, the secondary turbocharger is made to spin prior to its operation"; solenoids for turbo precontrol, turbo control, wastegate control, charge control, charge relief. Mazda's patent US 5,197,287 (maker): the secondary's pre-rotation is triggered by boost pressure and airflow, not speed, and also by a throttle opening increased "by an amount larger than a predetermined amount" (thresholds as symbols only). SAE 941030 (Tashima, Okimoto et al., Mazda, 1994): abstract without figures, the paper paywalled.
+**The figures:** an rx7club.com post quoting "the 1993 RX-7 Workshop Manual" (a search snippet, 403; unverified): primary only "under 3000 rpm" at light load, the secondary spun "prior to its operation (3000-4500 rpm)", joining "at about 4500 rpm". Kevin Kelleher's measurements (robrobinette.com/boost_note.htm, an enthusiast's, read): "After twin [turbo] mode kicks in at 4500 at WOT"; "locked in twin mode" released "by a time factor, or by dropping below about 3300 rpm"; "the manual implies twin mode will kick in over 5500 rpm with lite load history". rx-7.wikidot.com (enthusiast): "Below 4,500 rpm, only one turbo is connected". Adaptronic (a tuner's ECU notes): its values "4400 RPM and 1200 ms", with minimum MAP and TPS to arm it. Haltech: the switch speeds user settings, no defaults.
+So: the join at about 4500 rpm at full throttle (an enthusiast's measurement and a forum's quote of the manual), pre-spool from about 3000 (the forum's quote only), release below about 3300.

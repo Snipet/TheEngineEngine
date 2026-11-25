@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.5 L V6",
-  "notes": "A 60-degree 3.5 L V6 of a family car: 94 x 83 mm (3456 cc), 10.8:1, four valves and phased cams (engines of the kind: 195 to 224 kW at 6200 to 6600 rpm, 340 to 360 N m at 4700; makers' figures). Front drive, six-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on); a second, short runner of 0.25 m above 4355 rpm, as the real engine switches (the 2GR-FE's ACIS, a valve in the upper manifold closed at low and middle speeds (toyota-club.net; service-manual mirrors give some 3600 to 4450 rpm, unverified); its lengths and speed the class's judgement): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 60-degree 3.5 L V6 of a family car: 94 x 83 mm (3456 cc), 10.8:1, four valves and phased cams (engines of the kind: 195 to 224 kW at 6200 to 6600 rpm, 340 to 360 N m at 4700; makers' figures). Front drive, six-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the finger class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on); a second, short runner of 0.25 m above 4355 rpm, as the real engine switches (the 2GR-FE's ACIS, a valve in the upper manifold closed at low and middle speeds (toyota-club.net; service-manual mirrors give some 3600 to 4450 rpm, unverified); its lengths and speed the class's judgement): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V6",
@@ -64,11 +64,11 @@
       "dEx": 0.029,
       "train": "Finger",
       "inDurSeat": 240,
-      "inDur1mm": 208,
+      "inDur1mm": 202.0,
       "inLift": 0.010199999999999999,
       "inCentre": 130.0,
       "exDurSeat": 236,
-      "exDur1mm": 204,
+      "exDur1mm": 198.0,
       "exLift": 0.0094,
       "exCentre": 112,
       "inPhaseRange": 40,
@@ -141,26 +141,14 @@
             [
               0.0,
               0.0,
-              30.0,
-              30.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              30.0,
-              30.0
-            ],
-            [
-              0.0,
-              0.0,
-              40.0,
-              40.0
-            ],
-            [
-              0.0,
-              0.0,
-              40.0,
-              40.0
+              39.99987030029297,
+              39.99987030029297
             ],
             [
               0.0,
@@ -177,6 +165,12 @@
             [
               0.0,
               0.0,
+              35.0,
+              35.0
+            ],
+            [
+              0.0,
+              0.0,
               30.0,
               30.0
             ],
@@ -185,6 +179,12 @@
               0.0,
               30.0,
               30.0
+            ],
+            [
+              0.0,
+              0.0,
+              5.0,
+              5.0
             ]
           ]
         }

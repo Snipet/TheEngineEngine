@@ -162,11 +162,11 @@
       },
       "measure": "maxPower",
       "range": [
-        85000,
-        120000
+        91000,
+        103000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures of the kind, looked up): 1595 cc; 53 to 75 kW a litre; looked up: en.wikipedia.org/wiki/Honda_B_engine (B16A 110-118 kW at 7600, 144-150 N m at 7000-7100); en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
+      "source": "published figures of its kind (the 4A-GE's makers' figures, looked up): 1595 cc; 57 to 65 kW a litre; looked up: en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
       "basis": "cited"
     },
     {
@@ -177,11 +177,11 @@
       },
       "measure": "speedAtMaxPower",
       "range": [
-        680.7,
+        691.2,
         754.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures of the kind, looked up): 1595 cc: 6500 to 7600 rpm; looked up: en.wikipedia.org/wiki/Honda_B_engine (B16A 110-118 kW at 7600, 144-150 N m at 7000-7100); en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
+      "source": "published figures of its kind (the 4A-GE's makers' figures, looked up): 1595 cc: 6600 to 7200 rpm; looked up: en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
       "basis": "cited"
     },
     {
@@ -192,11 +192,11 @@
       },
       "measure": "maxTorque",
       "range": [
-        140,
-        155
+        142,
+        147
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures of the kind, looked up): 1595 cc; BMEP 11.0 to 12.2 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Honda_B_engine (B16A 110-118 kW at 7600, 144-150 N m at 7000-7100); en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
+      "source": "published figures of its kind (the 4A-GE's makers' figures, looked up): 1595 cc; BMEP 11.2 to 11.6 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
       "basis": "cited"
     },
     {
@@ -207,11 +207,11 @@
       },
       "measure": "speedAtMaxTorque",
       "range": [
-        523.6,
-        743.5
+        544.5,
+        628.3
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures of the kind, looked up): 1595 cc: 5000 to 7100 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Honda_B_engine (B16A 110-118 kW at 7600, 144-150 N m at 7000-7100); en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
+      "source": "published figures of its kind (the 4A-GE's makers' figures, looked up): 1595 cc: 5200 to 6000 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
       "basis": "cited"
     },
     {
@@ -373,11 +373,11 @@
       "tel": "car.t1320",
       "measure": "last",
       "range": [
-        14.41,
-        17.44
+        14.67,
+        17.76
       ],
       "unit": "s",
-      "source": "Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (102 kW) and the build's mass: 15.16 s; 5 % quicker to 15 % slower for the build's own tyres and launch (card I's test holds drag radials to 8 %)",
+      "source": "Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (97 kW) and the build's mass: 15.45 s; 5 % quicker to 15 % slower for the build's own tyres and launch (card I's test holds drag radials to 8 %)",
       "basis": "recalled"
     },
     {
@@ -386,11 +386,11 @@
       "tel": "car.v1320",
       "measure": "last",
       "range": [
-        37.0,
-        42.6
+        36.3,
+        41.8
       ],
       "unit": "m/s",
-      "source": "Hale's rule, trap = 234 (hp/lb)^(1/3) mph: 40.2 m/s (145 km/h), within 8 % under to 6 % over",
+      "source": "Hale's rule, trap = 234 (hp/lb)^(1/3) mph: 39.5 m/s (142 km/h), within 8 % under to 6 % over",
       "basis": "recalled"
     },
     {
@@ -399,11 +399,11 @@
       "tel": "car.speed",
       "measure": "max",
       "range": [
-        55.2,
-        63.5
+        54.1,
+        62.3
       ],
       "unit": "m/s",
-      "source": "where 0.85 of the kind's published power (102 kW) meets the build's drag area and 1.2 % rolling resistance at 1.225 kg/m^3: 214 km/h, within 7 % (a power balance, not a test)",
+      "source": "where 0.85 of the kind's published power (97 kW) meets the build's drag area and 1.2 % rolling resistance at 1.225 kg/m^3: 210 km/h, within 7 % (a power balance, not a test)",
       "basis": "judgement"
     }
   ]

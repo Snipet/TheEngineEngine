@@ -158,7 +158,7 @@ T = {
 }
 # table L's content (the lead, 02:12), with the builds' CAM_RULE: the hot hatch of the 4A-GE kind whole, its bands the
 # 4A-GE's (moved from 85-120 kW at 6500-7600 and 140-155 N m at 5000-7100, which spanned the B16A too)
-CAM_RULE = os.environ.get("TEE_CAM_RULE") == "1"
+CAM_RULE = os.environ.get("TEE_CAM_RULE") != "0"   # on for the naturally aspirated with table L (the lead, 04:07)
 if CAM_RULE:
     T["hot-hatch-16-16v"] = ((91, 103), (6600, 7200), (142, 147), (5200, 6000), (800, 950), 0,
                              "the 4A-GE's makers' figures, looked up")

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Boxer four turbo with unequal headers",
-  "notes": "A 2.5 L boxer four with one turbo, 99.5 x 79 mm (2457 cc), 8.2:1 (the EJ257 kind: 221 kW at 6000 rpm, 393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel drive, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
+  "notes": "A 2.5 L boxer four with one turbo, 99.5 x 79 mm (2457 cc), 8.2:1 (the EJ257 kind: 221 kW at 6000 rpm, 393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel drive, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Flat 4",
@@ -56,11 +56,11 @@
       "dEx": 0.032,
       "train": "Bucket",
       "inDurSeat": 256,
-      "inDur1mm": 228,
+      "inDur1mm": 220.0,
       "inLift": 0.01,
       "inCentre": 127.5,
       "exDurSeat": 252,
-      "exDur1mm": 224,
+      "exDur1mm": 216.0,
       "exLift": 0.0096,
       "exCentre": 112,
       "inPhaseRange": 35,
@@ -142,50 +142,50 @@
             [
               0.0,
               0.0,
-              10.0,
-              10.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              10.0,
-              10.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              10.0,
-              10.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              10.0,
-              10.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              15.0,
-              15.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              15.0,
-              15.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              10.0,
-              10.0
+              20.0,
+              20.0
             ],
             [
               0.0,
               0.0,
-              5.0,
-              5.0
+              20.0,
+              20.0
             ]
           ]
         }

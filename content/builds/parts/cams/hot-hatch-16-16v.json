@@ -2,19 +2,19 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.6 L 16-valve hot hatch cams",
-  "notes": "The cams, springs and phasers of the archetype \"1.6 L 16-valve hot hatch\" alone (intake 256/224 degrees at the seat/1 mm, 9.6 mm; exhaust 248/216, 8.8 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "notes": "The cams, springs and phasers of the archetype \"1.6 L 16-valve hot hatch\" alone (intake 240/204 degrees at the seat/1 mm, 7.6 mm; exhaust 240/204, 7.6 mm): loaded as a part, they replace only the valvetrain's cam fields.",
   "spec": {
     "valve": {
       "model": "Lab",
       "train": "Bucket",
-      "inDurSeat": 256,
-      "inDur1mm": 224,
-      "inLift": 0.0096,
-      "inCentre": 108,
-      "exDurSeat": 248,
-      "exDur1mm": 216,
-      "exLift": 0.0088,
-      "exCentre": 110,
+      "inDurSeat": 240,
+      "inDur1mm": 204.0,
+      "inLift": 0.00756,
+      "inCentre": 111,
+      "exDurSeat": 240,
+      "exDur1mm": 204.0,
+      "exLift": 0.00756,
+      "exCentre": 111,
       "springRate": 25000.0,
       "springPreload": 152.0
     }
