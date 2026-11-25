@@ -56,6 +56,19 @@ heating. Any ledger or probe column of "T at closing" must say which angle it wa
    the tanh port limit. The K20A2's sheet gives +12.6 % (flow-sheets-vs-seat.md). The port limit's form is open: a
    series form was tested against the sheets and does not follow them, and more four-valve sheets are asked of P.
 
+## What stage A's card rests on (the lead's question, 02:24)
+
+Stage A is 236 / 204° (seat / 1 mm) on 8.5 mm intake, and 232 / 200° on 8.0 mm exhaust, centred at 110 / 112. It
+carries **no source**. In `content/builds/archetypes/generate.py` the cam tuple stands with no comment, while the high
+stage beside it cites the K20A Type R's figures (an aggregator) and the switch cites Honda's fact book. The same 236 /
+204 on 110 recurs on other archetypes' generic cards. Its 32° between seat and 1 mm is shorter than CAM_RULE's 38° for
+a rocker. So stage A is **judgement**, a generic card.
+
+A low stage a little milder than this one would fall away earlier, and the model's crossing (8034 rpm on P's row,
+against the real 5500 to 5900) is then partly a card nobody has sourced. That sits beside the two measured parts above:
+the runner's wave, which favours this stage A at 7500, and stage B's head-specific area under-read. P is asked whether
+Honda's fact book that gave the high lobe gives the low one.
+
 ## Next
 
 1. P finds the engine's real runner: the length from the valve to the plenum or bellmouth, its diameter, and whether
