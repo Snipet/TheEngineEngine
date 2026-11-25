@@ -603,6 +603,12 @@ namespace tee::ui
             c.knock.push_back(knocks ? 1 : 0);
             c.retardMin.push_back(lo);
             c.retardMax.push_back(knocks ? lo + 4.0 : 0.0);
+            // Settling (card C's torqueSe, settledCycles): from 185 kPa of boost the 6250 rpm point's mean is unsure
+            // (its standard error 2 % of its torque) and the 6500 rpm one did not settle; every point else settled
+            // over eight cycles to 0.3 %.
+            const bool unsure = boost >= 185e3 && std::fabs(rpm - 6250.0) < 1.0, unsettled = boost >= 185e3 && std::fabs(rpm - 6500.0) < 1.0;
+            c.torqueSe.push_back((unsure ? 0.02 : 0.003) * tq);
+            c.settledCycles.push_back(unsettled ? 0 : 8);
         }
         return c;
     }
