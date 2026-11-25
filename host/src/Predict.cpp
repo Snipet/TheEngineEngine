@@ -315,7 +315,6 @@ namespace tee
                 double lastRetard = knockRetard();
                 double lastBoost = boostNow();
                 std::vector<double> counted;   // the counted cycles' torques
-                std::vector<char> limitedCycles;   // and whether the limiter acted in each
                 bool resettled = false;
                 for (int c = 0; c < most; ++c)
                 {
@@ -326,7 +325,6 @@ namespace tee
                     double sum = 0.0;
                     long run = 0;
                     const long total = std::lround(perCycle * (c + 1)) - std::lround(perCycle * c);
-                    limiting_ = false;
                     while (run < total)
                     {
                         const int k = static_cast<int>(std::min<long>(options_.block, total - run));
@@ -382,7 +380,6 @@ namespace tee
                         // agrees with the three before (no trend: near a runner's resonance the intake's standing wave builds or
                         // decays over many cycles, and two cycles of a slow slide can agree by chance)
                         counted.push_back(t);
-                        limitedCycles.push_back(limiting_ ? 1 : 0);
                         retards.push_back(retard);
                         boosts.push_back(boost);
                         if (hasRetard_ && retard >= options_.knockLimit && !p.knockLimited)
@@ -441,7 +438,6 @@ namespace tee
                                         askHeatSettle();
                                         resettled = true;
                                         counted.clear();
-                                        limitedCycles.clear();
                                         retards.clear();
                                         boosts.clear();
                                         continue;
@@ -478,7 +474,6 @@ namespace tee
                             askHeatSettle();
                             resettled = true;
                             counted.clear();
-                            limitedCycles.clear();
                             retards.clear();
                             boosts.clear();
                             continue;
@@ -493,7 +488,6 @@ namespace tee
                     {
                         p.torque = t;
                         counted.push_back(t);
-                        limitedCycles.push_back(limiting_ ? 1 : 0);
                         retards.push_back(knockRetard());
                         boosts.push_back(boostNow());
                     }
@@ -509,8 +503,6 @@ namespace tee
                         all += counted[i];
                     p.torque = all / static_cast<double>(n);
                 }
-                // the limiter acted in a counted cycle: the torque is the cut's, no measure of the engine's
-                p.limited = std::find(limitedCycles.begin(), limitedCycles.end(), 1) != limitedCycles.end();
                 p.power = p.torque * speed;
                 p.knockRetard = knockRetard();
                 if (!p.knockLimited)
@@ -619,13 +611,8 @@ namespace tee
             // FLAG_FAULT (4) in tel.engine.flags: the simulator found its engine diverged and put it at rest this call
             void noteFault()
             {
-                if (!hasFlags_)
-                    return;
-                const long flags = static_cast<long>(instance_->read(flagsH_));
-                if ((flags & 4) != 0)
+                if (hasFlags_ && (static_cast<long>(instance_->read(flagsH_)) & 4) != 0)
                     faulted_ = true;
-                if ((flags & 1) != 0)   // FLAG_LIMITER: the rev limiter (a diesel's governor) holds it
-                    limiting_ = true;
             }
 
         public:
@@ -754,7 +741,7 @@ namespace tee
             std::unique_ptr<Instance> instance_;
             bool begun_ = false;
             bool hasTorque_ = false, redline_ = false, idle_ = false, holdCrank_ = false, hasState_ = false,
-                 absorber_ = false, hasFlags_ = false, faulted_ = false, hasRetard_ = false, limiting_ = false;
+                 absorber_ = false, hasFlags_ = false, faulted_ = false, hasRetard_ = false;
             Schema::Handle flagsH_, retardH_, heatSettleH_;
             std::vector<std::pair<const FieldInfo*, std::size_t>> extra_;   // PredictOptions::fields
             bool heatSettle_ = false, hasBoost_ = false;
@@ -806,7 +793,7 @@ namespace tee
                 if (from <= 0.0)
                     from = std::max(1000.0 * kFourPi / 120.0, idle);   // 1000 rpm
                 if (to <= 0.0)
-                    to = redline > from ? redline - options.redlineMarginRpm * kFourPi / 120.0 : from * 6.0;
+                    to = redline > from ? redline - 100.0 * kFourPi / 120.0 : from * 6.0;   // 100 rpm under it
             }
             const int n = std::max(options.points, 2);
             speeds.resize(static_cast<std::size_t>(n));
@@ -991,7 +978,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds, o.knockLimit, o.knockWindowSeconds, o.knockMostSeconds, o.boostHuntSeconds, static_cast<double>(o.shares), o.redlineMarginRpm})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds, o.knockLimit, o.knockWindowSeconds, o.knockMostSeconds, o.boostHuntSeconds, static_cast<double>(o.shares)})
             h = mix(h, v);
         for (const double v : o.speeds)
             h = mix(h, v);

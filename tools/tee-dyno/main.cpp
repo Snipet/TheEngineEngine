@@ -112,8 +112,6 @@ namespace
                 std::printf("  knock %.1f deg", p.knockRetard);
             if (p.boostHunting)
                 std::printf("  boost hunting (a mean over windows)");
-            if (p.limited)
-                std::printf("  LIMITER (the cut's torque, no measure)");
             for (std::size_t k = 0; k < p.fields.size() && k < options.fields.size(); ++k)
                 std::printf("  %s %.5g", options.fields[k].c_str(), p.fields[k]);
             if (history)
@@ -273,8 +271,6 @@ int main(int argc, char** argv)
             ok = number(predictOptions.knockWindowSeconds);
         else if (args.is("--most"))
             ok = number(predictOptions.knockMostSeconds);
-        else if (args.is("--redline-margin"))
-            ok = number(predictOptions.redlineMarginRpm);
         else if (args.is("--warmup-seconds"))
             ok = number(predictOptions.warmupSeconds);
         else if (args.is("--tolerance"))

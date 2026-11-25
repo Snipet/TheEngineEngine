@@ -155,37 +155,6 @@ TEST_CASE("a newer request replaces the one running; only its curves come", "[pr
     CHECK_FALSE(service.take(none));
 }
 
-TEST_CASE("a point on which the limiter acted is marked limited; the top speed is redlineMarginRpm under the redline",
-          "[predict]")
-{
-    const auto sim = standinSim();
-    Build build(sim->fields());
-    build.set("engine.redline", 700);
-    PredictOptions options;
-    options.threads = 2;
-    options.sampleRate = 48000.0;
-    options.speeds = {500.0, 650.0, 720.0};   // the last over the redline: the stand-in's limiter cuts there
-    PredictCurve curve;
-    std::string error;
-    REQUIRE(predictCurve(sim, build, options, curve, error));
-    INFO(error);
-    REQUIRE(curve.points.size() == 3);
-    CHECK_FALSE(curve.points[0].limited);
-    CHECK_FALSE(curve.points[1].limited);
-    CHECK(curve.points[2].limited);
-    CHECK(curve.points[2].valid);   // a cut is no fault
-
-    options.speeds.clear();
-    options.points = 4;
-    options.coarse = 4;
-    options.redlineMarginRpm = 300.0;
-    REQUIRE(predictCurve(sim, build, options, curve, error));
-    REQUIRE(curve.points.size() == 4);
-    CHECK(std::fabs(curve.points.back().speed - (700.0 - 300.0 * 3.14159265358979 / 30.0)) < 1e-3);
-    for (const PredictPoint& p : curve.points)
-        CHECK_FALSE(p.limited);
-}
-
 TEST_CASE("the real V8's predicted curve: braked by the host, coarse within seconds, and a V8's numbers",
           "[predict][engine][sim]")
 {
