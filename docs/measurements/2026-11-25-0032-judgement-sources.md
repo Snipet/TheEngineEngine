@@ -183,3 +183,16 @@ Makers' documents; values at 1100-1300 rpm read off their charts (no numeric tab
 - **Cummins X15 Efficiency Series** (Bulletin 5410582, mart.cummins.com): "peak torque starting at 950 rpm"; 500 hp / 1850 flat about 950 to 1400 rpm, 450 / 1750 about 950 to 1300-1350, 400 / 1650 about 950 to 1300; each flat through 1100-1300 (read).
 - **Cummins ISX15 560 / 1850** (Bulletin 4971488): "runs from 1150 rpm to 1500 rpm at the full 1850 lb-ft of peak torque"; its table's ratings "@ 1200"; the 2013 ISX15 450 "1650 (2237) @ 1000".
 So at 1100 to 1300 rpm an engine of the class makes 0.98 to 1.00 of its peak, its plateau starting at 950 to 1150 rpm. Rows (report.py, the tractor): the least torque from 1100 to 1300 over the peak, at least 0.95; where the torque first reaches 0.98 of its peak, 900 to 1200 rpm (the margins judgement).
+
+**The tractor's rows read for the record** (the lead, 04:07), the archetype as committed, report.py's measures:
+
+| | before (tools 164009a1, 25 Nov 03:15) | after N2's map and sizing (tools 9d55f503, 04:15) | target |
+|---|---|---|---|
+| predicted peak torque | 2310 N m at about 1516 rpm | 2253 at about 1363 | |
+| least torque 1100-1300 over the peak (predicted curve) | 0.64 | 0.735 | 0.95 to 1.0 |
+| where it first reaches 0.98 of the peak | about 1476 rpm | about 1204 | 900 to 1200 |
+| take-up at 1100 held, to 90 % of the peak | not reached (34 s) | 7.86 s | 0 to 5 s |
+| beside it: to 90 % of the settled | 0.42 s | 6.21 s | |
+| beside it: settled at 1100 held, over the peak | 1495 N m, 0.65 | 2149 N m, 0.95 | |
+
+Note: held at 1100 rpm for 34 s the engine settles at 2149 N m, where the predicted curve (tee-dyno --predict, its own settle) reads some 1435 at 1058 rpm and 2243 at 1211: the curve's short settle under-reads the lug while the boost is still rising, so the lug rows read lower than the held test. The predicted curve also dips to some 650 N m at 905 rpm (1056 at 600, 1435 at 1058) before and after.
