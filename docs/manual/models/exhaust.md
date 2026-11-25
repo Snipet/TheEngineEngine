@@ -20,7 +20,12 @@ Both models:
 - **Open ends** that reflect inverted and radiate the sound; each end carries a position (rear left, side right and so
   on) for the listener.
 - **Wall heat**: the gas cools along the pipes and the walls warm and soak.
-- **Pops**: unburned fuel lighting in the collector.
+- **Pops and bangs**: unburned fuel lighting in the collector. On the builder, **Bangs** (EXHAUST) chooses how:
+  **Burned in the pipe** (the default) releases the fuel's heat in the collector's gas over its own burn, a few
+  milliseconds, and the pipes make the sound. Only fuel that left the cylinder still mixed with its own air bangs (a
+  spark cut, a misfire, a fuelled overrun's late burn, anti-lag), so a stock car's fuel-cut limiter and lift-off make
+  none. **Carved** is the reference's pulse and crackle. The reference ECU's Pops dial fires the carved pulse either
+  way.
 
 The builder adds, from settings:
 

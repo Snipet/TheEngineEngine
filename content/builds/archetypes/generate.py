@@ -348,13 +348,15 @@ arch(slug="kei-660-triple-turbo", runner=0.28, convK=24.0, name="Kei 660 cc trip
      notes="A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: "
            "47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a "
            "780 kg rear-drive sports kei.")
-arch(slug="diesel-20-common-rail", governor=(4000, 130000), runner=0.3, name="Diesel 2.0 L common rail", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="diesel-20-common-rail", governor=(4000, 130000), torqueMax=320.0, runner=0.3, name="Diesel 2.0 L common rail", geo="ref-05-inline-4", layout="Inline 4",
      bore=81.0, stroke=95.5, rod=144.0, cr=16.5, valves=4, dIn=27.0, dEx=24.0,
      cam=(228, 196, 8.0, 112, 228, 196, 8.0, 112), train="Finger", redline=4800, idle=800, diesel=True,
      boost=dict(kind="Turbo", target=1.4, spring=1.0, vanes=True), car="family-diesel", timing="Toothed belt",
      notes="A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines "
            "of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance "
-           "shafts. In a front-drive family car, six-speed manual.", balance2=True)
+           "shafts. Its full-load torque held to VW's 320 N m (ecu.torqueMax: the Mk7 Golf Estate's 110 kW 2.0 TDI, "
+           "\"320 Nm ... from 1,750 rpm (and up to 3,000 rpm)\", volkswagen-newsroom.com), so its peak-torque row is "
+           "held by calibration. In a front-drive family car, six-speed manual.", balance2=True)
 arch(slug="tractor-15-inline-six", governor=(1900, 108000),
      # its full-load fuel curve (D2's, the lead's ruling 04:52; ecu.fuelCurveRpm / fuelCurveMg, e43e228b): mg a stroke a
      # cylinder against rpm, from the class's cited torque (2779 N m at 1000 rpm held to 1400, 451 kW at 1800 and 2100:
@@ -865,6 +867,10 @@ def build(a):
         # it is matched to (D2's measured values put each at its maker's rated power, lambda about 1.5)
         rated, fuel_boost = a["governor"]
         t["governor"] = "Electronic"
+        if a.get("torqueMax"):
+            # the Electronic governor's full-load fuel held to a stated rated torque (D2's ceiling: docs/models/diesel.md;
+            # the lead's ruling, 25 Nov): its peak-torque row then holds by calibration, not validation
+            t["torqueMax"] = float(a["torqueMax"])
         t["ratedSpeed"] = round(rated * RPM, 1)
         t["fuelBoost"] = fuel_boost
         if a.get("fuelCurve"):

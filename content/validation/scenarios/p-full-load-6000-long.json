@@ -1,0 +1,48 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "p-full-load-6000-long",
+  "description": "Card P's: on the engine dyno, warm, in the build's air: started, then held at 6000 rpm at full throttle; held for 60 s so a slow spool settles (read from 30 to 60 s, the last 30 of 60: N2's convention for the cells still spooling at the 10 s run's window).",
+  "seconds": 60,
+  "warm": true,
+  "events": [
+    {
+      "t": 0.0,
+      "ctl": {
+        "mode": 2,
+        "dynoSpeed": 628.32,
+        "dynoRate": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 1.5,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.2
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1,
+      "source": "02-contracts.md, section 1: within +-1"
+    }
+  ]
+}

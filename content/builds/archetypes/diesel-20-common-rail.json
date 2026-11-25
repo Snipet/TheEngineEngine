@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Diesel 2.0 L common rail",
-  "notes": "A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance shafts. In a front-drive family car, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
+  "notes": "A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance shafts. Its full-load torque held to VW's 320 N m (ecu.torqueMax: the Mk7 Golf Estate's 110 kW 2.0 TDI, \"320 Nm ... from 1,750 rpm (and up to 3,000 rpm)\", volkswagen-newsroom.com), so its peak-torque row is held by calibration. In a front-drive family car, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -116,6 +116,7 @@
         "speed": 83.776
       },
       "governor": "Electronic",
+      "torqueMax": 320.0,
       "ratedSpeed": 418.9,
       "fuelBoost": 130000,
       "knock": {

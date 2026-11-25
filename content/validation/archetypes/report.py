@@ -298,6 +298,12 @@ def tone(bin_dir, slug, out_dir, build_path):
     return float(v[0]), float(v[1]), (float(v[2]) if len(v) > 2 and v[2] != "-" else None)
 
 
+# rows shown and left out of the counts: a build's own stated curve sets them (basis "set", the lead, 04:52), or a
+# ceiling it states holds them by construction (basis "held": ecu.torqueMax / powerMax, docs/models/diesel.md, the
+# lead's ruling of 25 Nov)
+OUT = {"set": "set by the fuel curve", "held": "held by calibration"}
+
+
 def basis(t):
     """A target's kind of source: cited, recalled or judgement (judgement where its file says none, as the curve's
     sharpest point, the lead's ruling)."""
@@ -553,7 +559,7 @@ def main():
     def cell(rows, name):
         for t, v, st in rows:
             if t["name"] == name:
-                mark = (" (set by the fuel curve)" if basis(t) == "set" else
+                mark = (" (%s)" % OUT[basis(t)] if basis(t) in OUT else
                         "" if st == "pass" else (" **miss**" if st == "FAIL" else " n/a"))
                 return "%s (%s)%s" % (show(t, v), rng(t), mark)
         return "-"
@@ -575,10 +581,10 @@ def main():
     by = {}
     for s in slugs:
         for t, v, st in results[s] or []:
-            if st != "pass" and basis(t) != "set":
+            if st != "pass" and basis(t) not in OUT:
                 by.setdefault(t["name"], []).append((s, t, v, st))
     # rows a build's own stated curve sets (basis "set") are shown, not counted (the lead, 04:52)
-    total = sum(len([x for x in (r or []) if basis(x[0]) != "set"]) for r in results.values())
+    total = sum(len([x for x in (r or []) if basis(x[0]) not in OUT]) for r in results.values())
     missed = sum(len(v) for v in by.values())
     out += ["## The misses, target by target", "",
             "%d targets over %d archetypes; %d missed or not measurable. Each line: the archetype, what was measured, "
@@ -587,7 +593,7 @@ def main():
     kinds = {"cited": [0, 0], "recalled": [0, 0], "judgement": [0, 0]}
     for s in slugs:
         for t, v, st in results[s] or []:
-            if basis(t) == "set":
+            if basis(t) in OUT:
                 continue
             k = kinds[basis(t)]
             k[0] += 1
@@ -604,7 +610,7 @@ def main():
     worst = []
     for s in slugs:
         for t, v, st in results[s] or []:
-            if st == "FAIL" and v is not None and "range" in t and basis(t) != "set":
+            if st == "FAIL" and v is not None and "range" in t and basis(t) not in OUT:
                 lo, hi = sorted(t["range"])
                 ref = lo if v < lo else hi
                 if ref:
