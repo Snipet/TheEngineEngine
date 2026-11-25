@@ -37,6 +37,32 @@
 
 ## Landed
 
+- **11:15 (25 Nov) `main` moved to d0a7330e** (fast-forward from 7f64dac1): P's bake plus the owner's macOS bundle
+  fix, applied at their word ("Apply the bundle fix and keep the fleet thin", about 10:53). `app/Window.cmake`: the
+  link depends on every file of sim/ and content/ (LINK_DEPENDS over a CONFIGURE_DEPENDS glob), so an edited or
+  added file links again and the copy into the bundle and its signature follow; the mechanism proved on Linux with
+  Ninja in a scratch project, not run on macOS from here (the owner's own 392b6a4f verified it on their Mac); a
+  deleted file stays in an old bundle. Run 45599543068: linux-x64 and macos-arm64 green; windows-x64 still running
+  when `main` moved (the change is inside `if(APPLE)`; 7f64dac1 was green on Windows in both its runs). sim/, host/
+  and tools/ identical to 7f64dac1 (the lead's diff: 0 lines).
+- **The owner's five todos** (about 10:58; integration-queue.md has each checked against the tree) and "Are there
+  any other todos that can run right now?" (about 11:12). Started: **U1** hover help on every bound control, then
+  the DRIVE gauges and styles (ui/, app/); **U4** the fuel grade as a first-class control in TUNE (`spec.fuel.grade`
+  exists and re-bakes the knock table, but no view names it); **G** the exhaust pops (`sim/exhaust/pop.fm` is the
+  reference's synthesized pulse and crackle; no shipped build states `ecu.overrun.fuel`, so what fires at the
+  defaults is G's first finding; design to the lead before code); **card A** (a new session, the assistant) on phase
+  A1 of `docs/plan/w3-a-assistant.md`, the abstract plan for Claude in the app, written from a map of
+  TestingPlayground and **rewritten after an independent review** that broke several first claims (the seam is the
+  document through an inbox on the frame's thread, not the simulator's command ring; undo, range checks, the key
+  store and the socket were not as the draft said; Claude Desktop over MCP first, the key chat second).
+- **D2's trim cure, first form refused by its own tests:** skipping the trim outright under the metered governor
+  took the cranking fuel with it (233 K start 3.7 to 19 s). Ruled 10:59: pedal open, the charge takes no trim; pedal
+  shut, the trim as today (the reference author's own rule for the driven case, taken to the bench); the same rule
+  for petrols in `idle.fm`'s bench branch as a second commit (all 28 petrol builds' full-pedal dyno torque below
+  ECU idle + 450 rpm is cut today, floor 0.3; D2's read, the lines read by the lead). In progress.
+- Awake, each for named work: D2, U1, U4, G, A. Idle and waiting: P (one re-key after sim/ settles), N2. Asleep:
+  the rest. The steward was woken once to check for unpushed work: none.
+
 - **10:33 (25 Nov) `main` moved to 7f64dac1** (fast-forward from 5548dcf8; run 45592657103: linux-x64, macos-arm64
   and windows-x64 green; the soak still running). P's bake at tools sha ed025908, whose sim/, host/ and tools/ the
   lead diffed against 6bac7c78 and the tip: 0 lines. P: 540 of 540 before the bake and after it; 28 petrol knock
