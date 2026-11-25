@@ -37,6 +37,18 @@ namespace
         auto* f = rig.method<float(void*, float)>("mapChoke");
         return f(rig.data(), static_cast<float>(omega));
     }
+
+    double knee(Rig& rig, double omega)
+    {
+        auto* f = rig.method<float(void*, float)>("mapKnee");
+        return f(rig.data(), static_cast<float>(omega));
+    }
+
+    double bestFlow(Rig& rig, double omega)
+    {
+        auto* f = rig.method<float(void*, float)>("mapBest");
+        return f(rig.data(), static_cast<float>(omega));
+    }
 } // namespace
 
 TEST_CASE("boost: the choke flow scales with the inducer's area", "[boost][map]")
@@ -59,12 +71,13 @@ TEST_CASE("boost: the knee's pressure ratio goes with the tip speed squared", "[
 {
     Rig rig;
     sizes(rig, 0.045, 0.060);
-    const double phiK = rig.get("boost.comp[0].phiK");
-    // tau = PR^(1/3.5) - 1 at the knee, against the tip speed's square
+    // tau = PR^(1/3.5) - 1 at the knee, against the tip speed's square (the knee's flow moves with the tip Mach
+    // number, published-compressor-maps.md: each speed's own)
     const double u1 = 300.0;
     const double u2 = 450.0;
     const double r = 0.030;
-    const double t1 = std::pow(ratio(rig, phiK, u1 / r), 1.0 / 3.5) - 1.0;
+    const double t1 = std::pow(ratio(rig, knee(rig, u1 / r), u1 / r), 1.0 / 3.5) - 1.0;
+    const double phiK = knee(rig, u2 / r);
     const double t2 = std::pow(ratio(rig, phiK, u2 / r), 1.0 / 3.5) - 1.0;
     CHECK(t2 / t1 == Catch::Approx((u2 * u2) / (u1 * u1)).epsilon(0.002));
     // the knee is the line's highest point: lower toward surge and toward choke
@@ -74,7 +87,7 @@ TEST_CASE("boost: the knee's pressure ratio goes with the tip speed squared", "[
     CHECK(ratio(rig, phiK + 0.5 * (1.0 - phiK), u2 / r) < top);
     CHECK(ratio(rig, 1.0, u2 / r) < ratio(rig, phiK + 0.5 * (1.0 - phiK), u2 / r));
     // a 60 mm wheel at 150,000 rpm makes some 2.6 to 3.0 at its knee (published maps of the class)
-    const double pr150 = ratio(rig, phiK, 150000.0 * 6.283185307 / 60.0);
+    const double pr150 = ratio(rig, knee(rig, 150000.0 * 6.283185307 / 60.0), 150000.0 * 6.283185307 / 60.0);
     INFO("PR at 150 krpm: " << pr150);
     CHECK(pr150 > 2.5);
     CHECK(pr150 < 3.1);
@@ -84,7 +97,6 @@ TEST_CASE("boost: efficiency peaks at the best flow and a tip Mach number of 1.1
 {
     Rig rig;
     sizes(rig, 0.045, 0.060);
-    const double phiB = rig.get("boost.comp[0].phiB");
     const double etaMax = rig.get("spec.compEta");
     const double a0 = std::sqrt(1.4 * 287.0 * 293.15);
     const double r = rig.get("boost.comp[0].rTip");
@@ -105,6 +117,8 @@ TEST_CASE("boost: efficiency peaks at the best flow and a tip Mach number of 1.1
             }
         }
     CHECK(best == Catch::Approx(etaMax).margin(1e-4));
+    // (the island's flow at the peak's own speed: it moves with the knee)
+    const double phiB = bestFlow(rig, bestMach * a0 / r);
     CHECK(bestPhi == Catch::Approx(phiB).margin(0.011));
     CHECK(bestMach == Catch::Approx(1.1).margin(0.021));
     // and falls away: off the island it is lower

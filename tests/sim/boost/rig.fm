@@ -278,6 +278,19 @@ module BoostRig
         boost.comp[0].speed(omega, 101325.0f, 293.15f);
         return boost.comp[0].mc;
     }
+
+    // the knee and the best efficiency's flow at a speed (both move with the tip Mach number)
+    float mapKnee(float omega)
+    {
+        boost.comp[0].speed(omega, 101325.0f, 293.15f);
+        return boost.comp[0].phiK;
+    }
+
+    float mapBest(float omega)
+    {
+        boost.comp[0].speed(omega, 101325.0f, 293.15f);
+        return boost.comp[0].phiB;
+    }
 };
 
 // Passivity: one pipe's end at turbo 0's housing, random waves arriving on a random impedance, the wheel locked, no

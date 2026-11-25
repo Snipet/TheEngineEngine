@@ -1225,7 +1225,7 @@ module BoostMachine
                     // (only the loop's own surge counts: with the pedal down (the plenum not under the throttle's
                     // vacuum, as the assist's test) and the boost short of what is asked; a lift's surge on a closed
                     // throttle is the blow-off valve's matter, and then the guard only gives back)
-                    const int surging = (comp[t].mdot < 0.0f || (phiS < 0.8f * comp[t].phiK && comp[t].pr > 1.15f)) &&
+                    const int surging = (comp[t].mdot < 0.0f || (phiS < 0.9f * comp[t].phiK && comp[t].pr > 1.15f)) &&
                                                 pPlenum > 0.85f * pOut && boost < want
                                             ? 1
                                             : 0;
@@ -1256,7 +1256,7 @@ module BoostMachine
             }
             // flags
             const float phi = comp[t].mdot / fmaxf(comp[t].mc, 1.0e-5f);
-            if (comp[t].mdot < 0.0f || (phi < 0.8f * comp[t].phiK && comp[t].pr > 1.15f))
+            if (comp[t].mdot < 0.0f || (phi < 0.9f * comp[t].phiK && comp[t].pr > 1.15f))
                 flags |= BOOST_FLAG_SURGE;
             if (phi > 0.98f && comp[t].u > 50.0f)
                 flags |= BOOST_FLAG_CHOKE;
