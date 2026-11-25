@@ -43,6 +43,13 @@
 
 ## Landed
 
+- **25 Nov 15:23 UTC:** `main` still at 76420f32. The window's sim, host and tools items are on the branch and
+  baked (P: 15152e0b local, tools sha 758bb12f's; its push follows its tier and must sit on card A's SIGPIPE cure
+  and B's two lines). `main` moves when Linux, macOS and Windows are green on that push. Open meanwhile: ui/,
+  assistant/, app/, shell/, tests/, ci, docs. The queue's section of 15:23 has what was found while the bake ran
+  (the compressor map and the diesel package; the clutch; the bangs; the soak's findings; GARAGE listing fixtures;
+  the assistant's platform faults) and the next window's contents.
+
 - **25 Nov 13:59 UTC:** `main` (76420f32) green on all three platforms (Windows 13:50). The window's first three are
   on the branch (tip 1f02d786): the steward's packages and the soak by request only, U5's stage help, N1's octane
   as a free number. Held outside the window: the compressor map's two low coefficients (N2's model-wide table,

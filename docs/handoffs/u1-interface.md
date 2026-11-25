@@ -174,3 +174,15 @@ sheet will include every registered workspace.
   CLASSIC's small dials keep their digits out of the needle's sweep (`Gauge::setReadoutClear`); under a stage width
   where eight would be too small for that (a small dial under 96 px) it shows four larger ones (boost, oil pressure,
   water, lambda; the band's lamps still say oil temperature, exhaust and knock).
+- Card A in the frame (the lead's ask, 25 Nov). The settings' CLAUDE DESKTOP row: Off / Allow over
+  `FrameServices::desktopAllowed`, `allowDesktop(on, why)` and `desktopStatus` (Session::statusNote, its "Claude
+  Desktop" dropped under the heading); off says "Off: the app listens on nothing."; a refusal leaves it off and says
+  "Not allowed: <why>". app/Offline.cpp serves them over the Session; a change that took is kept in the settings'
+  allowClaudeDesktop (WindowHooks::desktopChosen, app/Main.cpp). The key chat: `AppFrame::mountChat(widget)` (the
+  shell makes card A's ChatView and hands it over: ui/ links nothing of the assistant); the top bar's CHAT opens it in
+  the inspector's column (closed at first; SETTINGS takes the column back; the page and the ribbon come back as they
+  were). Its key dialog (`ui/app/KeyDialog.h`, `AppFrame::openKeyDialog`, from the chat's "Add a key" and KEY in its
+  header): typed or pasted (Cmd/Ctrl-V), shown as stars and a count, never drawn, logged or spoken in full; Enter saves
+  through `FrameServices::saveKey` and forgets it here, taken or not; REMOVE, CLOSE, Escape. The owner's yes/no dialog
+  for SessionParts::ask is not built yet. Tests: frame.desktop, frame.chat (a stand-in chat), build.chat (card A's
+  ChatView over a made-up port: nothing is talked to).
