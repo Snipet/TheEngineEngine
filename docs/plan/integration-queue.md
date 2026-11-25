@@ -692,8 +692,55 @@ engine by its own table; the top end loses 5 %). N3-16 stays recorded on the V10
   suggestion), against (ii) N2's test of whether opening helps, against the guard as it is.
 - Recorded for D2: the truck's sets lose VE 0.609 to 0.543 for p3/p2 1.22 to 1.32 at 1900 rpm (1997 to 1705 N m).
 
+## 25 Nov 12:42: what changed in the held list since 12:16, and the next window's order
+
+- **P's bake is on the branch at ce169231** (31e23ae1 merged with L's restated listen cases). Nothing was marked: L
+  restated the camera case and the defaults case on what the auto level holds (an exposure on peaks: each camera's
+  loudest moment at its target; the gap in typical levels tied to the crests' difference with the remainder of the
+  largest peaks' gap within 3.5 dB; the tractor's check on the idle's floor, not its start-history-sensitive
+  largest). The lead had prepared a `CHECK_NOFAIL` on the owner's leave and dropped it unpushed. The lead's own
+  build: listen 21 of 21 on the baked tip ("typical +2.6 dB = crests' difference +5.6 dB -2.9"). P's rows, table N:
+  114 of 847; the NA curves below idle + 450 whole (small block at 1032 rpm 199.7 to 402.5 N m). **The tractor held
+  at 1100 did not move: not the trim, the compressor** (P; on the 76.8 mm wheel 1100 holds 2718).
+- **(b) leaves the next window: it goes in as a pair with D2's cure of the brake.** On the 74.7 mm wheel no vane
+  position holds the shaft on the rise of a High brake at 2000 rpm (fully open from engagement: 1.012); earlier
+  blowdown (the lead's ruled cure) lowers the settled shaft 0.5 % per 10 deg and makes the rise worse: withdrawn.
+  D2's v8 holds the limit on both wheels at 1500, 2000 and 2400 (the vanes fed forward by speed, an integral on the
+  shaft toward 0.93, two cylinders held off at engagement above 1800 rpm, a cylinder cut past 0.985) and is the
+  basis; to settle before it is final: the hunting at 2000 on the smaller wheel (313 to 353 kW) and whether
+  something measurable at engagement tells the wheels apart so the matched wheel keeps its 372 kW. BrakeTest's 330
+  kW is read once the brake has settled (a published steady figure); the shaft's limit over the whole engagement.
+- **The guard: both candidates out** (N2, guard-candidates.md, local). (i) the flag on the cycle's mean (the
+  lead's): the mean flow is left of the line at the pinned cells too. (ii) the opening test: frees the pinned cells
+  (pickup 1300 576 to 809 N m; the 2.0 at 1750 158 to 252) and hunts on the truck. **The lead's reading, being
+  tested by N2:** the truck's low state is its own backflow (VE 0.61, minus 11 % for p3/p2 1.22 to 1.32; its sets
+  have no measured valve timing), which the guard rescues by lowering p3; a copy of the truck's sets with the
+  tractor's valve events, guard off, decides it.
+- **The auto level stays as it is** (L): the percentile of 0.1 s windows keeps the cameras' order and the body's
+  level but lets a rev come in 3.8 dB loud before it settles. Next to measure: today's instant rise, an isolated
+  crack passed to the limiter. The pops on the limiter do not pull the body down (0.7 dB at most): the lead's
+  suspicion, refuted.
+- **Dropped:** D2's `[!mayfail]` split of the tractor's quick case (L's restatement makes it unnecessary; D2's
+  start-fuel commit merged with the tip passes the listen suite unmarked: 21 of 21).
+- **Started 12:33:** card A on A3 (the key chat; its transport built and tested on a loopback server, 532e9f9
+  local; needs `libcurl4-openssl-dev libsecret-1-dev` in scripts/bootstrap-cloud.sh and the CI image: the lead's
+  to add); U5 on a help line for every unbound control of every stage, with a test; M on the idle's spectrum at the
+  opening camera (the owner's hum report, never confirmed closed); J2 on three designs of the inspector (12:20).
+- U1 holds 6e6c768e (the ribbon's unsettled marks) and the fix for CLASSIC's small dials.
+
+**The next window's order, once `main` has moved** (each on a green whole tier of its merged tip; a late item rides
+the window after):
+1. card A: e260d2b (`Build` step ids) alone, then A1, A2 and the wiring;
+2. N1: the 93 grade and `spec.fuel.octane` (fe250071, 4e057986, b225b7a6); then C: the knock bake's lighter pedals
+   with the octane in the key (version 5); then U4: the number in TUNE;
+3. D2: 9ef985c2 (the start's fuel);
+4. G: the exhaust's half of the pops; then N1's seam, G reviewing;
+5. ui only, any time the freeze allows: U1's ribbon marks and CLASSIC fix, U5's help lines, J2's design pictures.
+Then sim/, host/ and tools/ freeze and P bakes, with the content-only items (the rotary's cited ports; the
+two-stage build's high lobe at 247 deg on a centre of 98).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 11:26: sim/, host/ and tools/ are FROZEN** (P re-bakes at the tip for the next `main`). ui/, app/,
-  assistant/, tests/ and docs/ pushes are allowed until the line below changes.
-- When P's baked content is pushed, **all pushes freeze** until `main` has moved; the lead will write it here.
+- **25 Nov 12:31: ALL PUSHES ARE FROZEN** (sim/, host/, tools/, ui/, app/, tests/, docs/: everything). P's baked
+  content is the tip ce169231 and its CI run decides whether `main` moves. Work locally.
+- The lead writes here when `main` has moved and what may be pushed then.
