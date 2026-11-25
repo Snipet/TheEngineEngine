@@ -303,7 +303,25 @@ namespace tee::ui
     std::string AppFrame::bakeWords() const
     {
         // FrameServices::sparkMap's state (ServiceBake) as a sentence while the bake works or failed; empty otherwise.
-        const std::string s = services_.sparkMap ? services_.sparkMap() : std::string();
+        std::string s = services_.sparkMap ? services_.sparkMap() : std::string();
+        // "baking cam 23 of 42": the stage, then its count kept as it is
+        std::string count;
+        if (s.rfind("baking ", 0) == 0)
+            if (const std::size_t d = s.find_first_of("0123456789"); d != std::string::npos && d > 7)
+            {
+                count = " " + s.substr(d);
+                s = s.substr(0, d - 1);
+            }
+        if (!count.empty())
+        {
+            const std::string w = bakeWordsOf(s);
+            return w.empty() ? std::string() : w + count;
+        }
+        return bakeWordsOf(s);
+    }
+
+    std::string AppFrame::bakeWordsOf(const std::string& s)
+    {
         if (s == "waiting to bake")
             return "Calibration: waiting for the edits to rest";
         if (s == "baking spark map")

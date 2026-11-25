@@ -16,59 +16,95 @@ namespace
     {
         std::vector<std::string> warnings;
         std::string error;
-        CHECK_MSG(rig.build->loadFile(std::filesystem::path(TEE_UI_BUILDS_DIR) / "first.json", tee::BuildPart::Whole, warnings, error), error);
+        const auto loadFirst = [&] {
+            CHECK_MSG(rig.build->loadFile(std::filesystem::path(TEE_UI_BUILDS_DIR) / "first.json", tee::BuildPart::Whole, warnings, error), error);
+        };
+        loadFirst();
+        // A cache folder of the test's own, empty at the start: the second load below finds its bake there.
+        const std::filesystem::path cache = std::filesystem::path(TEE_UI_OUT_DIR) / "bake-cache";
+        std::filesystem::remove_all(cache);
+        std::filesystem::create_directories(cache);
+        tee::CalibrationBakeOptions options;
+        options.cacheDirectory = cache;
         tee::ui::ServiceDyno dyno(rig.sim, *rig.build);
-        tee::ui::ServiceBake bake(rig.sim, *rig.build);
+        auto bake = std::make_unique<tee::ui::ServiceBake>(rig.sim, *rig.build, options);
+        bake->yieldTo(dyno);   // the ribbon's curve before the bake's points
         tee::ui::FrameServices services = tee::ui::buildServices(*rig.build, TEE_UI_BUILDS_DIR, rig.user, {});
-        services.sparkMap = [&bake] { return bake.state(); };
+        services.sparkMap = [&bake] { return bake ? bake->state() : std::string(); };
         tee::ui::AppFrame frame(*rig.doc, rig.units, rig.telemetry, services, &dyno, nullptr, tee::ui::defaultSlots(), 1280, 800);
         funkgui::HeadlessHost host(frame, 0, 1.0f);
         host.tick(5);
         frame.show(frame.find("tune"));
         host.tick(5);
         const int kla = rig.doc->find("ecu.maps.knockLimitAuto"), cia = rig.doc->find("ecu.maps.camInAuto");
-        const auto t0 = std::chrono::steady_clock::now();
+        auto t0 = std::chrono::steady_clock::now();
         auto now = [&] { return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(); };
-        std::string last;
+        std::string lastStage;
         int shots = 0;
-        double lastPeak = -1.0;
+        double lastPeak = -1.0, lastPrint = -100.0, firstCurve = -1.0;
+        const auto stageOf = [](const std::string& st) {   // "baking cam 23 of 42" -> "baking cam"
+            const std::size_t d = st.find_first_of("0123456789");
+            return d == std::string::npos ? st : st.substr(0, d - 1);
+        };
         const auto watch = [&](double until, const char* phase, bool stopAtBaked) {
             const double end = now() + until;
             while (now() < end)
             {
-                bake.tick();
+                bake->tick();
                 host.tick(1);
-                const std::string s = bake.state();
+                const std::string s = bake->state();
                 const double pk = dyno.predicted().peakTorque().value;
-                if (s != last || (std::isfinite(pk) && std::fabs(pk - lastPeak) > 0.05))
+                if (firstCurve < 0.0 && !dyno.predicted().empty())
+                {
+                    firstCurve = now();
+                    std::printf("  %7.2f s  [%s]  the ribbon's first curve (state '%s')\n", firstCurve, phase, s.c_str());
+                }
+                const bool newStage = stageOf(s) != lastStage;
+                if (newStage || now() - lastPrint >= 10.0 || (std::isfinite(pk) && std::fabs(pk - lastPeak) > 0.05))
                 {
                     std::printf("  %7.2f s  [%s]  state '%s'  knockLimitAuto %.0f  camInAuto %.0f  peak %.1f N m (refined %d)\n", now(),
                                 phase, s.c_str(), kla >= 0 ? rig.doc->get(kla) : -1.0, cia >= 0 ? rig.doc->get(cia) : -1.0, pk,
                                 dyno.refined() ? 1 : 0);
-                    if (s != last && shots < 12)
+                    if (newStage && shots < 12)
                     {
                         const std::string path = std::string(TEE_UI_OUT_DIR) + "/bake.watch." + std::to_string(shots++) + ".png";
                         host.draw();
                         if (!host.writePng(path.c_str(), 1))
                             std::printf("  (no picture %s)\n", path.c_str());
                     }
-                    last = s;
+                    lastStage = stageOf(s);
                     lastPeak = pk;
+                    lastPrint = now();
                 }
                 if (stopAtBaked && s == "baked")
                     return;
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
         };
-        std::printf("  -- load\n");
-        watch(200.0, "load", true);
+        std::printf("  -- load (the bake yields to the ribbon's predictor; cache %s, empty)\n", cache.string().c_str());
+        watch(300.0, "load", true);
+        CHECK(bake->state() == "baked");
+        // The ribbon's first curve with the bake running: 6 s here (4.0 s with no bake at all, a cold process's predictor;
+        // 31 to 35 s before the bake yielded to it, card C's 7f2ddfa1).
+        CHECK_MSG(firstCurve >= 0.0 && firstCurve < 10.0, std::to_string(firstCurve));
+        std::printf("  still knocking after the bake: %d cells\n", bake->stillKnockingCells());
         std::printf("  -- edit compression +0.5\n");
         const int comp = rig.doc->find("engine.compression");
         rig.doc->beginGesture();
         rig.doc->set(comp, rig.doc->get(comp) + 0.5);
         rig.doc->endGesture();
         watch(12.0, "edit1", false);
-        CHECK_MSG(bake.error().empty(), bake.error());
+        CHECK_MSG(bake->error().empty(), bake->error());
+        // A second launch: a fresh service over the same cache, first.json loaded again: "baked" at once.
+        bake.reset();
+        loadFirst();
+        bake = std::make_unique<tee::ui::ServiceBake>(rig.sim, *rig.build, options);
+        bake->yieldTo(dyno);
+        std::printf("  -- a second launch (first.json again, the cache from the first)\n");
+        t0 = std::chrono::steady_clock::now();
+        lastStage.clear();
+        watch(60.0, "second", true);
+        CHECK_MSG(bake->state() == "baked" && now() < 5.0, bake->state() + " after " + std::to_string(now()) + " s");
         return 0;
     }
 }

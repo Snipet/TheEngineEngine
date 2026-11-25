@@ -156,3 +156,9 @@ sheet will include every registered workspace.
 - **The bake in the status line** (the lead's ruling, 01:33): while FrameServices::sparkMap says the bake works, the
   top bar's status line says its stage ("Baking the cam", "Baking the spark map"...), on every workspace, at
   1100 px too (it takes room from the name). Test `ui.frame.bake`.
+- **The bake's count, priority, cache, cells still knocking** (card C's 648e7fca, 7f2ddfa1): `sparkMap` says "baking cam
+  23 of 42" while it works (the top bar: "Baking the cam 23 of 42"); `ServiceBake::yieldTo(serviceDyno)` lets the
+  ribbon's curve go first (safe in either order of destruction: card C keeps the predictor's shared busy flag);
+  `CalibrationBakeOptions::cacheDirectory` is the shell's to set where it makes the ServiceBake (a cached bake is
+  "baked" at once). `FrameServices::stillKnocking` gives the knock-limit table's cells still knocking after the last
+  bake, [speed][load] on ecu.maps.knockLimit's grid (empty: none): TUNE marks them.
