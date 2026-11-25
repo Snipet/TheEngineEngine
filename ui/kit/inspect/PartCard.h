@@ -23,6 +23,7 @@ namespace tee::ui
     public:
         static constexpr float kWidth = 300.0f;
         static constexpr int kFields = 6;    // the first fields of the part's page
+        static constexpr float kGap = 56.0f; // from the press to the card's side: clear of a part about a cylinder's size
 
         explicit PartCard(FieldInspector& card);   // the card's FieldInspector (Style::list), hidden until opened
 
