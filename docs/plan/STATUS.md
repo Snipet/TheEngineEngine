@@ -43,6 +43,11 @@
 
 ## Landed
 
+- **25 Nov 13:59 UTC:** `main` (76420f32) green on all three platforms (Windows 13:50). The window's first three are
+  on the branch (tip 1f02d786): the steward's packages and the soak by request only, U5's stage help, N1's octane
+  as a free number. Held outside the window: the compressor map's two low coefficients (N2's model-wide table,
+  local) and the clutch that slips open under the compression brake (the integrator, local). The queue, 13:59.
+
 - **25 Nov 13:43 UTC: `main` at 76420f32** (from d0a7330e, fast-forward; Linux 545 of 545 and macOS green on run
   45623044537, sim/host/tools equal the bake's dbd64a5c). New in `main`: the idle spark trim's two cures (the dyno's
   low end), P's bake on them, hover help, DRIVE's three new styles, the fuel control (octane grades; its macOS fault

@@ -114,6 +114,33 @@ namespace tee::ui
         wave_ = &make<ScopePlot>("Output wave");
         spec_ = &make<ScopePlot>("Spectrum");
         map_ = &make<ScopePlot>("Speed map");
+        // Hover help (the owner's ask, 25 Nov): what each control does and each plot shows, with its units.
+        freeze_->setHelp("Hold every plot as it is now while the engine runs on; again to follow it live");
+        log_->setHelp("The P-V loop on logarithmic axes, where compression and expansion are straight lines");
+        clear_->setHelp("Empty the speed map, to start collecting it again from the next sweep");
+        {
+            const char* says[6] = {
+                "Show or hide the cylinder pressure plot",
+                "Show or hide the P-V loop",
+                "Show or hide the port pressures",
+                "Show or hide the output wave",
+                "Show or hide the output's spectrum",
+                "Show or hide the speed map (frequency against engine speed)",
+            };
+            for (int i = 0; i < 6; ++i)
+                selectors_[static_cast<std::size_t>(i)]->setHelp(std::string(says[i]) + "; a small stage shows three");
+        }
+        pressure_->setHelp("Cylinder 1's pressure against crank angle in degrees after top dead centre, with the valve "
+                           "events, the spark, the peak and the half-burn point marked; knock by cylinder under it");
+        pv_->setHelp("Cylinder 1's pressure against its volume over a cycle: the area inside the loop is the work "
+                     "of one cycle");
+        ports_->setHelp("The pressure at the intake port (solid) and the exhaust port (dashed) against crank angle");
+        wave_->setHelp("The sound output as it leaves the engine model, in full scale against milliseconds, held "
+                       "still on the crank");
+        spec_->setHelp("The output's spectrum: level in dB against frequency in Hz, the firing frequency and its "
+                       "orders marked");
+        map_->setHelp("The output's spectrum at each engine speed met: frequency in Hz up, engine speed across, "
+                      "louder brighter");
 
         pressure_->setTraces({ { "P", Style{ Ink::value, false, true, look::kTrace } } });
         pv_->setTraces({ { "P", Style{ Ink::value, false, false, look::kTrace } } });

@@ -76,7 +76,10 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   run (the same property on a small fixed sample, the corners that have failed before first), and the full form
   carries the Catch tag `[nightly]` (registered with `ADD_TAGS_AS_LABELS`, the rule in `tests/CMakeLists.txt`), which
   the dev and release presets leave out and `ctest --preset nightly` runs. CI's soak tier runs the `[nightly]` tests
-  on Linux at every push, and on macOS and Windows when the head commit's message contains `[soak]`. Each CI job's
+  (about 95 minutes on Linux) only when asked, so that each soak result belongs to a named commit: a push whose head
+  commit's message contains `[soak]` (Linux) or `[soak-all]` (Linux, macOS and Windows), the content agent's baked
+  push for `main` among them; a run by hand with `tier` soak or both (the lead's dispatch); and each night at 03:23
+  UTC on the integration branch's tip, on Linux. A push without the tag soaks nothing. Each CI job's
   summary lists the default-run tests over 30 s with their package; the build steward tells their owners.
 - **A budget a package** (the rule's second half: tests under 30 s each do not by themselves bound the whole): the
   fast tier's CPU-seconds on CI's Linux runner, the sum of a package's test times. The whole fast tier is capped at
