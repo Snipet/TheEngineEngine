@@ -1,6 +1,7 @@
 // tests/sim/calibration/na/BalanceTest.cpp: card N1's hold on the air's account. In a steady state the fresh air the
 // cylinders trap is the air the throttle passes: nothing else feeds them. Measured at a warm idle on the bench, where
 // the overlap pushes the most gas back up the runners (docs/measurements/calibration/na/causes.md, D).
+#include "Player.h"
 #include "tee/EnginePlayer.h"
 #include "tee/Warm.h"
 
@@ -11,17 +12,18 @@
 #include <filesystem>
 #include <string>
 
-TEST_CASE("the fresh air trapped at a warm idle is the air through the throttle", "[calibration][na]")
+// (a section of the fast tier's one case, FastTest.cpp: "the fresh air trapped at a warm idle is the air through the
+// throttle")
+void n1::freshAirIsThrottleAir()
 {
     // (finding D of causes.md: gas pushed back into the runner left at the cylinder's temperature and came back at the
     // air's: 1.58x on this build before card D's conserving cylinder, 1.05 after)
-    tee::EnginePlayer::Options options;
-    options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
-    options.sampleRate = 96000.0;
+    struct
+    {
+        double sampleRate = 96000.0;
+    } options;
     std::string errors, warnings;
-    auto p = tee::EnginePlayer::create(options, errors);
-    INFO(errors);
-    REQUIRE(p != nullptr);
+    tee::EnginePlayer* p = &n1::player(options.sampleRate);
     tee::EngineBuild b;
     REQUIRE(tee::loadBuild(*p, std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / "economy-four-15.json", b,
                            errors, warnings));
