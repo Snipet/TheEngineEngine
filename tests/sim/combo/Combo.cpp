@@ -532,10 +532,14 @@ namespace combo
         // 0.3 s after its fall; named by the gear before and after), each ECU cut outside a shift (ecu.flags 2 fuel, 4 spark, 8 overrun; the reference's
         // engine.flags 2), each limiter episode (ecu.flags 1, engine.flags 1), each lift (the throttle falling
         // through 0.1: 0.05 s before to 0.5 s after); the start (to 2 s after the key is let go) first of all; a
-        // sample in two windows is the first's in that order (start, shift, limiter, cut, lift); the rest of the running stretch is "the rest"
+        // sample in two windows is the first's in that order (start, flip, shift, limiter, cut, lift); the rest of the running stretch is "the rest"
         std::vector<Event> out;
         if (tm.started + 2.0 > from)
             out.push_back({"start", from, std::min(to, tm.started + 2.0)});
+        // a switch thrown while running (the scenario's flip times): 0.3 s from each (the lead's ruling, 26 Nov 11:11)
+        for (double t : tm.flips)
+            if (t + 0.3 > from && t < to)
+                out.push_back({"flip", std::max(from, t), std::min(to, t + 0.3)});
         auto episodes = [&](const char* name, std::initializer_list<std::pair<const char*, int>> bits, double after) {
             std::vector<tee::test::Series> s;
             for (const auto& [path, bit] : bits)
@@ -809,7 +813,8 @@ namespace combo
         // sample, from the run's own step profile (the step over its local level, stepProfile, computed on the whole
         // running stretch), and that step's excess is taken over neighbouring firing periods anywhere in the running
         // stretch, never clipped to the window (the steward read 2.64 in a window against 2.50 over the run, k = -4,
-        // when edges clipped). A sample in two windows is judged in the first (start, shift, limiter, cut, lift): a limiter's cuts are the limiter's.
+        // when edges clipped). A sample in two windows is judged in the first (start, flip, shift, limiter, cut, lift): a limiter's cuts are
+        // the limiter's.
         const auto lch = run.left().during(from, to), rch = run.right().during(from, to);
         const std::vector<float> lp = stepProfile(lch.samples(), lch.rate());
         const std::vector<float> rp = stepProfile(rch.samples(), rch.rate());
@@ -888,7 +893,7 @@ namespace combo
                               "%s: largest step %.1f times the local level at %.3f s, at an upshift's cut (the bound "
                               "there %.0f, the lead's ruling for ecu.model 1 under fuel.model 0; elsewhere %.1f); %s",
                               evs[e].name.c_str(), step, at, kShiftCutBound, clickBound, both);
-                v.failures.push_back({"click-shift-cut", b});
+                v.failures.push_back({"click-shift-cut", b, evs[e].name});
             }
             else
             {
@@ -897,7 +902,7 @@ namespace combo
                               "%.1f%s); %s",
                               evs[e].name.c_str(), step, at, clickBound, refStep,
                               atShiftCut ? "; at an upshift's cut, over 42" : "", both);
-                v.failures.push_back({"click", b});
+                v.failures.push_back({"click", b, evs[e].name});
             }
         }
 
@@ -1003,11 +1008,11 @@ namespace combo
     } // namespace
 
     const Known* known(const std::string& c, const std::string& build, const std::string& scenario,
-                       const std::string& check)
+                       const std::string& check, const std::string& event)
     {
         for (const Known& k : kKnown)
             if (k.id != nullptr && comboMatches(k.combo, c) && matches(k.build, build) && matches(k.scenario, scenario) &&
-                matches(k.check, check))
+                matches(k.check, check) && (k.event == nullptr || event == k.event))
                 return &k;
         return nullptr;
     }

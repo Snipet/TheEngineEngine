@@ -59,6 +59,7 @@ namespace combo
         double driveFrom = -1, driveTo = -1;   // in gear: the car must move
         double off = -1;                       // the key off: it must stop within 3 s
         double end = 0;
+        std::vector<double> flips;             // a switch thrown while running: judge's "flip" windows (part B)
     };
     enum class Kind
     {
@@ -83,6 +84,7 @@ namespace combo
     {
         std::string check;   // "finite", "peak", "dc", "click", "start", "idle", "revs", "moves", "stop", "tel", "guard"
         std::string detail;
+        std::string event = {};   // a click's event window ("start", "flip", "shift 3-2", "limiter", "cut", "lift", "the rest")
     };
     struct Verdict
     {
@@ -134,8 +136,8 @@ namespace combo
     // a tool, tee-fuzz, that plays without Catch)
     bool nightlyCase();
     void setNightlyCase(bool nightly);
-    // An event window of a run (judge's per-event click, part B): a name ("start", "shift 2-3", "cut", "limiter",
-    // "lift", "the rest") and its span
+    // An event window of a run (judge's per-event click, part B): a name ("start", "flip", "shift 2-3", "limiter",
+    // "cut", "lift", "the rest") and its span
     struct Event
     {
         std::string name;
@@ -176,9 +178,12 @@ namespace combo
         const char* scenario;  // a kindName or a test's name, or "*"
         const char* check;     // a Failure's check, or "*"
         const char* what;      // one sentence
+        // the event window a click falls in (part B; the lead's ruling, 26 Nov 11:11), exact, or nullptr: any (every
+        // row written before the field: its coverage unchanged)
+        const char* event = nullptr;
     };
     const Known* known(const std::string& comboName, const std::string& build, const std::string& scenario,
-                       const std::string& check);
+                       const std::string& check, const std::string& event = std::string());
 
     // The lead's ruling (23:15): judge's "click-shift-cut" (a step within 42 at an upshift's cut) is the engine's own
     // event for a combination with ecu.model on and fuel.model off; report() accepts it there and nowhere else.

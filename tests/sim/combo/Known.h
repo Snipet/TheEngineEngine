@@ -123,5 +123,30 @@ const Known kKnown[] = {
      "6.59 s, the upshift's return to power (sound.peak 0.054 to 0.57 in about 10 ms, the gain flat); under 3.37, 0 of 17; "
      "lowest 1.26, median 2.30, highest 3.28; the event appears with sound.model alone and with no combination "
      "without it (G's and N1's spreads); the reference sits on its 0.85 limiter through the whole pull (L)"},
+    // Part B's newly red rows (the lead's ruling, 26 Nov 11:11): 17 copies at 293.15 +- 0.15 K per EVENT (the worst window
+    // of that event in each copy), on the merged tip of 26 Nov 10:15, against the nightly bound; exact combinations, each
+    // with its event
+    {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "engine.wallHeat+fuel.model+ecu.model", "small-four", "pull", "click",
+     "the fuel's return after an overrun cut with ecu.model on (the steward's item 8; the lead's ruling, 26 Nov 11:11), a row part B's per-event judge brought in: the small four's 3-2 downshift: 5 of 17 copies over the nightly bound 2.82; lowest 1.56, median 2.15, highest 3.91", "shift 3-2"},
+    {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "fuel.model+ecu.model+car.model", "small-four", "pull", "click",
+     "the fuel's return after an overrun cut with ecu.model on (the steward's item 8; the lead's ruling, 26 Nov 11:11), a row part B's per-event judge brought in: the small four's 3-2 downshift: 2 of 17 over 2.82; lowest 1.60, median 2.27, highest 4.74", "shift 3-2"},
+    {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "fuel.model+ecu.model+voices.model", "small-four", "pull", "click",
+     "the fuel's return after an overrun cut with ecu.model on (the steward's item 8; the lead's ruling, 26 Nov 11:11), a row part B's per-event judge brought in: the small four's 3-2 downshift: 5 of 17 over 2.82; lowest 1.56, median 2.14, highest 3.93", "shift 3-2"},
+    {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "valve.model+fuel.model+ecu.model", "v8", "tour", "click",
+     "the fuel's return after an overrun cut with ecu.model on (the steward's item 8; the lead's ruling, 26 Nov 11:11), a row part B's per-event judge brought in: the V8's tour, the overrun cut ending at 9.46 s: 2 of 17 over the nightly bound 3.94; lowest 1.55, median 2.16, highest 4.13", "cut"},
+    {"X-044", "2026-11-26", "the steward (the ECU's overrun cut), N2 named (boost)", "engine.custom+boost.model+ecu.model", "turbo-six", "pull", "click",
+     "the fuel's return after an overrun cut with ecu.model on (the steward's item 8; the lead's ruling, 26 Nov 11:11), a row part B's per-event judge brought in: the turbo six's 3-2 downshift: 8 of 17 over the nightly bound 2.67; lowest 1.63, median 2.53, highest 3.53", "shift 3-2"},
+    {"X-052", "2026-11-26", "the steward (ecu.model's limiter)", "valve.model+fuel.model+ecu.model", "v8", "tour", "click",
+     "at the limiter, a row part B's per-event judge brought in; the mechanism not read; X-051's stand-in (the exhaust valve's flow solve run to convergence) to be read on it (the lead's ruling, 26 Nov 11:11): 6 of 17 copies over the nightly bound 3.94; lowest 2.84, median 3.82, highest 5.85", "limiter"},
+    {"X-052", "2026-11-26", "the steward (ecu.model's limiter)", "engine.wallHeat+ecu.model+car.model", "turbo-six", "tour", "click",
+     "at the limiter, a row part B's per-event judge brought in; the mechanism not read; X-051's stand-in (the exhaust valve's flow solve run to convergence) to be read on it (the lead's ruling, 26 Nov 11:11): 3 of 17 over 2.97; lowest 2.17, median 2.59, highest 3.20", "limiter"},
+    {"X-052", "2026-11-26", "G (the reference ECU's limiter: a train of cuts, X-051 the suspect)", "valve.model+intake.model+car.model", "turbo-six", "tour", "click",
+     "at the limiter, a row part B's per-event judge brought in; the mechanism not read; X-051's stand-in (the exhaust valve's flow solve run to convergence) to be read on it (the lead's ruling, 26 Nov 11:11): 2 of 17 over 2.97; lowest 2.09, median 2.49, highest 3.24", "limiter"},
+    {"X-052", "2026-11-26", "G (the reference ECU's limiter: a train of cuts, X-051 the suspect)", "intake.model+exhaust.model+voices.model", "turbo-six", "tour", "click",
+     "at the limiter, a row part B's per-event judge brought in; the mechanism not read; X-051's stand-in (the exhaust valve's flow solve run to convergence) to be read on it (the lead's ruling, 26 Nov 11:11): 1 of 17 over 2.97; lowest 1.96, median 2.28, highest 3.03", "limiter"},
+    {"X-053", "2026-11-26", "the integrator (a switch taken while running)", "flip engine.wallHeat", "turbo-six", "flip", "click",
+     "a model switched while running, the click in the 0.3 s after the switch is thrown (part B's flip window; the lead's ruling, 26 Nov 11:11), the turbo six's pull, flips at 5.0, 6.5, 8.0, 9.5 s: 3 of 17 copies over the nightly bound 2.67; lowest 1.65, median 2.08, highest 3.27", "flip"},
+    {"X-053", "2026-11-26", "the integrator (a switch taken while running)", "flip exhaust.model", "turbo-six", "flip", "click",
+     "a model switched while running, the click in the 0.3 s after the switch is thrown (part B's flip window; the lead's ruling, 26 Nov 11:11), the turbo six's pull, flips at 5.0, 6.5, 8.0, 9.5 s: 10 of 17 over 2.67; lowest 2.05, median 2.84, highest 3.89", "flip"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
