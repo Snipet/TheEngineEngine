@@ -339,7 +339,7 @@ TEST_CASE("a handful of pairs where packages meet: fuel and ECU then boost and e
 
 // The nightly bound's proof, on demand (hidden): one case judged as a [nightly] case is, against the reference's lowest
 // excess over its copies. BOUNDPROOF="<archetype> <tour|pull|launch|cold> <switches>" or "<corpus stem>" (the corpus's
-// own route); with TEE_SIM_DIR, on another tree (X-014 and X-015 on 62a6a7fd: the lead's condition, 26 Nov 08:07)
+// own route) or "corpus <stem> <scenario>" (a corpus build as built through any scenario); with TEE_SIM_DIR, on another tree (X-014 and X-015 on 62a6a7fd: the lead's condition, 26 Nov 08:07)
 TEST_CASE("the nightly bound's proof: one case judged against its reference's lowest copy", "[.boundproof][nightly]")
 {
     const char* spec = std::getenv("BOUNDPROOF");
@@ -350,6 +350,52 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
     if (kindArg.empty())
     {
         corpusBuild(corpusDir() / (build + ".json"));
+        return;
+    }
+    // "corpus <stem> <scenario>": a corpus build as built through any scenario, against its every-switch-off
+    // reference's lowest excess over its copies (as corpusBuild judges the tour), per event at each BOUNDPROOF_DT copy
+    if (build == "corpus")
+    {
+        const std::string file = (corpusDir() / (kindArg + ".json")).string();
+        Kind kind = Kind::Tour;
+        for (Kind k : allKinds())
+            if (comboArg == kindName(k))
+                kind = k;
+        std::vector<double> excess;
+        double ref = 0.0;
+        for (double dT : kBoundNudges)
+        {
+            Times tm;
+            tee::test::Scenario off = scenario(kind, file, 0u, tm);
+            off.at(0.0);
+            for (const Switch& w : switches())
+                off.spec(w.path, 0);
+            off.spec("env.temperature", 293.15 + dT);
+            const tee::test::Run r0 = off.run(tm.end);
+            const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+            if (dT == 0.0)
+                ref = std::max(r0.left().during(from, to).largestStep(), r0.right().during(from, to).largestStep());
+            excess.push_back(stepExcess(r0, from, to));
+        }
+        std::printf("reference | %s | %s | excess over its copies:", kindArg.c_str(), kindName(kind));
+        for (double e : excess)
+            std::printf(" %.2f", e);
+        std::printf("; the bound twice the lowest, %.2f\n", 2.0 * lowestExcess(excess));
+        const Archetype generic{"corpus", 36.6, 209.4, false};
+        const char* dts = std::getenv("BOUNDPROOF_DT");
+        std::istringstream list(dts != nullptr ? dts : "0");
+        double dT = 0.0;
+        while (list >> dT)
+        {
+            Times tm;
+            tee::test::Scenario sc = scenario(kind, file, 0u, tm);
+            sc.at(0.0).spec("env.temperature", 293.15 + dT);
+            const tee::test::Run r = sc.run(tm.end);
+            const Verdict v = judge(r, tm, &generic, true, ref, lowestExcess(excess));
+            for (const auto& w : v.windows)
+                std::printf("window | %+.2f | %s | %.2f | %.3f | %s\n", dT, w.event.c_str(), w.excess, w.at,
+                            v.excessBound >= 0.0 && w.excess > v.excessBound ? "over" : "under");
+        }
         return;
     }
     Kind kind = Kind::Tour;
