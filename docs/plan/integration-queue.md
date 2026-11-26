@@ -1622,14 +1622,10 @@ does, or says which state it did not read.
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
-- **26 Nov 03:18 UTC: THE BAKE STOPPED AT ITS GATE (the 3.0 twin turbo's warm idle; the section above).**
-  `sim/` is reopened for ONE commit, the steward's revert of 98d0dc4d; everything else under `sim/`, `host/`
-  and `tools/` stays CLOSED. The trees to bake are then **sim f23337cc, host 2e7c1bec, tools 7c3e4d59**; the
-  line below is kept for the record and its tip and sim tree are superseded.
-- **26 Nov 02:37 UTC: FROZEN FOR THE BAKE. `sim/`, `host/` and `tools/` are CLOSED to every session** until
-  the baked commit is on `main`. The frozen tip is **14bccbf7** (trees: sim a86a64c9, host 2e7c1bec, tools
-  7c3e4d59). All seven owners of those trees answered "nothing in flight"; the integrator holds X-045's cure
-  local for the next window. P bakes on that tip (the full bake: the settle moved every table).
+- **26 Nov 03:29 UTC: FROZEN FOR THE BAKE AGAIN, at e341bee3** (the steward's revert 2c4624e5 in it;
+  trees: **sim f23337cc, host 2e7c1bec, tools 7c3e4d59**, verified by the lead's fetch). `sim/`, `host/` and
+  `tools/` are CLOSED to every session until the baked commit is on `main`. P is baking on those trees (the
+  first bake, at 14bccbf7 on sim a86a64c9, stopped at its gate: the section above).
 - **Open at any time, as before:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the baked
   tables), docs. One green whole default tier on a merged state, then merge a moved tip and push, saying what
   was not in the run; `scripts/lint.sh` first; wait on the tier's process; a refusal of a session's permission
