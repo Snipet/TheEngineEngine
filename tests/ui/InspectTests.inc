@@ -336,6 +336,10 @@
         CHECK(col.focusedRow() >= 0 && kindAt() == Kind::table && fieldsSeen >= 3);
         typeKeys(host, "return");
         CHECK_MSG(opened.size() == 1 && opened[0] == "Duty", std::to_string(opened.size()));
+        // Back from the table's page: the focus on its row again (by the table's first field); none for another field.
+        typeKeys(host, "up up");
+        CHECK(rows->focusTable(rig.doc.find("boost.duty")) && kindAt() == Kind::table && rows->focus() == 0);
+        CHECK(!rows->focusTable(rig.doc.find("boost.level")));
         // A heading folds on Enter, and opens again.
         const std::size_t before = col.rows().size();
         for (int i = 0; i < 40 && kindAt() != Kind::heading; ++i)

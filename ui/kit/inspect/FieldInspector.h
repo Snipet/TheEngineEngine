@@ -88,6 +88,8 @@ namespace tee::ui
         bool beginTyping(int field);
         // The focus on the first field or table (a page just shown); false when there is none.
         bool focusFirst();
+        // The focus on the table row whose fields include `field` (back from the table's page); false when none.
+        bool focusTable(int field);
         // The text a field's value shows (its number, or a choice's name, or ON / OFF) and its unit.
         std::string valueText(int field) const;
         std::string unitText(int field) const;

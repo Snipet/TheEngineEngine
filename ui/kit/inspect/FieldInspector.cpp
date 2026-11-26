@@ -373,6 +373,21 @@ namespace tee::ui
         return false;
     }
 
+    bool FieldInspector::focusTable(int field)
+    {
+        for (std::size_t i = 0; i < rows_.size(); ++i)
+            if (rows_[i].kind == Row::Kind::table)
+            {
+                const std::vector<int>& fs = filtered_[static_cast<std::size_t>(rows_[i].entry)].fields;
+                if (std::find(fs.begin(), fs.end(), field) != fs.end())
+                {
+                    focusRow(static_cast<int>(i));
+                    return true;
+                }
+            }
+        return false;
+    }
+
     bool FieldInspector::focusFirst()
     {
         for (std::size_t i = 0; i < rows_.size(); ++i)

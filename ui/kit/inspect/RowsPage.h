@@ -57,6 +57,9 @@ namespace tee::ui
         bool edit(EditCommand cmd, bool fine) { return rows_->edit(cmd, fine); }
         // A page just shown: the board's focus on the rows, the rows' on their first field or table.
         bool focusFirst();
+        // Back from a table's page: the board's focus on the rows, the rows' on the table row whose fields include
+        // `field` (the table's first, from RowsPage::Table); false when none.
+        bool focusTable(int field);
 
         // Escape is the rows' first (it leaves typing, clears the filter and CHANGED), the board's (the ring) after.
         bool key(const funkgui::KeyEvent& e) override;

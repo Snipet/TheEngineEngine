@@ -56,6 +56,12 @@ namespace tee::ui
         return rows_->focusFirst();
     }
 
+    bool RowsPage::focusTable(int field)
+    {
+        setFocus(0);
+        return rows_->focusTable(field);
+    }
+
     bool RowsPage::key(const funkgui::KeyEvent& e)
     {
         if (e.key == funkgui::Key::escape && focus() >= 0 && gestures() != nullptr && rows_->key(e, *gestures()))
