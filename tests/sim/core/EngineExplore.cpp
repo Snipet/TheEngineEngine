@@ -787,3 +787,58 @@ TEST_CASE("first.json: why the key configures again", "[.routekeywhy]")
                     b.tel("engine.cylinders"), b.field("vTotal") * 1000.0, b.field("ecu.idleRpm"));
     }
 }
+
+// Every custom build's headers: its topology, banks and how many collectors the builder makes (hidden: "[.customtopo]")
+TEST_CASE("custom builds: their headers", "[.customtopo]")
+{
+    std::FILE* f = std::fopen(std::getenv("TEE_CUSTOM_LIST"), "r");
+    REQUIRE(f != nullptr);
+    char line[512];
+    while (std::fgets(line, sizeof line, f) != nullptr)
+    {
+        std::string path(line);
+        path.erase(path.find_last_not_of("\r\n") + 1);
+        const auto at = path.find("content/builds/");
+        std::string name = path.substr(at + 15);
+        name = name.substr(0, name.size() - 5);
+        Bench b(name);
+        b.play(double(Bench::kBlock) / Bench::kRate);
+        std::printf("%-55s n %2g rotary %g topo %g banks", name.c_str(), b.field("lay.n"), b.field("lay.rotary"), b.field("lay.topo"));
+        const int n = int(b.field("lay.n"));
+        for (int c = 0; c < n; ++c)
+            std::printf("%g", b.field("lay.bank[" + std::to_string(c) + "]"));
+        std::printf(" boost %g/%g\n", b.field("spec.boost.kind"), b.field("spec.boost.model"));
+    }
+    std::fclose(f);
+}
+
+// The general split exercised: a custom one-bank engine whose table does not match it, with twin turbos (hidden:
+// "[.splitturb]")
+TEST_CASE("custom one-bank twin turbos split by firing order", "[.splitturb]")
+{
+    struct Case { const char* build; int layout; };
+    for (const Case& k : {Case{"combo/large-diesel", 5}, Case{"archetypes/turbo-four-20-gdi", -1}, Case{"archetypes/rotary-twin-13", -2},
+                          Case{"archetypes/rotary-twin-13", -3}})
+    {
+        Bench b(k.build);
+        std::string e;
+        REQUIRE(b.player().setSpec("valve.model", 1, e));
+        REQUIRE(b.player().setSpec("boost.model", 1, e));
+        REQUIRE(b.player().setSpec("boost.kind", 2, e));
+        REQUIRE(b.player().setSpec("engine.custom", k.layout == -3 ? 0 : 1, e));
+        if (k.layout >= 0)
+            REQUIRE(b.player().setSpec("engine.layout", k.layout, e));
+        b.start();
+        b.ctl().mode = 2;
+        b.ctl().throttle = 1.0f;
+        b.ctl().dynoSpeed = 260.0f;
+        b.play(4.0);
+        double q[4] = {0, 0, 0, 0}, n = 0;
+        b.play(1.0, [&] { for (int h = 0; h < 4; ++h) q[h] += b.field("boost.mach.house[" + std::to_string(h) + "].qPipes"); n += 1; });
+        std::printf("%s layout %d: n %g topo %g banks", k.build, k.layout, b.field("lay.n"), b.field("lay.topo"));
+        for (int c = 0; c < int(b.field("lay.n")); ++c)
+            std::printf("%g", b.field("lay.bank[" + std::to_string(c) + "]"));
+        std::printf("; housings %.4f %.4f %.4f %.4f m3/s, dpWave %.0f kPa, torque %.0f N m\n", q[0] / n, q[1] / n, q[2] / n, q[3] / n,
+                    b.tel("valve.dpWave") / 1000.0, b.tel("engine.torque"));
+    }
+}

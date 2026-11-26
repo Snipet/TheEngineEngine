@@ -650,6 +650,37 @@ TEST_CASE("the redline shown is a stated limiter's speed, not the idle's floor (
     }
 }
 
+TEST_CASE("a custom one-bank engine with twin turbos feeds both: its headers split by firing order", "[core][engine][custom]")
+{
+    // (the lead's ruling of 26 Nov, the general form after 823e45cd: a one-bank custom engine whose headers want splitting
+    // (its table's family split, or twin turbos to feed) takes two headers that each fire evenly, every other cylinder in
+    // firing order to each. Before it, a custom four with twin turbos ran one collector and Boost::housingOf left the
+    // second wheel without gas (N2's silent case). Measured 26 Nov: the 2 L turbo four, twin turbos, engine dyno 260 rad/s
+    // full throttle, 4 to 5 s: banks 0 1 1 0 (cylinders 1 and 4, 2 and 3), housings 0.0367 and 0.0365 m^3/s)
+    Bench b("archetypes/turbo-four-20-gdi");
+    std::string e;
+    REQUIRE(b.player().setSpec("valve.model", 1, e));
+    REQUIRE(b.player().setSpec("boost.model", 1, e));
+    REQUIRE(b.player().setSpec("boost.kind", 2, e));
+    REQUIRE(b.player().setSpec("engine.custom", 1, e));
+    b.start();
+    CHECK(b.field("lay.topo") == 1.0);
+    b.ctl().mode = 2;
+    b.ctl().throttle = 1.0f;
+    b.ctl().dynoSpeed = 260.0f;
+    b.play(4.0);
+    double q0 = 0.0, q2 = 0.0, n = 0.0;
+    b.play(1.0, [&] { q0 += b.field("boost.mach.house[0].qPipes"); q2 += b.field("boost.mach.house[2].qPipes"); n += 1.0; });
+    q0 /= n;
+    q2 /= n;
+    std::printf("custom twin-turbo four: housings %.4f and %.4f m^3/s\n", q0, q2);
+    // (both wheels fed, each within a fifth of the other: an even split's halves take the same gas; one collector gives
+    // one of them nothing)
+    CHECK(q0 > 0.01);
+    CHECK(q2 > 0.01);
+    CHECK(std::fabs(q0 - q2) < 0.2 * std::max(q0, q2));
+}
+
 TEST_CASE("a custom engine written from its table configures as its table does (engine.custom, one bank)", "[core][engine][custom]")
 {
     // (the lead's null, 26 Nov: a custom engine equal to its table, against the same build with engine.custom off.
