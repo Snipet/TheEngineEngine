@@ -1005,9 +1005,7 @@ TEST_CASE("the first frame of every telemetry field is a value the program wrote
         CHECK(written(run.at(0, c)));
     }
     // K3's EnginePlayer's: each telemetry field before and after its first call
-    EnginePlayer::Options po;
-    po.directory = simDir();
-    auto player = EnginePlayer::create(po, error);
+    auto player = EnginePlayer::create(compiled(simDir(), {}, error), 48000.0, error);   // (the run's one compile)
     REQUIRE(player != nullptr);
     for (std::size_t k = 0; k < player->telemetryNames().size(); ++k)
     {
@@ -1023,8 +1021,15 @@ TEST_CASE("the first frame of every telemetry field is a value the program wrote
 // advance gave up the same 7.2 degrees there. On knock-limited torque the two bakes choose the same advance at every
 // speed. Their torques differ by the spark (the table's margin of 2 degrees over the mean retard against control's
 // sawtooth): stated, not bounded
-TEST_CASE("the cam bake on the economy four: the same advance at every speed on its spark table as on knock control "
-          "alone",
+// Restated on its property (25 Nov, the bake's nightly red at 2571 rpm: on knock control alone 40 deg, 134.7 N m; on its
+// table 30 deg, 133.6, 0.6 % under that row's best, to match its neighbour; on control alone 30 deg would cost 1.04 %):
+// the rule (v3) lets a row give up capLoss of its own best to match its neighbours (1 %: judgement, the lead's ruling),
+// so the same angle both ways was more than the rule promises at the cap's edge. What it promises (the lead's form,
+// with C): each bake's choice within capLoss of its own row's best, and the two bakes' torques at their choices within
+// capLoss and the point's floor of each other (the two sparks' cells differ by some 1 % for reasons not the choice). It
+// still bites: a pick some 3 % under a row's best fails, and so does v2's knock gate chosen from the same cells.
+TEST_CASE("the cam bake on the economy four: on its spark table and on knock control alone each choice within the cap "
+          "of its row's best and the two within the cap and the floor of each other",
           "[engine][sim][bake][nightly]")
 {
     if (!haveSim())
@@ -1062,7 +1067,18 @@ TEST_CASE("the cam bake on the economy four: the same advance at every speed on 
     REQUIRE(bakeIntakeCam(sim, tabled, co, b, error));
     REQUIRE(a.speeds.size() == 2);
     REQUIRE(b.speeds.size() == 2);
-    bool knocked = false;
+    bool knocked = false, gateBites = false;
+    // the loss of `adv`'s cell against the row's best, on result `on`
+    const auto loss = [](const CamBakeResult& on, double adv, std::size_t s) {
+        double best = 0.0, at = 0.0;
+        for (std::size_t c = 0; c < on.advances.size(); ++c)
+        {
+            best = std::max(best, on.torque[c][s]);
+            if (std::fabs(on.advances[c] - adv) < 1e-6)
+                at = on.torque[c][s];
+        }
+        return best > 0.0 ? 1.0 - at / best : 1.0;
+    };
     for (std::size_t s = 0; s < 2; ++s)
     {
         std::printf("[e] %.0f rpm: alone %.0f deg %.1f N m, on its table %.0f deg %.1f N m (%+.2f %%)\n",
@@ -1079,9 +1095,34 @@ TEST_CASE("the cam bake on the economy four: the same advance at every speed on 
             std::printf("\n");
         }
         INFO(s);
-        CHECK(a.best[s] == b.best[s]);   // the same advance both ways
+        // (1) each bake's own choice within capLoss of its own row's best
+        CAPTURE(loss(a, a.best[s], s), loss(b, b.best[s], s));
+        CHECK(loss(a, a.best[s], s) <= co.capLoss);
+        CHECK(loss(b, b.best[s], s) <= co.capLoss);
+        // (2) the two bakes' torques at their choices within capLoss and the floor of each other
+        const double apart = std::fabs(a.bestTorque[s] - b.bestTorque[s]) / std::max(a.bestTorque[s], b.bestTorque[s]);
+        CAPTURE(apart);
+        CHECK(apart <= co.capLoss + co.floor);
+        // (3) it bites: the cell nearest 3 % under the row's best, and v2's knock gate (the least spark given up, then
+        // the best torque) chosen from the same cells, each fail (1)
+        for (const CamBakeResult* r : {&a, &b})
+        {
+            std::size_t near3 = 0, g = 0;
+            for (std::size_t c = 0; c < r->advances.size(); ++c)
+            {
+                if (std::fabs(loss(*r, r->advances[c], s) - 0.03) < std::fabs(loss(*r, r->advances[near3], s) - 0.03))
+                    near3 = c;
+                if (r->knock[c][s] < r->knock[g][s] - 1e-9
+                    || (std::fabs(r->knock[c][s] - r->knock[g][s]) <= 1e-9 && r->torque[c][s] > r->torque[g][s]))
+                    g = c;
+            }
+            CAPTURE(loss(*r, r->advances[near3], s));
+            CHECK(loss(*r, r->advances[near3], s) > co.capLoss);   // a 3 % pick is refused
+            gateBites = gateBites || loss(*r, r->advances[g], s) > co.capLoss;
+        }
     }
-    CHECK(knocked);   // (the case is one where the engine knocks: else it proves nothing about a gate)
+    CHECK(knocked);     // (the case is one where the engine knocks: else it proves nothing about a gate)
+    CHECK(gateBites);   // (the property fails v2's gate on these cells: it would catch a choice that follows the spark)
 }
 
 TEST_CASE("the calibration baked in the background: the spark, the cam on that spark, the spark again; applied, both "
@@ -1135,64 +1176,6 @@ TEST_CASE("the calibration baked in the background: the spark, the cam on that s
     CHECK(bakes.consider(build) != KnockBakeState::Current);
     CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
     CHECK(build.get("ecu.maps.camInAuto") == 1.0);
-}
-
-TEST_CASE("the calibration bake's cache across launches: a table baked once is taken by its key, not measured again",
-          "[engine][sim][bake]")
-{
-    if (!haveSim())
-        SKIP("sim/engine.fm is not there yet");
-    std::string error;
-    const auto sim = compiled(simDir(), {}, error);
-    REQUIRE(sim != nullptr);
-    Build build(sim->fields());
-    std::vector<std::string> warnings;
-    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
-                           BuildPart::Whole, warnings, error));
-    unbaked(build);   // as before the content's tables were baked
-    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
-        SKIP("the program has no knock-limit table yet");
-    // a folder of the test's own, emptied first (nothing written outside it)
-    const std::filesystem::path cache = std::filesystem::path(TEE_SOURCE_DIR) / "out" / "tests" / "bake-cache";
-    std::filesystem::remove_all(cache);
-    CalibrationBakeOptions options;
-    options.spark.speeds = 2;
-    options.spark.pedals = {1.0};
-    options.spark.boostSteps = 0;
-    options.bakeCam = false;
-    options.debounceSeconds = 0.0;
-    options.cacheDirectory = cache;
-    const auto bakeOnce = [&](Build& b, bool& measured) {
-        CalibrationBakeService bakes(sim, options);
-        bakes.consider(b);
-        CalibrationBakeResult r;
-        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-        while (!bakes.take(r) && std::chrono::steady_clock::now() < until)
-        {
-            REQUIRE(bakes.state() != KnockBakeState::Failed);
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-        REQUIRE(r.hasSpark);
-        measured = !r.spark.cached;
-        return r;
-    };
-    Build first(sim->fields()), second(sim->fields());
-    REQUIRE(first.load(build.save(), BuildPart::Whole, warnings, error));
-    REQUIRE(second.load(build.save(), BuildPart::Whole, warnings, error));
-    bool measured = false;
-    const CalibrationBakeResult a = bakeOnce(first, measured);
-    CHECK(measured);   // nothing kept yet: baked
-    CHECK(std::filesystem::exists(cache / ("spark-" + std::to_string(a.spark.key) + ".json")));
-    // another service (another launch), the same build: taken from the cache at once, the same values
-    const auto t0 = std::chrono::steady_clock::now();
-    const CalibrationBakeResult b = bakeOnce(second, measured);
-    const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-    CHECK_FALSE(measured);
-    CHECK(seconds < 1.0);
-    CHECK(b.spark.key == a.spark.key);
-    CHECK(b.spark.fields == a.spark.fields);
-    CHECK(b.spark.stillKnocking == a.spark.stillKnocking);
-    std::filesystem::remove_all(cache);
 }
 
 TEST_CASE("a prediction asked while a calibration bake runs goes first: its time within a stated factor of its time "
@@ -1509,8 +1492,10 @@ TEST_CASE("the verified reuse: a table baked under another program is checked, n
     }
 }
 
-TEST_CASE("the verified reuse on one program: a cached table whose exact key misses is checked and taken; one whose "
-          "check set disagrees is baked",
+// (with the cache across launches, grouped here on one bake for the fast tier's cap: the case of its own baked a turbo
+// four of its own for it)
+TEST_CASE("the calibration bake's cache: a table baked once is taken by its key at a second launch without a measure; "
+          "one whose exact key misses is checked and taken; one whose check set disagrees is baked",
           "[engine][sim][bake]")
 {
     if (!haveSim())
@@ -1540,6 +1525,26 @@ TEST_CASE("the verified reuse on one program: a cached table whose exact key mis
         bakeUntilReady(service, build, 120.0);
         REQUIRE(service.takeAndApply(build, error));
         key = knockLimitKey(build, *sim);
+    }
+    // another service (another launch), the same build: taken from the cache by its key at once, the same values
+    {
+        Build again(sim->fields());
+        REQUIRE(again.load(unbakedJson, BuildPart::Whole, warnings, error));
+        CalibrationBakeService service(sim, options);
+        const auto t0 = std::chrono::steady_clock::now();
+        const auto seen = bakeUntilReady(service, again, 60.0);
+        const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        CHECK(seen.count(KnockBakeState::Baking) == 0);
+        CHECK(seen.count(KnockBakeState::Checking) == 0);
+        CHECK(seconds < 1.0);
+        REQUIRE(service.takeAndApply(again, error));
+        CHECK_FALSE(service.lastWasChecked());
+        BakedFields taken;
+        REQUIRE(service.lastSpark(taken));
+        CHECK(taken.cached);
+        CHECK(taken.key == key);
+        CHECK(knockLimitCurrent(again, *sim));
+        CHECK(again.values(again.fieldOf("ecu.maps.knockLimit")) == build.values(build.fieldOf("ecu.maps.knockLimit")));
     }
     // the entry moved to another key, as if baked under another program: the exact key misses, the fields key finds it
     const std::filesystem::path entry = options.cacheDirectory / ("spark-" + std::to_string(key) + ".json");

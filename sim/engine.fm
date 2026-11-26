@@ -757,11 +757,19 @@ module Engine
 
     // ---- the keys ----
 
+    // Whether the dials as read from the Spec want another engine than the one configured: a layout, fuel, aspiration,
+    // geometry, size or ambient moved
+    bool dialsMoved()
+    {
+        return set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || geoSig != geoUsed || fabsf(set.size - lastSize) > 0.001f
+               || fabsf(set.ambF - heat.ambSeen) > 0.25f;
+    }
+
     int keyDown(float note, float vel)
     {
-        // (stopped, a new layout or size is taken at once; running, under the fade: control16)
-        if (ecu.state == 0 && (set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || geoSig != geoUsed || fabsf(set.size - lastSize) > 0.001f
-                           || fabsf(set.ambF - heat.ambSeen) > 0.25f))
+        // (stopped, a new layout or size is taken at once (process(), as the Spec is read); running, under the fade:
+        // control16)
+        if (ecu.state == 0 && dialsMoved())
             configure();
         if (ecu.keyCount >= 16)
         {
@@ -1449,7 +1457,7 @@ module Engine
                          customUse != 0 ? shake.fx : 0.0f, customUse != 0 ? shake.fy : 0.0f,
                          customUse != 0 ? shake.mx : 0.0f, customUse != 0 ? shake.my : 0.0f, lay.fire, lay.cyc, lay.rotary,
                          spec.car.kind == 2 && spec.car.model == 1 ? 1 : 0, spec.car.wheelbase, spec.car.tuck,
-                         tel.car.liftAngle);
+                         tel.car.liftAngle, tel.exhaust.bangHeat);
             for (int i = 0; i < m; ++i)
             {
                 if (prime != 0)
@@ -1984,6 +1992,12 @@ module Engine
             right[i] = 0.0f;
         }
         readSpec();
+        // (stopped and silent, the engine the Spec now describes is configured at once, not at the next key: between a
+        // load and the key a stopped engine reported the last engine's redline, cylinders and size (the default V8's
+        // after the application's own load), and init's configure, before the Spec reached the dials, was thrown away
+        // at the key: D's finding, 26 Nov)
+        if (ecu.state == 0 && sounding == 0 && dialsMoved())
+            configure();
         readControls();
         ignition();
         float peak = 0.0f;

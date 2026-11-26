@@ -46,7 +46,9 @@ rally five's dpWave on its limiter; G, then N2; G's fix 301ba06c local), X-042 (
 engine.custom, valve and boost: one collector feeds one of its two turbos; N2 with the integrator), X-043 (the turbo
 six's start with intake, exhaust and car on, from N1's c40f0411, unseen until every triple shard ran). Closed on the
 bake's soak (223f4301, 213 of 221): X-029, X-038, X-040 (G's and N1's bore floors), X-032 (excess 1.84), X-037 (N1's
-b07522fc). Closed on 25 Nov before it: X-027 (a bang, under the ruled 42), X-028 (D's 1842d7cd: voices leave the engine
+b07522fc). The turbo six's remaining hunt with intake.model on (intake+ecu idle sd 227 rpm, 307 with every switch off)
+is its cam's own lope (cam dial 0.9999, a dilution recursion near 0.4 s; the steward, 25 Nov), not the idle valve's:
+nobody chases it as X-032 again. Closed on 25 Nov before it: X-027 (a bang, under the ruled 42), X-028 (D's 1842d7cd: voices leave the engine
 bit-equal), X-033, X-034, X-035 (the large diesel's firing train, not a click, under the restated check). The reduced
 builds: `content/builds/combo/findings/`.
 

@@ -20,10 +20,9 @@ namespace
 
     std::unique_ptr<EnginePlayer> player()
     {
-        EnginePlayer::Options po;
-        po.directory = kRoot / "sim";
         std::string error;
-        auto p = EnginePlayer::create(po, error);
+        // on the run's one compile (tee::test::compiled), not one of its own: the fast tier's cap
+        auto p = EnginePlayer::create(test::compiled(kRoot / "sim", {}, error), 48000.0, error);
         INFO(error);
         REQUIRE(p != nullptr);
         return p;
