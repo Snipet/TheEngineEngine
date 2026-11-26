@@ -69,6 +69,30 @@ table is absolute, the cam map is relative.**
 - exhaust/exhaust.fm:596, :609, :616 and slots.fm:1100-1202 (`steep = 0.87 / 101325`): a steepening coefficient's
   normalisation. QUESTION for G: a reference, or the pipe's mean pressure?
 
+**G's answer (26 Nov; docs/handoffs/g-exhaust.md, "The stated air in the exhaust", 043fe530: all 24 sites under
+sim/exhaust/ classed).** Two rules: a 101325 added to a gauge pressure is the outside; a 101325 a law divides by its
+own reference is a reference.
+- **(a) The pipes' impedance and density** (duct.fm:347-348) TAKE THE OUTSIDE: the waves are linear about it. The
+  pipe's own mean (the outside plus its back pressure) is physically righter before a turbine, but it's a separate
+  reference fault, to measure on its own, since it moves every archetype at the default. Paired on the same variable:
+  duct.fm:687's `gk` (the pressure cancels z's), slots.fm:1225's rho rescale, and duct.fm:321's viscosity (the wall
+  loss rises some 20 % at 70 kPa).
+- **(b) `steep = 0.87 / 101325` STAYS** (duct.fm:29, exhaust.fm:596/609/616, slots.fm:1100-1202), with the
+  numerator's 101325 at duct.fm:596 (the pair cancels: both kept as written, same floats). The DENOMINATOR's 101325
+  at duct.fm:596 is the gas's absolute pressure and takes the outside.
+- **Take the outside:** duct.fm:678, exhaust.fm:911, :1132, :1785, slots.fm:1222-1223, :2299 (the bangs' collector;
+  the turbine's outlet is Boost's).
+- **Stay:** slots.fm:2324 (Metghalchi and Keck's p0), the 8000 floors.
+- **Bit-identity needs care:**
+  - No expression is reshaped (the cancelling pair included).
+  - The stated value arrives as the Spec's float copied, never computed.
+  - duct.fm:596's floor of 50000 is absolute, and the field's range starts at 50000, so at a 50 kPa outside every
+    rarefying mean clamps. The form is `p - 51325` (exact at the default; a scaled floor doesn't round back).
+- **The field's lower range:** with `p - 51325` the steepening's floor stays 51.3 kPa under the outside at any
+  stated value, so it no longer bites near the range's end. The remaining floors are the 8000 guards (far below 50
+  kPa) and the throttle's and runners' (N1's, to read in the window). Unless one of those bites, 50 kPa (some 5500 m)
+  stands. To confirm by the 50 kPa run in section 4's measurements.
+
 ## 2. The null
 
 - **Model 0 keeps 101325 everywhere, to the bit.** The reference's own (sim/ref/) is untouched; Engine hands
@@ -171,10 +195,12 @@ density (pAmb / (R tAmb)) in this item.
   0.69 as dense, so its volume flow and its pulses' volume velocity (the wave's pressure over the pipe's impedance)
   stay about the same, IF the pipes' impedance takes `pAmb` (G's question, duct.fm:347). Then the expected level is
   some -3.2 dB in all.
-- If the impedance stays at 101325 (G answers "a reference"), the volume velocity falls with the pulses' pressure
-  (0.69), and the expected level is some -6.4 dB.
-- So the measured level settles G's question as well as the factor: a result near -3 dB, or near -6, says which the
-  pipes are doing. Anything far from both is a fault to chase before the bake.
+- G's answer (section 1): the impedance takes the outside, so the expected level is the first branch, **some -3.2 dB
+  in all**. (Had it stayed at 101325 the volume velocity would fall with the pulses' pressure, some -6.4 dB.) A
+  measurement far from -3 dB is a fault to chase before the bake.
+- G wrote that the tailpipe's density is "not for this design" because it moves every archetype's loudness. That
+  holds for the density (the temperature's share, ruled out above); the pressure's share alone is 1.0 at the
+  default, and the lead's ruling for it stands (the lead has told G).
 
 The listener (sim/listen/) is L's; the voices are M's; the air box is N1's. Each takes the factor from Engine, as
 `pAmb` is handed in section 1.
