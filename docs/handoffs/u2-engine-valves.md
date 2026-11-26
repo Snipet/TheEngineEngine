@@ -23,3 +23,24 @@ Package U2, branch `claude/awesome-gates-ntdb58`; commits bc18cb6 (ENGINE stage)
 - From E: the six telemetry names above, or tell me theirs (a one-line change each).
 **Kit**: no change made. **FunkGui/FMinus**: no issues met.
 **For a person to look at**: the contact sheet; at 1100x700 the section is narrow (the cylinder is drawn by width, with room above and below); whether the ring's per-bank intervals read as the burble they describe; dragging a cam peak while the dyno ribbon answers.
+
+**Added by U1 for U2, 26 Nov 2026, X-050** (the dead cam dial; owners U1 for the interface's honest form, N1 for the
+sim side. N1's finding: under `valve.model` Lab a piston engine's cams are the intake and exhaust pages and
+`spec.valve.cam` is read by nothing; a rotary's ports still run from it). In `ValvesWorkspace.cpp`: `dial()` (Reference
+/ Lab, dead / Lab, a rotary's ports). On a Lab piston build the CAM DIAL is left out of the MODEL section of
+`valve.timing` and of the frame's generated valve page (nothing selected; `Workspace::sectionOmits`, ui/app, U1's), with
+NO line (the lead's ruling: with the row gone nothing is promised, the cams are the page's next sections, and a line would
+be warning-coloured words on every healthy piston build). On a Lab rotary the dial stays, with "ON A ROTARY THE CAM DIAL
+TIMES THE PORTS" (the Rows show the field's own label, "Cam", and draw every note in the accent colour: no neutral one).
+On a Reference build the generated page says "THE LAB IS OFF: ..." at its top (`Workspace::sectionNotes`), as the named
+pages already did. A two-stroke needs nothing: N1 says nothing reads `spec.valve` there (its ports are the engine's
+two-stroke fields; the dial at most nudges the idle target, under ecu.model 0, or under Maps with no idle speed stated),
+and VALVES already shows its ports alone. **IF N1's sim change makes the dial drive the lab's cams**, these LEAVE: the
+`Dial::labDead` branch in the MODEL section (the dial back in), `sectionOmits`, and the test's Lab-piston half.
+
+**A fix of its own, U1, 26 Nov 2026** (found testing X-050): the frame remade the inspector only when the selection or
+the units changed, so switching `valve.model` with a page open left the old rows and lines until the next click.
+`Workspace::inspectorKey()`: when it moves the frame makes the pages again (held off during a drag). VALVES keys it on
+`dial()`; the default, 0, changes no other workspace. Test `build.valves.camdial` (made-up states over the real Spec:
+the three states, the model switched with the page open, a two-stroke under both models); pictures
+out/ui/valves/camdial.*.png.
