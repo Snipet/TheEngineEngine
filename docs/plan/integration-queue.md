@@ -1656,6 +1656,11 @@ stays and the fixture's hunt stays known** (X-032's kind; X-031 and X-041's two 
 was tier-green (581) and gate-green; it failed only the dips row, which a sample of 7 builds had passed: the dips row
 is read on all 31 or it is not read.
 
+The combo rows quoted in this section and in the steward's notes above (X-031, X-041's, the rally five) are single
+draws: G has since measured the rally five's row at 1.55 to 3.08 over 15 nudges of the air by a thousandth of a
+kelvin (the lead, 07:20), so none of them tells one tree from another. The conclusion rests on the gate and the dips
+row, which read continuous idles, not one step.
+
 Open, not this window's: the doubled post-start gain is marginal on `main` itself (the 7.4 V8's 0.6 s swing; the
 look-ahead hides it); the dashpot holds the idle valve at 0.35 at full throttle and on boost (ecu.fm:230's form in
 idle.fm), which no measurement here judged.
