@@ -179,3 +179,12 @@ in every copy (the small four's tour); the plant table, the guard's widths and i
 A question for after the window, beside X-054 (the steward's read of X-055, the lead's 18:16): whether a limiter's row
 should be read per EPISODE (how many of its episodes are over, and the reference's the same way) instead of the worst of
 all of them, since a run with forty episodes and a run with four are not judged alike today. No code for it now.
+
+**X-054 (26 Nov evening), measured, no judge change**: docs/measurements/combo/2026-11-26-x054.md. The saturation
+of largestStep's measure (each edge of an impulse sits in the other's level) makes the judge blind to a single-sample
+click where its neighbourhood is loud: on the reference sound path, 7 of 17 copies pass at ~11 dB over the firing's
+sharpest edge on a steady full-throttle stretch and 17 of 17 at the limiter; with sound.model on, 17 of 17 are caught.
+A guard of g samples (left out of the level) closes clicks up to ~g samples wide, but g4 over all 149 visible combo cases
+turns 72 rows over and 20 cases red, raises 1661 bounds (to +2.95) and lowers 1910 measures (to -1.9): not a tightening.
+Open for after the window: a measure whose numerator unsaturates without moving the neighbours' and the references'
+(e.g. the click's own level from its neighbouring periods, raw: it moves every reference), and the per-episode limiter.
