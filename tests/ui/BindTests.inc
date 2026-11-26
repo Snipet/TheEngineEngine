@@ -354,6 +354,21 @@
         rig.host->click(h.centreX(), h.centreY());
         typeKeys(*rig.host, "9 return");
         CHECK(table.shownMap().x[4] == 5.0);
+        // A choice typed by no name of its: refused, the typing kept, the choices said on the title's line; a key
+        // after it is a new try (the sentence goes).
+        typeKeys(*rig.host, "escape");                   // the header's typing (refused: it is no cell's) dropped
+        const double was = rig.value("cyl.fireRev[3]");
+        rig.host->click(c3.centreX(), c3.centreY());
+        typeKeys(*rig.host, "return");                   // Enter types the cell, its name to begin with
+        CHECK(table.editing());
+        typeKeys(*rig.host, "backspace backspace backspace backspace backspace backspace x return");
+        CHECK(table.editing() && rig.value("cyl.fireRev[3]") == was);
+        CHECK_MSG(table.refusal() == "One of: First, Second", table.refusal());
+        const std::uint64_t key = table.drawKey();
+        typeKeys(*rig.host, "backspace");
+        CHECK(table.refusal().empty() && table.drawKey() != key);
+        typeKeys(*rig.host, "escape");
+        CHECK(!table.editing() && table.refusal().empty());
         return 0;
     }
 

@@ -571,6 +571,20 @@ module Exhaust
         // the revs.
         const float keepH = 0.878f;
         const float keepP = 0.769f;
+        // the walls' key: the whole under the builder, the reference's under model 0 (Duct::wallWhole), so model 0 is
+        // the reference on every route
+        const int ww = model != 0 ? 1 : 0;
+        for (int i = 0; i < MAX_PORTS; ++i)
+            prim[i].wallWhole = ww;
+        for (int k = 0; k < 2; ++k)
+        {
+            sec[k].wallWhole = ww;
+            pipe[k].wallWhole = ww;
+            ch1[k].wallWhole = ww;
+            mid[k].wallWhole = ww;
+            ch2[k].wallWhole = ww;
+            tail[k].wallWhole = ww;
+        }
         for (int i = 0; i < lay->ports; ++i)
         {
             // each header a little different, as real ones are; the second bank of an unequal-length boxer much longer
