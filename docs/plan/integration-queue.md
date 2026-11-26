@@ -1346,6 +1346,12 @@ test-s before and after on the steward's measure (CI's Linux log through scripts
 the owners have reported what grouping alone recovers. D2 is woken for diesel's only after the window's sim work is
 in, unless its 217 keeps growing.
 
+**How grouping pays on CI (the steward, 26 Nov, from the first readings):** CI runs each ctest entry as its own process,
+and `catch_discover_tests` makes one entry a case. A compiled program or player kept "once per binary" is then still
+built once a case. It pays only when several cases share one process: one `add_test` entry over a tag or a file (the
+boost.engine and ecu.integrated pattern), or the cases folded into one case's sections. Read at 0315de80: calibration-na
+grouped into one process, 115 to 58; calibration.boost with a kept program but one process a case, 143 to 148.
+
 ## 26 Nov 00:23 UTC: the window an hour in: what is on the branch, what is held and for what
 
 **On the branch under `sim/`, `host/`, `tools/` (tip cba0ac43; the baked tables are stale from here):**

@@ -906,10 +906,11 @@ module Exhaust
     }
 
     // The gas as it leaves the ports for the headers and the turbine (after the port's walls): card F's turbine's
-    // energy goes by it
+    // energy goes by it. Until portLoss() has run once (a stopped engine configured before its first rendered block),
+    // the port's gas (integrator D, 26 Nov, with G's agreement: the Telemetry true from the first block)
     float exitTemperature()
     {
-        return model != 0 && spec->portHeat != 0 ? tExit : tPort;
+        return model != 0 && spec->portHeat != 0 && tExit > 0.0f ? tExit : tPort;
     }
 
     // Every 16 samples: the system's heat (soak) and what the pipes are set to (vAir: the car's speed past them)
