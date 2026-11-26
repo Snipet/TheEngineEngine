@@ -3,6 +3,9 @@
 
 #include "kit/gui/GuiLayout.h"
 
+#include <funkgui/text/FontService.h>
+#include <funkgui/text/TextFit.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -414,10 +417,15 @@ namespace tee::ui
         const Look l = Look::of(th);
         const auto fmt = [](const Axis& a, double v) { return a.text.format ? a.text.format(v) : plainNumber(v); };
         // The title, and what the axes are in the room beside it (none when too little: a narrow column).
+        // While a refused typing is kept: the refusal's sentence on that line instead (the error colour), the whole width.
         const std::string title = upper(title_);
-        c.text(title.c_str(), bounds_.x, bounds_.y + 3.0f, kWidgetLabel, l.label);
+        const bool saying = refused_ && !refusal_.empty();
+        if (saying)
+            c.text(fitText(c, refusal_, kWidgetSmall, bounds_.w).c_str(), bounds_.x, bounds_.y + 3.0f, kWidgetSmall, l.error);
+        else
+            c.text(title.c_str(), bounds_.x, bounds_.y + 3.0f, kWidgetLabel, l.label);
         const float axesRoom = bounds_.w - c.textWidth(title.c_str(), kWidgetLabel) - 16.0f;
-        if (axesRoom >= 60.0f)
+        if (axesRoom >= 60.0f && !saying)
         {
             const std::string axes = upper(z_.label) + " BY " + upper(x_.label) + " ACROSS, " + upper(y_.label) + " DOWN";
             c.text(fitText(c, axes, kWidgetSmall, axesRoom).c_str(), bounds_.right(), bounds_.y + 3.0f, kWidgetSmall, l.dim,
@@ -493,15 +501,35 @@ namespace tee::ui
         // The selection, and the value being typed in it.
         const Rect s = cellRect(sx_, sy_);
         c.rrect(s.x, s.y, s.w, s.h, 2.0f, kClear, focusRing || editing_ ? 2.0f : 1.5f, l.accent);
-        if (editing_)
+        funkgui::Rect caret, typed;
+        if (caretRect(caret, typed))
         {
             c.rrect(s.x + 1.0f, s.y + 1.0f, s.w - 2.0f, s.h - 2.0f, 2.0f, l.ground);
-            const std::string& b = edit_.buffer;
-            const float w = c.textWidth(b.c_str(), cellText), tx = s.centreX() - w * 0.5f;
-            c.text(b.c_str(), tx, c.capCentreTop(s.centreY(), cellText), cellText, refused_ ? l.accent : l.value);
-            const float cx = tx + c.textWidth(b.substr(0, static_cast<std::size_t>(std::clamp<int>(edit_.caret, 0, static_cast<int>(b.size())))).c_str(), cellText);
-            c.segment(cx, s.y + 3.0f, cx, s.bottom() - 3.0f, 1.0f, l.accent);
+            c.text(edit_.buffer.c_str(), typed.x, c.capCentreTop(s.centreY(), cellText), cellText, refused_ ? l.error : l.value);
+            c.segment(caret.centreX(), caret.y, caret.centreX(), caret.bottom(), caret.w, l.accent);
         }
+    }
+
+    bool MapEdit::caretRect(funkgui::Rect& caret, funkgui::Rect& text) const noexcept
+    {
+        if (!editing_)
+            return false;
+        const funkgui::TextStyle st = kWidgetSmall;
+        const funkgui::FontAtlasSdf& atlas = funkgui::FontService::get().atlas();
+        const std::string& b = edit_.buffer;
+        const std::size_t at = static_cast<std::size_t>(std::clamp<int>(edit_.caret, 0, static_cast<int>(b.size())));
+        constexpr float kCaretW = 1.0f, kGap = 1.5f;   // the gap: more than the caret's width
+        const Rect s = cellRect(sx_, sy_);
+        const float w = funkgui::text::width(atlas, b.c_str(), st);
+        const float lead = at == b.size() ? kGap + kCaretW : 0.0f;   // the caret after the text needs its room
+        const float tx = s.centreX() - (w + lead) * 0.5f;
+        const float lineH = std::min(st.px, s.h - 4.0f);             // the text's line, never past the cell
+        text = { tx, s.centreY() - lineH * 0.5f, w, lineH };
+        float cx = tx + funkgui::text::width(atlas, b.substr(0, at).c_str(), st);
+        if (at == b.size())
+            cx += kGap;
+        caret = { cx, s.centreY() - lineH * 0.5f, kCaretW, lineH };
+        return true;
     }
 
     funkgui::Cursor MapEdit::cursorAt(funkgui::Point p) const
@@ -566,6 +594,7 @@ namespace tee::ui
         if (!ok)
         {
             refused_ = true;
+            refusal_ = a.text.refusal ? a.text.refusal(edit_.buffer) : std::string();
             return false;
         }
         Map16 m = map_;
@@ -575,6 +604,7 @@ namespace tee::ui
         source_.endEdit();
         map_ = m;
         editing_ = refused_ = false;
+        refusal_.clear();
         return true;
     }
 
@@ -592,6 +622,7 @@ namespace tee::ui
             if (e.key == Key::escape)
             {
                 editing_ = refused_ = false;
+                refusal_.clear();
                 return true;
             }
             if (e.key == Key::tab)
@@ -601,7 +632,8 @@ namespace tee::ui
                 select(sx_ + (e.mods.shift ? -1 : 1), sy_);
                 return true;
             }
-            refused_ = false;
+            refused_ = false;              // a key after a refusal: the sentence goes, the typing is a new try
+            refusal_.clear();
             edit_.key(e, 16);
             return true;
         }
@@ -634,6 +666,7 @@ namespace tee::ui
                     edit_.key(e, 16);
                     editing_ = true;
                     refused_ = false;
+                    refusal_.clear();
                     return true;
                 }
                 return false;
@@ -644,7 +677,10 @@ namespace tee::ui
     void MapEdit::focusChanged(bool focused)
     {
         if (!focused && editing_ && !commit())
+        {
             editing_ = refused_ = false;
+            refusal_.clear();
+        }
     }
 
     void MapEdit::accessibility(std::vector<funkgui::A11yItem>& out) const
@@ -718,6 +754,6 @@ namespace tee::ui
                 k.mix(static_cast<float>(m.z[static_cast<std::size_t>(j)][static_cast<std::size_t>(i)]));
         for (int i = 0; i < kTableMax; ++i)
             k.mix(static_cast<float>(m.x[static_cast<std::size_t>(i)])).mix(static_cast<float>(m.y[static_cast<std::size_t>(i)]));
-        return k.mix(sx_).mix(sy_).mix(ax_).mix(ay_).mix(editing_).mix(edit_.buffer).mix(liveTarget_[0]).mix(liveTarget_[1]).h;
+        return k.mix(sx_).mix(sy_).mix(ax_).mix(ay_).mix(editing_).mix(refused_).mix(refusal_).mix(edit_.buffer).mix(liveTarget_[0]).mix(liveTarget_[1]).h;
     }
 }

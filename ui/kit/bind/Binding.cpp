@@ -624,6 +624,29 @@ namespace tee::ui
             // A unit's name is in the title, not in each cell: the cells show numbers (a choice its name).
             if (first.kind == FieldKind::number && first.quantity != Quantity::none)
                 values.format = [&units, q = first.quantity, d = first.decimals](double v) { return units.number(q, v, d); };
+            // The sentence the table shows on its title's line while a refused typing is kept, worded as Rows' are.
+            values.refusal = [&units, &first, &doc, e = elements.front(), unit](std::string_view s) {
+                double v = 0.0;
+                if (!parseField(first, s, units, v) && first.kind == FieldKind::choice)
+                {
+                    std::string names;
+                    for (std::size_t k = 0; k < first.choices.size() && k < 6; ++k)
+                        names += (k > 0 ? ", " : "") + first.choices[k];
+                    return "One of: " + names + (first.choices.size() > 6 ? ", ..." : "");
+                }
+                if (!parseField(first, s, units, v))
+                {
+                    const bool q = first.kind == FieldKind::number && first.quantity != Quantity::none;
+                    const std::string lo = q ? units.number(first.quantity, first.min, first.decimals) : fieldText(first, first.min, units);
+                    const std::string hi = q ? units.number(first.quantity, first.max, first.decimals) : fieldText(first, first.max, units);
+                    return "Not a number" + (unit.empty() ? std::string() : " of " + unit) + ": " + lo + " to " + hi
+                         + (unit.empty() || !q ? std::string() : " " + unit);
+                }
+                std::string why;
+                if (!doc.accepts(e, v, &why))
+                    return "Out of range: " + why;
+                return std::string();
+            };
             MapEdit::Axis x{ "#", 1.0, static_cast<double>(elements.size()), std::move(none) };
             MapEdit::Axis y{ unit.empty() ? std::string("value") : unit, 0.0, 0.0, std::move(row) };
             MapEdit::Axis z{ unit.empty() ? std::string("value") : unit, first.min, first.max, std::move(values) };

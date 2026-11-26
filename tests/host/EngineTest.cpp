@@ -546,6 +546,65 @@ TEST_CASE("predicted points are the stepped dyno's settled torque within 3 %: th
     predictedMatchesSteps("turbo-four-20-gdi.json", {423.8, 542.9}, 0.03);
 }
 
+// A predicted point lands where a long hold lands: the stepped dyno held 90 s at the point without any heat settle (the
+// running path's own steady state, nothing raised by the host), against the predictor's default point. The cases above
+// read the stepped dyno at its 4 s settle, itself the settle's landing: on the tip of 26 Nov 897d111d the settle
+// overshot the port heat some 5 % at the two-stage's 5879 rpm, and both landed low together (185.4 and 189.1 against 190.5
+// held). Measured on f7b94c73 (G's settle weighted by time, e6ae3a8b), predicted against held, N m: the two-stage at 5879
+// rpm 189.9 / 190.0 (-0.08 %); the turbo four at 6000 rpm 288.9 / 289.9 (-0.34 %; its boost hunting, a mean over
+// windows). At tee-dyno's 96 kHz the held points read 190.5 and 290.5 (-0.3 %, -0.55 %).
+// The bounds: 1 % on the two-stage and 1.5 % on the turbo four (its boost's hunt adds a window mean's scatter; at 5500
+// rpm, at knock control's edge, 1.4 % is seen, and that point is not taken). Shown to bite: run on this tip with only
+// e6ae3a8b reverted (the settle weighing the ports' gas by mass), the two-stage reads 187.0 against 190.0 (-1.55 %) and
+// fails its 1 %; the turbo four reads 289.2 against 289.9 (-0.24 %) and passes either way (its port heat lands within
+// 0.1 % by mass or by time, G's read). So only the two-stage row guards the settle's weighting; the turbo four's guards
+// the predictor's point on a boosted build against a long hold. The default run's guard beside it: "a predicted point is
+// the stepped dyno's settled torque within 3 %: the economy four at 5439 rpm"
+TEST_CASE("a predicted point lands where a 90 s hold without a settle lands: the two-stage at 5879 rpm, the turbo four at "
+          "6000 rpm",
+          "[engine][sim][predict][dyno][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    struct Case
+    {
+        const char* archetype;
+        double rpm, bound;
+    };
+    for (const Case c : {Case{"two-stage-cam-20.json", 5879.0, 0.01}, Case{"turbo-four-20-gdi.json", 6000.0, 0.015}})
+    {
+        Build build(sim->fields());
+        std::vector<std::string> warnings;
+        REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes" / c.archetype,
+                               BuildPart::Whole, warnings, error));
+        const double speed = c.rpm * 3.14159265358979 / 30.0;
+        DynoPlan plan;
+        plan.steps = {speed};
+        plan.settle = 90.0;
+        plan.measure = 2.0;   // whole windows of the boost's hunt
+        plan.settleExhaust = false;
+        DynoCurve held;
+        REQUIRE(runDyno(sim, build, plan, held, error));
+        INFO(error);
+        REQUIRE(held.points.size() == 1);
+        PredictOptions options;
+        options.speeds = {speed};
+        PredictCurve predicted;
+        REQUIRE(predictCurve(sim, build, options, predicted, error));
+        REQUIRE(predicted.points.size() == 1);
+        const PredictPoint& p = predicted.points[0];
+        const double h = held.points[0].torque;
+        std::printf("%s at %.0f rpm: predicted %.1f N m, held 90 s without a settle %.1f (%+.2f %%)\n", c.archetype, c.rpm,
+                    p.torque, h, 100.0 * (p.torque - h) / h);
+        CAPTURE(c.archetype, c.rpm, p.torque, h);
+        CHECK(p.settled);
+        CHECK(std::fabs(p.torque - h) <= c.bound * std::fabs(h));
+    }
+}
+
 // A part with hysteresis holds its state across a band of speed (the two-stage cam: up over 612.6 rad/s, down under
 // 581.2), so a predicted point in the band read the state of the way the rig came to it: on the tip of 25 Nov the 5740 rpm
 // point, reached from 6827 rpm or stepped up from 4110 with the absorber's loop carrying it over the switch, read stage B

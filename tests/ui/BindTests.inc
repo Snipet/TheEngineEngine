@@ -354,6 +354,31 @@
         rig.host->click(h.centreX(), h.centreY());
         typeKeys(*rig.host, "9 return");
         CHECK(table.shownMap().x[4] == 5.0);
+        // A choice typed by no name of its: refused, the typing kept, the choices said on the title's line; a key
+        // after it is a new try (the sentence goes).
+        typeKeys(*rig.host, "escape");                   // the header's typing (refused: it is no cell's) dropped
+        const double was = rig.value("cyl.fireRev[3]");
+        rig.host->click(c3.centreX(), c3.centreY());
+        typeKeys(*rig.host, "return");                   // Enter types the cell, its name to begin with
+        CHECK(table.editing());
+        typeKeys(*rig.host, "backspace backspace backspace backspace backspace backspace x return");
+        CHECK(table.editing() && rig.value("cyl.fireRev[3]") == was);
+        CHECK_MSG(table.refusal() == "One of: First, Second", table.refusal());
+        const std::uint64_t key = table.drawKey();
+        typeKeys(*rig.host, "backspace");
+        CHECK(table.refusal().empty() && table.drawKey() != key);
+        typeKeys(*rig.host, "escape");
+        CHECK(!table.editing() && table.refusal().empty());
+        // The caret while typing (the owner's family of faults: a mark over text): clear of the last glyph by more than
+        // its own width, a text line high and no more, centred on the text; at this page's row height.
+        typeKeys(*rig.host, "return");
+        funkgui::Rect caret, text;
+        CHECK(table.caretRect(caret, text));
+        const funkgui::Rect cell = table.cellRect(table.selectedColumn(), table.selectedRow());
+        CHECK_MSG(caret.x >= text.right() + caret.w, std::to_string(caret.x) + " vs " + std::to_string(text.right()));
+        CHECK(caret.h <= text.h + 0.01f && caret.h < cell.h && caret.h <= 14.0f);
+        CHECK(std::fabs(caret.centreY() - text.centreY()) < 0.5f && caret.y > cell.y && caret.bottom() < cell.bottom());
+        typeKeys(*rig.host, "escape");
         return 0;
     }
 

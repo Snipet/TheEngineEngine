@@ -4,6 +4,8 @@
 //   build.rows            every workspace's pages: Rows or a table's own page; the filter reaches every page of the
 //                         workspace; a table's OPEN shows its page; a value typed out of range is refused (one undo
 //                         step when kept); a press on a part of ENGINE and EXHAUST opens its card, Escape closes it
+//   build.rows.table      an array's table refuses a bore under the host's least in its cell and says why on its
+//                         title's line (FieldDoc::accepts's reason, worded as Rows' refusal)
 //   build.rows.pictures   the pictures for the owner, under out/ui/rows/ (named below; drawn by FunkGui's software
 //                         rasteriser on Linux)
 #include "build/BuildKit.h"
@@ -13,11 +15,13 @@
 #include "kit/inspect/Outline.h"
 #include "kit/inspect/PartCard.h"
 #include "kit/inspect/RowsPage.h"
+#include "kit/widgets/Tables.h"
 
 #include <funkgui/canvas/SoftRaster.h>
 #include <funkgui/text/FontService.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <set>
 
@@ -232,6 +236,54 @@ namespace
         return 0;
     }
 
+    BUILD_TEST(rowsTable, "build.rows.table")
+    {
+        tee::ui::BuildDoc& doc = *rig.doc;
+        const int first = doc.find("exhaust.primD[0]");
+        CHECK(first >= 0);
+        if (first < 0)
+            return 0;
+        tee::ui::GuiNode n;
+        n.kind = tee::ui::GuiKind::widget;
+        n.widget = "array";
+        n.file = "exhaust.primD";
+        std::unique_ptr<tee::ui::Item> item = tee::ui::fieldWidget(n, 9002, doc, rig.units, rig.telemetry);
+        auto* table = dynamic_cast<tee::ui::MapEdit*>(item.get());
+        CHECK_MSG(table != nullptr, "exhaust.primD's widget is no table");
+        if (table == nullptr)
+            return 0;
+        tee::ui::Board board{ 900, 400 };
+        funkgui::HeadlessHost host{ board, 0, 1.0f };
+        board.add(std::move(item));
+        table->setPlace({ 20, 20, 860, 300 }, true);
+        host.tick(2);
+        doc.set(first, 0.040);
+        host.tick(2);
+        const funkgui::Rect cell = table->cellRect(0, 0);
+        host.click(cell.centreX(), cell.centreY());
+        host.keys("3,return");
+        host.tick(2);
+        CHECK(table->editing() && std::fabs(doc.get(first) - 0.040) < 1e-9);
+        CHECK_MSG(table->refusal().rfind("Out of range: under the least stated bore", 0) == 0, table->refusal());
+        std::printf("  exhaust.primD[0], 3 mm typed in its table: \"%s\"\n", table->refusal().c_str());
+        host.keys("backspace");
+        CHECK(table->refusal().empty());   // a key: a new try
+        host.keys("x,return");
+        host.tick(2);
+        CHECK_MSG(table->refusal().rfind("Not a number of mm: ", 0) == 0, table->refusal());
+        // The caret in this tall row: a text line high, not the cell's height, and clear of the typed text.
+        {
+            funkgui::Rect caret, text;
+            CHECK(table->caretRect(caret, text));
+            const funkgui::Rect c0 = table->cellRect(0, 0);
+            CHECK_MSG(caret.h <= text.h + 0.01f && caret.h < c0.h * 0.5f, std::to_string(caret.h) + " in " + std::to_string(c0.h));
+            CHECK(caret.x >= text.right() + caret.w && std::fabs(caret.centreY() - c0.centreY()) < 0.5f);
+        }
+        host.keys("escape");
+        CHECK(!table->editing() && table->refusal().empty());
+        return 0;
+    }
+
     BUILD_TEST(rowsPictures, "build.rows.pictures")
     {
         struct Page
@@ -285,6 +337,34 @@ namespace
                     rig.host->tick(20);
                     picture(rig, "rows.changed." + size);
                     col.setChangedOnly(false);
+                }
+            }
+            if (w == 1100)
+            {
+                // An array's table, a bore under the least typed in a cell: the refusal said on the title's line.
+                rig.reset();
+                tee::ui::GuiNode n;
+                n.kind = tee::ui::GuiKind::widget;
+                n.widget = "array";
+                n.file = "exhaust.primD";
+                std::unique_ptr<tee::ui::Item> item = tee::ui::fieldWidget(n, 9003, *rig.doc, rig.units, rig.telemetry);
+                if (auto* table = dynamic_cast<tee::ui::MapEdit*>(item.get()))
+                {
+                    tee::ui::Board board{ 700, 160 };
+                    funkgui::HeadlessHost host{ board, 0, 2.0f };
+                    board.add(std::move(item));
+                    table->setPlace({ 16, 16, 668, 128 }, true);
+                    host.tick(2);
+                    const funkgui::Rect cell = table->cellRect(0, 0);
+                    host.click(cell.centreX(), cell.centreY());
+                    host.keys("3,return");
+                    host.tick(5);
+                    const std::filesystem::path dir = std::filesystem::path(TEE_UI_OUT_DIR) / "rows";
+                    std::error_code ec;
+                    std::filesystem::create_directories(dir, ec);
+                    const std::string path = (dir / "rows.table.refused.png").string();
+                    tee::test::writePng(funkgui::rasterise(host.draw(), funkgui::FontService::get().atlas(), 1), path);
+                    std::printf("  %s\n", path.c_str());
                 }
             }
             for (const char* ws : { "engine", "exhaust" })
