@@ -1978,6 +1978,31 @@ engines only where a source shows such an engine drawn split.
 - **Next (the steward):** the per-cylinder residual and wall film at the re-entry, on the source and on the
   countdown-once probe.
 
+## 26 Nov 07:53 UTC: X-047 IS A FAULT: the shift's cut is the vehicle's window plus its number (item 16)
+
+- **Two reads that agree (the steward's flags, the integrator's code).** One flag only: the spark cut, 210 ms
+  on the small four (8.5003 to 8.7103 s), the pedal at 1.000, no fuel cut and no overrun cut (the lead's
+  suspect and the steward's "fuel flag" both struck). The vehicle hands its number for as long as its own cut
+  window lasts, 60 ms on every kind (car.fm:791, gearbox.fm:232, :268; 150 ms on a truck's automated box):
+  0.05 without `car.model`, and under model 1 `shiftTime`, 0.15 s, a whole shift's time (car.fm:852). The ECU
+  re-arms its countdown to that number on every step it is asked (launch.fm:80). So the cut lasts the window
+  plus the number: 60 + 150 on the four, 60 + 50 on the V8, where the reference cuts 53 and 64 ms and tuners'
+  timed ignition cuts are 40 to 60 ms. The seam's own words were "seconds of cut" from the request's start.
+- **Probe (sim f23337cc, launch.fm:80: the cut held only while the vehicle asks), the cut 53 ms on both:** the
+  V8's pull row 4 of 15 to 0 of 15; the four's X-030 12 of 15 to 4 of 15; the first firing back over the next
+  four 2.01 to 1.80 (the reference 1.51) and 1.66 to 1.30 (1.16). The cut's length carries most of it. On a
+  probe copy, so no verdict.
+- **RULED: item 16 of the next window, a design first, written by the steward with the integrator's reads
+  under the integrator's name.** Two halves: the ECU's re-arm (the steward) and the vehicle's number (the
+  integrator). It settles the contract among three forms (seconds latched at the rising edge; cut while the
+  vehicle asks and no longer, the lead's leaning; seconds remaining), every asker sample by sample (the
+  reference's robot, model 1's robotised and dog boxes up and down, the truck's box, the bike's quickshifter),
+  sourced cut lengths by kind, and its acceptance before code: each kind's cut what that kind wants within a
+  step; model 0 to the bit; every table reproduced by the bake; the V8's upshift row 0 of 17 and the four's
+  as a rate on X's instrument; the blip, the dips test and the idle gate untouched. Not cured by it: the
+  four's remaining 4 of 15 and its first firing back at 1.30 against 1.16 (the per-cylinder residual and
+  film reads are for that).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 07:50 UTC: `main` IS AT 07a08dc0** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
@@ -2056,6 +2081,9 @@ engines only where a source shows such an engine drawn split.
      under both. Predictions first: a naturally aspirated engine's brake torque at 70 kPa (indicated about in
      proportion, brake by more: friction does not fall), a wastegated turbo below and above the compressor's
      limit, the idle, a cold start. U1's AIR line and held absolutes leave with it.
+ 16. the steward with the integrator, a design first: X-047, the shift's cut. One length, asked once: the
+     contract of `cutRequest()` (launch.fm:80 against car.fm:852), every asker, sourced lengths, and the
+     acceptance in the section of 26 Nov above. The steward's design is a docs commit; `sim/` waits.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
