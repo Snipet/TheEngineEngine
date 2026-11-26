@@ -1,7 +1,9 @@
 // shell/input/g29/RacingWheel.h: a Logitech G29 racing wheel (its pedals and the Driving Force Shifter on its one
 // cable), read by the application. macOS: RacingWheelMac.cpp, IOKit's IOHIDManager (C API) on the main run loop; Linux:
-// RacingWheelLinux.cpp, the kernel's hid-lg4ff through evdev and sysfs (G29Evdev.h); Windows: RacingWheelNone.cpp (none
-// is ever present; docs/controls.md says so). Ported from TestingPlayground's
+// RacingWheelLinux.cpp, the kernel's hid-lg4ff through evdev and sysfs (G29Evdev.h); Windows: RacingWheelWin.cpp, a
+// plain joystick through SDL, read only, by G29Joystick.h's tables (empty until the owner's probe fills one: the wheel
+// is then seen and said, not read); elsewhere RacingWheelNone.cpp (none is ever present). On Windows nothing below that
+// sends (the switch, the range, the spring, the lights) happens: G29Joystick.h says why. Ported from TestingPlayground's
 // Source/plugin/standalone/RacingWheel.{h,cpp} (47bac40; SEED.tsv), the MIDI taken out.
 //
 // It watches for a G29 (g29/G29.h's kindOf: vendor 0x046D, any of its three product ids) and hands what it sees to a
@@ -47,7 +49,7 @@ namespace tee::input::g29
         RacingWheel(const RacingWheel&) = delete;
         RacingWheel& operator=(const RacingWheel&) = delete;
 
-        // Whether this build can read a G29 at all (macOS: yes; elsewhere: not yet).
+        // Whether this build can read a G29 at all (macOS, Linux, Windows: yes; elsewhere: no).
         static bool supported() noexcept;
 
         bool present() const noexcept;           // a G29 is connected, in any mode, or a switch has news

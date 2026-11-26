@@ -1,0 +1,53 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "pops-limiter-carved",
+  "description": "In neutral: started, then flat out against the limiter for 4 s, lifted. Bangs: Carved. (G's, for the listening pack)",
+  "seconds": 9.5,
+  "events": [
+    {
+      "t": 0.0,
+      "spec": {
+        "env.temperature": 300,
+        "exhaust.bang": 0
+      },
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 3.0,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.15
+    },
+    {
+      "t": 7.0,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    }
+  ]
+}
