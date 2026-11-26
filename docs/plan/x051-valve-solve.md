@@ -1,7 +1,7 @@
 # X-051: the valve's flow solve, the design (next window's item 17)
 
 Card G writes this page (the owner of `sim/exhaust/duct.fm`, where `Valve::flow` lives). Status: THE DESIGN, a DRAFT for the
-lead's ruling (26 Nov; the cost and X-052's rows still to be added). In order it stands behind item 16 (the shift's cut) and item
+lead's ruling (26 Nov). In order it stands behind item 16 (the shift's cut) and item
 15 (the air's pressure); whether it is built in the next window is decided on its cost and on the owner's ears; nothing in `sim/` until the window can take a bake. The lead's ruling of 26 Nov 10:35 set its
 direction: one continuous equation, a bracketed root with a convergence test, both branches, a hidden switch.
 
@@ -151,11 +151,21 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
 
 ## The cost
 
-- **Measured:** pending. The 30-pass stand-in against the tip, the whole program's cost on one run, is to be read
-  on an idle host (X-052's two-tree spreads hold the CPUs as this draft is committed) and added here.
-- **Expected for the real solve:** 4 to 8 evaluations against today's 3, about 2 to 3 times the valve's arithmetic.
-  The valve is a small part of a sample's work, so the whole program's share is to be measured by Q on Q's hosts
-  before the window's code is accepted. TEE_FAST keeps its 2 fixed passes (its own note already counts the passes).
+- **Measured** (26 Nov, G's container, idle; `tee-fuzz --play turbo-six pull none`, its "% of a core", three runs
+  each): the tip **15.2, 15.0, 16.2 %**; the 30-pass stand-in **55.2, 54.3, 54.1 %**. So one pass of every valve's
+  solve (vE and vI on all six cylinders) costs about 1.45 % of a core, and **today's three passes are about 4.3 %,
+  some 28 % of the whole program**. The valve's solve is not a small part of a sample's work.
+- **Expected for the real solve:** at 6 to 8 evaluations, about +4 to +7 % of a core, **+28 to +47 % on the whole
+  program**: too much to take without Q's measure and the lead's word. What would bring it near today's:
+  - **a warm start:** the bracket and the first guess from the last sample's root (the flow moves little sample to
+    sample in running), 2 to 4 evaluations typical. It gives up the solve's "no memory" property (duct.fm: "Each
+    solve starts from the pipe with nothing flowing"), which the shared-port memo (cylinder.fm `memoE`) and the
+    null do not need; it stays deterministic;
+  - **the converged solve only where the fixed passes disagree:** run today's passes, and solve to convergence only
+    when the last two passes differ by more than a tolerance, or the choke test falls within a band of rc. Running
+    (5 % spread) would mostly qualify too, so this saves less than it seems; to be measured.
+  - TEE_FAST keeps its 2 fixed passes (its own note already counts the passes).
+  Q measures on Q's hosts before the window's code is accepted; the figures above are one container's.
 
 ## What moves that nobody asked to move
 
@@ -195,7 +205,13 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
      five (1 over 3.00 on both);
    - **read against both bounds:** X-031 (7 of 17 today; on the stand-in 2 against X's 3.92, 14 against its own 2.58,
      its reference having fallen more than it did);
-   - **X-052's limiter rows:** as read in the two-tree mode (below, when in).
+   - **X-052's limiter rows** (the turbo six's and the V8's tour, the limiter window as the run's worst; spread.sh's
+     two-tree mode, tip against the stand-in, over the nightly 2.97 for the turbo six, each tree's own for the V8):
+     valve+intake+car **1 -> 4** of 17 (medians 2.23 -> 2.74); intake+exhaust+voices 0 -> 0 (2.22 -> 2.39);
+     wallHeat+ecu+car 0 -> 1 (1.88 -> 2.12); the V8's valve+fuel+ecu **5 -> 0** against each tree's own bound (3.94,
+     4.38), 2 against the tip's 3.94. Predicted to stay: roughly so, but the first rose and the V8's fell. Two of the
+     four carry valve.model on dial builds, which X has shown compare a cam swap: read them again on X's corrected
+     corpus before any is explained.
 3. **The instrument kept, the absence guarded** (the lead's ruling of 11:46, whatever is decided about the solve):
    - the chatter counter (§1) as a hidden telemetry field, `tel.exhaust.valveChatter` (a running count), written by
      the cylinders' valves;
