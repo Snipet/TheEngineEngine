@@ -1563,9 +1563,51 @@ against a 304 floor.
   ui/kit/gui/EditCommand.h and the frame's half), J2 (the inspector's half, and the focus mark seen from a
   seat: a picture to the lead before any golden moves). The owner has the map. Not in this bake.
 
+## 26 Nov 03:18 UTC: THE BAKE STOPPED AT ITS OWN GATE; the idle cure 98d0dc4d is reverted; the bake runs again
+
+P's bake on the frozen trees (a86a64c9 / 2e7c1bec / 7c3e4d59) baked and gated 30 of 31 builds and stopped at the
+31st, writing nothing: **straight-six-twin-turbo-30's WARM idle hunts** (654 rpm asked 650, sd 54 to 55 rpm; the
+gate wants under 25; cold 898 rpm, sd 4.2; the same build passed on abadfb4b). With the cam formula and with the
+new map alike (cams.py refused the map on its own idle check). No gate was loosened and no build skipped.
+
+**The cause, by P's four reads** (the gate's own measure: tee-render p-idle-warm, 8 to 14 s, the frozen tools,
+only the sim tree varied):
+
+| sim tree | warm idle | sd |
+|---|---|---|
+| frozen a86a64c9 | 654 rpm | 53.9 (fails) |
+| frozen with ONLY 98d0dc4d reverted | 650 rpm | 5.4 (passes) |
+| b557c4a1 with ONLY 98d0dc4d applied | 654 rpm | 53.9 (fails) |
+| b557c4a1 | 650 rpm | 5.4 |
+
+98d0dc4d (the steward, this window) took the speed's rate out of the idle valve's proportional part to cure the
+FIXTURE turbo six's hunt (cam 0.9999: 287 to 19 rpm sd). Its check of the shipped builds read their idles from
+2.5 to 5 s, cold ("within a few rpm either way, none worse"); the gate reads warm, at 650, where the rate term
+was this build's damping. The steward predicted it before measuring; the lead named it to P, whose own list of
+candidates had left it out. The other twelve sim commits of the window change nothing on this build.
+
+**Ruled:** a revert for this bake, not a new cure. `sim/ecu/idle.fm` goes back to exactly `main`'s file (blob
+fb8fb497, 98d0dc4d's parent's; nothing since touched it), its old note restored with one line on what it holds
+today. `sim/` is reopened for that ONE commit, the steward's; the sim tree after it is **f23337cc** (computed by
+the lead; host and tools unchanged). P bakes on those trees at once from its own worktree (the keys hash the
+sources) and skips its pre-bake tier (the steward's whole tier and CI stand for it); its tier on the baked tree
+stays. Comes back with the revert: the fixture's hunt, X-031 (X re-reads it on the reverted tree before
+re-entering it in Known.h), X-044 at 1 phase in 6.
+
+**The idle's real cure is the next window's (the steward), a design first.** Its acceptance is the gate's own
+measure, WARM and cold, on all 31 archetypes and the fixture, before any tier.
+
+**What this cost and what it showed:** about an hour. The gate did its job on the one build of 31 that the
+window's own checks had read only cold. A check that reads "the shipped builds" reads them as the bake's gate
+does, or says which state it did not read.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
+- **26 Nov 03:18 UTC: THE BAKE STOPPED AT ITS GATE (the 3.0 twin turbo's warm idle; the section above).**
+  `sim/` is reopened for ONE commit, the steward's revert of 98d0dc4d; everything else under `sim/`, `host/`
+  and `tools/` stays CLOSED. The trees to bake are then **sim f23337cc, host 2e7c1bec, tools 7c3e4d59**; the
+  line below is kept for the record and its tip and sim tree are superseded.
 - **26 Nov 02:37 UTC: FROZEN FOR THE BAKE. `sim/`, `host/` and `tools/` are CLOSED to every session** until
   the baked commit is on `main`. The frozen tip is **14bccbf7** (trees: sim a86a64c9, host 2e7c1bec, tools
   7c3e4d59). All seven owners of those trees answered "nothing in flight"; the integrator holds X-045's cure
