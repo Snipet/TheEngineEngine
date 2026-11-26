@@ -168,5 +168,16 @@ const Known kKnown[] = {
      "as its click row, where the worst step lies at the upshift's cut (judge's click-shift-cut; the excess decides there too): the three-cylinder 1.0 turbo's 2-3 upshift: 8 of 17 over its nightly bound 2.84; lowest 2.32, median 2.83, highest 3.56", "shift 2-3"},
     {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "kei-660-triple-turbo", "pull", "click-shift-cut",
      "as its click row, where the worst step lies at the upshift's cut (judge's click-shift-cut; the excess decides there too): the kei 660's 1-2 upshift: 2 of 17 over its nightly bound 2.77; lowest 1.53, median 2.08, highest 2.82", "shift 1-2"},
+    // X-055, the flat-plane twin-turbo V8 as built on the pull (the lead's ruling, 26 Nov 18:11; the shipped survey,
+    // docs/measurements/combo/2026-11-26-shipped-pull.md): 17 copies at 293.15 +- 0.15 K per event against its own
+    // reference's nightly bound 2.33 (that reference's lowest copy 1.17), the same on the tip and on item 16's cut probe
+    {"X-055", "2026-11-26", "the steward (as built it runs the map ECU: its limiter)", "as built", "flat-plane-v8-39-twin-turbo", "pull", "click",
+     "the flat-plane twin-turbo V8 as built on the pull, at its limiter: 7 of 17 over its nightly bound 2.33; lowest 1.87, median 2.17, highest 2.63. A TAIL: the limiter is a hard all-cylinder fuel cut bouncing near 25 Hz, about forty episodes a run, each with its own first firing back (mostly 1.0 to 1.5, about one in ten near 2; the steward's read), and the row is the worst of those forty a copy, at a different episode each copy (5.70, 6.30, 7.55, 8.11, 9.92 s), against a reference whose lowest copy is 1.17", "limiter"},
+    {"X-055", "2026-11-26", "the integrator (the dual clutch's shift; N2 named for the boost)", "as built", "flat-plane-v8-39-twin-turbo", "pull", "click",
+     "the flat-plane twin-turbo V8 as built on the pull, its 1-2 upshift on the dual clutch (no shift cut: item 16 does not reach it): 1 of 17 over 2.33 (2.66 at +0.01 K, 6.882 s); lowest 1.23, median 1.61", "shift 1-2"},
+    {"X-055", "2026-11-26", "the integrator (the dual clutch's shift; N2 named for the boost)", "as built", "flat-plane-v8-39-twin-turbo", "pull", "click-shift-cut",
+     "as its click row (one row under two names, as the shipped pairs): the 1-2 upshift, 1 of 17 over 2.33", "shift 1-2"},
+    {"X-055", "2026-11-26", "not known (no owner read yet)", "as built", "flat-plane-v8-39-twin-turbo", "pull", "click",
+     "the flat-plane twin-turbo V8 as built on the pull, in the rest (no event): 1 of 17 over 2.33 (2.76 at +0.03 K, 4.532 s); lowest 1.45, median 1.77. The owner is not known: nobody has read it", "the rest"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

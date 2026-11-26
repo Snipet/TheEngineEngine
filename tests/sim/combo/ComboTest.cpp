@@ -307,9 +307,13 @@ TEST_CASE("the archetype corpus: every build of content/builds/archetypes throug
 // upshifts over where the tour read clean): three of the corpus as built, each against its own every-switch-off
 // reference, judged per event. The three-cylinder and the kei carry X-048's rows; the boxer is the build that reads
 // clean. The whole corpus on the pull is a proposal in docs/handoffs/x-combo.md, not a case.
-TEST_CASE("shipped builds on the pull: the kei 660 then the three-cylinder 1.0 then the boxer four", "[nightly][corpus]")
+// The fourth (the lead's ruling, 26 Nov 18:11): the flat-plane twin-turbo V8, whose box is a dual clutch (no shift cut:
+// item 16 does not reach it), over at its limiter on the pull (X-055); the corpus nightly plays only the tour.
+TEST_CASE("shipped builds on the pull: the kei 660 then the three-cylinder 1.0 then the boxer four then the flat-plane V8",
+          "[nightly][corpus]")
 {
-    for (const char* stem : {"kei-660-triple-turbo", "three-cylinder-10-turbo", "boxer-four-turbo-unequal"})
+    for (const char* stem :
+         {"kei-660-triple-turbo", "three-cylinder-10-turbo", "boxer-four-turbo-unequal", "flat-plane-v8-39-twin-turbo"})
     {
         const auto f = corpusDir() / (std::string(stem) + ".json");
         if (!std::filesystem::exists(f))

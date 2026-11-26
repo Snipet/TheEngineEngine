@@ -169,3 +169,13 @@ bound 2.33 (top 2.63), and in the rest 1 of 17 (2.76), both trees: beside X-052'
 shift event on the pull (five automatics, the CVT, the eighteen-speed: the paddles do not apply). Proposal (not done):
 the whole corpus on the pull as a weekly entry, judged per event; this survey took about 12 minutes for the single
 draws and 2 hours for the 17-copy spreads of all 31 on two trees, on 4 shared cores.
+
+**X-054 and X-055 (26 Nov evening).** X-055: the flat-plane twin-turbo V8 joins the nightly's shipped-pull case as
+its fourth build (the lead's ruling, 18:11); its rows (the limiter 7 of 17, the 1-2 upshift on its dual clutch 1 of 17,
+the rest 1 of 17) are in Known.h. X-054 (the judge's, mine): a single-sample click saturates largestStep's measure (each
+edge of an impulse sits in the other's local level, so the measure tends to sqrt(2 x 480) = 31), so on a steady
+full-throttle stretch a click about 11 dB over the firing's sharpest edge passes in 7 of 17 copies, and at the limiter
+in every copy (the small four's tour); the plant table, the guard's widths and its list go with its entry.
+A question for after the window, beside X-054 (the steward's read of X-055, the lead's 18:16): whether a limiter's row
+should be read per EPISODE (how many of its episodes are over, and the reference's the same way) instead of the worst of
+all of them, since a run with forty episodes and a run with four are not judged alike today. No code for it now.
