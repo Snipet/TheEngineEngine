@@ -53,8 +53,10 @@ const Known kKnown[] = {
      "with 98d0dc4d)"},
     {"X-041", "2026-11-26", "the steward (the idle valve) and G (the limiter's bangs)", "as built",
      "inline-five-turbo-rally", "tour", "click",
-     "the spark-cut limiter at full throttle (733 rad/s, ecu.flags 1029) at 6.48 s, bangs burning near (1.9 MW within "
-     "50 ms): excess 3.08 against 3.00 (2.14 at 6.51 s with 98d0dc4d)"},
+     "an X-041 row on main (b557c4a1) already: 3.92 at 8.74 s there, and its dpWave -350 kPa on the limiter; on the "
+     "bake's tree (sim f23337cc) 3.08 against 3.00 at 6.48 s, the spark-cut limiter at full throttle (733 rad/s, "
+     "ecu.flags 1029), bangs burning near (1.9 MW within 50 ms); 2.14 at 6.51 s with 98d0dc4d: the idle valve's rate "
+     "term acting far off idle (the lead's note to the steward)"},
     {"X-042", "2026-11-25", "N2 with the integrator (the turbine's match under engine.custom; the window's item 3)",
      "+engine.custom+valve.model+boost.model", "large-diesel", "tour", "tel-range:valve.dpWave",
      "the exhaust 337 to 350 kPa over the intake at full throttle, 2480 rpm, the charge at 111.7 kPa (every switch on; "
