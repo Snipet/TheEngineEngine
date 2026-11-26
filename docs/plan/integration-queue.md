@@ -1812,6 +1812,28 @@ engines only where a source shows such an engine drawn split.
   change to a tree. "This change cured row R" or "caused it" needs every copy on one side before and every
   copy on the other after, or it says "marginal, unchanged".
 
+## 26 Nov 07:28 UTC: a row believed real straddles too; the copies pass is held
+
+- **X-031 (the V8 pull, fuel and ECU models; the steward's 15 copies a thousandth of a kelvin apart, bound
+  4.03): excess 1.76 to 5.11, median 3.39; 4 of 15 over** (the 11.02 s downshift twice, the upshift's cut at
+  6.63 to 6.71 s twice), 11 under. `Known.h`'s 4.73 to 5.17 for it are draws from the top of that spread.
+  X's 17-nudge run of the same row is the second measurement, with five more rows (X-030, X-043, the X-041
+  rally five, X-041's turbo-six tour lift, X-044); one writer, X.
+- **So the split "real against suspect" is withdrawn until those are in.** On this evidence a click row is a
+  SOMETIMES click with a rate (X-031 about one run in four, the rally five one in seven), and three copies
+  cannot sort them. **The copies pass ruled at 07:26 is HELD**; X reports each row's count over, its lowest,
+  median and highest, each over-copy's event, and the reference's own worst step across the copies (the
+  excess is a ratio: how much of the spread is the denominator's).
+- **What the lead expects to rule, open to refutation:** a click row is measured as a rate (n of N copies over,
+  and the worst) in the nightly alone; `Known.h` carries the rate; the default tier keeps its single draw as
+  a tripwire, and a default-tier row that goes red on a draw is neither re-run to green nor waved off: its
+  copies are run, and a row with any copy over is entered as marginal under a number.
+- **The steward reads, with no code, why a cut clicks one run in four:** the crank angle at which the cut and
+  the re-entry take effect against the nearest firing, on the four over and eleven under copies. The lead's
+  guess, to be refuted: the cut acts at the sample it is decided on, in mid-cycle; a cut that takes effect at
+  each cylinder's next event would take the rate to none. It sits beside item 8 and decides whether X-030
+  and X-031 are one fault.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
