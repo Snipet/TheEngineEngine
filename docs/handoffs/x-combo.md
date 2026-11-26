@@ -45,7 +45,8 @@ steward and the integrator), X-039 (a supercharged 50 cc single with a recircula
 package), X-041 (Burned in the pipe meeting the new boost: lift clicks on the turbo six and the rally five, and the
 rally five's dpWave on its limiter; G, then N2; G's fix 301ba06c local), X-042 (the large diesel's dpWave under
 engine.custom, valve and boost: one collector feeds one of its two turbos; N2 with the integrator), X-043 (the turbo
-six's start with intake, exhaust and car on, from N1's c40f0411, unseen until every triple shard ran). Closed on 26 Nov: X-031
+six's start with intake, exhaust and car on: the reference idle's hunt on the fixture's cam lope; kept for good by
+the lead's ruling, a pairing nothing ships). Closed on 26 Nov: X-031
 (the V8's downshift, by the steward's 98d0dc4d; triple shards 3 and 4 pass here). Closed on the
 bake's soak (223f4301, 213 of 221): X-029, X-038, X-040 (G's and N1's bore floors), X-032 (excess 1.84), X-037 (N1's
 b07522fc). The turbo six's remaining hunt with intake.model on (intake+ecu idle sd 227 rpm, 307 with every switch off)
