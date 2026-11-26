@@ -2119,10 +2119,12 @@ engines only where a source shows such an engine drawn split.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **26 Nov 09:16 UTC: `main` IS AT 3c42b4d2** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
-  7c3e4d59, those trees unchanged; run 45781892920: Linux, macOS and Windows green on that commit; `ui/`,
-  tests and docs only since d586682c). Before it: 5cd03815 (26 Nov 08:18), 07a08dc0 (07:50), d586682c (04:36),
-  b557c4a1 (25 Nov 23:25). Nothing code-bearing is on the branch past it at 09:16.
+- **26 Nov 11:01 UTC: `main` IS AT 5278e3e9** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
+  7c3e4d59, those trees unchanged; run 45796819517: Linux, macOS and Windows green on that commit; `ui/`,
+  tests and docs only since d586682c). Before it: 3c42b4d2 (26 Nov 09:16), 5cd03815 (08:18), 07a08dc0 (07:50),
+  d586682c (04:36), b557c4a1 (25 Nov 23:25). Past it on the branch at 11:01: X's spread.sh second-tree mode
+  (aa8d6c4c, tests; its Linux job red on apt's 404 before Build, infrastructure: the steward's bootstrap
+  retry approved) and docs.
 - **26 Nov 04:36 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items below and nothing
   else. From the first push under those trees the branch's baked tables are stale until the next bake; `main`
   stays the stable build. **A bake needs P, whose push is refused tonight: until the owner decides, land only

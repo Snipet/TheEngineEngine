@@ -43,6 +43,15 @@
 
 ## Landed
 
+- **26 Nov 11:01 UTC: `main` at 5278e3e9** (from 3c42b4d2, fast-forward; run 45796819517 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). Tests and
+  docs only: the nightly's click bound is twice the reference's LOWEST excess over five fixed nudged copies (the
+  default tier keeps its single draw); what it found, all on the turbo six's pull, entered as sometimes rows
+  (X-043 widened to the pull, X-048, X-049); the six older rows' counts under it. Found since and NOT cured in
+  `main` (each waits for a window and a bake): X-046 (the engine never reads the air's pressure; said in the
+  Air workspace), X-047 (a shift's cut lasts the vehicle's window plus its number: 210 ms where 60 is meant),
+  X-050 (the cam dial does nothing on a Lab piston build; the interface's form on its way), X-051 (the exhaust
+  valve's flow solve does not converge on a first pulse into emptied pipes: the click after a cut).
 - **26 Nov 09:16 UTC: `main` at 3c42b4d2** (from 5cd03815, fast-forward; run 45781892920 on that commit: Linux,
   Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). New in `main`:
   the dyno says knock once when it is the curve's state (three quarters of its measured points and four at the
