@@ -15,10 +15,36 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
+#include <sstream>
 #include <string>
 #include <vector>
 
 using namespace combo;
+
+
+#include <catch2/reporters/catch_reporter_event_listener.hpp>
+#include <catch2/reporters/catch_reporter_registrars.hpp>
+#include <catch2/catch_test_case_info.hpp>
+
+namespace
+{
+    // Marks each case's tier at its start, for the nightly bound (combo::referenceExcess)
+    class TierListener : public Catch::EventListenerBase
+    {
+    public:
+        using Catch::EventListenerBase::EventListenerBase;
+        void testCaseStarting(const Catch::TestCaseInfo& info) override
+        {
+            bool nightly = false;
+            for (const auto& tag : info.tags)
+                if (tag.original == Catch::StringRef("nightly"))
+                    nightly = true;
+            combo::setNightlyCase(nightly);
+        }
+    };
+} // namespace
+
+CATCH_REGISTER_LISTENER(TierListener)
 
 namespace
 {
@@ -205,15 +231,36 @@ namespace
     {
         const Archetype generic{"corpus", 36.6, 209.4, false};
         Times tm;
-        tee::test::Scenario off = scenario(Kind::Tour, f.string(), 0u, tm);
-        off.at(0.0);
-        for (const Switch& w : switches())
-            off.spec(w.path, 0);
-        const tee::test::Run r0 = off.run(tm.end);
-        const double from = tm.started + 0.5, to = tm.off;
-        const double ref = std::max(r0.left().during(from, to).largestStep(), r0.right().during(from, to).largestStep());
+        double ref = 0.0, from = 0.0, to = 0.0;
+        // (nightly: the reference's lowest excess over its copies at kBoundNudges, as referenceExcess; the default
+        // tier: the 293.15 K copy alone)
+        std::vector<double> excess;
+        for (double dT : kBoundNudges)
+        {
+            tee::test::Scenario off = scenario(Kind::Tour, f.string(), 0u, tm);
+            off.at(0.0);
+            for (const Switch& w : switches())
+                off.spec(w.path, 0);
+            if (dT != 0.0)
+                off.spec("env.temperature", 293.15 + dT);
+            const tee::test::Run r0 = off.run(tm.end);
+            from = tm.started + 0.5;
+            to = tm.off;
+            if (dT == 0.0)
+                ref = std::max(r0.left().during(from, to).largestStep(), r0.right().during(from, to).largestStep());
+            excess.push_back(stepExcess(r0, from, to));
+            if (!nightlyCase())
+                break;
+        }
+        if (nightlyCase())
+        {
+            std::printf("reference | %-28s | tour | excess over its copies:", f.stem().string().c_str());
+            for (double e : excess)
+                std::printf(" %.2f", e);
+            std::printf("; the bound twice the lowest, %.2f\n", 2.0 * lowestExcess(excess));
+        }
         const tee::test::Run r = scenario(Kind::Tour, f.string(), 0u, tm).run(tm.end);
-        const Verdict v = judge(r, tm, &generic, true, ref, stepExcess(r0, from, to));
+        const Verdict v = judge(r, tm, &generic, true, ref, lowestExcess(excess));
         report(v, "as built", f.stem().string(), "tour");
     }
 
@@ -288,4 +335,43 @@ TEST_CASE("a handful of pairs where packages meet: fuel and ECU then boost and e
         }
         report(v, comboName(m), "v8", kindName(Kind::Launch));
     }
+}
+
+// The nightly bound's proof, on demand (hidden): one case judged as a [nightly] case is, against the reference's lowest
+// excess over its copies. BOUNDPROOF="<archetype> <tour|pull|launch|cold> <switches>" or "<corpus stem>" (the corpus's
+// own route); with TEE_SIM_DIR, on another tree (X-014 and X-015 on 62a6a7fd: the lead's condition, 26 Nov 08:07)
+TEST_CASE("the nightly bound's proof: one case judged against its reference's lowest copy", "[.boundproof][nightly]")
+{
+    const char* spec = std::getenv("BOUNDPROOF");
+    REQUIRE(spec != nullptr);
+    std::istringstream in(spec);
+    std::string build, kindArg, comboArg;
+    in >> build >> kindArg >> comboArg;
+    if (kindArg.empty())
+    {
+        corpusBuild(corpusDir() / (build + ".json"));
+        return;
+    }
+    Kind kind = Kind::Tour;
+    for (Kind k : allKinds())
+        if (kindArg == kindName(k))
+            kind = k;
+    std::uint32_t mask = 0;
+    const auto& sw = switches();
+    std::string rest = comboArg;
+    while (!rest.empty() && rest != "none")
+    {
+        const auto plus = rest.find('+');
+        const std::string one = rest.substr(0, plus);
+        rest = plus == std::string::npos ? std::string() : rest.substr(plus + 1);
+        for (std::size_t k = 0; k < sw.size(); ++k)
+            if (sw[k].path == one)
+                mask |= 1u << k;
+    }
+    Times tm;
+    const tee::test::Run r = scenario(kind, build, mask, tm).run(tm.end);
+    const Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, kind), referenceExcess(build, kind));
+    std::printf("boundproof | %s / %s / %s: excess %.2f at %.3f s against %.2f\n", comboName(mask).c_str(), build.c_str(),
+                kindName(kind), v.stepExcess, v.stepAt, v.excessBound);
+    report(v, comboName(mask), build, kindName(kind));
 }

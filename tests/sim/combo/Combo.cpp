@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <map>
 #include <sstream>
+#include <tuple>
+#include <vector>
 
 namespace combo
 {
@@ -488,18 +490,64 @@ namespace combo
         return own / std::max(median, 1e-9);
     }
 
+    double lowestExcess(const std::vector<double>& excess)
+    {
+        double lowest = -1.0;
+        for (double e : excess)
+            if (e >= 0.0 && (lowest < 0.0 || e < lowest))
+                lowest = e;
+        return lowest;
+    }
+
+    namespace
+    {
+        bool gNightlyCase = false;
+    } // namespace
+
+    void setNightlyCase(bool nightly)
+    {
+        gNightlyCase = nightly;
+    }
+
+    bool nightlyCase()
+    {
+        return gNightlyCase;
+    }
+
     const Reference& reference(const std::string& build, Kind kind)
     {
-        static std::map<std::pair<std::string, int>, Reference>* cache = new std::map<std::pair<std::string, int>, Reference>();
-        const auto key = std::make_pair(build, static_cast<int>(kind));
+        // (the default tier's single draw and the nightly's copies kept apart)
+        static std::map<std::tuple<std::string, int, bool>, Reference>* cache =
+            new std::map<std::tuple<std::string, int, bool>, Reference>();
+        const bool copies = nightlyCase();
+        const auto key = std::make_tuple(build, static_cast<int>(kind), copies);
         if (auto it = cache->find(key); it != cache->end())
             return it->second;
-        Times tm;
-        const tee::test::Run r = scenario(kind, build, 0u, tm).run(tm.end);
-        const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
         Reference ref;
-        ref.step = std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
-        ref.excess = stepExcess(r, from, to);
+        std::vector<double> excess;
+        for (double dT : kBoundNudges)
+        {
+            Times tm;
+            tee::test::Scenario sc = scenario(kind, build, 0u, tm);
+            if (dT != 0.0)
+                sc.at(0.0).spec("env.temperature", 293.15 + dT);
+            const tee::test::Run r = sc.run(tm.end);
+            const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+            if (dT == 0.0)   // the step's bound stays the single draw's (the ruling is the excess's)
+                ref.step = std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
+            excess.push_back(stepExcess(r, from, to));
+            if (!copies)
+                break;
+        }
+        ref.excess = lowestExcess(excess);
+        if (copies)
+        {
+            std::printf("reference | %-13s | %-6s | excess over its copies (dT 0, -0.07, -0.03, +0.03, +0.07 K):", build.c_str(),
+                        kindName(kind));
+            for (double e : excess)
+                std::printf(" %.2f", e);
+            std::printf("; the bound twice the lowest, %.2f\n", 2.0 * ref.excess);
+        }
         return (*cache)[key] = ref;
     }
 

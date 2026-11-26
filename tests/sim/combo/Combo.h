@@ -112,8 +112,21 @@ namespace combo
     // The reference's (every switch off) largest step while running, on a build through a scenario: measured once a
     // process and kept.
     double referenceStep(const std::string& build, Kind kind);
-    // The reference's own excess (Verdict::stepExcess) on a build through a scenario, measured once a process
+    // The reference's own excess (Verdict::stepExcess) on a build through a scenario, measured once a process. In a
+    // [nightly] case: the LOWEST over the reference's copies at kBoundNudges (the lead's ruling, 26 Nov 08:07; the
+    // default tier keeps the single draw at 293.15 K as its tripwire). The lowest, not the median or the highest: the
+    // references' highs are what spread across copies (the flat six's 1.41 to 3.90 over 17), and a bound drawn high is
+    // a loose bound; the 293.15 K copy is among them, so the nightly's bound is never above the default tier's.
     double referenceExcess(const std::string& build, Kind kind);
+    // The air temperatures' offsets (K, from 293.15) of the nightly bound's reference copies: fixed, so the bound is one
+    // number on a given tree and anyone can recompute it (tests/sim/combo/spread.sh with SPREAD_DT set to these)
+    inline constexpr double kBoundNudges[5] = {0.0, -0.07, -0.03, 0.03, 0.07};
+    // The lowest of `excess` over a reference's copies (-1 where none had a period): the nightly bound's make-up
+    double lowestExcess(const std::vector<double>& excess);
+    // Whether the running Catch case is tagged [nightly] (ComboTest.cpp's listener sets it at each case's start; false in
+    // a tool, tee-fuzz, that plays without Catch)
+    bool nightlyCase();
+    void setNightlyCase(bool nightly);
     // The excess of the worst step of [from, to] over its neighbouring firing periods (Verdict::stepExcess)
     double stepExcess(const tee::test::Run& run, double from, double to, double* at = nullptr, double* period = nullptr);
     // The bang rule's baseline (cuts that send fuel to the pipe, the new ECU's): the largest step of three reference
