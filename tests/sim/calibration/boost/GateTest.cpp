@@ -198,7 +198,7 @@ TEST_CASE("calibration boost: variable vanes past the surge line open (one state
     CHECK(up.at("engine.torque") > 0.95 * fixed.at("engine.torque"));
 }
 
-TEST_CASE("calibration boost: the telemetry says when the charge system is far from its engine", "[calibration][boost]")
+TEST_CASE("calibration boost: the telemetry says when the charge system is far from its engine", "[calibration][boost][warn]")
 {
     // (the lead's X-021 ruling) A 15 L diesel with F's defaults (a 0.25 kg/s cooler and 5 L of pipes, a 2 to 3 L
     // engine's) makes little boost, as it should; tel.boost.mismatch says why, with each pair (has, wants). The 2 L
@@ -315,4 +315,33 @@ TEST_CASE("calibration boost: a sequential pair with a stated join speed changes
         CHECK(hi < 1.25 * mean);
         CHECK(lo > 0.75 * mean);
     }
+}
+
+TEST_CASE("calibration boost: a turbo the exhaust leaves without gas says so (mismatch bit 128)", "[calibration][boost][warn]")
+{
+    // The Aspiration dial reaches a dead housing (the lead's ruling, 26 Nov): the default V8 (one collector a bank)
+    // turned to quad turbos feeds turbos 0 and 2 alone, a bank each, turbos 1 and 3 stand, and bit 128 says so; turned
+    // to twin turbos it feeds a turbo a bank, and bit 128 stays clear. (first.json as Twin was the first case; the
+    // integrator's firing-order split, e0bdc69f, now feeds both its wheels.) The cure (no wheel without gas) is the
+    // next window's (docs/measurements/calibration/boost/dead-housing.md); this holds the warning.
+    Sims s;
+    const std::vector<std::string> lines = {"boost.mismatch", "boost.shaftSpeed[0]", "boost.shaftSpeed[1]",
+                                            "boost.shaftSpeed[2]", "boost.shaftSpeed[3]"};
+    std::vector<Row> quad, twin;
+    std::string error;
+    REQUIRE(tee::calib::dyno(s.sim, "", {5000.0}, {{"boost.model", 1}, {"boost.kind", 3}}, lines, quad, error, 1.0, 0.2, 2.0));
+    INFO(error);
+    REQUIRE(tee::calib::dyno(s.sim, "", {5000.0}, {{"boost.model", 1}, {"boost.kind", 2}}, lines, twin, error, 1.0, 0.2, 2.0));
+    INFO(error);
+    const Row& q = quad[0];
+    const Row& t = twin[0];
+    std::printf("the default V8 at 5000 rpm: quad mismatch %.0f, shafts %.0f %.0f %.0f %.0f rad/s; twin mismatch %.0f, shafts "
+                "%.0f and %.0f rad/s\n",
+                q.at("boost.mismatch"), q.at("boost.shaftSpeed[0]"), q.at("boost.shaftSpeed[1]"), q.at("boost.shaftSpeed[2]"),
+                q.at("boost.shaftSpeed[3]"), t.at("boost.mismatch"), t.at("boost.shaftSpeed[0]"), t.at("boost.shaftSpeed[1]"));
+    CHECK((static_cast<int>(q.at("boost.mismatch")) & 128) != 0);
+    CHECK(q.at("boost.shaftSpeed[1]") < 0.05 * q.at("boost.shaftSpeed[0]"));
+    CHECK(q.at("boost.shaftSpeed[3]") < 0.05 * q.at("boost.shaftSpeed[2]"));
+    CHECK((static_cast<int>(t.at("boost.mismatch")) & 128) == 0);
+    CHECK(t.at("boost.shaftSpeed[1]") > 0.5 * t.at("boost.shaftSpeed[0]"));
 }
