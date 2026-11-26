@@ -1,6 +1,7 @@
 // tests/sim/core/EngineExplore.cpp: the engine on the dyno, printed (hidden: "[.dynosweep]").
 #include "Engine.h"
 #include "Presets.h"
+#include "FieldDiff.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -9,6 +10,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <set>
 
 using tee::test::core::Bench;
 
@@ -408,47 +410,8 @@ TEST_CASE("reversion store", "[.rvstore]")
 
 // The two routes into first.json ("written after init" and "initialised over it"), every field of the Engine instance
 // compared after configure and after the key (hidden: "[.routediff]"; the lead's ask, 25 Nov 23:27)
-namespace
-{
-    struct Diff
-    {
-        std::string path;
-        double a, b;
-    };
-    double element(const unsigned char* p, tee::Scalar s)
-    {
-        switch (s)
-        {
-        case tee::Scalar::Float: { float v; std::memcpy(&v, p, 4); return v; }
-        case tee::Scalar::Double: { double v; std::memcpy(&v, p, 8); return v; }
-        case tee::Scalar::Int: { std::int32_t v; std::memcpy(&v, p, 4); return v; }
-        case tee::Scalar::Bool: return *p ? 1.0 : 0.0;
-        case tee::Scalar::Char: return *p;
-        default: return 0.0;
-        }
-    }
-    void walk(const std::vector<tee::Schema::Node>& nodes, std::size_t base, const std::string& prefix,
-              const unsigned char* a, const unsigned char* b, std::vector<Diff>& out)
-    {
-        for (const auto& n : nodes)
-        {
-            const std::size_t count = n.count();
-            for (std::size_t i = 0; i < count; ++i)
-            {
-                const std::size_t off = base + n.offset + i * n.stride;
-                const std::string path = prefix + n.name + (n.extents.empty() ? "" : "[" + std::to_string(i) + "]");
-                if (!n.children.empty())
-                    walk(n.children, off, path + ".", a, b, out);
-                else if (n.scalar != tee::Scalar::None && n.scalar != tee::Scalar::Pointer)
-                {
-                    const double x = element(a + off, n.scalar), y = element(b + off, n.scalar);
-                    if (std::memcmp(a + off, b + off, n.stride) != 0 && !(std::isnan(x) && std::isnan(y)))
-                        out.push_back({path, x, y});
-                }
-            }
-        }
-    }
-}
+using tee::test::core::Diff;
+using tee::test::core::walk;
 
 TEST_CASE("first.json's two routes, every field", "[.routediff]")
 {
@@ -666,10 +629,73 @@ TEST_CASE("the large diesel's turbines under engine.custom", "[.customturb]")
             std::printf("  custom friction: rings %.3f bearings %.3f valves %.3f constant %.3f accessories %.3f bar; piston %.1f m/s, stroke %.4f m, peak %.0f bar\n",
                         b.field("fric.rings") / 1e5, b.field("fric.bearings") / 1e5, b.field("fric.valves") / 1e5, b.field("fric.constant") / 1e5,
                         b.field("fric.accessories") / 1e5, b.field("fric.pistonSpeed"), b.field("fric.stroke"), b.tel("engine.peakPressure") / 1e5);
+        std::printf("  oilK %.3f, heat.viscK %.3f, coolant %.1f C\n", b.field("oilK"), b.field("heat.viscK"), b.tel("engine.coolant") - 273.15);
         for (int h = 0; h < 4; ++h)
             std::printf("  housing %d: pipes' flow %.5f m3/s, pressure %.3f bar\n", h, q[h] / n, p[h] / n / 1e5);
         for (int c = 0; c < 8; ++c)
             std::printf("  slot housing[%d] %g", c, b.field("exh.b.eng.housing[" + std::to_string(c) + "]"));
         std::printf("\n  hmap %g %g %g %g\n", b.field("exh.b.eng.hmap[0]"), b.field("exh.b.eng.hmap[1]"), b.field("exh.b.eng.hmap[2]"), b.field("exh.b.eng.hmap[3]"));
+    }
+}
+
+// A custom engine whose custom fields are its table's: the configuration fields with engine.custom off and on
+// (fuel.model 1 on both, so the friction is the same model), after the key; those that hold still on both runs and
+// differ are printed (hidden: "[.customnull]")
+TEST_CASE("a custom engine equal to its table, every configuration field", "[.customnull]")
+{
+    // (the custom fields written from the table's own engine: each cylinder's pin and revolution from the table's
+    // firing angles (an inline's bank at 0), the table's redline; one-bank builds)
+    for (const char* build : {"combo/large-diesel", "combo/turbo-six", "combo/small-four"})
+    {
+        std::vector<unsigned char> snap[2][2];
+        const tee::Schema* schema = nullptr;
+        double fire[12] = {}, red = 0.0;
+        int n = 0;
+        for (int custom = 0; custom < 2; ++custom)
+        {
+            Bench b(build);
+            schema = &b.player().schema();
+            std::string e;
+            REQUIRE(b.player().setSpec("fuel.model", 1, e));
+            if (custom == 1)
+            {
+                REQUIRE(b.player().setSpec("engine.custom", 1, e));
+                REQUIRE(b.player().setSpec("engine.redlineSpeed", red / 9.5492966, e));
+                const int pin = b.player().specIndex("engine.pin"), rev = b.player().specIndex("engine.fireRev");
+                REQUIRE(pin >= 0);
+                REQUIRE(rev >= 0);
+                for (int c = 0; c < n; ++c)
+                {
+                    b.player().setSpec(std::size_t(pin), std::fmod(720.0 - fire[c], 360.0), std::size_t(c));
+                    b.player().setSpec(std::size_t(rev), fire[c] >= 360.0 ? 1.0 : 0.0, std::size_t(c));
+                }
+            }
+            const auto* d = static_cast<const unsigned char*>(b.player().instance().data());
+            b.start();
+            if (custom == 0)
+            {
+                n = int(b.field("geo.n"));
+                for (int c = 0; c < n; ++c)
+                    fire[c] = b.field("geo.fire[" + std::to_string(c) + "]");
+                red = b.field("redBase");
+            }
+            std::printf("  custom %d: jFly %.5f mm.j0 %.5f mm.n %g mRot %.4f r %.4f set.load %.3f dynoOn %g mm.jMean %.5f\n", custom, b.field("jFly"),
+                        b.field("mm.j0"), b.field("mm.n"), b.field("mm.mRot"), b.field("mm.sc.r"), b.field("set.load"), b.field("dynoOn"), b.field("mm.jMean"));
+            snap[custom][0].assign(d, d + b.player().instance().size());
+            b.play(0.5);
+            snap[custom][1].assign(d, d + b.player().instance().size());
+        }
+        std::vector<Diff> across, still0, still1;
+        walk(schema->fields(), 0, "", snap[0][0].data(), snap[1][0].data(), across);
+        walk(schema->fields(), 0, "", snap[0][0].data(), snap[0][1].data(), still0);
+        walk(schema->fields(), 0, "", snap[1][0].data(), snap[1][1].data(), still1);
+        std::set<std::string> m0, m1;
+        for (const auto& d : still0) m0.insert(d.path);
+        for (const auto& d : still1) m1.insert(d.path);
+        std::printf("%s: %zu fields differ; those still on both:\n", build, across.size());
+        for (const auto& d : across)
+            if (!m0.count(d.path) && !m1.count(d.path) && d.path.find(".rev") == std::string::npos && d.path.find("revSeen") == std::string::npos &&
+                d.path.find("modelRev") == std::string::npos)
+                std::printf("  %s: %.9g | %.9g\n", d.path.c_str(), d.a, d.b);
     }
 }
