@@ -2362,13 +2362,33 @@ engines only where a source shows such an engine drawn split.
   (beyond this measure by design). So a "0 of 17" tonight is strong at starts, idles and shifts, weaker on a
   steady full-throttle stretch, and says little at a limiter.
 
+## 26 Nov 20:32 UTC: X-054 placed: the judge's blindness is the reference sound path's; the guard and what it moves
+
+- **With sound.model on, as every shipped build runs, TODAY'S judge catches the planted click in 17 of 17** on a
+  steady full-throttle stretch (excess 3.31 to 4.52 against 2.82; the firing's sharpest edge there about 0.32
+  a sample). On the reference sound path (sound.model off: every combo row without it, every reference) the
+  firing's own edges are about 0.84 a sample and up to a full swing in one sample (the 0.85 output limiter's
+  square edges), and the same click passes in 7 of 17. So the judge sees further on what ships than on the
+  fixtures; the floor of the method is the reference limiter's doing.
+- **The guard (leave g samples each side of a difference out of its own level):** it closes a click up to about
+  g samples wide and no wider (g2 is back to today's at 3 samples, g4 at 5). At the limiter g4 takes the
+  planted click from 0 to 15 of 17 caught (the small four) and from 3 to 13 (the turbo six): the limiter's
+  blindness was mostly the saturation. The level taken from the neighbouring periods gains one to three
+  copies more and moves every reference: written down, not taken.
+- **Not purely a tightening:** g4 unsaturates the references' own sharp edges too, so a BOUND can rise (the
+  turbo six's tour 2.97 to 3.35; the small four's 4.68 to 4.78) and a measure can fall by a hundredth. X's
+  list (every visible combo case under today's judge and under g4: every bound that rises, every measure that
+  falls, every row whose verdict moves either way, each newly red row spread before entry; X-014 and X-015
+  on 62a6a7fd still caught) comes before any ruling.
+- **X-055 is in `main`** (57265b5f): the flat-plane V8 in the nightly's shipped-pull case.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **26 Nov 18:30 UTC: `main` IS AT 6e67ac62** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
-  7c3e4d59, those trees unchanged; run 45858950535: Linux, macOS and Windows green on that commit; `ui/`,
-  tests, the combo corpus, scripts and docs only since d586682c). Before it: d6615852 (26 Nov 16:31), 3f892823
-  (13:41), 389ee865 (12:25), 317404d9 (11:53), 5278e3e9 (11:01), 3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0
-  (07:50), d586682c (04:36). Past it on the branch: docs.
+- **26 Nov 20:32 UTC: `main` IS AT 57265b5f** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
+  7c3e4d59, those trees unchanged; run 45877287272: Linux, macOS and Windows green on that commit; `ui/`,
+  tests, the combo corpus, scripts and docs only since d586682c). Before it: 6e67ac62 (26 Nov 18:30), d6615852
+  (16:31), 3f892823 (13:41), 389ee865 (12:25), 317404d9 (11:53), 5278e3e9 (11:01), 3c42b4d2 (09:16), 5cd03815
+  (08:18), 07a08dc0 (07:50), d586682c (04:36). Nothing is on the branch past it.
 - **THE WINDOW'S ORDER, as ruled on 26 Nov and corrected at 17:39 (each needs a bake to follow, so P):** item 16
   (X-047, the shift's cut; the steward; one file; evidence on three shipped builds), item 17 (X-051, the
   valve's flow solve; G; it moves only cases with the exhaust or intake model on, no reference and no

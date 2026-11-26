@@ -43,6 +43,11 @@
 
 ## Landed
 
+- **26 Nov 20:32 UTC: `main` at 57265b5f** (from 6e67ac62, fast-forward; run 45877287272 on that commit: Linux,
+  Windows and macOS green; the baked trees unchanged). Tests and docs only: the nightly's shipped-pull case
+  gains the flat-plane 3.9 twin-turbo V8 as its fourth build (X-055: at its limiter 7 of 17, a hard fuel-cut
+  bounce read as the worst of some forty episodes); X's survey of all 31 shipped builds on the pull is in
+  docs/measurements/combo/. Nothing an owner sees or hears moved.
 - **26 Nov 18:30 UTC: `main` at 6e67ac62** (from d6615852, fast-forward; run 45858950535 on that commit: Linux,
   Windows and macOS green; the baked trees unchanged). Tests and docs only (a hidden proof case's mode; the
   queue's corrections of record; the designs' pages). Nothing an owner sees or hears moved. Measured since and
