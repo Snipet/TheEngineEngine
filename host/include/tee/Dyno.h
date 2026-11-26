@@ -57,6 +57,10 @@ namespace tee
         // approaches its points: knock control's retard has memory (a step a knock, given back at some 2 degrees a
         // second), so a knock-limited step depends a little on where it came from. Off: in the order given.
         bool upward = true;
+        // (Where the program says a part has hysteresis, tel.engine.hysteresis: a two-stage cam's switch, each step is
+        // reached as an upward sweep reaches it, whatever the order: let down to a tenth under the lower of it and the
+        // step before, held 0.3 s, then ramped up into it at 100 rad/s^2, as the predictor's points are. A build
+        // without such a part runs as before, bit for bit.)
         std::string torque = "engine.torque";   // the tel field the absorbed torque is read from
         std::vector<std::string> fields;        // more tel fields at each point: "boost.pressure", "engine.manifold"
         double sampleRate = 48000.0;

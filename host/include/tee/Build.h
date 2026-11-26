@@ -72,6 +72,10 @@ namespace tee
         double get(std::string_view path, std::size_t index = 0) const noexcept;
         // Sets one (clamped). False when there is no such Spec field or element.
         bool set(std::string_view path, double value, std::size_t index = 0);
+        // Whether a person's input of `value` for `path` is taken (an inspector asks before Build::set): false for a stated
+        // bore under its least (Fields.h: statedLeast), with the reason in `why`. Build::set itself takes any value (a
+        // timeline's, a fuzzer's: the program raises such a bore), and Build::load refuses one from a file.
+        bool accepts(std::string_view path, double value, std::string* why = nullptr) const;
         // A choice by its name.
         bool setChoice(std::string_view path, std::string_view choice);
         // A field's values whole, laid out as above; setValues takes them (the count must be the field's).

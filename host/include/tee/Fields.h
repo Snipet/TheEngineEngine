@@ -186,6 +186,17 @@ namespace tee
     // section starting with `int rev;`; every telemetry field has a label.
     std::vector<std::string> lint(const Fields& fields);
 
+    // A stated value's least (the host's rule, not an attribute: the FMinus compiler is the owner's). A field where 0
+    // means "derived" and a stated value under its least is not one the program can use: the stated pipe bores (G's
+    // X-038: every exhaust pipe, 10 mm) and the intake's (N1's X-040: the runner 8 mm, the snorkel 10 mm). Such a value
+    // is refused at a person's input: an inspector asks Build::accepts before it sets; Build::load takes the field at its
+    // default (0, derived) and says so in its warnings. Build::set itself takes any value (a timeline's, a fuzzer's). The program raises one it is handed all the
+    // same (tel.exhaust.boreRaised, tel.intake.boreRaised). The least for a field's path ("spec.exhaust.primD"), in the
+    // field's own unit (m); 0 for a field without one.
+    double statedLeast(std::string_view path) noexcept;
+    // Whether `value` is under the field's least: a stated value (not 0) in (0, least).
+    bool underStatedLeast(std::string_view path, double value) noexcept;
+
     // What a snapshot (Fields::snapshot's text, as committed) says that `fields` broke, a line each: a path that
     // disappeared or changed its type. A field added is no problem: the Spec is append-only.
     std::vector<std::string> compareSnapshot(const Fields& fields, std::string_view snapshot);

@@ -4,10 +4,13 @@
 #include "Engine.h"
 #include "tee/Program.h"
 #include "Presets.h"
+#include "FieldDiff.h"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <set>
+#include <string>
 #include <utility>
 #include <vector>
 #include <cstdio>
@@ -643,6 +646,104 @@ TEST_CASE("the redline shown is a stated limiter's speed, not the idle's floor (
         b.start();
         std::printf("default V8, limiter at 2000: redline %.0f rpm\n", b.tel("engine.redline") * kRpm);
         CHECK(std::fabs(b.tel("engine.redline") * kRpm - 2000.0) < 5.0);
+    }
+}
+
+TEST_CASE("a custom engine written from its table configures as its table does (engine.custom, one bank)", "[core][engine][custom]")
+{
+    // (the lead's null, 26 Nov: a custom engine equal to its table, against the same build with engine.custom off.
+    // Not bit for bit, for stated reasons: engine.custom turns the friction to the physical model (physicalFriction(),
+    // so fuel.model 1 on both here), carries the bench's load in mm.j0 and gives the dyno the mean inertia with the rods;
+    // those, the custom fields themselves and the start's records the inertia moves are named below. Every other field
+    // that holds still on both runs after the key is the same. The two faults this would have caught: the straight
+    // six's split headers dropped under custom (823e45cd: lay.bank, lay.topo, every pipe after them), and anything
+    // custom configures from the layout dial instead of its own fields. One-bank builds: a V's custom fields want its
+    // bank angles too (not written here).)
+    const auto allowed = [](const std::string& p) -> const char* {
+        if (p.rfind("spec.engine.", 0) == 0) return "the custom fields themselves";
+        if (p.find(".rev") != std::string::npos || p.find("revSeen") != std::string::npos || p.find("modelRev") != std::string::npos)
+            return "the Spec's revision counts";
+        if (p == "customUse" || p == "geoSig" || p == "geoUsed") return "the custom geometry's switch and signature";
+        if (p == "mm.j0") return "custom's carries the bench's load (1 + 5 load); the table's carries it elsewhere";
+        if (p == "dyno.j") return "custom's dyno takes the mean inertia with the rods; the table's the flywheel's";
+        if (p.rfind("ex.st", 0) == 0 || p.rfind("ecu.sensor.line[", 0) == 0 || p.rfind("ecu.watch.", 0) == 0 || p == "listen.peakOut")
+            return "the start's records: the starter's sound, the ECU's trace and watch, the listener's peak (the inertia moves them)";
+        return nullptr;
+    };
+    for (const char* build : {"combo/small-four", "combo/turbo-six", "combo/large-diesel"})
+    {
+        INFO(build);
+        std::vector<unsigned char> snap[2][2];
+        const tee::Schema* schema = nullptr;
+        double fire[12] = {}, red = 0.0;
+        int n = 0;
+        for (int custom = 0; custom < 2; ++custom)
+        {
+            Bench b(build);
+            schema = &b.player().schema();
+            std::string e;
+            REQUIRE(b.player().setSpec("fuel.model", 1, e));
+            if (custom == 1)
+            {
+                // (the table's engine as custom fields: each cylinder's pin and revolution from its firing angle (an
+                // inline's bank at 0), the table's redline)
+                REQUIRE(b.player().setSpec("engine.custom", 1, e));
+                REQUIRE(b.player().setSpec("engine.redlineSpeed", red / 9.5492966, e));
+                const int pin = b.player().specIndex("engine.pin"), rev = b.player().specIndex("engine.fireRev");
+                REQUIRE(pin >= 0);
+                REQUIRE(rev >= 0);
+                for (int c = 0; c < n; ++c)
+                {
+                    b.player().setSpec(std::size_t(pin), std::fmod(720.0 - fire[c], 360.0), std::size_t(c));
+                    b.player().setSpec(std::size_t(rev), fire[c] >= 360.0 ? 1.0 : 0.0, std::size_t(c));
+                }
+            }
+            const auto* d = static_cast<const unsigned char*>(b.player().instance().data());
+            b.start();
+            if (custom == 0)
+            {
+                n = int(b.field("geo.n"));
+                REQUIRE(n <= 12);
+                for (int c = 0; c < n; ++c)
+                    fire[c] = b.field("geo.fire[" + std::to_string(c) + "]");
+                red = b.field("redBase");
+            }
+            snap[custom][0].assign(d, d + b.player().instance().size());
+            b.play(0.5);
+            snap[custom][1].assign(d, d + b.player().instance().size());
+        }
+        std::vector<tee::test::core::Diff> across, moved0, moved1;
+        tee::test::core::walk(schema->fields(), 0, "", snap[0][0].data(), snap[1][0].data(), across);
+        tee::test::core::walk(schema->fields(), 0, "", snap[0][0].data(), snap[0][1].data(), moved0);
+        tee::test::core::walk(schema->fields(), 0, "", snap[1][0].data(), snap[1][1].data(), moved1);
+        std::set<std::string> moving;
+        for (const auto& d : moved0)
+            moving.insert(d.path);
+        for (const auto& d : moved1)
+            moving.insert(d.path);
+        int named = 0, rounded = 0;
+        for (const auto& d : across)
+        {
+            if (moving.count(d.path) != 0)
+                continue;   // the run's state, not its configuration
+            if (allowed(d.path) != nullptr)
+            {
+                ++named;
+                continue;
+            }
+            // (the redline written in rad/s comes back in rpm a float's rounding off: 6999.9995 for 7000; what follows
+            // from it, the idle's target, as near)
+            const double rel = std::fabs(d.a - d.b) / std::max(std::fabs(d.a), 1.0);
+            if (rel < 1.0e-4)
+            {
+                ++rounded;
+                continue;
+            }
+            INFO(d.path << ": with custom off " << d.a << ", on " << d.b);
+            CHECK(false);
+        }
+        std::printf("%s, a custom engine written from its table: %zu fields differ, %d named, %d within 1e-4 (the redline's rounding)\n",
+                    build, across.size(), named, rounded);
     }
 }
 
