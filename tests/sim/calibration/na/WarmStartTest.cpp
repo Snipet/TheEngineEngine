@@ -5,6 +5,14 @@
 // added correction drained the plenum through the flare; the ECU's proportional part shut the idle valve at the catch)
 // and a 5.7 L carburetted V8 as the control. Steady: the speed's least to most over 8 to 14 s within 100 rpm (P's idle
 // steadiness: a warm idle wanders some 20 to 50 rpm, a rule of thumb; twice the top of that is judgement).
+//
+// The start's dip (the steward and the lead, 26 Nov 05:00): the lowest speed over 2 to 8 s, between the key's release
+// and the idle the steady check reads, no more than 25 rpm under main's own (half the top of that same 20 to 50 rpm
+// wander: judgement). An idle change read only on the settled idle deepened it unseen (the reverted 98d0dc4d: the 7.4
+// 545 -> 457 rpm against 650 asked, the V12 879 -> 827, the twin six 639 -> 579, the flat six 822 -> 792). main's
+// figures below are its own, read here on main d586682c (sim f23337cc); an archetype without one fails until its
+// figure is added, and a change that deepens a dip past the bound restates the figure with its reason, never the bound.
+// TEE_SIM_DIR reads another sim tree, as the harness does (the steward's acceptance read for the idle's cure).
 #include "tee/Timeline.h"
 #include "tee/Warm.h"
 
@@ -12,6 +20,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <map>
 #include <filesystem>
 #include <string>
 
@@ -21,11 +31,38 @@ namespace
 {
     const std::filesystem::path kRoot = TEE_SOURCE_DIR;
 
+    std::filesystem::path simDirectory()
+    {
+        const char* other = std::getenv("TEE_SIM_DIR");
+        return other != nullptr && *other != '\0' ? std::filesystem::path(other) : kRoot / "sim";
+    }
+
+    // main's lowest speed over 2 to 8 s on p-idle-warm, rpm (main d586682c, sim f23337cc; 26 Nov)
+    const std::map<std::string, double> kMainDip = {
+        {"air-cooled-flat-six-36", 822.3},      {"big-bore-70-pushrod-v8", 717.2},
+        {"big-block-74-pushrod-v8", 544.9},     {"boxer-four-turbo-unequal", 788.4},
+        {"diesel-20-common-rail", 730.2},       {"economy-four-15", 736.2},
+        {"flat-plane-v8-39-twin-turbo", 896.7}, {"flat-plane-v8-45", 987.2},
+        {"four-cam-v8-50", 680.8},              {"hot-hatch-16-16v", 835.8},
+        {"inline-five-turbo-rally", 988.8},     {"kei-660-triple-turbo", 816.0},
+        {"pickup-diesel-67-inline-six", 714.5}, {"pushrod-v6-38", 618.5},
+        {"rotary-twin-13", 775.5},              {"rotary-twin-na-side-port", 744.0},
+        {"small-block-57-carb", 680.5},         {"straight-six-32-high-rev", 791.6},
+        {"straight-six-twin-turbo-30", 639.2},  {"supercharged-v8-62", 638.6},
+        {"three-cylinder-10-turbo", 775.4},     {"tractor-15-inline-six", 655.3},
+        {"turbo-four-20-gdi", 736.5},           {"twin-cam-roadster-18", 837.4},
+        {"twin-turbo-hot-vee-v8-40", 644.2},    {"two-stage-cam-20", 888.4},
+        {"v10-52", 896.0},                      {"v12-65", 878.6},
+        {"v6-35-na", 670.2},                    {"v6-35-twin-turbo-pickup", 621.6},
+        {"vr6-28", 742.6},
+    };
+    constexpr double kDipRoom = 25.0;
+
     // The process's compiled simulator, one for every case here (never deleted: a compiled program destroyed after the
     // JIT at exit crashes on macOS; its compile is some 6 s of a case)
     const std::shared_ptr<Sim>& keptSim(std::string& error)
     {
-        static const std::shared_ptr<Sim>* const kept = new std::shared_ptr<Sim>(Sim::compile(kRoot / "sim", {}, error));
+        static const std::shared_ptr<Sim>* const kept = new std::shared_ptr<Sim>(Sim::compile(simDirectory(), {}, error));
         return *kept;
     }
 
@@ -59,7 +96,7 @@ namespace
         REQUIRE(cs >= 0);
         REQUIRE(cst >= 0);
         REQUIRE(run.rowCount() > 0);
-        double sum = 0.0, lo = 1e9, hi = 0.0;
+        double sum = 0.0, lo = 1e9, hi = 0.0, dip = 1e9;
         int n = 0;
         for (std::size_t r = 0; r < run.rowCount(); ++r)
         {
@@ -68,15 +105,21 @@ namespace
                 sum += rpm, ++n;
             if (run.rowTime[r] >= 8.0)
                 lo = std::min(lo, rpm), hi = std::max(hi, rpm);
+            else if (run.rowTime[r] >= 2.0)
+                dip = std::min(dip, rpm);
         }
         const double rpm = n > 0 ? sum / n : 0.0;
         const int state = int(run.at(run.rowCount() - 1, std::size_t(cst)));
+        const auto mainDip = kMainDip.find(slug);
         INFO("state at 14 s " << state << ", mean speed over the last second " << rpm << " rpm, 8 to 14 s " << lo
-                              << " to " << hi << " rpm");
+                              << " to " << hi << " rpm; lowest over 2 to 8 s " << dip << " rpm, main's "
+                              << (mainDip != kMainDip.end() ? mainDip->second : 0.0));
         CHECK(state == 2);
         CHECK(rpm > 300.0);
         if (steady)
             CHECK(hi - lo <= 100.0);
+        REQUIRE(mainDip != kMainDip.end());                 // a new archetype: add main's figure above
+        CHECK(dip >= mainDip->second - kDipRoom);
     }
 } // namespace
 
@@ -104,7 +147,14 @@ TEST_CASE("a warm start on p-idle-warm: the 7.0 runs steadily at 14 s and the tu
     turboSixLope();
 }
 
-TEST_CASE("a warm start on p-idle-warm: every archetype runs at 14 s", "[nightly][calibration][na]")
+// The deepest of the start's dips (the 7.4's, 105 rpm under the 650 asked) in the quick tier, beside the three above
+TEST_CASE("a warm start on p-idle-warm: the 7.4's dip after the key holds against main's", "[calibration][na]")
+{
+    warmStart("big-block-74-pushrod-v8", false);
+}
+
+TEST_CASE("a warm start on p-idle-warm: every archetype runs at 14 s, its dip after the key held against main's",
+          "[nightly][calibration][na]")
 {
     for (const auto& entry : std::filesystem::directory_iterator(kRoot / "content" / "builds" / "archetypes"))
         if (entry.is_regular_file() && entry.path().extension() == ".json")
