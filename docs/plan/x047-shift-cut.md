@@ -139,6 +139,20 @@ this fault's: 210 ms on the flags, 60 ms with the cut held only while the vehicl
 - By the evidence rule, the rows are cured on the cut-probe tree. They stay in Known.h until this item's change is on
   the branch and the nightly reads them on the real code.
 
+**The V8 (fuel+ecu) on the cut probe (X, 26 Nov 17:27; 17 copies at +-0.15 K, per event, the nightly bound 3.91,
+which the probe does not move):**
+
+| upshift | tip | the cut probe |
+|---|---|---|
+| the 1-2 | 4 of 17 (highest 4.78) | 1 of 17 (4.03, at dT -0.03 K) |
+| the 2-3 | 4 of 17 (4.66) | 0 of 17 (3.35) |
+| the 3-2 | 1 of 17 (4.73) | 0 of 17 (3.29) |
+
+Not CURED as a row: one copy stays over at the 1-2. The steward's worst-of-run reading (0 of 15 at +-0.007 K) is
+consistent with that: a narrower nudge. On G's valve stand-in, the reference is quieter and the bound falls to 2.58,
+and the same row reads 11, 11 and 6 of 17. So item 16's V8 acceptance is read on the real code after item 17,
+against that tree's own bound, and is not assumed from these figures.
+
 ## 5. What it does not cure
 
 On the probe with the cut at the reference's length, the four's first firing back still reads 1.30 against the
