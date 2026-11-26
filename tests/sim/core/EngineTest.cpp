@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <set>
 #include <string>
 #include <utility>
@@ -747,12 +748,171 @@ TEST_CASE("a custom engine written from its table configures as its table does (
     }
 }
 
+namespace
+{
+    // "name[3].rest" -> {"name", 3, "rest"}; false when the path has no index after `name`
+    bool indexAfter(const std::string& path, const std::string& name, int& index)
+    {
+        if (path.rfind(name + "[", 0) != 0)
+            return false;
+        index = std::atoi(path.c_str() + name.size() + 1);
+        return true;
+    }
+} // namespace
+
+TEST_CASE("the application's first build: no configuration field differs between written after init and initialised over it (first.json)", "[core][engine][models]")
+{
+    // (#337, the lead's ruling of 25 Nov: the starting state the two routes into first.json give, field by field. The
+    // application loads every build by writing it over the program as it stands (route 0: the default V8 before it);
+    // the reference is the program initialised over the build (route 1). The same cylinder bias draws and both noise
+    // streams are written in the key's first block on both, after both have configured (route 0 configures at the key,
+    // route 1 at init and again at the key). After the start and 0.5 s later, a field that holds still on both runs and
+    // differs between them is a configuration one routes give differently, unless it is one of the kinds named below
+    // with its reason. The check that would have caught the intake runners' wall (below).)
+    std::vector<unsigned char> snap[2][2];
+    const tee::Schema* schema = nullptr;
+    int n = 0, ports = 0, nUsed = 0, nj = 0, nBands = 0, ne = 0, nSides = 0, model = 0;
+    std::set<int> used;
+    std::vector<int> jn;
+    for (int route = 0; route < 2; ++route)
+    {
+        Bench b("first");
+        schema = &b.player().schema();
+        if (route == 1)
+            b.player().reset(Bench::kRate, true);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(double(Bench::kBlock) / Bench::kRate);
+        std::string e;
+        auto& in = b.player().instance();
+        for (int k = 0; k < 4; ++k)
+            REQUIRE(in.write(*schema, "cyl[" + std::to_string(k) + "].bias", 0.01 * k, e));
+        REQUIRE(in.write(*schema, "noise.rs", 12345.0, e));
+        REQUIRE(in.write(*schema, "ex.noise.rs", 67890.0, e));
+        b.play(1.0 - double(Bench::kBlock) / Bench::kRate);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        b.play(1.5);
+        // (the counts in use: the same on both routes, read on each)
+        const int counts[8] = {int(b.field("lay.n")), int(b.field("lay.ports")), int(b.field("exh.b.net.nUsed")), int(b.field("exh.b.net.nj")),
+                               int(b.field("exh.b.net.nBands")), int(b.field("exh.b.net.ne")), int(b.field("exh.b.nSides")), int(b.field("exh.model"))};
+        if (route == 0)
+        {
+            n = counts[0]; ports = counts[1]; nUsed = counts[2]; nj = counts[3]; nBands = counts[4]; ne = counts[5]; nSides = counts[6]; model = counts[7];
+            for (int k = 0; k < nUsed; ++k)
+                used.insert(int(b.field("exh.b.net.used[" + std::to_string(k) + "]")));
+            for (int j = 0; j < nj; ++j)
+                jn.push_back(int(b.field("exh.b.net.jN[" + std::to_string(j) + "]")));
+        }
+        else
+        {
+            const int mine[8] = {n, ports, nUsed, nj, nBands, ne, nSides, model};
+            for (int k = 0; k < 8; ++k)
+                CHECK(counts[k] == mine[k]);
+            for (int k = 0; k < nUsed; ++k)
+                CHECK(used.count(int(b.field("exh.b.net.used[" + std::to_string(k) + "]"))) == 1);
+        }
+        const auto* d = static_cast<const unsigned char*>(in.data());
+        snap[route][0].assign(d, d + in.size());
+        b.play(0.5);
+        snap[route][1].assign(d, d + in.size());
+    }
+    REQUIRE(model == 1);   // (the model-0 exhaust's pipes are then unused: below)
+
+    // The kinds a route may leave different, each with its reason; nullptr: none
+    const auto named = [&](const std::string& p) -> const char* {
+        int i = 0;
+        if (p.size() > 4 && (p.compare(p.size() - 4, 4, ".rev") == 0) )
+            return "a revision count: each route writes the Spec, and builds the exhaust, a different number of times";
+        if (p.rfind("revSeen[", 0) == 0 || p.rfind("modelRev[", 0) == 0 || p == "exh.seenRev" || p == "boost.mach.mapRev")
+            return "a revision count: each route writes the Spec, and builds the exhaust, a different number of times";
+        if ((indexAfter(p, "cyl", i) || indexAfter(p, "geo.fire", i) || indexAfter(p, "geo.tdc", i) || indexAfter(p, "geo.order", i) ||
+             indexAfter(p, "geo.axisX", i) || indexAfter(p, "geo.axisY", i) || indexAfter(p, "geo.z", i) || indexAfter(p, "mm.cph", i) ||
+             indexAfter(p, "mm.sph", i) || indexAfter(p, "lay.fire", i) || indexAfter(p, "lay.bank", i)) && i >= n)
+            return "a cylinder past the build's count: the default V8's, left by route 0, read by nothing";
+        if ((indexAfter(p, "intk.run", i) || indexAfter(p, "intk.endRun", i) || indexAfter(p, "exh.b.net.portD", i)) && i >= ports)
+            return "a port's pipe past the build's count: the default V8's, left by route 0, read by nothing";
+        for (const char* m0 : {"exh.prim[", "exh.ch1[", "exh.ch2[", "exh.pipe[", "exh.tail[", "exh.mid[", "exh.sec[", "exh.cross.", "exh.lanes.",
+                               "exh.laneKind[", "exh.laneIdx[", "exh.endR[", "exh.kMuf[", "exh.kExit[", "exh.kHin", "exh.kHout", "exh.kInM",
+                               "exh.kOutM", "exh.kSin", "exh.kSout", "exh.kXp", "exh.rCat", "exh.rPerf", "exh.tick128"})
+            if (p.rfind(m0, 0) == 0)
+                return "the model-0 exhaust's pipes (the default V8 ran exhaust.model 0): unused under exhaust.model 1";
+        if (indexAfter(p, "exh.b.net.d", i) && used.count(i) == 0)
+            return "a builder's pipe not in use (exh.b.net.used): the default V8's";
+        if (p.rfind("exh.b.net.d[", 0) == 0 && (p.find(".pgIn[") != std::string::npos || p.find(".pgLast") != std::string::npos ||
+                                                p.find(".pgHave") != std::string::npos))
+            return "the passivity check's cache (XBuild::filterFirst): inputs as last checked, refreshed when they move";
+        if (indexAfter(p, "exh.b.net.used", i) && i >= nUsed)
+            return "the builder's list of pipes past its count";
+        for (const char* jf : {"exh.b.net.jKind", "exh.b.net.jN", "exh.b.net.jPop", "exh.b.net.jRef", "exh.b.net.jT", "exh.b.net.jP",
+                               "exh.b.net.jDrive", "exh.b.net.jAdmit", "exh.b.net.jPx"})
+            if (indexAfter(p, jf, i) && i >= nj)
+                return "a junction past the builder's count";
+        for (const char* bf : {"exh.b.net.bD", "exh.b.net.bE", "exh.b.net.bR", "exh.b.net.bT", "exh.b.net.bKf", "exh.b.net.bKr", "exh.b.net.bS",
+                               "exh.b.net.bA", "exh.b.net.bBand", "exh.b.net.bNa", "exh.b.net.bNrho", "exh.b.net.bNin", "exh.b.net.bNout"})
+            if (indexAfter(p, bf, i) && (i / 14 >= nj || i % 14 >= jn[std::size_t(i / 14)]))
+                return "a junction's branch past its count (XN_BR 14 a junction)";
+        for (const char* gf : {"exh.b.net.fnHp", "exh.b.net.fnLp", "exh.b.net.fnLp2", "exh.b.net.fnN", "exh.b.net.fnG", "exh.b.net.drawOrder"})
+            if (indexAfter(p, gf, i) && i >= nBands)
+                return "a noise band past the builder's count";
+        if (indexAfter(p, "exh.b.net.ends", i) && i >= ne)
+            return "an open end past the builder's count";
+        if ((indexAfter(p, "exh.b.jMuf", i) && i / 5 >= nSides) || (indexAfter(p, "exh.b.prevMuf", i) && i >= nSides))
+            return "a muffler's side past the build's count";
+        for (const char* r : {"ecu.one.idle.integral", "ecu.one.idle.startAir", "ecu.target", "ex.stPh", "ex.vo.fuel.closeKick[", "boost.mach.trailFlow[",
+                              "boost.mach.trailPr[", "listen.prePeak"})
+            if (p.rfind(r, 0) == 0)
+                return "the start's records: values the run's first seconds leave and hold (the idle's learned air and its target, the starter's "
+                       "sound, a fuel voice's last kick, the machine's trail, the listener's peak), not configuration";
+        return nullptr;
+    };
+    // A KNOWN FINDING, named (D, 25 Nov; G's file and G's cure, the lead's ruling of 26 Nov): Duct::set
+    // (sim/exhaust/duct.fm) redesigns a pipe's wall shelves on its length and sound speed, not its bore or the rate, so
+    // route 0's intake runners keep the default V8's wall (bore 60.8 mm, first.json's 51.6: sb0[0] 0.99540 against
+    // 0.99458). The cure (third in G's order, keyed on the model) removes this name: the case green without it is then
+    // the cure's proof.
+    const auto knownWall = [&](const std::string& p) {
+        int i = 0;
+        return indexAfter(p, "intk.run", i) && i < ports &&
+               (p.find(".sb0[") != std::string::npos || p.find(".sb1[") != std::string::npos || p.find(".sa1[") != std::string::npos);
+    };
+
+    std::vector<tee::test::core::Diff> across, moved0, moved1;
+    tee::test::core::walk(schema->fields(), 0, "", snap[0][0].data(), snap[1][0].data(), across);
+    tee::test::core::walk(schema->fields(), 0, "", snap[0][0].data(), snap[0][1].data(), moved0);
+    tee::test::core::walk(schema->fields(), 0, "", snap[1][0].data(), snap[1][1].data(), moved1);
+    std::set<std::string> moving;
+    for (const auto& d : moved0)
+        moving.insert(d.path);
+    for (const auto& d : moved1)
+        moving.insert(d.path);
+    int still = 0, nameds = 0, known = 0;
+    for (const auto& d : across)
+    {
+        if (moving.count(d.path) != 0)
+            continue;
+        ++still;
+        if (named(d.path) != nullptr)
+        {
+            ++nameds;
+            continue;
+        }
+        if (knownWall(d.path))
+        {
+            ++known;
+            continue;
+        }
+        INFO(d.path << ": written after init " << d.a << ", initialised over it " << d.b);
+        CHECK(false);
+    }
+    std::printf("first.json's two routes after the key: %zu fields differ, %d hold still: %d named, %d the runners' wall (the known finding)\n",
+                across.size(), still, nameds, known);
+}
+
 TEST_CASE("the application's first build, written after a default init, runs as an init with it would (first.json)", "[core][engine][models]")
 {
     // (the application's new first minute, B's: content/builds/first.json, every model on, written as Spec writes after
     // the program's init with the defaults, then the key. The same build with the program initialised over it
     // (EnginePlayer::reset keeping the Spec) is the reference: the decisions the switches make, and the torque on the
-    // engine dyno at 3000 rpm full load, the same)
+    // engine dyno, the same. The configuration field by field: the case above)
     double tq[3] = {0.0, 0.0, 0.0};
     double use[3][11] = {};
     for (int route = 0; route < 3; ++route)
@@ -760,7 +920,21 @@ TEST_CASE("the application's first build, written after a default init, runs as 
         Bench b("first");
         if (route == 1)
             b.player().reset(Bench::kRate, true);
-        b.start();
+        // (the same cylinder bias draws and both noise streams on every route, written in the key's first block once
+        // both routes have configured: each route draws its own at each configure, and the routes configure a different
+        // number of times)
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(double(Bench::kBlock) / Bench::kRate);
+        std::string e;
+        auto& in = b.player().instance();
+        const double bias[4] = {0.0074, 0.0248, -0.0087, -0.0207};
+        for (int k = 0; k < 4; ++k)
+            REQUIRE(in.write(b.player().schema(), "cyl[" + std::to_string(k) + "].bias", bias[k], e));
+        REQUIRE(in.write(b.player().schema(), "noise.rs", 12345.0, e));
+        REQUIRE(in.write(b.player().schema(), "ex.noise.rs", 67890.0, e));
+        b.play(1.0 - double(Bench::kBlock) / Bench::kRate);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        b.play(1.5);
         INFO("route " << route);
         CHECK(b.field("comb.walls") == 1.0);
         CHECK(b.field("cyl[0].conserve") == 1.0);
@@ -770,31 +944,28 @@ TEST_CASE("the application's first build, written after a default init, runs as 
             use[route][k] = b.field("modelUse[" + std::to_string(k) + "]");
         b.ctl().mode = 2;
         b.ctl().throttle = 1.0f;
-        b.ctl().dynoSpeed = float(3000.0 / kRpm);
+        b.ctl().dynoSpeed = float(1500.0 / kRpm);
         b.play(5.0);
         double s = 0.0, n = 0.0;
         b.play(1.0, [&] { s += b.tel("engine.torque"); n += 1.0; });
         tq[route] = s / n;
     }
-    std::printf("first.json at 3000 rpm full load, 5 to 6 s: written after init %.1f N m, initialised over it %.1f N m, written after init again %.1f\n", tq[0], tq[1], tq[2]);
+    std::printf("first.json at 1500 rpm full load, 5 to 6 s, paired: written after init %.2f N m, initialised over it %.2f N m, written after init again %.2f\n", tq[0], tq[1], tq[2]);
     // (every model switch in use the same on both routes, exactly: a switch one route dropped fails here whatever its
-    // torque (intake.model dropped moves this point 2.1 %, ecu.model 0.3 %: under the draws' spread below))
+    // torque (intake.model dropped moves 3000 rpm full load 2.1 %, ecu.model 0.3 %))
     for (int k = 0; k < 11; ++k)
     {
         INFO("modelUse[" << k << "]");
         CHECK(use[1][k] == use[0][k]);
         CHECK(use[2][k] == use[0][k]);
     }
-    // (the torque: the routes differ no more than inits of one route do. Each cylinder's small lasting difference in
-    // what it burns (Cylinder::bias) and the noise stream after it are drawn at each configure, and the two routes
-    // configure a different number of times, so they draw different ones: the same route twice is the same to the bit.
-    // Measured 25 Nov on the baked first.json (knock 6, cam 4) with six bias draws written on each route: the two routes
-    // pair within 1 % draw by draw (route 1 not systematically low), and the fourteen inits span 344.5 to 352.9 N m at 5
-    // to 6 s (2.4 %; at 3 to 4 s, while the turbo engine still rises some 7 %, 318.9 to 336.1, 5.4 %: the reason the
-    // read is at 5 to 6 s). Routes measured 349.2 against 346.7 (0.7 %), 1.8 % on the tables before the bake. A dropped
-    // valve.model moves it 9.7 %, fuel.model 3.7 %: caught here too. The earlier 2 % bound was read at 3 to 4 s on an
-    // older engine (474.7 against 470.6 N m))
-    CHECK(std::fabs(tq[0] / tq[1] - 1.0) < 0.025);
+    // (the torque, read where the knock loop is quiet. Measured 26 Nov (D): at 3000 rpm full load the knock loop
+    // retards 8.6 to 10 deg and a 1e-6 nudge in one cylinder's gas at the key moved the 5 to 6 s mean by up to 1.44 %,
+    // more than the routes part (so the 2.5 % read there tested the knock loop's walk, not the routes). At 1500 rpm full
+    // load no run retards (0.00 deg), and over nine paired draws the routes part by -0.33 to +0.67 %, a 1e-6 nudge on one
+    // route alone by -0.75 to +0.43 %: what remains is a 1 s mean's cycle-to-cycle spread, which the nudge reshuffles.
+    // These draws read +0.27 %. Bound 1 %: the largest of either measured, 0.75 %, and a third over it (judgement))
+    CHECK(std::fabs(tq[0] / tq[1] - 1.0) < 0.01);
     CHECK(tq[0] == tq[2]);
 }
 

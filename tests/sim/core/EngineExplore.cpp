@@ -2,6 +2,7 @@
 #include "Engine.h"
 #include "Presets.h"
 #include "FieldDiff.h"
+#include "tee/Warm.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -415,8 +416,8 @@ using tee::test::core::walk;
 
 TEST_CASE("first.json's two routes, every field", "[.routediff]")
 {
-    // (snapshots after the key (2.5 s) and 0.5 s later on each route: a field that holds still on both routes and
-    // differs between them is configuration, not the run's state; those are printed, then the count of the rest)
+    // (the same draws written in the key's first block on both routes; snapshots after the start and 0.5 s later: a
+    // field that holds still on both and differs is printed)
     std::vector<unsigned char> snap[2][2];
     const tee::Schema* schema = nullptr;
     for (int route = 0; route < 2; ++route)
@@ -425,49 +426,41 @@ TEST_CASE("first.json's two routes, every field", "[.routediff]")
         schema = &b.player().schema();
         if (route == 1)
             b.player().reset(Bench::kRate, true);
-        const auto* d = static_cast<const unsigned char*>(b.player().instance().data());
-        b.start();
-        snap[route][0].assign(d, d + b.player().instance().size());
-        {
-            const int n = int(b.field("exh.b.net.nUsed"));
-            std::printf("route %d: exh.b.net.nUsed %d:", route, n);
-            for (int k = 0; k < n; ++k)
-                std::printf(" %d", int(b.field("exh.b.net.used[" + std::to_string(k) + "]")));
-            std::printf("\n  jN:");
-            for (int j = 0; j < 24; ++j)
-                std::printf(" %d", int(b.field("exh.b.net.jN[" + std::to_string(j) + "]")));
-            std::printf("\n");
-        }
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(double(Bench::kBlock) / Bench::kRate);
+        std::string e;
+        auto& in = b.player().instance();
+        for (int k = 0; k < 4; ++k)
+            REQUIRE(in.write(*schema, "cyl[" + std::to_string(k) + "].bias", 0.01 * k, e));
+        REQUIRE(in.write(*schema, "noise.rs", 12345.0, e));
+        REQUIRE(in.write(*schema, "ex.noise.rs", 67890.0, e));
+        b.play(1.0 - double(Bench::kBlock) / Bench::kRate);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        b.play(1.5);
+        const auto* d = static_cast<const unsigned char*>(in.data());
+        snap[route][0].assign(d, d + in.size());
         b.play(0.5);
-        snap[route][1].assign(d, d + b.player().instance().size());
+        snap[route][1].assign(d, d + in.size());
     }
     std::vector<Diff> across, still0, still1;
     walk(schema->fields(), 0, "", snap[0][0].data(), snap[1][0].data(), across);
     walk(schema->fields(), 0, "", snap[0][0].data(), snap[0][1].data(), still0);
     walk(schema->fields(), 0, "", snap[1][0].data(), snap[1][1].data(), still1);
-    auto moved = [](const std::vector<Diff>& v, const std::string& p) {
-        for (const auto& d : v)
-            if (d.path == p)
-                return true;
-        return false;
-    };
+    std::set<std::string> moving;
+    for (const auto& d : still0) moving.insert(d.path);
+    for (const auto& d : still1) moving.insert(d.path);
     std::size_t dynamic = 0;
     std::printf("after the key: %zu fields differ between the routes; those that hold still on both:\n", across.size());
     for (const auto& d : across)
     {
-        const bool m0 = moved(still0, d.path), m1 = moved(still1, d.path);
-        if (!m0 && !m1)
-            std::printf("  %s: %.9g | %.9g\n", d.path.c_str(), d.a, d.b);
-        else if (m0 != m1)
-            std::printf("  (moves on route %d only) %s: %.9g | %.9g\n", m0 ? 0 : 1, d.path.c_str(), d.a, d.b);
-        else
+        if (moving.count(d.path) != 0)
             ++dynamic;
+        else
+            std::printf("  %s: %.9g | %.9g\n", d.path.c_str(), d.a, d.b);
     }
-    std::printf("  and %zu that move on both\n", dynamic);
+    std::printf("  and %zu that move\n", dynamic);
 }
 
-// first.json's two routes paired: the same bias draws and noise streams written on both after the key, then the
-// engine dyno at 3000 rpm full load, 5 to 6 s (hidden: "[.routepair]")
 TEST_CASE("first.json's two routes, paired", "[.routepair]")
 {
     // (the draws written in the key's first block, after both routes configure at the key)
@@ -697,5 +690,100 @@ TEST_CASE("a custom engine equal to its table, every configuration field", "[.cu
             if (!m0.count(d.path) && !m1.count(d.path) && d.path.find(".rev") == std::string::npos && d.path.find("revSeen") == std::string::npos &&
                 d.path.find("modelRev") == std::string::npos)
                 std::printf("  %s: %.9g | %.9g\n", d.path.c_str(), d.a, d.b);
+    }
+}
+
+// The oil at a predicted point: Warm.h's warmEngine() held every 64 blocks as Predict.cpp holds it, first.json on
+// the engine dyno at 3000 rpm full load, oilK and viscK read (the lead's question, 26 Nov; hidden: "[.warmoil]")
+TEST_CASE("first.json: the oil at a warm-held point", "[.warmoil]")
+{
+    Bench b("first");
+    std::string e;
+    auto hold = [&] {
+        for (const tee::HeldValue& h : tee::warmEngine())
+            REQUIRE(b.player().instance().write(b.player().schema(), h.path, h.value, e));
+    };
+    hold();
+    b.start();
+    b.ctl().mode = 2;
+    b.ctl().throttle = 1.0f;
+    b.ctl().dynoSpeed = float(3000.0 / 9.5492966);
+    int k = 0;
+    b.play(4.0, [&] { if (++k % 64 == 0) hold(); });
+    std::printf("warm-held, 3000 rpm full load: oilK %.4f, viscK %.4f, oil %.1f K, coolant %.1f K, FMEP %.3f bar\n", b.field("oilK"), b.field("heat.viscK"),
+                b.field("heat.tOil"), b.field("heat.tCool"), b.tel("engine.fmep") / 1e5);
+}
+
+TEST_CASE("first.json's two routes: the exhaust's counts", "[.routecounts]")
+{
+    for (int route = 0; route < 2; ++route)
+    {
+        Bench b("first");
+        if (route == 1)
+            b.player().reset(Bench::kRate, true);
+        b.start();
+        std::printf("route %d: nBands %g nj %g drawOrder", route, b.field("exh.b.net.nBands"), b.field("exh.b.net.nj"));
+        for (int o = 0; o < 8; ++o)
+            std::printf(" %g", b.field("exh.b.net.drawOrder[" + std::to_string(o) + "]"));
+        std::printf("; ends[0].duct %g ends[1].duct %g\n", b.field("exh.b.net.ends[0].duct"), b.field("exh.b.net.ends[1].duct"));
+    }
+}
+
+// Where first.json's knock loop is quiet: at each point, the routes paired (same draws in the key's first block) and
+// route 1 nudged 1e-6, torque read 5 to 6 s; the knock retard printed (hidden: "[.quietpoint]")
+TEST_CASE("first.json: a knock-quiet point for the routes' torque", "[.quietpoint]")
+{
+    const double pts[][2] = {{1500, 1.0}};
+    for (const auto& pt : pts)
+    {
+        for (int draw = 3; draw < 9; ++draw)
+        {
+            double tq[3] = {0, 0, 0}, ret[3] = {0, 0, 0};
+            for (int run = 0; run < 3; ++run)   // route 0, route 1, route 1 nudged
+            {
+                Bench b("first");
+                if (run >= 1)
+                    b.player().reset(Bench::kRate, true);
+                b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+                b.play(double(Bench::kBlock) / Bench::kRate);
+                std::string e;
+                auto& in = b.player().instance();
+                for (int k = 0; k < 4; ++k)
+                    REQUIRE(in.write(b.player().schema(), "cyl[" + std::to_string(k) + "].bias", 0.025 * std::sin(1.7 * (draw * 4 + k) + 0.3), e));
+                REQUIRE(in.write(b.player().schema(), "noise.rs", 12345.0 + draw, e));
+                REQUIRE(in.write(b.player().schema(), "ex.noise.rs", 67890.0 + draw, e));
+                if (run == 2)
+                    REQUIRE(in.write(b.player().schema(), "cyl[0].m", b.field("cyl[0].m") * (1.0 + 1e-6), e));
+                b.play(1.0 - double(Bench::kBlock) / Bench::kRate);
+                b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+                b.play(1.5);
+                b.ctl().mode = 2;
+                b.ctl().throttle = float(pt[1]);
+                b.ctl().dynoSpeed = float(pt[0] / 9.5492966);
+                b.play(5.0);
+                double s = 0.0, r = 0.0, n = 0.0;
+                b.play(1.0, [&] { s += b.tel("engine.torque"); r = std::max(r, double(b.tel("ecu.knockRetard"))); n += 1.0; });
+                tq[run] = s / n;
+                ret[run] = r;
+            }
+            std::printf("%4.0f rpm pedal %.1f draw %d: %.2f | %.2f | nudged %.2f N m: routes %+.3f %%, nudge %+.3f %%; max retard %.2f %.2f %.2f\n", pt[0], pt[1],
+                        draw, tq[0], tq[1], tq[2], (tq[0] / tq[1] - 1) * 100, (tq[2] / tq[1] - 1) * 100, ret[0], ret[1], ret[2]);
+        }
+    }
+}
+
+TEST_CASE("first.json: why the key configures again", "[.routekeywhy]")
+{
+    for (int route = 0; route < 2; ++route)
+    {
+        Bench b("first");
+        if (route == 1)
+            b.player().reset(Bench::kRate, true);
+        b.play(double(Bench::kBlock) / Bench::kRate);
+        std::printf("route %d before the key: layout %g/%g fuel %g/%g asp %g/%g geoSig %g/%g size %g/%g ambF %g/%g\n", route, b.field("set.layout"),
+                    b.field("lastLayout"), b.field("set.fuel"), b.field("fuelUse"), b.field("set.asp"), b.field("aspUse"), b.field("geoSig"),
+                    b.field("geoUsed"), b.field("set.size"), b.field("lastSize"), b.field("set.ambF"), b.field("heat.ambSeen"));
+        std::printf("  the stopped engine reports: redline %.0f rpm, cylinders %g, vTotal %.3f L, idle %.0f rpm\n", b.tel("engine.redline") * 9.5492966,
+                    b.tel("engine.cylinders"), b.field("vTotal") * 1000.0, b.field("ecu.idleRpm"));
     }
 }
