@@ -18,9 +18,6 @@ const Known kKnown[] = {
     {"X-030", "2026-11-25", "the steward (the ECU's shift cut)", "+fuel.model+ecu.model", "*", "pull", "click-shift-cut",
      "a firing unlike its neighbours as the spark returns after an upshift's cut, ecu.model 1 under fuel.model 1: excess "
      "3.21 to 3.80 against 2.85 (small four), 4.32 against 4.03 (V8); since c035fe75"},
-    {"X-031", "2026-11-25", "the steward (the ECU's downshift)", "+fuel.model+ecu.model", "v8", "pull", "click",
-     "a firing unlike its neighbours as the spark returns after the V8's downshift at 11.0 s, ecu.model and fuel.model "
-     "on: excess 4.73 to 5.17 against 4.03 (13.4 step before c035fe75)"},
     {"X-036", "2026-11-25", "D (engine.custom) and the steward (car.model)", "+engine.custom+car.model", "turbo-v8-dual",
      "pull", "dc", "the turbo V8 dual's pull with a custom engine and car.model: the running mean 0.0057 to 0.0069 of "
      "full scale against 0.005, since the first soak (never green)"},
@@ -57,5 +54,10 @@ const Known kKnown[] = {
     {"X-043", "2026-11-25", "N1 (the intake's plenum)", "intake.model+exhaust.model+car.model", "turbo-six", "tour", "click",
      "the start's catch at 3.39 s (121 to 237 rad/s in 40 ms): excess 3.27 against 2.97; from c40f0411 (the plenum "
      "gives up what the valves took: 3.02), unseen until every triple shard ran"},
+    {"X-044", "2026-11-26", "the steward (the idle valve)", "engine.custom+fuel.model+ecu.model", "small-four", "pull",
+     "click",
+     "a firing unlike its neighbours as the spark returns after the small four's downshift at 11.02 s: excess 3.48 "
+     "against 2.85; from 98d0dc4d (the idle valve's proportional part on the speed alone: 1.75 at its parent), the "
+     "cure that ended X-031 on the V8 (intake+fuel+ecu 2.77 at 11.03 s, under)"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
