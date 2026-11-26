@@ -42,11 +42,29 @@ the outside):**
 - combustion/knock.fm:210: the knock table's pressure index (p / 1 atm). It's a table's axis; the cylinder's
   absolute pressure is what knocks, not the outside's.
 - ecu/ecu1.fm:195 (`loadRef = manifold / 101325`: "the reference's formulas go by 1 atm"), and
-  combustion/combustion.fm:118, :145, :162, :170, :245, :257, :314, :325, :352, :361, :418, :432 (`pPlenum / 101325`:
-  the manifold as a fraction of an atmosphere, the reference's load axis for advance, burn duration and the
-  burnable share). These stay 1 atm: they're the calibration's load axis, the same absolute manifold giving the same
-  spark at any altitude, as a real ECU's MAP-indexed tables do. To confirm with C (combustion): is any of them meant
-  as "over the outside"?
+  combustion/combustion.fm:118, :145, :162, :170, :245, :257, :314, :325, :361, :418, :432 (`pPlenum / 101325`: the
+  manifold as a fraction of an atmosphere, the reference's load axis for advance, burn duration and the burnable
+  share). These stay 1 atm: the calibration's load axis.
+
+**C's answer (26 Nov; its note with lines in docs/handoffs/c-host-tools.md, c3b7921f) corrects this section: the knock
+table is absolute, the cam map is relative.**
+1. The KNOCK table is absolute over a fixed reference: read at `pPlenum / 101325` (combustion.fm:352), filled by the
+   bake the same way (Bake.cpp:1006, readback :118). At 70 kPa it's read lower down its axis, as it should be. That
+   101325 stays a literal on BOTH sides together.
+2. The CAM map is RELATIVE to the outside: `camIn` is read at `manifold / in->ambient` (ecu1.fm:194, :204), where
+   `in->ambient` is the literal at ecu.fm:317, and the bake writes its rows as the manifold over the air's
+   (Bake.cpp:673-678). So the ECU's barometer (ecu.fm:317, section A) must take the stated pressure. Then a
+   full-pedal engine at altitude gets its full-load cam; left at 101325 it would read about 0.69 and stay parked.
+3. Nothing in host/ or tools/ corrects for density (no J1349): the predictor and the stepped dyno report the absorbed
+   torque raw. A caption for U1, later. The idle gate is rpm only; the boost steps are gauge.
+4. The bake: no spec.env field is in the knock, cam or match keys (Bake.cpp:786-811, :39-47). A table baked at sea
+   level and used at altitude is valid (read inside its measured range); one baked at altitude and used at sea level
+   isn't (an NA table measured only to about 0.7 atm, its top row taken flat). C recommends the bake measure at the
+   reference pressure whatever the build states, with env kept out of the keys, so one table serves every stated air
+   and the turbine match's rated point is a sea-level design point. That's a host change in the bake's window, C's,
+   beside this item and not part of it. The lead has ruled the direction for the PRESSURE; the temperature half is
+   asked of C.
+
 - exhaust/slots.fm:2324: a laminar flame speed's pressure exponent over 1 atm (a correlation's reference).
 - exhaust/exhaust.fm:596, :609, :616 and slots.fm:1100-1202 (`steep = 0.87 / 101325`): a steepening coefficient's
   normalisation. QUESTION for G: a reference, or the pipe's mean pressure?
