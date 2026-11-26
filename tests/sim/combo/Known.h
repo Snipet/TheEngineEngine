@@ -17,11 +17,11 @@ const Known kKnown[] = {
     // 2.29 against 3.19). Not a loosened bound: the restated check still sees X-014 and X-015 on their old tree.
     {"X-030", "2026-11-25", "the steward (the ECU's shift cut)", "+fuel.model+ecu.model", "*", "pull", "click-shift-cut",
      "a firing unlike its neighbours as the spark returns after an upshift's cut, ecu.model 1 under fuel.model 1: excess "
-     "3.21 to 3.80 against 2.85 (small four), 4.32 against 4.03 (V8); since c035fe75; a sometimes row (the lead, 26 Nov 07:30): 12 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 2.25, median 3.20, highest 7.09); the over draws fall at the upshift's return, the first burning firing back about one revolution after the cut ends (8.52 to 8.78 s, 6.73 s; one plain click at 8.73 s)"},
+     "3.21 to 3.80 against 2.85 (small four), 4.32 against 4.03 (V8); since c035fe75; a sometimes row (the lead, 26 Nov 07:30): 12 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 2.25, median 3.20, highest 7.09); the over draws fall at the upshift's return, the first burning firing back about one revolution after the cut ends (8.52 to 8.78 s, 6.73 s; one plain click at 8.73 s); under the nightly bound (twice the reference's lowest of its 5 copies) 2.82: 13 of 17"},
     {"X-031", "2026-11-25", "the steward (the ECU's downshift)", "+fuel.model+ecu.model", "v8", "pull", "click",
      "a firing unlike its neighbours as the spark returns after the V8's downshift at 11.0 s, ecu.model and fuel.model "
      "on: excess 4.73 to 5.17 against 4.03 (13.4 step before c035fe75); back with 98d0dc4d's revert for the bake (the "
-     "lead's ruling, 26 Nov 03:18), re-read on the reverted tree: fuel+ecu 4.73, custom+fuel+ecu 5.17 at 11.02 s; a sometimes row (the lead, 26 Nov 07:30): the downshift click, 1 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 1.83, median 3.66, highest 4.78 over the whole pull); the pull's upshift cuts over in 5 more, which are X-030's check; in the downshift's own window (10.95 to 11.20 s) 2 of 15 over on the steward's nudges"},
+     "lead's ruling, 26 Nov 03:18), re-read on the reverted tree: fuel+ecu 4.73, custom+fuel+ecu 5.17 at 11.02 s; a sometimes row (the lead, 26 Nov 07:30): the downshift click, 1 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 1.83, median 3.66, highest 4.78 over the whole pull); the pull's upshift cuts over in 5 more, which are X-030's check; in the downshift's own window (10.95 to 11.20 s) 2 of 15 over on the steward's nudges; under the nightly bound (twice the reference's lowest of its 5 copies) 3.92: 7 of 17"},
     {"X-036", "2026-11-25", "D (engine.custom) and the steward (car.model)", "+engine.custom+car.model", "turbo-v8-dual",
      "pull", "dc", "the turbo V8 dual's pull with a custom engine and car.model: the running mean 0.0057 to 0.0069 of "
      "full scale against 0.005, since the first soak (never green)"},
@@ -50,13 +50,13 @@ const Known kKnown[] = {
     {"X-041", "2026-11-26", "the steward (the idle valve: 98d0dc4d ended it, reverted for the bake)",
      "valve.model+boost.model+ecu.model", "turbo-six", "tour", "click",
      "a lift (throttle 0.015 to 0.004) at 9.76 s, nothing burning, the blow-off open: excess 3.23 against 2.97 (2.28 "
-     "with 98d0dc4d); a sometimes row (the lead, 26 Nov 07:30): 3 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 1.40, median 1.87, highest 4.10); the over draws all fall at the 9.76 s lift"},
+     "with 98d0dc4d); a sometimes row (the lead, 26 Nov 07:30): 3 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 1.40, median 1.87, highest 4.10); the over draws all fall at the 9.76 s lift; under the nightly bound (twice the reference's lowest of its 5 copies) 2.96: 3 of 17"},
     {"X-041", "2026-11-26", "the steward (the idle valve) and G (the limiter's bangs)", "as built",
      "inline-five-turbo-rally", "tour", "click",
      "an X-041 row on main (b557c4a1) already: 3.92 at 8.74 s there, and its dpWave -350 kPa on the limiter; on the "
      "bake's tree (sim f23337cc) 3.08 against 3.00 at 6.48 s, the spark-cut limiter at full throttle (733 rad/s, "
      "ecu.flags 1029), bangs burning near (1.9 MW within 50 ms); 2.14 at 6.51 s with 98d0dc4d: the idle valve's rate "
-     "term acting far off idle (the lead's note to the steward); a sometimes row (the lead, 26 Nov 07:30): 1 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 1.72, median 2.15, highest 3.08); the over draw is the 293.15 K one itself, at 6.48 s"},
+     "term acting far off idle (the lead's note to the steward); a sometimes row (the lead, 26 Nov 07:30): 1 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 1.72, median 2.15, highest 3.08); the over draw is the 293.15 K one itself, at 6.48 s; under the nightly bound (twice the reference's lowest of its 5 copies) 2.48: 5 of 17"},
     {"X-042", "2026-11-25", "N2 with the integrator (the turbine's match under engine.custom; the window's item 3)",
      "+engine.custom+valve.model+boost.model", "large-diesel", "tour", "tel-range:valve.dpWave",
      "the exhaust 337 to 350 kPa over the intake at full throttle, 2480 rpm, the charge at 111.7 kPa (every switch on; "
@@ -69,14 +69,14 @@ const Known kKnown[] = {
      "spool at a shut throttle, on the fixture's cam-0.9999 lope; with ecu.model on it falls to the lope's own size "
      "(316 against 299 rpm sd), and with ecu.model a near stall at the catch, 13 rpm at 0.96 s after a 2030 rpm flare; "
      "no shipped build runs the reference idle, none carries such a cam. The start's catch at 3.39 s: excess 3.27 "
-     "against 2.97 (c40f0411 moved the hunt's phase onto it); a sometimes row (the lead, 26 Nov 07:30): 11 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 2.26, median 3.13, highest 4.15); the over draws fall at the start and its catches, 2.71 to 4.79 s"},
+     "against 2.97 (c40f0411 moved the hunt's phase onto it); a sometimes row (the lead, 26 Nov 07:30): 11 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 2.26, median 3.13, highest 4.15); the over draws fall at the start and its catches, 2.71 to 4.79 s; under the nightly bound (twice the reference's lowest of its 5 copies) 2.96: 11 of 17"},
     // X-044 (the lead's ruling, 26 Nov 01:08; with 98d0dc4d reverted for the bake, as it was before it: 1 phase in 6)
     {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "engine.custom+fuel.model+ecu.model", "small-four",
      "pull", "click",
      "engine.custom + fuel.model + ecu.model without exhaust.model, the small four's pull at the downshift (11.02 s): the "
      "fuel returning whole on the blip's first firings after the overrun cut; 1 phase in 6 without 98d0dc4d (reverted "
      "for the bake: phase 0 reads 1.75 against 2.85, the triple's phase), 3 in 6 with it (3.48 at phase 0); green with "
-     "every switch on; a sometimes row (the lead, 26 Nov 07:30): 11 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 1.53, median 3.35, highest 4.57); the over draws fall at the 11.02 s downshift (10) and one upshift cut (8.63 s); its phase-0 pass (1.75 at 293.15 K) was a draw; in the downshift's own window 14 of 15 over on the steward's nudges"},
+     "every switch on; a sometimes row (the lead, 26 Nov 07:30): 11 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 1.53, median 3.35, highest 4.57); the over draws fall at the 11.02 s downshift (10) and one upshift cut (8.63 s); its phase-0 pass (1.75 at 293.15 K) was a draw; in the downshift's own window 14 of 15 over on the steward's nudges; under the nightly bound (twice the reference's lowest of its 5 copies) 2.82: 11 of 17"},
     {"X-045", "2026-11-26", "the integrator (engine.fm; the next window, the lead's ruling)", "boost.model", "default",
      "keyfields", "keyfields-exhaust",
      "boost.model or exhaust.model written while stopped, and the application's own load, keep tel.exhaust.model 0 and "
@@ -84,5 +84,39 @@ const Known kKnown[] = {
      "no configure); they agree after it: nothing keys an engine without it, only what a stopped engine reports"},
     {"X-045", "2026-11-26", "the integrator (engine.fm; the next window, the lead's ruling)", "exhaust.model", "default",
      "keyfields", "keyfields-exhaust", "as boost.model's: the stopped engine reports the last exhaust until the key"},
+    // The nightly bound's newly red rows (the lead's ruling, 26 Nov 09:30): 17 copies at 293.15 +- 0.15 K on 207c1a62's
+    // tree, against the nightly bound (twice the turbo six pull reference's lowest of its 5 copies, 1.34: 2.67) and
+    // today's single draw (3.37); exact combinations, no "+" pattern. With per-event windows (part B) the rows at "its
+    // shifts" become per-event and may split.
+    {"X-043", "2026-11-26", "none: kept (the lead's ruling; N1 diagnosed it, the steward worded it)", "intake.model+exhaust.model+car.model", "turbo-six", "pull",
+     "click", "X-043 on the pull, the start's catch at 2.72 s: under the nightly bound 2.67, 7 of 17 copies over; under 3.37, "
+     "4 of 17; lowest 1.24, median 2.01, highest 4.15"},
+    {"X-043", "2026-11-26", "none: kept (the lead's ruling; N1 diagnosed it, the steward worded it)", "engine.custom+intake.model+exhaust.model", "turbo-six",
+     "pull", "click", "X-043's pairing with a custom engine, the start at 3.37 s: under the nightly bound 2.67, 3 of 17 over; "
+     "under 3.37, 0 of 17; lowest 1.38, median 1.67, highest 2.84"},
+    {"X-048", "2026-11-26", "N2 (boost.model)", "boost.model", "turbo-six", "pull", "click",
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
+     "this scenario 1.34): under the nightly bound 2.67, 2 of 17; under 3.37, 0 of 17; lowest 1.55, median 1.90, highest 2.72; at 8.75 and 11.31 s"},
+    {"X-048", "2026-11-26", "N2 (boost.model)", "boost.model+exhaust.model", "turbo-six", "pull", "click",
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
+     "this scenario 1.34): under the nightly bound 2.67, as boost.model alone, the same figures: 2 of 17; under 3.37, 0 of 17"},
+    {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model", "turbo-six", "pull", "click",
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
+     "this scenario 1.34): under the nightly bound 2.67, 4 of 17; under 3.37, 0 of 17; lowest 1.59, median 1.84, highest 3.11; at 10.43 s (2), 9.91 s, 8.58 s"},
+    {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model+voices.model", "turbo-six", "pull", "click",
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
+     "this scenario 1.34): under the nightly bound 2.67, as valve.model+boost.model: 4 of 17; under 3.37, 0 of 17; highest 3.09"},
+    {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model+exhaust.model", "turbo-six", "pull", "click",
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
+     "this scenario 1.34): under the nightly bound 2.67, as valve.model+boost.model: 4 of 17; under 3.37, 0 of 17; highest 3.11"},
+    {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "engine.wallHeat+valve.model+boost.model", "turbo-six", "pull", "click",
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
+     "this scenario 1.34): under the nightly bound 2.67, 14 of 17, the near-decidable one and the place to start; under 3.37, 1 of 17; lowest 2.20, median 2.85, highest 3.64; at 8.80, 11.30, 6.83 s"},
+    {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model+fuel.model", "turbo-six", "pull", "click",
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
+     "this scenario 1.34): under the nightly bound 2.67, 8 of 17; under 3.37, 0 of 17; lowest 1.65, median 2.64, highest 3.06; at 8.82, 6.56, 9.86, 11.30 s"},
+    {"X-049", "2026-11-26", "N1 and G", "valve.model+exhaust.model+sound.model", "turbo-six", "pull", "click",
+     "valve, exhaust and sound on the turbo six's pull, no boost model: under the nightly bound 2.67, 2 of 17 over, both at "
+     "6.59 s; under 3.37, 0 of 17; lowest 1.26, median 2.30, highest 3.28"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

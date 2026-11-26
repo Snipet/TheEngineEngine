@@ -13,7 +13,13 @@ worst step's excess over the median of the same measure in the periods t +- kT (
 own (a bang: the largest of three reference copies with pops on); where no period exists, the step over the local
 level against twice the reference's step. Both are printed in a click's detail. Proof it bites: X-015 and X-014 on
 their old tree (62a6a7fd) 7.33/3.19, 4.07/3.64 (its weakest), 7.77/4.60. An upshift's cut with ecu.model 1 under
-fuel.model 0 is bounded at a step of 42 (the lead's ruling, 24 Nov 23:15; "click-shift-cut").
+fuel.model 0 is bounded at a step of 42 (the lead's ruling, 24 Nov 23:15; "click-shift-cut"). A click row is a SOMETIMES row
+(the lead, 26 Nov 07:30): one run is one draw (a millikelvin of air moves a row's excess by 2), so Known.h gives each
+row n of 17 copies over at 293.15 +- 0.15 K, and a cure is accepted only as 0 of 17 (tests/sim/combo/spread.sh, in no
+tier). The nightly's bound is twice the reference's LOWEST excess over 5 fixed copies (Combo.h kBoundNudges; never above
+the default tier's single draw); it brought in X-048 and X-049 and two pull rows of X-043 (the turbo six's pull bound
+3.37 to 2.67). Next (the lead's order): per-event windows (part B; the rows "at its shifts" may then split), then the
+judge at a cut (part C, measured first behind a local variant).
 - archetypes (`content/builds/combo/`: small four, V8, turbo six, large diesel, turbo V8 dual) through the tour with
   nothing and everything on; nightly: through all four scenarios (tour, pull, launch, cold; `content/scenarios/combo/`)
 - every switch alone (V8 tour, six pull); nightly: every pair, every triple (16 ctest shards by subset index mod 16;
@@ -42,11 +48,14 @@ fuel.model 0 is bounded at a step of 42 (the lead's ruling, 24 Nov 23:15; "click
 - `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype|build.json> <scenario> <switches> [--set path=value]`
   (prints the step and the excess against the reference's), `--checks`, `--match`
 
-**Findings** (X-001 to X-045; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
+**Findings** (X-001 to X-049; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
 it so it fails again if it returns). Open: X-016 (the heavy case's cost, Q), X-030 (the new ECU's shift cut under
 fuel.model 1: a firing unlike its neighbours as the spark returns; the steward), X-044 (the small four's downshift
 with engine.custom, fuel and ecu: the fuel returning whole after the overrun cut; the steward's, kept this window), X-045 (boost.model or exhaust.model written while stopped, and the application's load: the
-last exhaust reported until the key; the integrator, the next window), X-036 (a DC with
+last exhaust reported until the key; the integrator, the next window), X-046 (env.pressure acts on the car's drag only, the engine breathes
+101325 Pa; the integrator), X-047 (the new ECU's shift cut re-armed while the vehicle asks; a fault, the steward),
+X-048 (the turbo six's pull at its shifts with boost.model on; N2, N1 on the valve rows), X-049 (valve, exhaust and
+sound on the turbo six's pull; N1 and G), X-036 (a DC with
 car.model and a turbo: the turbo V8 dual, random 103, and the large diesel on the dyno with everything on; D, the
 steward and the integrator), X-039 (a supercharged 50 cc single with a recirculating blow-off, N2: cured in its held
 package), X-041 (the turbo six's pull lift with valve, boost and ecu: the blow-off opening at a compressor ratio of 1.94
