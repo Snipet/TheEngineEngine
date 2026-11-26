@@ -44,6 +44,17 @@ const Known kKnown[] = {
      "the blow-off valve opening on the lift at 10.588 s (0.006 to 0.93 in 20 ms) against a compressor ratio of 1.94 "
      "(1.81 before 5941904e), the turbo spooled about 10 % harder by the burns' drive (G's measurement): excess 3.69 "
      "against 3.37; nothing burning, the housing's gas unchanged"},
+    // With 98d0dc4d reverted for the bake (the lead's ruling, 26 Nov 03:18), re-read on that tree (sim f23337cc): two of
+    // X-041's rows back, which the idle cure (not G's 5941904e, measured on a tip with both) had ended; the pull row above
+    // is not met there
+    {"X-041", "2026-11-26", "the steward (the idle valve: 98d0dc4d ended it, reverted for the bake)",
+     "valve.model+boost.model+ecu.model", "turbo-six", "tour", "click",
+     "a lift (throttle 0.015 to 0.004) at 9.76 s, nothing burning, the blow-off open: excess 3.23 against 2.97 (2.28 "
+     "with 98d0dc4d)"},
+    {"X-041", "2026-11-26", "the steward (the idle valve) and G (the limiter's bangs)", "as built",
+     "inline-five-turbo-rally", "tour", "click",
+     "the spark-cut limiter at full throttle (733 rad/s, ecu.flags 1029) at 6.48 s, bangs burning near (1.9 MW within "
+     "50 ms): excess 3.08 against 3.00 (2.14 at 6.51 s with 98d0dc4d)"},
     {"X-042", "2026-11-25", "N2 with the integrator (the turbine's match under engine.custom; the window's item 3)",
      "+engine.custom+valve.model+boost.model", "large-diesel", "tour", "tel-range:valve.dpWave",
      "the exhaust 337 to 350 kPa over the intake at full throttle, 2480 rpm, the charge at 111.7 kPa (every switch on; "
