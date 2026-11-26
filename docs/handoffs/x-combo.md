@@ -186,5 +186,9 @@ click where its neighbourhood is loud: on the reference sound path, 7 of 17 copi
 sharpest edge on a steady full-throttle stretch and 17 of 17 at the limiter; with sound.model on, 17 of 17 are caught.
 A guard of g samples (left out of the level) closes clicks up to ~g samples wide, but g4 over all 149 visible combo cases
 turns 72 rows over and 20 cases red, raises 1661 bounds (to +2.95) and lowers 1910 measures (to -1.9): not a tightening.
-Open for after the window: a measure whose numerator unsaturates without moving the neighbours' and the references'
-(e.g. the click's own level from its neighbouring periods, raw: it moves every reference), and the per-episode limiter.
+RULED no judge change (the lead, 26 Nov 20:59); nothing enters Known.h. OPEN FOR AFTER THE WINDOW, three questions
+and no more: (1) a measure whose numerator unsaturates without moving its neighbours' and the references' (the robust
+family, e.g. the click's level from its neighbouring periods only: it moves every reference and needs its own list);
+(2) a limiter's rows read per episode (how many of its episodes are over, and the reference's the same way), not the
+worst of all of them; (3) part C's one question on the fixed cut: with item 16's cut at 60 ms and item 17's valve
+converged, does dropping a shift's silent periods move any row's verdict.
