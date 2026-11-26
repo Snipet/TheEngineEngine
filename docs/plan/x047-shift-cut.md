@@ -114,13 +114,21 @@ length runs, so today the bike gets twice its setting: 50 ms becomes about 100. 
 - The downshift's blip unchanged, or its change predicted.
 - N1's dips test and P's idle gate untouched.
 
-**Read after item 17 (the lead, 26 Nov 12:33; this replaces the 10:36 order).** G's valve solve (item 17, X-051:
-a warm-started secant on one continuous equation, 38.3 ns a call against today's 50.5, the chatter counter at 0)
-comes first among the window's sim changes that move readings, because it moves every reference and every nightly
-bound. So item 17 lands first; then item 16, with its predictions restated on that tree before its code: the V8's
-upshift row and the four's rate. The 53 ms probe's figures above were taken on today's valve: they are a guide, not
-the acceptance. The clips with both fixes, shown on 26 Nov, stand as what the window is meant to deliver. X-044 is
-not carried by X-051 and stays with item 8, whole.
+**The order: item 16 first, on today's valve; then item 17 (the lead, 26 Nov 17:38; restored).** G's design
+(ef83ad06) gives a cylinder's valve the converged solve only where that side's model is on. So the every-switch-off
+references, and every case with both the exhaust and the intake models off, run today's code to the bit: no reference
+and no nightly bound moves with item 17. The V8's and the small four's pulls with fuel+ecu (X-030, X-031, X-044) are
+untouched by it.
+
+Item 16's acceptance figures, its prediction:
+
+- the V8's pull, fuel+ecu: 1, 0, 0 of 17 per event against 3.91;
+- the three shipped builds: 0 of 17 at every event;
+- the small four: stated as a rate.
+
+Item 17 then reads on top of item 16, and only on cases with the exhaust or the intake model on, which the shipped
+builds are. So the "both fixes" clips and X's "both fixes" counts on the three shipped builds (0 of 17) stay the
+picture of the window's end.
 
 **First evidence on shipped builds (26 Nov 15:32; X's per-event spread, 17 copies at 293.15 +- 0.15 K; probe trees
 only).** The three shipped boosted builds run as built on the pull. Their upshifts are X-048's rows, and their cut is
@@ -155,34 +163,9 @@ against that tree's own bound, and is not assumed from these figures.
 
 ## 5. What it does not cure
 
-> **On hold (the lead, 26 Nov 17:35): read on a stand-in that also converges the reference; the real switch may
-> leave this row untouched; G confirming.** G's design puts item 17 under exhaust.model, and this row has
-> exhaust.model off in the case and the reference, so on the real change its bound would stay 3.91 and its reading
-> after item 16 the cut probe's 1, 0, 0 of 17. Do not build on the section below until G answers.
-
-**After item 17, on the V8 (the steward, 26 Nov ~17:50; X's per-event mode 93b76f5a, 17 copies at +-0.15 K;
-probe trees only).** Item 17 is stood in for by the 30-pass stand-in, not G's secant tree. Each tree is judged
-against its own bound, twice the lowest of its reference's five copies.
-
-| V8 pull, fuel+ecu | tip (bound 3.91) | the cut probe (3.91) | both fixes (2.58) |
-|---|---|---|---|
-| the 1-2 | 4 of 17 (median 2.90) | 1 of 17 (2.51) | 8 of 17 (2.52) |
-| the 2-3 | 4 of 17 (2.57) | 0 of 17 (2.36) | 7 of 17 (2.48) |
-| the 3-2 | 1 of 17 (2.27) | 0 of 17 (2.60) | 12 of 17 (2.73) |
-
-- The converged valve quiets the reference: its five copies read 1.29 to 1.88, against 1.96 to 2.24.
-- It does not quiet the fuel+ecu case: the case's medians stay at 2.4 to 2.7, on the cut probe and on both fixes
-  alike.
-- So on that tree the V8 rows sit at their bound at every shift, including the 3-2 downshift, which has no cut.
-- **What item 16 is NOT expected to cure after item 17:**
-  - the V8's rows at its bound;
-  - the 3-2 above all, which no cut length touches.
-- The predicted cause of what remains at the upshifts is the purge: a spark cut pumps fresh charge through on every
-  cut cycle (residual 0.11 to 0.00 by the second intake). The reference's one-to-two-cycle fuel cut purges less, so
-  its first firing back is smaller on any valve.
-- The 3-2 is not that: it goes to item 8 (the fuel's return after an overrun cut, X-044's kind).
-- The steward's prediction (4 to 7 of 17 at the upshifts, 0 to 2 at the 3-2) held at the upshifts, which came in at
-  7 and 8, and failed at the 3-2, which came in at 12.
+*Struck, 26 Nov 17:38:* a read of the V8 "after item 17" (8, 7 and 12 of 17 against a bound of 2.58) was taken on
+a stand-in that converged the reference's valve too. G's real switch does not touch this row, so the read does not
+apply.
 
 On the probe with the cut at the reference's length, the four's first firing back still reads 1.30 against the
 reference's 1.16, and 4 of 15 copies remain over. A cut of any length purges the residual by its second intake. What
