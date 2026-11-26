@@ -508,6 +508,13 @@ namespace tee::ui
             refusedField_ = field;
             return;
         }
+        std::string why;
+        if (!doc_.accepts(field, std::clamp(si, f.min, f.max), &why))
+        {
+            refusal_ = "Out of range: " + why;   // the document's own rule (BuildDoc: the host's least stated bore)
+            refusedField_ = field;
+            return;
+        }
         setValue(field, std::clamp(si, f.min, f.max));
         editing_ = -1;
         refusal_.clear();

@@ -79,6 +79,15 @@ namespace tee::ui
         virtual double get(int i) const = 0;
         // Kept in the field's range (an integer, a choice and a switch rounded).
         virtual void set(int i, double si) = 0;
+        // Whether a person's input of `si` for field i is taken, before set (the document's own rule beyond the range: the
+        // host's least stated bore); false with the reason, a phrase, in `why`. Every value by default.
+        virtual bool accepts(int i, double si, std::string* why = nullptr) const
+        {
+            (void)i;
+            (void)si;
+            (void)why;
+            return true;
+        }
         virtual Curve16 curve(int i) const = 0;
         virtual void setCurve(int i, const Curve16& c) = 0;
         virtual Map16 map(int i) const = 0;
