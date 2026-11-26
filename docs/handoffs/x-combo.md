@@ -112,3 +112,44 @@ sets, X-030's 1-2 upshift on two, X-048's boost rows at the 1-2 and 2-3 upshifts
 on one build is the weakest kind of entry there is, kept because the rule is that none is waved off. The twin costs about
 7 minutes of the local nightly (3630 s against 3187 s), all in its triples; if the CI soak's share passes 10 minutes, its
 triples stay in the nightly and come out of the soak (the lead's ruling, 14:25).
+
+**26 Nov, shipped builds on the pull** (the lead's ruling, 15:00). The corpus's tour read clean; the pull is where the
+upshifts are. Three of the corpus as built (the two boosted small builds and a boxer four), each against its own
+every-switch-off reference's nightly bound, 17 copies at 293.15 +- 0.15 K per event, on 8ec06fd1: kei-660-triple-turbo
+(bound 2.77) over at its 1-2 upshift in 2 of 17; three-cylinder-10-turbo (2.84) at its 1-2 in 6 of 17 and its 2-3 in 8
+of 17; boxer-four-turbo-unequal (3.52) 0 of 17 everywhere; nothing over anywhere but at upshifts. The first two are X-048
+rows (N2, the steward named: as built they run the map ECU, so the upshift's cut is X-047's over-long one and item 16 is
+expected to move them). The nightly case "shipped builds on the pull" plays the three (a few minutes; the boxer stays
+as the build that reads clean); it leaves the CI soak with the twin's triples if the soak's added share passes 10
+minutes. Reproduce one build: `BOUNDPROOF="corpus <stem> pull" BOUNDPROOF_DT="<17 nudges>" tee-tests-combo
+"[.boundproof]"` (per-window lines "window | dT | event | excess | at | over|under").
+Proposal, not done: the whole corpus (31 builds) on the pull as a weekly entry, judged per event the same way: about 40
+minutes on this container's 4 shared cores, single draw at 293.15 K; a newly red row then gets its 17-copy spread (about
+4 minutes a build) before its entry.
+
+**26 Nov, X-052's valve+intake+car row left Known.h** (the lead's ruling, 15:48). The turbo six's tour with
+valve.model+intake.model+car.model, 17 copies at 293.15 +- 0.15 K per event, on the tip (8ec06fd1's sim, the
+lift-matched builds): 0 of 17 on every event, the limiter's worst 2.51 against the nightly bound 2.97 (start 2.87, the
+rest 2.70, cut 2.17). G's corrected-corpus table (tip and G's secant tree) read the same row 0 of 17 on every event on
+both. It was 2 of 17 at the limiter on the dial build: the cam swap, as X-049's row and X-041's tour lift. X-052's
+intake+exhaust+voices row stays (1 of 17 at the limiter, 3.03 over 2.97, on the tip; 0 on G's tree against its own 3.46).
+
+**26 Nov, part C: the reference's output limiter. RULED no change** (the lead, 15:48; form (i), the reference rendered
+off its limiter, NOT taken; the corpus's views and levels stay). Read per event, sound.model against the every-switch-off
+reference, 17 copies, on the tip and G's stand-in (kValvePasses 30), (a) own settings against (b) the reference off its
+0.85 output limiter (small four sound.level -24, peak 0.610; turbo six -24 alone still pins it at 0.863, so -24 and
+sound.distance 0.6, peak 0.475), the case given the same values; `BOUNDPROOF_SET` / `BOUNDPROOF_REF` of [.boundproof]:
+(1) neither pull has a "limiter" window: that event is the rev limiter (ecu/engine flags), which the pull never reaches;
+the output's limiter is no event the judge names, so it can only move a bound. (2) Small four: the case the same to the
+digit in (a) and (b) on both trees (sound.level does not reach sound.model's path), 0 of 17 everywhere; the bound
+2.82 -> 2.82 (tip), 2.94 -> 2.96 (stand-in). (3) Turbo six, tip: bound 2.67 -> 2.88 (+0.21: the reference's -0.03 K copy
+1.34 -> 2.72); case 1 of 17 -> 0 of 17. (4) Turbo six, stand-in: bound 2.92 -> 2.76 (-0.16); 0 of 17 both. Not one
+direction, and about the reference's own copy-to-copy spread, which the lowest-of-five exists to cut. What the numbers
+do not show: that a reference pinned on its limiter makes the bound too tight (the tip's reference top ROSE off it, 2.06
+-> 2.72 over the run; the stand-in's fell, 2.72 -> 1.85).
+
+**The lowest-of-five bound's known blind spot** (the lead's ruling, 15:48: no entry). A reference copy that clicks
+raises nothing, since the bound is the reference's LOWEST excess over its copies. Met on sound.model / turbo-six / pull
+on the tip at dT -0.07 K: the case 3.56 at 4.612 s against the bound 2.67, and the reference's own copy at that nudge
+3.29 at 4.607 s (over its own bound): both sides click at the same moment, the engine's own event on the frozen
+reference. Never red on a draw (the 293.15 K copy reads 1.75); 1 of 17.

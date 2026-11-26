@@ -2235,13 +2235,63 @@ engines only where a source shows such an engine drawn split.
 - **Next (X):** the corrected combo builds and the twin; three shipped boosted builds on the pull; part C on
   two trees.
 
+## 26 Nov 15:04 UTC: A SHIPPED BUILD CLICKS AT ITS UPSHIFTS, and the cut's length carries it (item 16's evidence)
+
+- **X, three shipped boosted builds as built on the PULL (named before the run; 17 copies, per event, each
+  against twice the lowest of its own reference's five copies):** the three-cylinder 1.0 turbo over at its 1-2
+  upshift in 6 of 17 (1.26/2.62/3.98, bound 2.84) and at its 2-3 in 8 of 17 (2.32/2.83/3.56); the kei 660
+  triple at its 1-2 in 2 of 17 (bound 2.77); the boxer four 0 of 17 everywhere. Nothing over anywhere but at
+  upshifts. The background's "clean" (0 of 6) was the tour's.
+- **The steward's read of the three-cylinder on probes (predictions first; nothing committed).** The cut by
+  the flags: 210 ms at both upshifts on the tip (the spark cut alone), 60 ms on the probe with the cut held
+  only while the vehicle asks. The first firing back over the next four, 15 copies: at the 1-2, 2.65 on the
+  tip (1.35 to 3.98), 1.12 on the cut probe (0.99 to 1.19), 1.12 with both fixes; at the 2-3, 2.82 (2.04 to
+  3.70), 1.07, 1.11. **A cut of real length brings the first firing back level with the next ones**, a
+  larger fall than on the small four (1.66 to 1.30) or the V8 (2.01 to 1.80); boost held through the cut is
+  not needed to explain it (not read). The counts per event on the probe trees follow, in X's form.
+- **So item 16 (X-047) has its evidence on what ships.** Its design is ruled, its change is one file of the
+  steward's (launch.fm), and it waits for one thing: a bake to follow it.
+- **Ruled for the tests:** a small shipped-pull pass in the nightly, exactly these three builds, the
+  three-cylinder's two upshifts and the kei's 1-2 entered under X-048 with the steward named beside N2; the
+  whole corpus on the pull (about 40 minutes) stays a proposal.
+- **Also:** the corrected combo corpus is on the branch (8ec06fd1: lab cams lift-matched to their dials; the
+  twin `turbo-six-mild`; `Known.h` entry by entry; the twin's eight rows entered). G re-read X-052's two rows
+  on it per event: valve+intake+car's 1 to 4 on the dial build was the cam swap (0 per event on both trees);
+  intake+exhaust+voices sits at the limiter's edge (3.03 against 2.97; 2.99 on the secant tree).
+- **Clips with the owner (the steward's session):** `three-cylinder-upshift-as-shipped.wav` and
+  `three-cylinder-upshift-PROBE-both-fixes.wav`, a build the owner drives.
+
+## 26 Nov 16:31 UTC: item 16's prediction confirmed on three shipped builds (a probe); part C's limiter question closed
+
+- **X, the steward's probe trees on the three shipped builds (17 copies, per event):** with the cut held only
+  while the vehicle asks, the three-cylinder's 1-2 and 2-3 and the kei's 1-2 read 0 of 17 (from 6, 8 and 2),
+  every event 0 of 17 on all three builds; the same with both fixes. The steward had predicted 0 to 1. A
+  probe: the rows stay in `Known.h` until item 16 is on the branch and they read 0 of 17 on the real code
+  under both of their check names.
+- **Part C, the reference on its output limiter: NO CHANGE.** Neither pull has a limiter window (the output's
+  0.85 limiter is no event of the judge's). Off its limiter the reference moves the small four's bound 0 to
+  +0.02 and the turbo six's +0.21 on the tip and -0.16 on G's stand-in: not one direction, and about the
+  reference's own copy-to-copy spread, which the lowest-of-five exists to cut. L's form (i) is not taken.
+  Recorded as the bound's known blind spot, no entry: sound.model on the turbo six's pull at -0.07 K reads
+  3.56 at 4.612 s where the reference's own copy reads 3.29 at 4.607 s (both sides click; the lowest-of-five
+  raises nothing for a reference copy that clicks).
+- **The cut-aware variant (local, never pushed), first reading:** it moves the cut windows' medians (the turbo
+  six's 1.75 to 1.27 on the tip) and no bound and no count. Its full tables on both trees, on the rows X-051
+  does not carry, come as a proposal.
+- **Left `Known.h` with the corrected corpus, each on its own ruling:** X-049's row, X-041's tour lift, X-052's
+  valve+intake+car (G's table and X's own 17 copies: 0 of 17 per event).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **26 Nov 13:41 UTC: `main` IS AT 3f892823** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
-  7c3e4d59, those trees unchanged; run 45823175500: Linux, macOS and Windows green on that commit; `ui/`,
-  tests, scripts and docs only since d586682c). Before it: 389ee865 (26 Nov 12:25), 317404d9 (11:53), 5278e3e9
-  (11:01), 3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0 (07:50), d586682c (04:36). Nothing code-bearing is on
-  the branch past it; X's corrected combo builds and the mild twin are next (tests and combo content).
+- **26 Nov 16:31 UTC: `main` IS AT d6615852** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
+  7c3e4d59, those trees unchanged; run 45855822711: Linux, macOS and Windows green on that commit; `ui/`,
+  tests, the combo corpus, scripts and docs only since d586682c). Before it: 3f892823 (26 Nov 13:41), 389ee865
+  (12:25), 317404d9 (11:53), 5278e3e9 (11:01), 3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0 (07:50), d586682c
+  (04:36). Past it on the branch: a hidden proof case's mode (6e67ac62, tests) and docs.
+- **THE WINDOW'S ORDER, as ruled on 26 Nov (each needs a bake to follow, so P):** item 17 (X-051, the valve's
+  flow solve; G; first, since it moves every reading), item 16 (X-047, the shift's cut; the steward; evidence
+  on three shipped builds), item 15 (X-046, the air's pressure; the integrator), then items 1, 6 and the rest
+  of the list below as before.
 - **26 Nov 04:36 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items below and nothing
   else. From the first push under those trees the branch's baked tables are stale until the next bake; `main`
   stays the stable build. **A bake needs P, whose push is refused tonight: until the owner decides, land only
