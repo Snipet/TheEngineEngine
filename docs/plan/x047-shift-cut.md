@@ -114,6 +114,12 @@ length runs, so today the bike gets twice its setting: 50 ms becomes about 100. 
 - The downshift's blip unchanged, or its change predicted.
 - N1's dips test and P's idle gate untouched.
 
+**Read beside item 17 (the lead, 26 Nov 10:36).** G's X-049 places the turbo six's shift click in the exhaust valve's
+flow solve (`Valve::flow`, `sim/exhaust/duct.fm`: three fixed passes) chattering on a first pulse into pipes the cut
+has emptied. X-030, X-031 and X-044 are also first firings back into quiet pipes, so item 17 moves the same rows. If
+both items land in one window, they are read one at a time: item 16 first, on today's valve, then item 17. Until
+G's spreads are in, how much of these rows' click is the chatter and how much the fuller first charge is open.
+
 ## 5. What it does not cure
 
 On the probe with the cut at the reference's length, the four's first firing back still reads 1.30 against the
