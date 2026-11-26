@@ -618,6 +618,16 @@ smoothed over about 2 ms. So it caught a blowdown or the stroke's cool tail by t
   - two points at the turbo's spool move: 1733 rpm 249.7 → 382.3 N m and 2833 rpm 353.9 → 385.9;
   - held 20 s at 1733 rpm (the old code's stepped dyno), it reads 383.4 N m at its 120 kPa target. So the old points
     were wrong: the old settle left the turbo unspooled.
+- **Weighted as the running path weights (26 Nov, C's finding):** weighted by mass, the settle landed hot. On the
+  two-stage at 5879 rpm its port heat was 5.3 % over a 90 s hold and its torque 3 N m low (187.3 against 190.4). The
+  running tPort weighs each 16 samples alike, and the blowdown is both the hottest and the heaviest gas. So the settle
+  now takes the time-weighted cycle mean of the ports' gas (the flow stays the cycle's mean):
+  - the two-stage at 5879 rpm reads 189.4 N m and 15151 W against 15090 held;
+  - first.json at 3200 rpm reads 16047 against 16044.
+  - Guarded by "the exhaust's heat settles where the long run lands" (the settle's gas within 2 % of the running
+    path's: +0.15 % and +1.48 %; weighted by mass, +4.5 % and +8.1 %).
+  - Whether the running path should itself weigh by mass (the heat the gas carries) is the next window's, with a
+    prediction across the builds.
 
 ## Stated bores: the least, 10 mm (X-038, X-029)
 

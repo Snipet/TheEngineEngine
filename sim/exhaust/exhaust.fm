@@ -165,6 +165,7 @@ module Exhaust
     // 25 Nov: the last 16 samples caught a blowdown or the stroke's cool tail, 1128 to 1607 K point to point)
     float eCyc[2];
     float mCyc[2];
+    float tCyc[2];      // the ports' gas over a cycle as the running tPort weights it: each 16 samples' alike (time)
     float tExit;        // the gas leaving the ports into the headers, after the port walls' cooling (portLoss()), K
     float qPort;        // the heat the port walls take from it, W (for the coolant's owner; telemetry)
     float qCool;        // the heat the port walls give the coolant, W
@@ -239,6 +240,7 @@ module Exhaust
         {
             eCyc[k] = 0.0f;
             mCyc[k] = 0.0f;
+            tCyc[k] = 0.0f;
         }
         loadNow = 0.0f;
         tick128 = 0;
@@ -767,6 +769,17 @@ module Exhaust
             mCyc[0] += kc * (mSum / 16.0f - mCyc[0]);
             eCyc[1] += kc * (eCyc[0] - eCyc[1]);
             mCyc[1] += kc * (mCyc[0] - mCyc[1]);
+            if (mSum > 1.0e-9f)
+            {
+                const float tc = eSum / mSum;
+                if (tCyc[1] <= 0.0f)
+                {
+                    tCyc[0] = tc;
+                    tCyc[1] = tc;
+                }
+                tCyc[0] += kc * (tc - tCyc[0]);
+                tCyc[1] += kc * (tCyc[0] - tCyc[1]);
+            }
         }
         bookLet(mSum / rate + backBlk);
         backBlk = 0.0f;
@@ -1708,7 +1721,7 @@ module Exhaust
     {
         if (mCyc[1] > 1.0e-7f)
         {
-            tPort = eCyc[1] / mCyc[1];
+            tPort = tCyc[1] > 0.0f ? tCyc[1] : eCyc[1] / mCyc[1];
             mdotSlow = mCyc[1];
         }
         else
