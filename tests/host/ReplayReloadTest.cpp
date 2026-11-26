@@ -186,25 +186,47 @@ TEST_CASE("the reloader compiles an edited directory and reports clang's words f
     std::string error;
     REQUIRE(host.load(dir, offline(), error));
     Reloader reloader(dir, {});
+    // An edit as an editor's save can make it: the file truncated, then written. The reloader looks every quarter second
+    // and compiles what it finds, so a look between the two compiles a cut-off file (J2's flake under a whole tier's
+    // load: the second compile was the empty file's, its errors without undefinedThing). Here the truncated file is held
+    // across a look on purpose (600 ms, over two looks), so a run meets that compile as a loaded one might (not checked:
+    // a run whose reloader did not look in time meets the plain case), and the waits below are on what the edit means (a
+    // good program reloaded; clang's words naming the broken thing), never on a count of compiles. With the old waits
+    // (the n-th compile) and the file held so, the case failed every run: the good edit's poll false, the broken one's
+    // errors without undefinedThing.
     const auto edit = [&](const std::string& from, const std::string& to) {
         std::ifstream in(dir / "engine.fm");
         std::ostringstream text;
         text << in.rdbuf();
         in.close();
+        {
+            std::ofstream truncated(dir / "engine.fm", std::ios::binary | std::ios::trunc);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(600));
         std::ofstream(dir / "engine.fm", std::ios::binary) << replaced(text.str(), from, to);
     };
-    const auto waitFor = [&](int n) {
-        for (int i = 0; i < 400 && reloader.compiles() < n; ++i)
+    // polls the reloader (on this thread, as the UI does) until `done`, 10 s at most; whether any poll reloaded the host
+    const auto pollUntil = [&](const std::function<bool(bool reloaded)>& done) {
+        bool reloaded = false;
+        for (int i = 0; i < 400; ++i)
+        {
+            reloaded = reloader.poll(host) || reloaded;
+            if (done(reloaded))
+                return true;
             std::this_thread::sleep_for(std::chrono::milliseconds(25));
-        return reloader.compiles() >= n;
+        }
+        return false;
     };
     edit("const float out = loud * s;", "const float out = loud * s * 0.9f;");
-    REQUIRE(waitFor(1));
-    CHECK(reloader.poll(host));
+    // the good edit reloaded (after the truncated file's failed compile, which only kept the old program playing)
+    REQUIRE(pollUntil([&](bool reloaded) { return reloaded; }));
     CHECK(reloader.errors().empty());
+    bool reloadedBroken = false;
     edit("const float out = loud * s * 0.9f;", "const float out = loud * s * undefinedThing;");
-    REQUIRE(waitFor(2));
-    CHECK_FALSE(reloader.poll(host));
-    CHECK(reloader.errors().find("undefinedThing") != std::string::npos);
+    REQUIRE(pollUntil([&](bool reloaded) {
+        reloadedBroken = reloadedBroken || reloaded;
+        return reloader.errors().find("undefinedThing") != std::string::npos;
+    }));
+    CHECK_FALSE(reloadedBroken);   // neither the cut-off file nor the broken one replaced the playing program
     CHECK(reloader.errors().find("error:") != std::string::npos);
 }
