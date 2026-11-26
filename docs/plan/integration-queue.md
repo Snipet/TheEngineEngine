@@ -1748,6 +1748,14 @@ bank's fed sibling's (twin and quad only); the shared housing's volume the two s
 orifice law from the one gas, as the twin scroll's are; no new number. The split by firing order on table
 engines only where a source shows such an engine drawn split.
 
+## 26 Nov: CI's record (the steward)
+
+- **ba364841, macOS, run 45762948828 (job 139717022365): infrastructure, not a red on N1's dips guard.** "Upload the
+  application" failed on the artifact service ("Failed to CreateArtifact: Unable to make request: ETIMEDOUT"); Build
+  and Test were not reached, so no test ran. Not re-run (the lead: the next push's macOS job covers the same code).
+  Note for a second time: in build.yml the application's upload (line 511) comes before Build (617) and Test (646),
+  so an upload's failure stops the tests; if it recurs, the order (or `continue-on-error` on the uploads) is the look.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
