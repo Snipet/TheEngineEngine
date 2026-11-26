@@ -413,6 +413,52 @@ namespace
         return 0;
     }
 
+    // (U1 for U3, 26 Nov; the lead's finding) The engine breathes sea-level air whatever Air pressure says (only the car's
+    // drag reads env.pressure, until the next window's item 15): set away from 101325 by more than 500 Pa, the row says
+    // so in a line of its own; and the absolutes it prints stay the engine's, over 101325, at any setting.
+    VIEW_TEST(testAirPressure, "air.pressure")
+    {
+        AirRig rig("turbo4", 696, 574, 2.0f);
+        auto& doc = rig.doc;
+        const int f = doc.find("env.pressure");
+        CHECK_MSG(f >= 0, "the air rig's document has no env.pressure");
+        if (f < 0)
+            return 0;
+        const auto setTo = [&](double pa) {
+            doc.set(f, pa);
+            rig.host->tick(3);
+        };
+        const auto line = [&rig]() {
+            for (const std::string& l : tee::ui::air::airWarnings(*rig.ws))
+                if (l.rfind("AIR PRESSURE", 0) == 0)
+                    return l;
+            return std::string();
+        };
+        setTo(101325.0);
+        const std::vector<double> sea = tee::ui::air::airAbsolutes(*rig.ws);
+        CHECK(!sea.empty() && line().empty());
+        setTo(101325.0 + 400.0);
+        CHECK(line().empty());
+        setTo(101325.0 - 400.0);
+        CHECK(line().empty());
+        setTo(105000.0);
+        CHECK_MSG(!line().empty(), "no line at 105 kPa");
+        setTo(70000.0);
+        const std::string said = line();
+        CHECK_MSG(said == "AIR PRESSURE moves the car's drag only: this engine breathes sea-level air (101.3 kPa)", said);
+        // The absolutes at 70 kPa are the engine's, as at sea level (each part's, the same to the pascal).
+        const std::vector<double> high = tee::ui::air::airAbsolutes(*rig.ws);
+        CHECK(high.size() == sea.size());
+        for (std::size_t i = 0; i < high.size() && i < sea.size(); ++i)
+            CHECK_MSG((std::isnan(high[i]) && std::isnan(sea[i])) || std::fabs(high[i] - sea[i]) < 1.0,
+                      std::to_string(i) + ": " + std::to_string(high[i]) + " against " + std::to_string(sea[i]));
+        const std::string hits = tee::test::u3::textCollisions(rig.host->draw());
+        CHECK_MSG(hits.empty(), hits);
+        picture("air.pressure.line", *rig.host);
+        std::printf("  %s\n", said.c_str());
+        return 0;
+    }
+
     VIEW_TEST(testAirScopeMap, "air.scopemap")
     {
         AirRig rig("turbo4", 696, 574, 2.0f);

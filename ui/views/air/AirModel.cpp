@@ -225,7 +225,11 @@ namespace tee::ui::air
             b.displacement = vd;
         }
         b.redRpm = kRedline[layout] + fieldOr(doc, P::redlineTrim, -1, 0.0);
-        b.ambientP = fieldOr(doc, P::ambientP, -1, 101325.0);
+        // (U1 for U3, 26 Nov 2026) The engine breathes sea-level air whatever env.pressure says (sim/engine.fm's literal
+        // 101325; only the car's drag reads the field), so the absolutes this workspace prints are over 101325 too.
+        // LEAVES with the next window's item 15 (the engine reads env.pressure): then ambientP = docAmbientP again.
+        b.docAmbientP = fieldOr(doc, P::ambientP, -1, 101325.0);
+        b.ambientP = 101325.0;
         b.ambientT = fieldOr(doc, P::ambientT, -1, 293.15);
 
         // the aspiration, by label where it is a choice

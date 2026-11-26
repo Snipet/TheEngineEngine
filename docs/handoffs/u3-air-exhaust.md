@@ -46,3 +46,11 @@ flag, 26 Nov: one click on the Aspiration dial could leave one at rest; the cure
 the two new names at 0 (`AirDemo.cpp`). `air::airWarnings(w)` gives the lines' words for tests. Test:
 `air.mismatch.turbo`, which checks each bit's line present when the bit is set and gone when it's clear, and both
 together clear of each other. No golden moved.
+
+**Added by U1 for U3, 26 Nov 2026, temporary** (the lead's finding: the engine never reads `env.pressure`; only the
+car's drag does; sim/engine.fm's literal 101325): set away from 101325 by more than 500 Pa, `warnings()` adds "AIR
+PRESSURE moves the car's drag only: this engine breathes sea-level air (101.3 kPa)" (Kind::box), and `resolveAir` holds
+`AirBuild::ambientP` at 101325 (the setting kept as `docAmbientP`), so the absolutes the row prints and the vacuum are
+the engine's as it is. BOTH LEAVE with the next window's item 15 (the engine reads env.pressure): then the line goes and
+`ambientP = docAmbientP`. Probe `air::airAbsolutes`. Test `air.pressure` (the line absent at 101325 and ±400, present at
+70 and 105 kPa; the absolutes at 70 kPa equal to sea level's); picture out/ui/air.pressure.line.png.

@@ -28,6 +28,8 @@ namespace tee::ui
         std::vector<AirHit> airHits(const Workspace& w);   // empty for a workspace that is not AIR's
         // The mismatch lines shown under the row, their words (for tests; U1 for U3, 26 Nov); empty for one not AIR's.
         std::vector<std::string> airWarnings(const Workspace& w);
+        // The absolute pressure after each part of the row, Pa, in the row's order (for tests; U1 for U3, 26 Nov).
+        std::vector<double> airAbsolutes(const Workspace& w);
     }
 
     namespace air
