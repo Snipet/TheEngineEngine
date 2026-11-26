@@ -1619,6 +1619,47 @@ does, or says which state it did not read.
   dip, warm). From now on, an idle change of mine is read on p-idle-warm and the cold start for every archetype
   before it is proposed, and its note names the states it read.
 
+**The idle's design, measured (the steward, 26 Nov 04:40 to 05:40; no code: `main`'s idle stands).** The window's
+item 2. The acceptance, from the lead's rulings of 04:38 and 05:00, in order: the 31 shipped archetypes on P's gate
+(tee::checkIdle: p-idle-warm 8 to 14 s, p-cold-start 8 to 11.5 s); each archetype's LOWEST speed 2 to 8 s on
+p-idle-warm, none lower than `main`'s without a stated reason (the dips: nothing guarded them; N1 asked for a test of
+its own); then the fixture turbo six (cam 0.9999, nothing ships it) on the tour, sd 2.5 to 5 s.
+
+The three measurements the design answers:
+- **The rate's look-ahead damps the warm idle's own valve loop** (the 3.0 twin turbo: 650 sd 5.4 with it, 53.9
+  without, a period near 1.6 s; the flat six, big-bore V8 and V12 warm 5.4, 3.5, 3.2 to 9.2, 7.4, 6.3 without).
+- **It catches the start's fall.** Through the post-start phase (3 s) the valve runs at twice the gain near the
+  target, the loop idle.fm's own note calls marginal; on `main` the 7.4 V8 hunts there 530 to 730 rpm (a period near
+  0.6 s), and the look-ahead is what holds its lowest speed at 545 (650 asked).
+- **The fixture's lope is seeded at the catch** by the look-ahead reading the flare's thousands of rpm/s (the valve
+  0.01 to 0.77, the plenum 55 to 98 kPa): a 0.4 s limit cycle that then sustains itself. Not the limiter: on the
+  rally five the valve is pinned at the dashpot's 0.350 through the limiter on both trees; its row moved because the
+  runs part at the crank (the lead's correction of record).
+
+The forms, the fixture's three sets (ecu / exhaust+fuel+ecu / intake+ecu; `main` 287 / 291 / 379) and the worst dips
+against `main` across all 31:
+
+| form | fixture | P's gate (31) | dips, worst against `main` |
+|---|---|---|---|
+| 98d0dc4d (no look-ahead) | 19 / 22 / 227 | the twin six fails warm, 49.0 | not read (the gate decided) |
+| look-ahead filtered 0.15 s / two poles / clamped 100 rpm | 61-349 / 44-349 / 40-242 | not read | not read |
+| look-ahead held off for the post-start phase | 19 / 29 / 233 | all pass | the 7.4 V8 545 to 457 (of 7 read) |
+| the same, opening only | 285 / 298 / 384 | not read | as `main` (of 7 read) |
+| the post-start gain not doubled | 238 / 274 / 338 | not read | as `main` or better (of 7 read) |
+| held off and not doubled ("both") | 20 / 23 / 43 | all pass, within 0.5 rpm sd | four-cam V8 681 to 536, supercharged V8 639 to 544, twin-turbo pickup 622 to 537, NA V6 670 to 594, twin six 639 to 564, 3.8 V6 619 to 554 |
+| opening only, not doubled | 206 / 268 / 320 | not read | supercharged V8 -45, four-cam V8 -34, pickup -26 |
+
+**What it shows.** Every form that cures the fixture takes the look-ahead off the shipped builds' fall, and the dips
+row reads it; the forms that keep the dips leave the fixture hunting. The fixture's catch and the shipped builds' catch
+want the same signal in opposite ways through the same window. By the lead's order (the 31 first), **`main`'s idle
+stays and the fixture's hunt stays known** (X-032's kind; X-031 and X-041's two rows with it, X's at fb32d4fc). "Both"
+was tier-green (581) and gate-green; it failed only the dips row, which a sample of 7 builds had passed: the dips row
+is read on all 31 or it is not read.
+
+Open, not this window's: the doubled post-start gain is marginal on `main` itself (the 7.4 V8's 0.6 s swing; the
+look-ahead hides it); the dashpot holds the idle valve at 0.35 at full throttle and on boost (ecu.fm:230's form in
+idle.fm), which no measurement here judged.
+
 ## 26 Nov 04:36 UTC: `main` AT d586682c; the next window and who can open it
 
 `main` was fast-forwarded b557c4a1..d586682c at 04:36:15 UTC by the lead, after its own checks: remote `main`
