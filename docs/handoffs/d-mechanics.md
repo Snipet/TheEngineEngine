@@ -136,3 +136,10 @@ bank angles in the custom null (one-bank builds only today).
 contract (b) the engine is cut while the vehicle asks and the number Car::cutRequest() hands is no longer read as a
 length. Its name and meaning are the integrator's to tidy in car.fm (a flag, or the seconds remaining; the comment at
 car.fm:847 says "how long"), with model 1's shiftTime and model 0's 0.05 out of it. Not in X-047's change.
+
+**X-053 (X's, 26 Nov 11:11; mine, not yet read): a model switched while running.** X's Part B judges a switch thrown
+mid-run in its own 0.3 s window from each flip. The turbo six's pull with flips at 5.0, 6.5, 8.0 and 9.5 s, 17 copies,
+against the nightly bound 2.67: engine.wallHeat over in 3/17 (1.65 / 2.08 / 3.27), exhaust.model in 10/17 (2.05 /
+2.84 / 3.89). Reproduce once B's harness is on the branch: FLIPPROOF="5 turbo-six" BOUNDPROOF_DT="..."
+build-dev/bin/tee-tests-combo "[.flipproof]". First read: what the fade (cutWant, holdModel's held switch) does across a
+running flip for those two models, and whether their step is the fade's or the model's.
