@@ -59,10 +59,12 @@ const Known kKnown[] = {
      "(316 against 299 rpm sd), and with ecu.model a near stall at the catch, 13 rpm at 0.96 s after a 2030 rpm flare; "
      "no shipped build runs the reference idle, none carries such a cam. The start's catch at 3.39 s: excess 3.27 "
      "against 2.97 (c40f0411 moved the hunt's phase onto it)"},
-    {"X-044", "2026-11-26", "the steward (the idle valve)", "engine.custom+fuel.model+ecu.model", "small-four", "pull",
-     "click",
-     "a firing unlike its neighbours as the spark returns after the small four's downshift at 11.02 s: excess 3.48 "
-     "against 2.85; from 98d0dc4d (the idle valve's proportional part on the speed alone: 1.75 at its parent), the "
-     "cure that ended X-031 on the V8 (intake+fuel+ecu 2.77 at 11.03 s, under)"},
+    // X-044 stays (the lead's ruling, 26 Nov 01:08): nothing is cured for it this window.
+    {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "engine.custom+fuel.model+ecu.model", "small-four",
+     "pull", "click",
+     "engine.custom + fuel.model + ecu.model without exhaust.model, the small four's pull at the downshift (11.02 s): the "
+     "fuel returning whole on the blip's first firings after the overrun cut; 1 phase in 6 before 98d0dc4d, 3 in 6 after "
+     "it (that cure moves which phases meet the return; the idle valve is not in it); green with every switch on (excess "
+     "1.92 against 2.85 on the small four, 2.35 at most against 4.03 on the V8). Phase 0: 1.75 before, 3.48 after"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

@@ -39,7 +39,7 @@ fuel.model 0 is bounded at a step of 42 (the lead's ruling, 24 Nov 23:15; "click
 **Findings** (X-001 to X-044; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
 it so it fails again if it returns). Open: X-016 (the heavy case's cost, Q), X-030 (the new ECU's shift cut under
 fuel.model 1: a firing unlike its neighbours as the spark returns; the steward), X-044 (the small four's downshift
-with engine.custom, fuel and ecu, from the steward's idle cure 98d0dc4d, which ended X-031 on the V8), X-036 (a DC with
+with engine.custom, fuel and ecu: the fuel returning whole after the overrun cut; the steward's, kept this window), X-036 (a DC with
 car.model and a turbo: the turbo V8 dual, random 103, and the large diesel on the dyno with everything on; D, the
 steward and the integrator), X-039 (a supercharged 50 cc single with a recirculating blow-off, N2: cured in its held
 package), X-041 (Burned in the pipe meeting the new boost: lift clicks on the turbo six and the rally five, and the
