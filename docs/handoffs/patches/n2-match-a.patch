@@ -1,0 +1,412 @@
+From 6115fbf7f0b3c9da56f835e0e66aea23d60d4035 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 23:53:14 +0000
+Subject: [PATCH 1/5] boost: the turbine matched on the build's own rated state
+ when baked (spec.boost.ratedP4, ratedT3: the rated balance in place of 1.247
+ and 900/1150 K); tel.boost.mismatch 32 (not baked) and 64 (a governed
+ diesel's compressor failing rule (c)'s rated check at 0.96); local, step A of
+ turbine-match-design.md, not pushed (the lead: lands with the bake)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+---
+ sim/boost/boost.fm    |  7 +++++
+ sim/boost/machine.fm  | 72 +++++++++++++++++++++++++++++++++++++++++--
+ sim/spec/boost.fm     |  9 ++++++
+ sim/spec/telemetry.fm |  2 +-
+ 4 files changed, 86 insertions(+), 4 deletions(-)
+
+diff --git a/sim/boost/boost.fm b/sim/boost/boost.fm
+index 8f094850..7c8d5165 100644
+--- a/sim/boost/boost.fm
++++ b/sim/boost/boost.fm
+@@ -511,6 +511,13 @@ module Boost
+             if (mach.sc == 0 && mach.turbNozWants > 0.0f
+                 && (mach.turbNozHas < 0.5f * mach.turbNozWants || mach.turbNozHas > 2.0f * mach.turbNozWants))
+                 mm |= 16;
++            // (card N2's design: the turbine matched on the stand-ins, not on the build's baked rated state; a governed
++            // diesel's compressor that cannot meet both ends, its surge margin at the torque peak and the choke check at
++            // rated: turbine-match-design.md)
++            if (mach.sc == 0 && mach.turbos > 0 && mach.matchBaked == 0)
++                mm |= 32;
++            if (mach.sc == 0 && mach.turbos > 0 && mach.bothEnds == 0)
++                mm |= 64;
+         }
+         t->mismatch = mm;
+         t->coolerHas = on != 0 ? mach.icFlowHas : 0.0f;
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index db2dc83a..3b253807 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -130,7 +130,10 @@ module BoostMachine
+     int exSides;        // the exhaust's sides (card G tells, at every configure; 2 until it does): a turbo of side 1 on a
+                         // one-sided exhaust empties into side 0's downpipe
+     float omegaMax[BOOST_TURBOS];
+-    float mMatch;                   // the engine's flow at its redline, matched, kg/s
++    float mMatch;
++    int matchBaked;     // 1: the turbine matched on the baked rated p4 and T3; 0: on the stand-ins (tel.boost.mismatch 32)
++    int bothEnds;       // 0: (b)'s wheel fails rule (c)'s rated check (tel.boost.mismatch 64)
++    float ratedPhi;     // the rated check's mean share of choke flow on the chosen wheel (0.96 its limit)                   // the engine's flow at its redline, matched, kg/s
+     // (card N2: the charge system against the engine it is on, for the telemetry's warnings: has, wants; see apply)
+     float icFlowHas;
+     float chargeVolHas;
+@@ -473,6 +476,28 @@ module BoostMachine
+         const float t2Des = tOut * (1.0f + tauDes / fmaxf(s->compEta, 0.3f));
+         const float tCharge = t2Des - s->icEffect * (t2Des - tOut);
+         mMatch = fmaxf(vd * nDesign / 120.0f * (prDesign * pOut / (kBoostR * tCharge)) * 0.9f, 0.01f);
++        // (card N2's design, turbine-match-design.md (2): with the engine's own rated state baked into the build (the
++        // turbine's outlet p4, its inlet gas T3), the turbine's inlet pressure at the design point is the rated power
++        // balance's, not 1.247 times the boost: the compressor's power on the design flow at the design ratio, its
++        // efficiency the match's own (compEta), against the turbine's on the same flow from T3 down to p4, the turbine at
++        // its peak efficiency (turbEta: at rated every diesel's turbine sat at its blade-speed ratio's peak, x(2 - x) 0.99
++        // to 1.00, rated-nozzle-q2.md). The flow through the turbine is the air alone: the fuel's 3 to 5 % is left out
++        // (the open area then some 2 % small, judgement). Not baked: the stand-ins, and tel.boost.mismatch 32)
++        float p3Match = p3Design;
++        float tMatch = tDesign;
++        matchBaked = 0;
++        if (s->ratedP4 > 0.0f && s->ratedT3 > 0.0f)
++        {
++            const float work = kBoostCpA * tOut * tauDes / fmaxf(s->compEta, 0.3f);
++            const float avail = kBoostCpE * s->ratedT3 * fmaxf(s->turbEta, 0.3f);
++            const float ex = fminf(work / fmaxf(avail, 1.0f), 0.9f);
++            const float q = 1.0f - ex;
++            p3Match = s->ratedP4 / (q * q * q * q);
++            tMatch = s->ratedT3;
++            matchBaked = 1;
++        }
++        bothEnds = 1;
++        ratedPhi = 0.0f;
+         // (the sizing rule's wording under the corrected map, the lead's ruling, not a new constant: F's rule is that
+         // the choke is 1.15 x the design flow (F's judgement, unchanged), meaning the choke the wheel has at its design
+         // speed. Under the old map the full choke came at a tip Mach of 1.2, so the full choke was that; the choke now
+@@ -545,6 +570,47 @@ module BoostMachine
+                     best = fminf(best, a);
+                 }
+                 aAnn = fminf(aRated, best);
++                // (card N2's design (1): rule (c)'s rated check on the chosen wheel, not a second sizing: at the design
++                // flow and ratio, the speed line through the ratio on the map's laws, the share of that line's choke
++                // flow under 0.96 (the choke flag's 0.98 over the cycle's measured peak over mean, 1.001 to 1.023 on
++                // every diesel, c-margin.md: labelled judgement) and the tip under its 560 m/s. A wheel that fails is
++                // flagged (tel.boost.mismatch 64), not changed: the lead's ruling, no compromise rule)
++                {
++                    float m = 1.0f;
++                    float lo = 0.3f;
++                    float hi = 2.2f;
++                    const float fullC = 0.506f * 1.204f * 343.2f * wide * aAnn;
++                    for (int it = 0; it < 40; ++it)
++                    {
++                        m = 0.5f * (lo + hi);
++                        const float tk = (0.608f - 0.157f * (m - 1.0f)) * 0.4f * m * m;
++                        const float kn = fminf(fmaxf((0.349f + 0.551f * (fmaxf(m, 0.67f) - 1.0f)) * kArS, 0.15f), 0.9f);
++                        const float ph = mt / (fullC * (0.3f + 0.7f * fminf(m / 1.63f, 1.0f)));
++                        float tl = -1.0f;
++                        if (ph <= 1.0f)
++                        {
++                            if (ph < kn)
++                            {
++                                const float x = ph / kn;
++                                tl = 0.88f * tk + 0.12f * tk * x * x * (3.0f - 2.0f * x);
++                            }
++                            else
++                            {
++                                const float y = (ph - kn) / (1.0f - kn);
++                                tl = 0.652f * tk + 0.348f * tk * sqrtf(fmaxf(1.0f - y * y, 1.0e-4f));
++                            }
++                        }
++                        if (tl < tauD)
++                            lo = m;
++                        else
++                            hi = m;
++                    }
++                    const float phR = mt / (fullC * (0.3f + 0.7f * fminf(m / 1.63f, 1.0f)));
++                    if (t == 0)
++                        ratedPhi = phR;
++                    if (phR > 0.96f || m > 560.0f / 343.2f)
++                        bothEnds = 0;
++                }
+             }
+             if (t == 0)
+             {
+@@ -573,7 +639,7 @@ module BoostMachine
+             // the target (the lead's ruling, 25 Nov: matched as a wastegate's, every machine diesel's shaft ran at its
+             // relief firing at rated with the vanes wide open; healthy-match.md))
+             const float nozShare = s->vanes != 0 ? 1.0f : 0.65f;
+-            const float aNozMatched = nozShare * mt * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
++            const float aNozMatched = nozShare * mt * sqrtf(kBoostR * tMatch) / (p3Match * 0.667f);
+             if (s->turbAR > 0.0f)
+                 aNoz = s->turbAR * 0.0254f * rc;
+             else
+@@ -607,7 +673,7 @@ module BoostMachine
+             // transfer valve: its gate bypasses the whole engine's flow)
+             const float mGate = mMatch * (layout == BOOST_SEQUENTIAL && t == 0 ? 1.0f : share)
+                                 * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
+-            const float aGateMatched = mGate * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
++            const float aGateMatched = mGate * sqrtf(kBoostR * tMatch) / (p3Match * 0.667f);
+             const float dg = s->gateDiameter > 0.0f ? s->gateDiameter : sqrtf(aGateMatched / (0.785398f * 0.85f));
+             turb[t].aGate = 0.785398f * dg * dg * 0.85f;
+             const float vh = s->housingVolume > 0.0f ? s->housingVolume : 4.0f * 3.14159265f * rc * aNoz;
+diff --git a/sim/spec/boost.fm b/sim/spec/boost.fm
+index e7469a53..46b4bc59 100644
+--- a/sim/spec/boost.fm
++++ b/sim/spec/boost.fm
+@@ -127,6 +127,15 @@ module BoostSpec
+     float peakRpm [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Torque peak from")]]
+         [[ui::unit("rpm")]] [[ui::group("Compressor")]]
+         [[ui::help("A governed diesel's compressor is sized to hold its boost clear of surge from this speed up; 0: the full-load fuel curve's plateau start, else 0.6 of rated")]];
++    // (card N2, the turbine's match on the engine's own rated state: the turbine's outlet pressure and inlet gas
++    // temperature at the rated (design) point, baked from the build (turbine-match-design.md); 0: not baked, the match
++    // keeps its stand-ins (1.247 times the boost, 900 or 1150 K) and says so (tel.boost.mismatch 32))
++    float ratedP4 [[fminus::range(0, 1000000)]] [[fminus::default(0)]] [[ui::hidden]] [[ui::quantity("pressure")]]
++        [[ui::label("Turbine outlet at rated (baked)")]]
++        [[ui::help("Absolute; 0: not baked")]];
++    float ratedT3 [[fminus::range(0, 2000)]] [[fminus::default(0)]] [[ui::hidden]] [[ui::quantity("temperature")]]
++        [[ui::label("Turbine inlet gas at rated (baked)")]]
++        [[ui::help("0: not baked")]];
+     float seqRpm [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Second turbo joins above")]]
+         [[ui::unit("rpm")]]
+         [[ui::help("A sequential pair's changeover speed; 0: the speed at which the engine passes the join flow at the design boost")]];
+diff --git a/sim/spec/telemetry.fm b/sim/spec/telemetry.fm
+index 148295e7..7d59eba8 100644
+--- a/sim/spec/telemetry.fm
++++ b/sim/spec/telemetry.fm
+@@ -117,7 +117,7 @@ module BoostTel
+     // (card N2, boost.model 1: the charge system far from the engine it is on; warnings, not physics: each a pair,
+     // what the build has and what this engine's match would want; thresholds in sim/boost/boost.fm, telemetry)
+     int mismatch [[ui::label("Charge system mismatch")]]
+-        [[ui::help("1 intercooler rated flow under 0.4 of the engine's matched flow, 2 gate spring under a tenth of the boost asked, 4 charge pipes' volume under 0.3 or over 4 times the engine's match, 8 compressors' choke flow over 4 times a matched one's, 16 turbines' nozzle under half or over twice the design point's")]];
++        [[ui::help("1 intercooler rated flow under 0.4 of the engine's matched flow, 2 gate spring under a tenth of the boost asked, 4 charge pipes' volume under 0.3 or over 4 times the engine's match, 8 compressors' choke flow over 4 times a matched one's, 16 turbines' nozzle under half or over twice the design point's, 32 turbine matched on stand-ins (its rated state not baked), 64 a governed diesel's compressor unable to meet both its surge margin at the torque peak and the choke check at rated")]];
+     float coolerHas [[ui::label("Intercooler rated flow")]] [[ui::quantity("flow")]];
+     float coolerWants [[ui::label("Engine's matched flow")]] [[ui::quantity("flow")]];
+     float springHas [[ui::label("Gate spring")]] [[ui::quantity("pressure")]];
+-- 
+2.43.0
+
+
+From 5b6409fb5be156a9a95a42eecf3a5fa2a54a74a9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 00:04:02 +0000
+Subject: [PATCH 2/5] calib-boost: the mismatch case restated on the charge
+ system's own bits (1-16); bit 32 (turbine on stand-ins) checked where nothing
+ is baked; local, with step A
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+---
+ tests/sim/calibration/boost/GateTest.cpp | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/tests/sim/calibration/boost/GateTest.cpp b/tests/sim/calibration/boost/GateTest.cpp
+index a66af757..ee2eda33 100644
+--- a/tests/sim/calibration/boost/GateTest.cpp
++++ b/tests/sim/calibration/boost/GateTest.cpp
+@@ -220,9 +220,12 @@ TEST_CASE("calibration boost: the telemetry says when the charge system is far f
+                 static_cast<int>(big.at("boost.mismatch")), big.at("boost.coolerHas"), big.at("boost.coolerWants"),
+                 1000.0 * big.at("boost.volumeHas"), 1000.0 * big.at("boost.volumeWants"),
+                 static_cast<int>(four.at("boost.mismatch")));
+-    CHECK(static_cast<int>(big.at("boost.mismatch")) == 5);
++    // (the charge system's bits, 1 to 16; bit 32 since turbine-match-design.md's step A: the turbine matched on its
++    // stand-ins, its rated state not baked, which neither build has yet)
++    CHECK((static_cast<int>(big.at("boost.mismatch")) & 31) == 5);
+     CHECK(big.at("boost.coolerWants") > 2.0 * big.at("boost.coolerHas"));
+-    CHECK(static_cast<int>(four.at("boost.mismatch")) == 0);
++    CHECK((static_cast<int>(four.at("boost.mismatch")) & 31) == 0);
++    CHECK((static_cast<int>(four.at("boost.mismatch")) & 32) == 32);
+ }
+ 
+ // (marked [!mayfail] by N2 while the rotary joined on its air: it hunted 26 to 106 kPa at 4250 rpm; unmarked on the rotary's
+-- 
+2.43.0
+
+
+From fd427a4b2b76191e5240c1c94e600332fa7fa9e4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 00:31:17 +0000
+Subject: [PATCH 3/5] boost: step A's two further baked inputs, the
+ compressor's efficiency and the engine's air at the design point
+ (spec.boost.ratedEtaC, ratedAir), and the bake's key (matchKey, hidden, unit
+ hash), for C's stage; local, lands with the bake
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+---
+ sim/boost/machine.fm | 11 ++++++++++-
+ sim/spec/boost.fm    |  9 +++++++++
+ 2 files changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index 3b253807..88bee0fb 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -476,6 +476,10 @@ module BoostMachine
+         const float t2Des = tOut * (1.0f + tauDes / fmaxf(s->compEta, 0.3f));
+         const float tCharge = t2Des - s->icEffect * (t2Des - tOut);
+         mMatch = fmaxf(vd * nDesign / 120.0f * (prDesign * pOut / (kBoostR * tCharge)) * 0.9f, 0.01f);
++        // (card N2's design: the engine's own air at the design point where baked, in place of the 0.9-VE design flow:
++        // the turbine's open area passes what the engine sends it, turbine-match-step-a.md)
++        if (s->ratedAir > 0.0f && s->ratedP4 > 0.0f && s->ratedT3 > 0.0f)
++            mMatch = s->ratedAir;
+         // (card N2's design, turbine-match-design.md (2): with the engine's own rated state baked into the build (the
+         // turbine's outlet p4, its inlet gas T3), the turbine's inlet pressure at the design point is the rated power
+         // balance's, not 1.247 times the boost: the compressor's power on the design flow at the design ratio, its
+@@ -488,7 +492,12 @@ module BoostMachine
+         matchBaked = 0;
+         if (s->ratedP4 > 0.0f && s->ratedT3 > 0.0f)
+         {
+-            const float work = kBoostCpA * tOut * tauDes / fmaxf(s->compEta, 0.3f);
++            // (the compressor's efficiency at the design point and the engine's air there, baked from the same run where
++            // the bake has them (step A measured the peak and the 0.9-VE design flow as the balance's two errors: the area
++            // 4 to 29 % large, turbine-match-step-a.md); the turbine's flow the engine's air, the compressor's the same
++            // air: the ratio of the two powers needs the air only where they differ, so the air scales the match's flow)
++            const float etaC = s->ratedEtaC > 0.0f ? s->ratedEtaC : s->compEta;
++            const float work = kBoostCpA * tOut * tauDes / fmaxf(etaC, 0.3f);
+             const float avail = kBoostCpE * s->ratedT3 * fmaxf(s->turbEta, 0.3f);
+             const float ex = fminf(work / fmaxf(avail, 1.0f), 0.9f);
+             const float q = 1.0f - ex;
+diff --git a/sim/spec/boost.fm b/sim/spec/boost.fm
+index 46b4bc59..50c61be6 100644
+--- a/sim/spec/boost.fm
++++ b/sim/spec/boost.fm
+@@ -136,6 +136,15 @@ module BoostSpec
+     float ratedT3 [[fminus::range(0, 2000)]] [[fminus::default(0)]] [[ui::hidden]] [[ui::quantity("temperature")]]
+         [[ui::label("Turbine inlet gas at rated (baked)")]]
+         [[ui::help("0: not baked")]];
++    float ratedEtaC [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::hidden]] [[ui::quantity("fraction")]]
++        [[ui::label("Compressor efficiency at rated (baked)")]]
++        [[ui::help("The map's efficiency at the design point; 0: not baked (the peak, compEta)")]];
++    float ratedAir [[fminus::range(0, 10)]] [[fminus::default(0)]] [[ui::hidden]] [[ui::quantity("flow")]]
++        [[ui::label("Engine air at rated (baked)")]]
++        [[ui::help("The engine's air flow at the design point; 0: not baked (the design flow, VE 0.9)")]];
++    int matchKey [[fminus::range(-2147483647, 2147483647)]] [[fminus::default(0)]] [[ui::hidden]] [[ui::unit("hash")]]
++        [[ui::label("Turbine match's bake key")]]
++        [[ui::help("The hash of the fields the match was baked from (the host's: a changed one makes it stale)")]];
+     float seqRpm [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Second turbo joins above")]]
+         [[ui::unit("rpm")]]
+         [[ui::help("A sequential pair's changeover speed; 0: the speed at which the engine passes the join flow at the design boost")]];
+-- 
+2.43.0
+
+
+From bab1de9d9e9992b79af60b40f54e41fa95c7b694 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 00:32:00 +0000
+Subject: [PATCH 4/5] boost: the baked air sets the turbine's flow only; the
+ compressor's wheel stays on the design flow (it moved the wheel and hid bit
+ 64)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+---
+ sim/boost/machine.fm | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index 88bee0fb..b7e7f83f 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -476,10 +476,6 @@ module BoostMachine
+         const float t2Des = tOut * (1.0f + tauDes / fmaxf(s->compEta, 0.3f));
+         const float tCharge = t2Des - s->icEffect * (t2Des - tOut);
+         mMatch = fmaxf(vd * nDesign / 120.0f * (prDesign * pOut / (kBoostR * tCharge)) * 0.9f, 0.01f);
+-        // (card N2's design: the engine's own air at the design point where baked, in place of the 0.9-VE design flow:
+-        // the turbine's open area passes what the engine sends it, turbine-match-step-a.md)
+-        if (s->ratedAir > 0.0f && s->ratedP4 > 0.0f && s->ratedT3 > 0.0f)
+-            mMatch = s->ratedAir;
+         // (card N2's design, turbine-match-design.md (2): with the engine's own rated state baked into the build (the
+         // turbine's outlet p4, its inlet gas T3), the turbine's inlet pressure at the design point is the rated power
+         // balance's, not 1.247 times the boost: the compressor's power on the design flow at the design ratio, its
+@@ -648,7 +644,10 @@ module BoostMachine
+             // the target (the lead's ruling, 25 Nov: matched as a wastegate's, every machine diesel's shaft ran at its
+             // relief firing at rated with the vanes wide open; healthy-match.md))
+             const float nozShare = s->vanes != 0 ? 1.0f : 0.65f;
+-            const float aNozMatched = nozShare * mt * sqrtf(kBoostR * tMatch) / (p3Match * 0.667f);
++            // (card N2's design: the turbine's open area passes the engine's own air at the design point where baked, in place
++            // of the 0.9-VE design flow; the compressor's wheel stays sized on the design flow: turbine-match-step-a.md)
++            const float mtTurb = matchBaked != 0 && s->ratedAir > 0.0f ? mt * s->ratedAir / mMatch : mt;
++            const float aNozMatched = nozShare * mtTurb * sqrtf(kBoostR * tMatch) / (p3Match * 0.667f);
+             if (s->turbAR > 0.0f)
+                 aNoz = s->turbAR * 0.0254f * rc;
+             else
+-- 
+2.43.0
+
+
+From c5ef44325b0f5b85ad68b457a9e711c99f8ce429 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 00:33:59 +0000
+Subject: [PATCH 5/5] boost telemetry for the match's bake:
+ tel.boost.turbineOut[] (the turbine's outlet, absolute, a 1 s mean) and
+ tel.boost.engineAir (the engine's draw from the charge, kg/s); local, with
+ step A
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+---
+ sim/boost/boost.fm    | 2 ++
+ sim/boost/machine.fm  | 5 +++++
+ sim/spec/telemetry.fm | 4 ++++
+ 3 files changed, 11 insertions(+)
+
+diff --git a/sim/boost/boost.fm b/sim/boost/boost.fm
+index 7c8d5165..1d994cec 100644
+--- a/sim/boost/boost.fm
++++ b/sim/boost/boost.fm
+@@ -470,9 +470,11 @@ module Boost
+             t->vanes[i] = on != 0 ? mach.telVanes[i] : 0.0f;
+             t->turbineIn[i] = on != 0 ? mach.telPTurb[i] : 0.0f;
+             t->turbineInTemp[i] = on != 0 ? mach.telTTurb[i] : 0.0f;
++            t->turbineOut[i] = on != 0 ? mach.telP4[i] : 0.0f;
+             t->drive[i] = on != 0 ? mach.telDrive[i] : 0.0f;
+         }
+         t->chargePipe = on != 0 ? mach.v1.p - mach.pOut : 0.0f;
++        t->engineAir = on != 0 ? mach.drawMean : 0.0f;
+         t->intercoolerOut = on != 0 ? mach.telIcOut : tCharge;
+         t->throttleIn = on != 0 ? mach.v2.t : tCharge;
+         t->blowOffValve = on != 0 ? mach.bovLift : 0.0f;
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index b7e7f83f..94057ff2 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -244,6 +244,7 @@ module BoostMachine
+     float telVanes[BOOST_TURBOS];
+     float telPTurb[BOOST_TURBOS];   // before the turbine, Pa absolute (a twin scroll's mean)
+     float telTTurb[BOOST_TURBOS];
++    float telP4[BOOST_TURBOS];      // the turbine's outlet, absolute, a 1 s mean (the match's bake reads it)
+     float telDrive[BOOST_TURBOS];   // that over the boost's absolute pressure
+     float telBoost;                 // before the throttle, Pa above the outside
+     float telIcOut;                 // K
+@@ -381,6 +382,8 @@ module BoostMachine
+         seqDwell = 0.0f;
+         seqAbove = 0.0f;
+         drawMean = 0.0f;
++        for (int t = 0; t < BOOST_TURBOS; ++t)
++            telP4[t] = 0.0f;
+         bypassOpen = 1.0f;
+         scDrive = 0.0f;
+         crankTorque = 0.0f;
+@@ -988,6 +991,8 @@ module BoostMachine
+         bovAt += (bovMid - bovAt) * kAt;
+         exhaustSide();
+         chargeSide();
++        for (int t = 0; t < turbos; ++t)
++            telP4[t] += (turb[t].ratio * house[2 * t].p - telP4[t]) * fminf(dt, 1.0f);
+         // the shafts
+         for (int t = 0; t < turbos; ++t)
+         {
+diff --git a/sim/spec/telemetry.fm b/sim/spec/telemetry.fm
+index 7d59eba8..beb09734 100644
+--- a/sim/spec/telemetry.fm
++++ b/sim/spec/telemetry.fm
+@@ -103,6 +103,10 @@ module BoostTel
+     float vanes [[ui::label("Vanes")]] [[ui::quantity("fraction")]] [[ui::help("A variable nozzle's opening; 1 fixed")]] [4];
+     float turbineIn [[ui::label("Before the turbine")]] [[ui::quantity("pressure")]] [[ui::help("Absolute")]] [4];
+     float turbineInTemp [[ui::label("Turbine inlet")]] [[ui::quantity("temperature")]] [4];
++    // (card N2, for the turbine match's bake: the turbine's outlet, absolute, a 1 s mean; and the engine's air, the draw
++    // from the charge, a 0.1 s mean: turbine-match-design.md)
++    float turbineOut [[ui::label("Turbine outlet")]] [[ui::quantity("pressure")]] [4];
++    float engineAir [[ui::label("Engine air")]] [[ui::quantity("flow")]];
+     float drive [[ui::label("Drive ratio")]] [[ui::quantity("ratio")]]
+         [[ui::help("The pressure before the turbine over the charge pipe's, both absolute")]] [4];
+     float chargePipe [[ui::label("Charge pipe")]] [[ui::quantity("pressure")]]
+-- 
+2.43.0
+
