@@ -1644,8 +1644,14 @@ it (four sessions sent one alongside a push that had not finished; one of those 
 **X on the reverted tree** (fb32d4fc, Known.h): X-031 back (the V8's downshift, 4.73 against 4.03); X-044 as
 before the cure; two X-041 rows: the fixture turbo six's tour lift (3.23 against 2.97) and the shipped rally
 five's tour on its limiter (3.08 against 3.00; 3.92 on the old `main`, so the bake improves it); with the idle
-cure both read under their bounds, because the idle valve's rate term acts on a limiter's bounce at full
-throttle: the third measurement for the idle's design.
+cure both read under their bounds. **Corrected 04:39 (the steward's read, 10 ms steps, both trees):** that is
+NOT the rate term acting on the limiter's bounce, as the lead and the steward's first reading of the formula
+had it: on the rally five's limiter the idle valve is pinned at 0.350, the dashpot's ceiling, in both runs.
+The two runs part at the crank (0.30 s: valve 0.494 against 0.606, the rate term on the cranking speed's
+climb), and by 6.48 s the spool and the bangs' phase differ: the whole trajectory moved, and a row at 3.08
+against 3.00 reads chaotic. The design's third measurement is therefore the rate term during the crank and
+the start's flare. Open with the steward: whether the dashpot holding the valve at 0.35 at full throttle on
+boost is right, and how close the rally row sits to its bound on other trees.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
@@ -1662,7 +1668,7 @@ throttle: the third measurement for the idle's design.
      every boosted archetype); (i) the split only where a source shows such an engine drawn split. BOTH OWNERS'
      PUSHES ARE REFUSED: the item waits on the owner.
   2. the steward: the idle's real cure, a design first (the fixture's lope; the 3.0 twin turbo's warm idle; the
-     rate term acting on a limiter's bounce at full throttle). Acceptance: the gate's own measure, WARM and
+     rate term during the crank and the start's flare, which moves everything after it). Acceptance: the gate's own measure, WARM and
      cold, on all 31 archetypes and the fixture, before any tier.
   3. N2: the gate loop's limit cycle; X-041's pull row (the blow-off on a lift).
   4. N2: the sequential rotary's pair after its join (#17).
