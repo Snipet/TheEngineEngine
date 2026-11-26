@@ -127,6 +127,19 @@ namespace combo
     // a tool, tee-fuzz, that plays without Catch)
     bool nightlyCase();
     void setNightlyCase(bool nightly);
+    // An event window of a run (judge's per-event click, part B): a name ("start", "shift 2-3", "cut", "limiter",
+    // "lift", "the rest") and its span
+    struct Event
+    {
+        std::string name;
+        double from = 0.0, to = 0.0;
+    };
+    // The events of a run inside [from, to], in their order of precedence (a sample in two is the first's)
+    std::vector<Event> events(const tee::test::Run& run, const Times& tm, double from, double to);
+    // The excess of the step at `at` on one channel over its neighbouring firing periods inside [from, to]
+    double excessAt(const tee::test::Run& run, bool left, double at, double from, double to, double* period = nullptr);
+    // The step over its local level at every sample of x (largestStepTime's measure)
+    std::vector<float> stepProfile(std::span<const float> x, double rate);
     // The excess of the worst step of [from, to] over its neighbouring firing periods (Verdict::stepExcess)
     double stepExcess(const tee::test::Run& run, double from, double to, double* at = nullptr, double* period = nullptr);
     // The bang rule's baseline (cuts that send fuel to the pipe, the new ECU's): the largest step of three reference

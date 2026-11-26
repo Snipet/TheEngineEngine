@@ -455,15 +455,11 @@ namespace combo
         return reference(build, kind).step;
     }
 
-    double stepExcess(const tee::test::Run& run, double from, double to, double* atOut, double* periodOut)
+    // The excess of the step at `at` on one channel over its neighbouring firing periods, the neighbours inside
+    // [from, to] (the running stretch)
+    double excessAt(const tee::test::Run& run, bool left, double at, double from, double to, double* periodOut)
     {
-        const auto l = run.left().during(from, to), r = run.right().during(from, to);
-        const bool left = l.largestStep() >= r.largestStep();
-        const auto& ch = left ? l : r;
-        const double at = from + largestStepTime(ch.samples(), ch.rate());
         const double hz = run.firingHz(std::max(0.0, at - 0.25), at + 0.25);
-        if (atOut != nullptr)
-            *atOut = at;
         if (!(hz > 1.0))
             return -1.0;
         const double T = 1.0 / hz;
@@ -488,6 +484,132 @@ namespace combo
         const std::size_t m = around.size() / 2;
         const double median = around.size() % 2 != 0 ? around[m] : 0.5 * (around[m - 1] + around[m]);
         return own / std::max(median, 1e-9);
+    }
+
+    double stepExcess(const tee::test::Run& run, double from, double to, double* atOut, double* periodOut)
+    {
+        const auto l = run.left().during(from, to), r = run.right().during(from, to);
+        const bool left = l.largestStep() >= r.largestStep();
+        const auto& ch = left ? l : r;
+        const double at = from + largestStepTime(ch.samples(), ch.rate());
+        if (atOut != nullptr)
+            *atOut = at;
+        return excessAt(run, left, at, from, to, periodOut);
+    }
+
+    std::vector<float> stepProfile(std::span<const float> x, double rate)
+    {
+        // largestStepTime's measure at every sample (the step over its local level), so a window picks its worst
+        // sample from the run's own figures and its edges move no figure
+        const std::size_t n = x.size();
+        std::vector<float> out(n, 0.0f);
+        if (n < 3)
+            return out;
+        const std::size_t half = std::max<std::size_t>(8, static_cast<std::size_t>(0.01 * rate));
+        std::vector<double> prefix(n, 0.0);
+        for (std::size_t i = 1; i < n; ++i)
+        {
+            const double d = static_cast<double>(x[i]) - x[i - 1];
+            prefix[i] = prefix[i - 1] + d * d;
+        }
+        for (std::size_t i = 1; i < n; ++i)
+        {
+            const double d = static_cast<double>(x[i]) - x[i - 1];
+            const std::size_t lo = i > half ? i - half : 1;
+            const std::size_t hi = std::min(n - 1, i + half);
+            const double around = prefix[hi] - prefix[lo - 1] - d * d;
+            const double count = static_cast<double>(hi - lo + 1) - 1.0;
+            const double local = count > 0.0 ? std::sqrt(std::max(around, 0.0) / count) : 0.0;
+            out[i] = static_cast<float>(std::fabs(d) / std::max(local, 1e-4));
+        }
+        return out;
+    }
+
+    std::vector<Event> events(const tee::test::Run& run, const Times& tm, double from, double to)
+    {
+        // The run's events from what the scenario and the telemetry report (the lead's ruling, 26 Nov 08:07, part B):
+        // each shift (each gear change, 0.3 s either side; and car.flags 16 shifting or 32 cut asked, from its rise to
+        // 0.3 s after its fall; named by the gear before and after), each ECU cut outside a shift (ecu.flags 2 fuel, 4 spark, 8 overrun; the reference's
+        // engine.flags 2), each limiter episode (ecu.flags 1, engine.flags 1), each lift (the throttle falling
+        // through 0.1: 0.05 s before to 0.5 s after); the start (to 2 s after the key is let go) first of all; a
+        // sample in two windows is the first's in that order (start, shift, cut, limiter, lift); the rest of the running stretch is "the rest"
+        std::vector<Event> out;
+        if (tm.started + 2.0 > from)
+            out.push_back({"start", from, std::min(to, tm.started + 2.0)});
+        auto episodes = [&](const char* name, std::initializer_list<std::pair<const char*, int>> bits, double after) {
+            std::vector<tee::test::Series> s;
+            for (const auto& [path, bit] : bits)
+                s.push_back(run.tel(path));
+            if (s.empty() || s[0].empty())
+                return;
+            const auto& t = s[0].times();
+            bool on = false;
+            double rise = 0.0;
+            for (std::size_t i = 0; i <= t.size(); ++i)
+            {
+                bool now = false;
+                if (i < t.size())
+                {
+                    std::size_t k = 0;
+                    for (const auto& [path, bit] : bits)
+                    {
+                        const auto& vals = s[k++].values();
+                        if (i < vals.size() && (static_cast<int>(vals[i]) & bit) != 0)
+                            now = true;
+                    }
+                }
+                if (now && !on)
+                    rise = t[i];
+                if (!now && on)
+                {
+                    const double fall = i < t.size() ? t[i] : to;
+                    Event e{name, std::max(from, rise - 0.05), std::min(to, fall + after)};
+                    if (std::string(name) == "shift")
+                    {
+                        const auto gear = run.tel("car.gear");
+                        char g[48];
+                        std::snprintf(g, sizeof g, "shift %.0f-%.0f", gear.at(rise - 0.05), gear.at(fall + after));
+                        e.name = g;
+                    }
+                    if (e.to > e.from)
+                        out.push_back(e);
+                }
+                on = now;
+            }
+        };
+        {
+            // each gear change is a shift (the classic car raises no car.flags: the ECU cuts the spark while the gear
+            // rises): 0.3 s either side of it, named by the gear before and after
+            const auto gear = run.tel("car.gear");
+            const auto& t = gear.times();
+            const auto& x = gear.values();
+            for (std::size_t i = 1; i < t.size(); ++i)
+                if (x[i] != x[i - 1])
+                {
+                    char g[48];
+                    std::snprintf(g, sizeof g, "shift %.0f-%.0f", x[i - 1], x[i]);
+                    Event e{g, std::max(from, t[i] - 0.3), std::min(to, t[i] + 0.3)};
+                    if (e.to > e.from)
+                        out.push_back(e);
+                }
+        }
+        episodes("shift", {{"car.flags", 16 | 32}}, 0.3);
+        episodes("cut", {{"ecu.flags", 2 | 4 | 8}, {"engine.flags", 2}}, 0.3);
+        episodes("limiter", {{"ecu.flags", 1}, {"engine.flags", 1}}, 0.3);
+        {
+            const auto th = run.tel("engine.throttle");
+            const auto& t = th.times();
+            const auto& x = th.values();
+            for (std::size_t i = 1; i < t.size(); ++i)
+                if (x[i - 1] >= 0.1 && x[i] < 0.1)
+                {
+                    Event e{"lift", std::max(from, t[i] - 0.05), std::min(to, t[i] + 0.5)};
+                    if (e.to > e.from)
+                        out.push_back(e);
+                }
+        }
+        out.push_back({"the rest", from, to});
+        return out;
     }
 
     double lowestExcess(const std::vector<double>& excess)
@@ -681,21 +803,65 @@ namespace combo
         // old tree (X-015: 7.33 against 3.19 on the pull, 4.07 against 3.64 on the tour, its weakest proof; X-014:
         // 7.77 against 4.60) and clears the diesel's firing trains (X-033, X-034, X-035: 1.17 to 2.59 against 3.19).
         v.excessBound = refExcess >= 0.0 ? 2.0 * refExcess : -1.0;
-        const bool byExcess = v.excessBound >= 0.0 && v.stepExcess >= 0.0;
-        if (byExcess ? v.stepExcess > v.excessBound : v.stepMax > clickBound)
+        // Per event (the lead's ruling, 26 Nov 08:07, part B): each event window of the run (events(): each shift,
+        // cut, limiter episode, lift, the start, the rest) is judged at its own worst step, so a row is "this event:
+        // n of N" and never the run's one worst. The window's edges move no figure: a window only picks its worst
+        // sample, from the run's own step profile (the step over its local level, stepProfile, computed on the whole
+        // running stretch), and that step's excess is taken over neighbouring firing periods anywhere in the running
+        // stretch, never clipped to the window (the steward read 2.64 in a window against 2.50 over the run, k = -4,
+        // when edges clipped). A sample in two windows is judged in the first (start, shift, cut, limiter, lift).
+        const auto lch = run.left().during(from, to), rch = run.right().during(from, to);
+        const std::vector<float> lp = stepProfile(lch.samples(), lch.rate());
+        const std::vector<float> rp = stepProfile(rch.samples(), rch.rate());
+        const double rate = lch.rate();
+        const std::vector<Event> evs = events(run, tm, from, to);
+        std::vector<int> owner(lp.size(), -1);
+        for (std::size_t e = 0; e < evs.size(); ++e)
         {
-            const double at = v.stepAt;
+            const auto i0 = static_cast<std::size_t>(std::max(0.0, (evs[e].from - from) * rate));
+            const auto i1 = std::min(lp.size(), static_cast<std::size_t>(std::max(0.0, (evs[e].to - from) * rate)));
+            for (std::size_t k = i0; k < i1; ++k)
+                if (owner[k] < 0)
+                    owner[k] = static_cast<int>(e);
+        }
+        std::vector<std::size_t> worst(evs.size(), 0);
+        std::vector<float> worstR(evs.size(), -1.0f);
+        std::vector<bool> worstLeft(evs.size(), true);
+        for (std::size_t k = 0; k < lp.size(); ++k)
+        {
+            const int e = owner[k];
+            if (e < 0)
+                continue;
+            const bool left = lp[k] >= (k < rp.size() ? rp[k] : 0.0f);
+            const float r = left ? lp[k] : rp[k];
+            if (r > worstR[static_cast<std::size_t>(e)])
+            {
+                worstR[static_cast<std::size_t>(e)] = r;
+                worst[static_cast<std::size_t>(e)] = k;
+                worstLeft[static_cast<std::size_t>(e)] = left;
+            }
+        }
+        for (std::size_t e = 0; e < evs.size(); ++e)
+        {
+            if (worstR[e] < 0.0f)
+                continue;
+            const double at = from + static_cast<double>(worst[e]) / rate;
+            const double step = worstR[e];
+            const double excess = excessAt(run, worstLeft[e], at, from, to, nullptr);
+            const bool byExcess = v.excessBound >= 0.0 && excess >= 0.0;
+            if (!(byExcess ? excess > v.excessBound : step > clickBound))
+                continue;
             // The lead's ruling (23:15, through the steward): an upshift's spark cut under the reference's burn
             // (ecu.model 1, fuel.model 0) is an event of the engine: about 70 ms of near silence and the charge sent
             // to the pipe lights after it (D's measure: 15 to 29 times the local level by the cut's phase; the small
             // four's pull 33.6 after the steward's 0cb535ae). At an upshift's cut (car.flags 32, cut asked) and the
-            // 0.15 s after it (with the gear rising), the bound is that step and a margin, 42, and the failure is "click-shift-cut", which
-            // report() accepts for that combination only (Report.cpp, shiftCutRuled); over 42, or anywhere else, it
-            // is a click.
+            // 0.15 s after it (with the gear rising), the bound is that step and a margin, 42, and the failure is
+            // "click-shift-cut", which report() accepts for that combination only (Report.cpp, shiftCutRuled); over
+            // 42, or anywhere else, it is a click.
             constexpr double kShiftCutBound = 42.0;
             // An upshift's cut: the car asks it (car.flags 32, car.model 1) or the ECU cuts the spark (ecu.flags 4,
-            // with the classic car), in the 0.15 s before the step, while the gear rises from 0.3 s before it to 0.15 s after (so a
-            // limiter's spark cut is not one)
+            // with the classic car), in the 0.15 s before the step, while the gear rises from 0.3 s before it to 0.15 s
+            // after (so a limiter's spark cut is not one)
             bool atShiftCut = false;
             {
                 const double cutFrom = std::max(from, at - 0.15), cutTo = at + 0.005;
@@ -713,22 +879,23 @@ namespace combo
                 atShiftCut = cut && up;
             }
             char both[160];
-            std::snprintf(both, sizeof both, "excess over its firing periods %.2f (bound %.2f%s)", v.stepExcess,
+            std::snprintf(both, sizeof both, "excess over its firing periods %.2f (bound %.2f%s)", excess,
                           v.excessBound, byExcess ? ", which decides" : ", not deciding: no period or no reference's");
-            if (atShiftCut && v.stepMax <= kShiftCutBound)
+            if (atShiftCut && step <= kShiftCutBound)
             {
                 std::snprintf(b, sizeof b,
-                              "largest step %.1f times the local level at %.3f s, at an upshift's cut (the bound there "
-                              "%.0f, the lead's ruling for ecu.model 1 under fuel.model 0; elsewhere %.1f); %s",
-                              v.stepMax, at, kShiftCutBound, clickBound, both);
+                              "%s: largest step %.1f times the local level at %.3f s, at an upshift's cut (the bound "
+                              "there %.0f, the lead's ruling for ecu.model 1 under fuel.model 0; elsewhere %.1f); %s",
+                              evs[e].name.c_str(), step, at, kShiftCutBound, clickBound, both);
                 v.failures.push_back({"click-shift-cut", b});
             }
             else
             {
                 std::snprintf(b, sizeof b,
-                              "largest step %.1f times the local level at %.3f s (bound %.1f; the reference's %.1f%s); %s",
-                              v.stepMax, at, clickBound, refStep, atShiftCut ? "; at an upshift's cut, over 42" : "",
-                              both);
+                              "%s: largest step %.1f times the local level at %.3f s (bound %.1f; the reference's "
+                              "%.1f%s); %s",
+                              evs[e].name.c_str(), step, at, clickBound, refStep,
+                              atShiftCut ? "; at an upshift's cut, over 42" : "", both);
                 v.failures.push_back({"click", b});
             }
         }
