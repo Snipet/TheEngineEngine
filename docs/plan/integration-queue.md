@@ -1866,6 +1866,38 @@ engines only where a source shows such an engine drawn split.
   reference, or the pipe's mean) and to C (the tables' load axis; what in the bake and the predictor assumes
   sea level), each to answer in its own handoff.
 
+## 26 Nov 07:34 UTC: item 15's answers from G and C; why the upshift row is a draw (the steward's read; a probe)
+
+- **Item 15, the exhaust (G, `docs/handoffs/g-exhaust.md`, "The stated air in the exhaust", 2ac9f0f7):** all 24
+  sites classed. A pipe's impedance and density (duct.fm:347-348) TAKE THE OUTSIDE (the waves are linear about
+  it); the pipe's own mean before a turbine, 1.5 to 2 times the outside by G's judgement, is a separate
+  reference fault, in no window. `steep = 0.87/101325` and its numerator stay as the cancelling pair; the
+  denominator at duct.fm:596 takes the outside; its 50000 floor becomes p - 51325 (exact at the default; the
+  field's range starts at 50000). No expression reshaped; the stated float copied, never computed.
+- **Item 15, the tables and the bake (C, `docs/handoffs/c-host-tools.md`):** the knock table is absolute over
+  a literal 101325 on both sides (combustion.fm:352, Bake.cpp:1006) and stays; the CAM map is relative to the
+  outside (ecu1.fm:194, :204 over ecu.fm:317), so the ECU's barometer takes the stated pressure. Nothing in
+  `host/` or `tools/` corrects for density. **Ruled, C's own change in the bake's window:** the bake measures
+  at 288.15 K and 101325 Pa whatever a build states (every shipped build states that air already: all 31 and
+  first.json; today a copy runs at the stated air while env is in no key), env stays out of the keys, no
+  temperature axis (the knock control hears a hot day). Acceptance: every shipped table to the bit, and a
+  made-up build at 322.04 K and 70 kPa bakes its standard-day twin's tables, shown to differ today first.
+- **Item 15, the sound (the integrator; ruled):** nothing in the sound reads the outside's density today.
+  The pressure's share alone, one factor p/101325 on what radiates into the outside (tailpipes, mouth, bay),
+  exactly 1.0 at the default; the temperature's share is its own later item (it moves every build stated off
+  300 K). Prediction: about -3.2 dB at 70 kPa for the default V8 at full load, the pipes taking the outside.
+- **The upshift's row (the steward's read; the lead's mid-cycle guess REFUTED):** each firing is decided once,
+  at its cylinder's intake closing (ecu1.fm fire(c)). On 15 V8 copies the worst step is time-locked 20 ms
+  after the cut's end, inside the 0.1 s reinstatement ramp (launch.fm: half the firings still cut at first),
+  at every crank phase; the under copy's firing is the larger. The judge takes the step over the median of
+  its neighbouring periods and the ramp's train is thinned by design, so the verdict follows which neighbours
+  were cut. **Hypothesis: a judge question, not a fault in the burn.** A probe is allowed (a sim copy through
+  TEE_SIM_DIR with kReinstateShare 0; nothing committed; figures named by tree). Predictions on record: the
+  V8 0 of 15 over at the 6.6 s event, the small four's X-030 at most 2 of 15 at its upshift, the downshift's
+  copies unmoved. If it collapses: X restates the judge on the property (a firing the ECU reports cut is no
+  neighbour for a median) with proof it bites on a real click in a shift's window; `sim/` untouched. If not:
+  X-030 is the burn's on return, the steward's. The downshift (the overrun cut and the blip) is traced next.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
