@@ -2125,6 +2125,39 @@ engines only where a source shows such an engine drawn split.
 - **`main` at 5278e3e9** (11:01, the lead; run 45796819517 green on Linux 584, macOS 583, Windows 576; tests only
   since 3c42b4d2).
 
+## 26 Nov 11:39 UTC: how wide X-051 is (G's two columns); part C lifted in two-tree form; part B's rows; X-050 on the branch
+
+- **X-051, the tip against a tree differing only in the valve solve's passes (30 for 3), X's spread.sh in its
+  two-tree mode, 17 copies; counts over the nightly bounds (own-tree bound in brackets where it differs):**
+  X-049 2 to 0, X-043 tour 11 to 0, X-043 pull 7 to 0: **cured on the stand-in**. X-048 (wallHeat+valve+boost)
+  14 to 8 (3) and X-030 (fuel+ecu+car) 13 to 9, its highest 7.09 to 4.03: **partly**. X-044 11 to 12, X-041's
+  lift 3 to 3 (0), the rally five 5 to 4 over 2.48: **not carried**. X-031 7 to 2 against today's bound, 14
+  against the stand-in's own (its reference's median fell 2.09 to 1.61): bound-dependent. The controls and
+  background rows stay 0 of 17 but their medians move 0.1 to 0.5 either way: every reading, case and
+  reference, sits partly on this solve's noise. G's predictions scored by G: X-043 predicted to stay (cured),
+  X-044 and the rally five predicted to fall (they stay). A stand-in: no verdict until the real solve.
+- **Ruled:** item 17 stands (a start's first firings are heard on every start); G writes its design
+  (`docs/plan/x051-valve-solve.md`) with acceptance in this table's terms, and "what moves that nobody asked
+  to move": every nightly bound recomputed on the new tree, rows entered or released by the spread, never by
+  a draw. Clips for the owner asked of G (a shipped turbo build: a cold start, an upshift, steady running,
+  as shipped against the stand-in) and of the steward (each upshift with both of the window's fixes).
+- **Part C's hold is lifted in one form:** a proposal with measurements, every reading taken on both trees
+  (the tip and G's stand-in), so the restated judge is not fitted to today's unconverged valve.
+- **Part B (X, local until its proof and its final nightly):** per-event windows (the start, each shift, each
+  limiter episode, each cut, each lift, the rest; a worst sample's neighbours never clipped to a window).
+  Ten rows it uncovers, entered by the lead's ruling: X-044 gains the small four's 3-2 downshift rows, the
+  V8 tour's cut at 9.46 s and the turbo six's 3-2 downshift with custom+boost+ecu; one new number at the
+  limiter (the V8's tour, the turbo six's tour: the steward for the rows with ecu.model, G for the rest);
+  a "flip" window for a model switched in mid-run, entered only on its spread. `Known.h` gains an event
+  field, every present row "*"; narrowing any present row is a ruling of its own.
+- **X-050 is on the branch at 389ee865** (U1, carried by J2; 578 of 578): the dead cam dial left out on a Lab
+  piston build with no line; a rotary's named for its ports; the Reference build's lab-off words on the
+  generated page and the head; ENGINE's "no lift figure under the reference model"; the frame's pages follow
+  valve.model at once. The lead rendered all six pictures from the tip: accepted. `main` when its three
+  jobs are green.
+- **CI:** aa8d6c4c's Linux job red on apt's 404 before Build (infrastructure); the steward's bootstrap retry
+  (one more update, one retry, logged) is at 0d040a4b.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 11:01 UTC: `main` IS AT 5278e3e9** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
