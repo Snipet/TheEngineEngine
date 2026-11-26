@@ -888,6 +888,78 @@ namespace
     // Keyboard and screen reader: every control of the frame is named, in every workspace (U1's own pages fail the
     // test; another package's stage is said, its own test's to fail); Tab reaches the rail and the inspector's controls
     // with the focus drawn, and Enter on a rail button shows its workspace.
+    // A game controller's commands (kit/gui/EditCommand.h; the owner's card, 26 Nov), on the headless frame: from a cold
+    // frame the first row command lands on a row (RowsPage::focusFirst), a nudge moves its value and undo and redo are
+    // the buttons'; the workspaces walk in the rail's order and wrap; the pages stop at their ends; back closes the
+    // settings; every command false while a question is open. (A table's page and back from it: build.edit.table, on
+    // the real Spec, whose rows hold tables; the demo's do not.)
+    VIEW_TEST(testFrameEdit, "frame.edit")
+    {
+        using tee::ui::EditCommand;
+        FrameRig rig;
+        AppFrame& f = *rig.frame;
+        rig.showWorkspace("engine");
+        tee::ui::RowsPage* rows = f.inspectorRows();
+        CHECK(rows != nullptr);
+        if (rows == nullptr)
+            return 0;
+        // Cold: nothing focused; the first press lands on a row (focusFirst, then a row down).
+        CHECK(rows->focus() < 0);
+        CHECK(f.edit(EditCommand::rowDown));
+        rig.host->tick(2);
+        CHECK(rows->focus() >= 0);
+        int field = rows->rows().focusedField();
+        for (int k = 0; k < 40 && (field < 0 || rig.demo.doc.info(field).kind != tee::ui::FieldKind::number); ++k)
+        {
+            CHECK(f.edit(EditCommand::rowDown));
+            field = rows->rows().focusedField();
+        }
+        CHECK_MSG(field >= 0, "no number reached by rowDown on ENGINE's first page");
+        if (field >= 0)
+        {
+            // A nudge moves the focused value; the frame's undo and redo are the buttons'.
+            const double was = rig.demo.doc.get(field);
+            CHECK(f.edit(EditCommand::valueUp));
+            rig.host->tick(2);
+            const double up = rig.demo.doc.get(field);
+            CHECK_MSG(up != was, rig.demo.doc.info(field).path + " did not move");
+            CHECK(f.edit(EditCommand::undo) && rig.demo.doc.get(field) == was);
+            CHECK(f.edit(EditCommand::redo) && rig.demo.doc.get(field) == up);
+        }
+        // The workspaces: the rail's order, wrapping at both ends.
+        const int n = f.workspaceCount(), engine = f.shown();
+        CHECK(f.edit(EditCommand::workspaceNext) && f.shown() == (engine + 1) % n);
+        CHECK(f.edit(EditCommand::workspacePrev) && f.shown() == engine);
+        f.show(n - 1);
+        rig.host->tick(2);
+        CHECK(f.edit(EditCommand::workspaceNext) && f.shown() == 0);
+        CHECK(f.edit(EditCommand::workspacePrev) && f.shown() == n - 1);
+        // The pages: back to the first, then false; forward to the last, then false.
+        rig.showWorkspace("engine");
+        const int pages = f.inspectorPageCount();
+        while (f.inspectorPageIndex() > 0)
+            CHECK(f.edit(EditCommand::pagePrev));
+        CHECK(!f.edit(EditCommand::pagePrev));
+        for (int p = 1; p < pages; ++p)
+            CHECK(f.edit(EditCommand::pageNext) && f.inspectorPageIndex() == p);
+        CHECK(!f.edit(EditCommand::pageNext) && f.inspectorPageIndex() == pages - 1);
+        rig.showWorkspace("engine");
+        // The settings: no rows to take a row's command; back closes them.
+        f.showSettings(true);
+        rig.host->tick(2);
+        CHECK(!f.edit(EditCommand::rowDown) && !f.edit(EditCommand::pageNext));
+        CHECK(f.edit(EditCommand::back) && !f.settingsShown());
+        // A question open: every command is false, the walk too.
+        std::future<bool> answer = f.ask("A question", "YES", "NO");
+        rig.host->tick(2);
+        CHECK(f.askOpen());
+        const int at = f.shown();
+        for (int c = 0; c < tee::ui::kEditCommands; ++c)
+            CHECK_MSG(!f.edit(static_cast<EditCommand>(c)), tee::ui::editCommandName(static_cast<EditCommand>(c)));
+        CHECK(f.shown() == at);
+        return 0;
+    }
+
     VIEW_TEST(testFrameKeys, "frame.keys")
     {
         {

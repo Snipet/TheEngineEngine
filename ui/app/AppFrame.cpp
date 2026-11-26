@@ -4,6 +4,7 @@
 #include "app/Look.h"
 #include "app/Placeholders.h"
 #include "kit/inspect/Outline.h"
+#include "kit/widgets/Tables.h"
 
 #include <funkgui/canvas/Canvas.h>
 #include <funkgui/core/Theme.h>
@@ -658,6 +659,7 @@ namespace tee::ui
         const bool changed = i != shown_ || pages_.empty();
         if (i != shown_)
         {
+            tableFrom_ = tableField_ = -1;   // another workspace's pages
             card_->close();
             workspace(shown_).shownChanged(false);
             selection_.clear();
@@ -866,7 +868,12 @@ namespace tee::ui
             const std::vector<int> fs = fieldsOf(outlineOf(*page.panel, doc_));
             if (std::find(fs.begin(), fs.end(), t.fields.front()) != fs.end())
             {
+                const int from = page_;
                 showInspectorPage(p);
+                tableFrom_ = from;
+                tableField_ = t.fields.front();
+                if (auto* table = dynamic_cast<MapEdit*>(tableItem()))
+                    table->focusFirstCell();   // a controller's first press lands on a cell
                 return;
             }
         }
@@ -1692,6 +1699,109 @@ namespace tee::ui
             return true;
         }
         return Board::key(e);
+    }
+
+    Item* AppFrame::tableItem() const
+    {
+        if (inspectorRows() != nullptr || page_ < 0 || page_ >= inspectorPageCount())
+            return nullptr;
+        const FieldPage* page = pages_[static_cast<std::size_t>(page_)].panel.get();
+        if (page == nullptr)
+            return nullptr;
+        for (const std::unique_ptr<Item>& it : page->items())
+            if (it->shown() && dynamic_cast<MapEdit*>(it.get()) != nullptr)
+                return it.get();
+        return nullptr;
+    }
+
+    bool AppFrame::edit(EditCommand c, bool fine)
+    {
+        if (askOpen() || keyDialogOpen())
+            return false;
+        dirty_ = true;
+        // The item in focus first: the frame's own (a button: none takes one today), then the inspector's.
+        if (focus() >= 0 && item(focus()).edit(c, fine))
+            return true;
+        if (!unitsPage_ && !chatOpen_)
+        {
+            if (RowsPage* rows = inspectorRows())
+            {
+                if (rows->focus() < 0)
+                    rows->focusFirst();   // the first press lands on a row
+                if (rows->edit(c, fine))
+                    return true;
+            }
+            else if (Item* table = tableItem(); table != nullptr && table->edit(c, fine))
+                return true;
+        }
+        switch (c)
+        {
+            case EditCommand::workspacePrev:
+            case EditCommand::workspaceNext:
+            {
+                const int n = workspaceCount();
+                if (n <= 1)
+                    return false;
+                show((shown_ + (c == EditCommand::workspaceNext ? 1 : n - 1)) % n);   // the rail's order, wrapping
+                if (RowsPage* rows = inspectorRows())
+                    rows->focusFirst();
+                return true;
+            }
+            case EditCommand::pagePrev:
+            case EditCommand::pageNext:
+            {
+                if (unitsPage_ || chatOpen_)
+                    return false;
+                const int to = page_ + (c == EditCommand::pageNext ? 1 : -1);
+                if (to < 0 || to >= inspectorPageCount())
+                    return false;   // the ends: stopping, as the tabs do
+                showInspectorPage(to);
+                if (RowsPage* rows = inspectorRows())
+                    rows->focusFirst();
+                else if (auto* table = dynamic_cast<MapEdit*>(tableItem()))
+                    table->focusFirstCell();
+                return true;
+            }
+            case EditCommand::undo:
+                if (!services_.undo)
+                    return false;
+                services_.undo();
+                return true;
+            case EditCommand::redo:
+                if (!services_.redo)
+                    return false;
+                services_.redo();
+                return true;
+            case EditCommand::back:
+                if (card_->isOpen())
+                {
+                    card_->close();
+                    return true;
+                }
+                if (chatOpen_)
+                {
+                    openChat(false);
+                    return true;
+                }
+                if (unitsPage_)
+                {
+                    showUnits(false);
+                    return true;
+                }
+                if (inspectorRows() == nullptr && tableFrom_ >= 0 && tableFrom_ < inspectorPageCount()
+                    && pages_[static_cast<std::size_t>(tableFrom_)].rows)
+                {
+                    // a table's page: back to the rows it was opened from, its row in focus
+                    const int field = tableField_;
+                    showInspectorPage(tableFrom_);
+                    tableFrom_ = tableField_ = -1;
+                    if (RowsPage* rows = inspectorRows(); rows != nullptr && !rows->focusTable(field))
+                        rows->focusFirst();
+                    return true;
+                }
+                return false;
+            default: return false;
+        }
     }
 
     std::vector<int> AppFrame::fieldsShown()
