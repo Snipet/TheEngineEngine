@@ -1316,6 +1316,32 @@ Logitech G HUB); nothing is driven from an unprobed axis. Open with the owner: w
 Windows for the clutch, the shifter, the range and the spring (Windows pads every output report to 17 bytes and
 the wheel takes 7: without Logitech's driver nothing can be sent to it there).
 
+## 26 Nov: the fast tier over its cap (the steward; the lead's ruling, 23:56)
+
+CI's Linux log at 4354e4cc (job 139579878691, the reference runner, a Xeon 6975P-C, scale 1.0; scripts/test-budget.sh
+on it): the whole fast tier **2492 test-s against 2400**. Shell 68 of 80 (B's chain test in): under, nothing moves.
+Over their share, largest overrun first, with each package's heaviest entries:
+
+| package | test-s | budget | owner | heaviest entries (s) |
+|---|---|---|---|---|
+| diesel | 217 | 135 | D2 | governor-injection 75.9, brakes 48.1, turbo 34.0, truck 33.2 |
+| host | 140 | 70 | C | host.sim.cases 133.9 |
+| listen | 143 | 80 | L | the auto level near and far 18.5, the voices through Places quick 18.2, the level at the defaults quick 13.8 |
+| calibration | 143 | 80 | N2 (boost) | the VGT one state short form 27.6, the matched wastegate 19.0, the stated join speed 17.7 |
+| calibration-na | 115 | 80 | N1 | X-022/024/026 together 27.1, the warm start on p-idle-warm 21.0, the start on the dyno 18.1 |
+| combo | 202 | 165 | X | combo.fast-3 78.7, fast-2 63.1, fast-1 59.9 |
+| core | 120 | 80 | the integrator | core: the engine's cases, one process 114.7 |
+| vehicle, ui, ref, sim, boost | 107, 102, 101, 93, 84 | 100, 80, 100, 80, 80 | I, U, K, the integrator, N2 | (small overruns: after the above) |
+
+null is at 373 of its 580; its unused share is what lets the tier pass today.
+
+**The rule (the lead's):** a tests-only item, behind each owner's window work. First group cases onto a kept player
+or one built engine (the setup is usually the cost, not the property). Move a case to `[nightly]` only where a
+remaining default-run case still guards the same property, and name that case. Never drop one. Report the package's
+test-s before and after on the steward's measure (CI's Linux log through scripts/test-budget.sh). No share moves until
+the owners have reported what grouping alone recovers. D2 is woken for diesel's only after the window's sim work is
+in, unless its 217 keeps growing.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).

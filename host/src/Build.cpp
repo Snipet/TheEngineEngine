@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -275,6 +276,24 @@ namespace tee
         v[index] = value;
         change(i, std::move(v));
         return true;
+    }
+
+    bool Build::accepts(std::string_view path, double value, std::string* why) const
+    {
+        const int i = fieldOf(path);
+        if (i < 0)
+            return false;
+        const FieldInfo& f = fields_->all()[static_cast<std::size_t>(i)];
+        if (!underStatedLeast(f.path, value))
+            return true;
+        if (why != nullptr)
+        {
+            char line[160];
+            std::snprintf(line, sizeof line, "under the least stated bore, %.0f mm (0: derived)",
+                          1000.0 * statedLeast(f.path));
+            *why = line;
+        }
+        return false;
     }
 
     bool Build::setChoice(std::string_view path, std::string_view choice)
@@ -756,12 +775,25 @@ namespace tee
                     v = defaultsOf(f);
                 }
                 else if (!f.table())
+                {
                     for (const double x : v)
                         if (f.clamp(x) != x)
                         {
                             outOfRange.push_back(f.path);
                             break;
                         }
+                    for (const double x : v)
+                        if (underStatedLeast(f.path, x))
+                        {
+                            char line[200];
+                            std::snprintf(line, sizeof line,
+                                          ": %.4g m is under the least stated bore, %.3g m: refused, derived (0)", x,
+                                          statedLeast(f.path));
+                            warnings.push_back(f.path + line);
+                            v = defaultsOf(f);
+                            break;
+                        }
+                }
             }
             change(static_cast<int>(i), std::move(v));
         }

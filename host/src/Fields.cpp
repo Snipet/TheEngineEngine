@@ -491,6 +491,35 @@ namespace tee
         return out;
     }
 
+    namespace
+    {
+        struct Least
+        {
+            const char* path;
+            double least;   // the field's unit (m)
+        };
+        // G's X-038 (docs/models/exhaust.md, "Stated bores") and N1's X-040 (sim/intake/intake.fm, kRunnerBoreFloor)
+        constexpr Least kStatedLeast[] = {
+            {"spec.exhaust.primD", 0.010},  {"spec.exhaust.colD", 0.010},   {"spec.exhaust.mainD", 0.010},
+            {"spec.exhaust.crossD", 0.010}, {"spec.exhaust.resD", 0.010},   {"spec.exhaust.bypassD", 0.010},
+            {"spec.exhaust.tailD", 0.010},  {"spec.intake.runnerBore", 0.008}, {"spec.intake.snorkelBore", 0.010},
+        };
+    } // namespace
+
+    double statedLeast(std::string_view path) noexcept
+    {
+        for (const Least& l : kStatedLeast)
+            if (path == l.path)
+                return l.least;
+        return 0.0;
+    }
+
+    bool underStatedLeast(std::string_view path, double value) noexcept
+    {
+        const double least = statedLeast(path);
+        return least > 0.0 && value > 0.0 && value < least;
+    }
+
     std::vector<std::string> lint(const Fields& fields)
     {
         std::vector<std::string> problems;
@@ -563,6 +592,15 @@ namespace tee
             if (f.taper == "log" && f.hasRange() && !(*f.minimum > 0))
                 say(f, "a log taper wants a range above 0");
         }
+        // a stated least is for a field where 0 means derived, and lies within its range
+        for (const Least& l : kStatedLeast)
+            if (const FieldInfo* f = fields.find(l.path); f != nullptr)
+            {
+                if (!f->minimum || *f->minimum != 0.0)
+                    say(*f, "has a stated least (Fields.cpp) but its range does not start at 0 (0: derived)");
+                else if (f->maximum && *f->maximum <= l.least)
+                    say(*f, "its stated least is not under its range's top");
+            }
         return problems;
     }
 

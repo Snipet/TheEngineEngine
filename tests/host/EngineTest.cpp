@@ -582,6 +582,47 @@ TEST_CASE("a part with hysteresis: the predicted points read the state an upward
     CHECK(curve.points[2].fields[0] == 1.0);
 }
 
+// The stepped dyno, where a part with hysteresis is (tel.engine.hysteresis): each held step reached as an upward sweep
+// reaches it, as the predictor's points are. Card N1's case: the two-stage held at 597 rad/s (in the band under its up
+// switch, 612.6) read stage B, 191.6 N m from the default `from` (the absorber's overshoot of the jump carried it over
+// the switch), 184.7 when started at 590. Now stage A both from below and after a step over the switch
+TEST_CASE("the stepped dyno reads a step in a hysteresis band as an upward sweep reaches it", "[engine][sim][dyno]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    if (sim->fields().find("tel.engine.hysteresis") == nullptr)
+        SKIP("the program does not say yet when a part has hysteresis");
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/two-stage-cam-20.json",
+                           BuildPart::Whole, warnings, error));
+    const double up = build.get("valve.stageSpeed");
+    const double inBand = up - 0.5 * build.get("valve.stageHyst");   // 597 rad/s
+    DynoPlan plan;
+    plan.fields = {"valve.stage"};
+    plan.steps = {inBand};   // from the default `from` (150): the jump whose overshoot crossed the switch
+    DynoCurve fromBelow;
+    REQUIRE(runDyno(sim, build, plan, fromBelow, error));
+    INFO(error);
+    REQUIRE(fromBelow.points.size() == 1);
+    CAPTURE(fromBelow.points[0].torque);
+    CHECK(fromBelow.points[0].fields[0] == 0.0);
+
+    plan.upward = false;     // over the switch first, then the band: the stage left latched by the step above
+    plan.steps = {up + 40.0, inBand};
+    DynoCurve fromAbove;
+    REQUIRE(runDyno(sim, build, plan, fromAbove, error));
+    REQUIRE(fromAbove.points.size() == 2);
+    CHECK(fromAbove.points[0].fields[0] == 1.0);   // over the switch: B
+    CHECK(fromAbove.points[1].fields[0] == 0.0);   // the band, let down and brought up: A
+    CAPTURE(fromAbove.points[1].torque);
+    // the same quantity both ways (the step's own scatter: some 1 %)
+    CHECK(std::fabs(fromAbove.points[1].torque - fromBelow.points[0].torque) <= 0.02 * fromBelow.points[0].torque);
+}
+
 TEST_CASE("the knock limit's key moves with what moves the knock limit, and not with the air or the person's timing",
           "[engine][sim][bake]")
 {
