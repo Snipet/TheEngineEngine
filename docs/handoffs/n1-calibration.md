@@ -104,3 +104,37 @@ snorkel 10 mm, G's design): the finding runs finite.
 
 **H9 and the bangs' default:** H9 runs `Sim("v8")` under exhaust.model 0, where the pipe is cleared; bang 0 and 1 read
 the same. Under exhaust.model 1 its fuelled-overrun part would rest on one 0.04 mg burn (not its configuration).
+
+## 26 Nov: the cam dial under the Lab (X-048 and X-049's read; the lead's ruling, 10:08)
+
+**What an owner meets** (read at e4c668d3): all 32 shipped builds (31 archetypes and first.json) run `valve.model` Lab
+with stated lab cams and `ecu.model` Maps with `ecu.idle.speed` stated; 30 leave `valve.cam` at 0.35 and the two rotaries
+state it. Under the Lab, `spec.valve.cam` reaches three places: the valvetrain, whose events `place()` overwrites from the
+lab's tables on a piston engine (a rotary keeps the dial's ports: the lab is not built for one); the idle target of
+`ecu.model` 0 (ecu.fm:154, engine.fm:439: + 350 (cam - 0.35) / 0.65 rpm); Ecu1's idle, only when no idle speed is stated
+on a petrol build (ecu1.fm:165). So on the 30 piston builds the dial does nothing. The fault (a dial that promises and
+does nothing) is the interface's, cured by U1 in `ui/`. The corpus's valve rows on a dial-only combo build compare the
+lab's default cam (231 deg at the seat, centres 110) with the dial's, not one model with the other; X measures the turbo
+six with lab cams equal to its dial (300 / 281 / 106, the law at valvetrain.fm:116-122) before (a) against (c).
+
+**A design sketch, not in a window (a feature for the owner to want): a one-dial cam for a Lab build.**
+- `valve.camFrom` (int, 0 or 1, default 0; group Model; label "Cams from"; choices "The cam fields", "The cam dial"):
+  stated by the builder, never inferred. A hidden "the build states no lab cam" rule cannot work: the Spec keeps no
+  record of what a file stated, so a build that states the defaults on purpose would read as one that states nothing.
+- 1, on a piston engine: stage A's two cams are requested from the dial's law, as the reference makes its events: both
+  seat durations 224 + 76c, both centres 112 - 6c (`lsa`), so the seat events are the reference's to the degree; the
+  1 mm durations the seat less the lab's own default step (19 deg in all: 231 -> 212, judgement); lifts, fatness, the
+  head and every switch as their fields say. Glided as the dial is (`smCam`), requested through `cam[].request` as an
+  edit is, so a turn of the dial rebuilds the tables one a tick with each valve shut (no click, as now).
+- 0 (every shipped build and the null): untouched, bit for bit; a rotary ignores the flag (its dial already acts).
+- Acceptance, when it is wanted: the null and the 32 to the bit at 0; at 1, the events read back (`valve.evo`, the seat
+  event) equal the reference's at c = 0, 0.35, 0.9999 within a degree; X's valve rows on the turbo six at 1 against
+  its stated-equal copy.
+
+**A small item of mine for a window, a design line first: what the idle follows on a Lab piston build** with
+`ecu.model` 0, or with no idle speed stated: today the dial raises the idle target by up to 350 rpm for an overlap the
+lab's cams do not have. No shipped build is in that state (all 32 state an idle speed under Maps). Two choices: the
+lab's own overlap (`overlap1mm`, which the lab already computes), through the same law re-expressed in overlap; or
+nothing (the cam term held at 0.35 under the Lab, the idle the build's own). I'd take nothing: the overlap-to-idle law
+would be a new judgement with no source behind it, a builder who wants a lumpy cam's idle states its speed (as all 32
+do), and under `camFrom` 1 the dial would act again, through the events, where the dilution is the model's own.
