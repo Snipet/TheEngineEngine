@@ -4,13 +4,26 @@
 #include "tee/Fields.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace tee::ui
 {
     // ---- the dyno ---------------------------------------------------------------------------------------------------
+    namespace
+    {
+        // The predicted curve reads the runs' telemetry too (the lead, 26 Nov: the boost at a point beside its marks),
+        // each at the point's end (PredictPoint::fields): boost.pressure and engine.manifold, which every build has.
+        tee::PredictOptions withFields(tee::PredictOptions o)
+        {
+            if (o.fields.empty())
+                o.fields = { "boost.pressure", "engine.manifold" };
+            return o;
+        }
+    }
+
     ServiceDyno::ServiceDyno(std::shared_ptr<tee::Sim> sim, const tee::Build& build, tee::DynoPlan plan,
                              tee::PredictOptions predict)
-        : build_(build), plan_(std::move(plan)), sim_(sim), predict_(std::move(sim), std::move(predict))
+        : build_(build), plan_(std::move(plan)), sim_(sim), predict_(std::move(sim), withFields(std::move(predict)))
     {
         if (plan_.fields.empty())
             plan_.fields = { "boost.pressure", "engine.manifold" };
@@ -37,10 +50,12 @@ namespace tee::ui
         return t;
     }
 
-    DynoTrace ServiceDyno::traceOf(const tee::PredictCurve& c, std::string name)
+    DynoTrace ServiceDyno::traceOf(const tee::PredictCurve& c, std::string name, const std::vector<std::string>& fields)
     {
         DynoTrace t;
         t.name = std::move(name);
+        t.fields = fields;
+        t.values.assign(fields.size(), {});
         for (const tee::PredictPoint& p : c.points)
         {
             t.speed.push_back(p.speed);
@@ -52,6 +67,11 @@ namespace tee::ui
             t.settledCycles.push_back(p.settledCycles);
             t.retardMin.push_back(p.retardMin);
             t.retardMax.push_back(p.retardMax);
+            for (std::size_t f = 0; f < t.values.size(); ++f)
+                t.values[f].push_back(f < p.fields.size() ? p.fields[f] : std::nan(""));
+            t.pointFlags.push_back(static_cast<char>((!p.settled ? DynoTrace::kNotSettled : 0)
+                                                     | (p.approachForced ? DynoTrace::kForced : 0)
+                                                     | (p.boostHunting ? DynoTrace::kBoostRipple : 0)));
         }
         return t;
     }
@@ -91,7 +111,7 @@ namespace tee::ui
                 }
                 refinedFor_ = request_;
             }
-            predicted_ = traceOf(curve, "predicted");
+            predicted_ = traceOf(curve, "predicted", predict_.options().fields);
             refined_ = curve.refined;
             if (refined_)
                 lastRefined_ = predicted_;

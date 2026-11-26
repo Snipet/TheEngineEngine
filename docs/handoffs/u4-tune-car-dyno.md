@@ -38,3 +38,15 @@ Still wanted: card C's DynoPlan a gear; the host adapter's `runSoFar()`. H/I: th
 (app/Offline.cpp serves it); DYNO names curves and runs by fuel. Octane as a number (`fuel.octane`): `tune.octane`. Tests `tune.fuel`, `dyno.fuel`, `build.tune.fuel`.
 **Not done**: GPU path under Xvfb not run;
 macOS/Windows only by CI. Others' failures seen: `ui.frame.workspaces`, `ui.build.frame` (scope.gui notes), `ui.exhaust.*` once.
+
+**Added by U1 for U4, 26 Nov 2026** (on the lead's word; U4's session idle since 25 Nov): DYNO marks the points the
+program itself distrusts (card C's ask: first.json's 1733 rpm point read 293 N m against a steady 272, not settled,
+drawn as an ordinary point). `DynoTrace::pointFlags` (ui/app, U1's) keeps card C's reasons apart: not settled, forced,
+spooling (a stepped run's, once C's has it) are distrusted (`distrustAt`, `distrustText`); a boost ripple on a settled
+point (`boostHunting`) is known to its standard error and only said (`rippleText`), the lead's ruling on C's numbers. In
+`DynoWorkspace.cpp`: a hollow dashed ring (`kUnsteadyR` 7.5 px, the text colour) round a distrusted point on the torque
+curve, wider than the knock's solid amber ring so both read on one point and the line runs on through; NOT SETTLED in
+the legend; the cursor's card says the doubt in full (wrapped, never cut) and a ripple in the label colour without a
+mark. The demo: its 6500 rpm unsettled point distrusted; from 185 kPa its 2000 rpm one rippling. Probes: `dynoWordsAt`,
+`dynoUnsteadyDrawn`, `dynoPlotX` (Dyno.h). Tests: `dyno.unsteady`; `build.dyno.unsteady`; the picture
+`build.dyno.unsteady.pictures` (nightly: first.json's real prediction, out/ui/dyno/). No golden moved.

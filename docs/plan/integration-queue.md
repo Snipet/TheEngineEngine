@@ -1619,6 +1619,47 @@ does, or says which state it did not read.
   dip, warm). From now on, an idle change of mine is read on p-idle-warm and the cold start for every archetype
   before it is proposed, and its note names the states it read.
 
+**The idle's design, measured (the steward, 26 Nov 04:40 to 05:40; no code: `main`'s idle stands).** The window's
+item 2. The acceptance, from the lead's rulings of 04:38 and 05:00, in order: the 31 shipped archetypes on P's gate
+(tee::checkIdle: p-idle-warm 8 to 14 s, p-cold-start 8 to 11.5 s); each archetype's LOWEST speed 2 to 8 s on
+p-idle-warm, none lower than `main`'s without a stated reason (the dips: nothing guarded them; N1 asked for a test of
+its own); then the fixture turbo six (cam 0.9999, nothing ships it) on the tour, sd 2.5 to 5 s.
+
+The three measurements the design answers:
+- **The rate's look-ahead damps the warm idle's own valve loop** (the 3.0 twin turbo: 650 sd 5.4 with it, 53.9
+  without, a period near 1.6 s; the flat six, big-bore V8 and V12 warm 5.4, 3.5, 3.2 to 9.2, 7.4, 6.3 without).
+- **It catches the start's fall.** Through the post-start phase (3 s) the valve runs at twice the gain near the
+  target, the loop idle.fm's own note calls marginal; on `main` the 7.4 V8 hunts there 530 to 730 rpm (a period near
+  0.6 s), and the look-ahead is what holds its lowest speed at 545 (650 asked).
+- **The fixture's lope is seeded at the catch** by the look-ahead reading the flare's thousands of rpm/s (the valve
+  0.01 to 0.77, the plenum 55 to 98 kPa): a 0.4 s limit cycle that then sustains itself. Not the limiter: on the
+  rally five the valve is pinned at the dashpot's 0.350 through the limiter on both trees; its row moved because the
+  runs part at the crank (the lead's correction of record).
+
+The forms, the fixture's three sets (ecu / exhaust+fuel+ecu / intake+ecu; `main` 287 / 291 / 379) and the worst dips
+against `main` across all 31:
+
+| form | fixture | P's gate (31) | dips, worst against `main` |
+|---|---|---|---|
+| 98d0dc4d (no look-ahead) | 19 / 22 / 227 | the twin six fails warm, 49.0 | not read (the gate decided) |
+| look-ahead filtered 0.15 s / two poles / clamped 100 rpm | 61-349 / 44-349 / 40-242 | not read | not read |
+| look-ahead held off for the post-start phase | 19 / 29 / 233 | all pass | the 7.4 V8 545 to 457 (of 7 read) |
+| the same, opening only | 285 / 298 / 384 | not read | as `main` (of 7 read) |
+| the post-start gain not doubled | 238 / 274 / 338 | not read | as `main` or better (of 7 read) |
+| held off and not doubled ("both") | 20 / 23 / 43 | all pass, within 0.5 rpm sd | four-cam V8 681 to 536, supercharged V8 639 to 544, twin-turbo pickup 622 to 537, NA V6 670 to 594, twin six 639 to 564, 3.8 V6 619 to 554 |
+| opening only, not doubled | 206 / 268 / 320 | not read | supercharged V8 -45, four-cam V8 -34, pickup -26 |
+
+**What it shows.** Every form that cures the fixture takes the look-ahead off the shipped builds' fall, and the dips
+row reads it; the forms that keep the dips leave the fixture hunting. The fixture's catch and the shipped builds' catch
+want the same signal in opposite ways through the same window. By the lead's order (the 31 first), **`main`'s idle
+stays and the fixture's hunt stays known** (X-032's kind; X-031 and X-041's two rows with it, X's at fb32d4fc). "Both"
+was tier-green (581) and gate-green; it failed only the dips row, which a sample of 7 builds had passed: the dips row
+is read on all 31 or it is not read.
+
+Open, not this window's: the doubled post-start gain is marginal on `main` itself (the 7.4 V8's 0.6 s swing; the
+look-ahead hides it); the dashpot holds the idle valve at 0.35 at full throttle and on boost (ecu.fm:230's form in
+idle.fm), which no measurement here judged.
+
 ## 26 Nov 04:36 UTC: `main` AT d586682c; the next window and who can open it
 
 `main` was fast-forwarded b557c4a1..d586682c at 04:36:15 UTC by the lead, after its own checks: remote `main`
@@ -1644,8 +1685,76 @@ it (four sessions sent one alongside a push that had not finished; one of those 
 **X on the reverted tree** (fb32d4fc, Known.h): X-031 back (the V8's downshift, 4.73 against 4.03); X-044 as
 before the cure; two X-041 rows: the fixture turbo six's tour lift (3.23 against 2.97) and the shipped rally
 five's tour on its limiter (3.08 against 3.00; 3.92 on the old `main`, so the bake improves it); with the idle
-cure both read under their bounds, because the idle valve's rate term acts on a limiter's bounce at full
-throttle: the third measurement for the idle's design.
+cure both read under their bounds. **Corrected 04:39 (the steward's read, 10 ms steps, both trees):** that is
+NOT the rate term acting on the limiter's bounce, as the lead and the steward's first reading of the formula
+had it: on the rally five's limiter the idle valve is pinned at 0.350, the dashpot's ceiling, in both runs.
+The two runs part at the crank (0.30 s: valve 0.494 against 0.606, the rate term on the cranking speed's
+climb), and by 6.48 s the spool and the bangs' phase differ: the whole trajectory moved, and a row at 3.08
+against 3.00 reads chaotic. The design's third measurement is therefore the rate term during the crank and
+the start's flare. Open with the steward: whether the dashpot holding the valve at 0.35 at full throttle on
+boost is right, and how close the rally row sits to its bound on other trees.
+
+## 26 Nov 04:49 UTC: after `main` d586682c: first.json's boost threshold, read four ways; corrections of record
+
+Measurement and design only since `main` moved; nothing under `sim/`, `host/` or `tools/` is pushed until a bake
+can follow (P's push is refused; with the owner).
+
+**first.json between 1500 and 1800 rpm is a boost threshold, and three earlier statements about it are
+corrected.**
+- N1, held points on `main`'s sim (stepped, --settle 40): 1503 rpm 225 N m with the gate shut and boost 19.5 kPa
+  against a 120 target; 1655 rpm 250 N m at 30 kPa; 1796 rpm 384 N m at 120 kPa. Steady (20 s and 40 s holds
+  agree): a match, not a lag. Breathing per kPa of manifold is the same at 1500 as at 1800: not the cam.
+- G, 1733 rpm, 60 s holds: on `main` 272 N m at 42 kPa approached from below and from above alike (not
+  bistable by these approaches); 256 at 35 kPa on a 90 s hold with no settle; the predictor reads 293 at 51.
+  With the running path mass-weighted (item 6, scratch): 383 at 120 kPa every way. The weighting moves the
+  threshold across 1733; it is not shown more right on a turbine whose size is a guess.
+- **Corrected (G):** the record under 9e52a186 that the stepped dyno "held 20 s reads 383.4" at 1733 as the
+  truth the old settle missed was not independent: that settle weighed by mass at the step and moved the
+  threshold itself. The hole P read at 1800 rpm on Table P (270) was the old settle's; the 1733 point was not.
+- **Corrected (N2):** the boost falling to 85 kPa at 6000 rpm is not the shaft's ceiling (omegaMax is 560 m/s
+  over the tip radius, a judgement, and the shaft ran far under it) but the build's 60 kPa gate spring against a
+  120 target: with a 120 kPa spring, on target and 327 N m (+13 %). Content, with its source to find.
+- **Corrected (N2, by N1's check):** "a smaller turbine costs torque everywhere" priced the cam with the
+  turbine. At 3000 rpm and equal boost the mean back pressure moves 4 %; the loss is the exhaust pushing back in
+  the overlap under a cam map baked for the larger turbine: holding the intake phase at 20 deg recovers about
+  60 % (designShare 0.6: -18.8 % becomes -7.2 %). A turbine cannot be priced without re-baking spark and cam
+  for it: item 9 opens with C's bake stage (match, spark, cam, spark), not with a published map.
+- For C, agreed for when `host/` may be pushed: on a build with a turbine a held step is measured only when the
+  shaft's drift over the last second is under 0.5 %, capped at 40 s, a capped step marked unsettled. And the
+  long-hold case does not look inside a threshold. **Corrected by C's 5-minute holds (05:19):** the steady
+  state at 1733 rpm on `main` is 272 N m at 41 kPa: a pure ramp with no settle anywhere reaches it from above
+  within 20 s and from below only after about 4 minutes (253 at 95 s, 262.5 at 155 s, 268.4 at 215 s, 271.2
+  from 4 min); the stepped dyno with its settle, C's rounds and both long holds agree within 0.6 %. So the
+  settle does not bias this point, and G's 256 on a 90 s no-settle hold was a climb not yet finished, not a
+  truth the settle missed (the lead's "14 % over" was against that unfinished hold). What stands apart is
+  the predictor's 293, 8 % over: C's to explain.
+
+**Corrected (the steward), already in the section above:** the idle's rate term does not act on the rally
+five's limiter; the runs part at the crank.
+
+**The idle's design is measured (the steward; no code pushed).** The fixture's lope is a 0.4 s limit cycle
+seeded at the catch by the proportional part reading the flare's rate; held off through the post-start window
+(the one the integrator hold already uses: no new number) it never starts, and the rate switching on after it
+does not restart it. A filtered rate and a clamped rate both fail the fixture. On the gate's own measure, warm
+and cold, all 31 archetypes pass within about 1 rpm sd of `main` (the 3.0 twin turbo warm 5.5; 49.0 with
+98d0dc4d); the fixture 287 to 19 rpm sd under ecu.model. To code locally, with: what happens at the instant
+the rate switches on (the fixture and two shipped builds, 10 ms steps); the same constant as the integrator
+hold's, by one name; X-031 (4.02 against 4.03) not rested on; the diesel's rows to the digit; alone and first
+when a bake can follow.
+
+**The guarantee for "no wheel without a path" is designed and ruled (N2; local, its push refused):** the
+builder's one call saying which housings a collector reaches; a turbine without a fed housing draws from its
+bank's fed sibling's (twin and quad only); the shared housing's volume the two summed; each nozzle by its own
+orifice law from the one gas, as the twin scroll's are; no new number. The split by firing order on table
+engines only where a source shows such an engine drawn split.
+
+## 26 Nov: CI's record (the steward)
+
+- **ba364841, macOS, run 45762948828 (job 139717022365): infrastructure, not a red on N1's dips guard.** "Upload the
+  application" failed on the artifact service ("Failed to CreateArtifact: Unable to make request: ETIMEDOUT"); Build
+  and Test were not reached, so no test ran. Not re-run (the lead: the next push's macOS job covers the same code).
+  Note for a second time: in build.yml the application's upload (line 511) comes before Build (617) and Test (646),
+  so an upload's failure stops the tests; if it recurs, the order (or `continue-on-error` on the uploads) is the look.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
@@ -1662,7 +1771,7 @@ throttle: the third measurement for the idle's design.
      every boosted archetype); (i) the split only where a source shows such an engine drawn split. BOTH OWNERS'
      PUSHES ARE REFUSED: the item waits on the owner.
   2. the steward: the idle's real cure, a design first (the fixture's lope; the 3.0 twin turbo's warm idle; the
-     rate term acting on a limiter's bounce at full throttle). Acceptance: the gate's own measure, WARM and
+     rate term during the crank and the start's flare, which moves everything after it). Acceptance: the gate's own measure, WARM and
      cold, on all 31 archetypes and the fixture, before any tier.
   3. N2: the gate loop's limit cycle; X-041's pull row (the blow-off on a lift).
   4. N2: the sequential rotary's pair after its join (#17).
@@ -1670,6 +1779,48 @@ throttle: the third measurement for the idle's design.
   6. G: the running path's port heat mass-weighted, a prediction across the builds first.
   7. the integrator: X-045 (the cure local); the dyno loop's overshoot; a custom engine's friction.
   8. the steward: the fuel's re-entry after an overrun cut, sources first, clips for the owner; X-036's cause.
+  9. N2 (with item 5): first.json's boost threshold. N1's held points (--settle 40): 1503 rpm 225 N m with the
+     gate shut and boost 19.5 kPa against a 120 target; 1655 rpm 250 N m, 30 kPa; 1796 rpm 384 N m, 120 kPa. A
+     steady-state match, not a lag; breathing per kPa of manifold the same at 1500 as at 1800. The cited engine
+     makes its plateau from 1500: the build's turbine (about 50 mm, A/Rs for which no source was found) is the
+     suspect. No number from N1. For C: the stepped dyno's default settle reads this turbo at 27 kPa where 20 s
+     reaches 120.
+ 10. the steward, a design first: a torque ceiling that acts on a petrol build. `ecu.torqueMax` and `powerMax`
+     are read only by the diesel's electronic governor (sim/combustion/heavy.fm:221); nothing in sim/ecu reads
+     them, and the petrol path carries no torque at all (N1's read). Shape proposed by N1: the brake torque
+     over 0.1 s into the ECU; the same integral against min(torqueMax, powerMax/omega) lowering the BOOST
+     TARGET first, the plate only at zero boost, never raising either, the spark left alone; 0 keeps the null.
+     With it the cited plateau (350 N m from 1500 to 4400) is a ceiling first.json may state, and P counts the
+     rows it holds as held by a stated limit, not as predictions. WITHOUT it nobody shapes the boost map by
+     speed to reach 350: that would build the row from its own target.
+ 11. N2, a design first (its own number in its list): the variable vanes on the spring law past the gain's
+     reversal. The nightly case "variable vanes past the surge line open" (GateTest.cpp:197-198) has been red
+     for two soaks (223f4301: 163.1 kPa; d586682c: 165.4) and is RIGHT: the 15 L truck at 1300 rpm, full load,
+     no target: vanes 0.52, 165 kPa and 2551 N m, where a fixed nozzle makes 208 kPa and 2708; only the
+     back-pressure limit (1.4) stops the vanes shutting. The guard against the reversal acts on the target
+     loop only. Its two "no worse than a fixed nozzle" checks are to be MARKED on the finding (printing their
+     figures every run), the one-state check live; no restatement. Open: whether any shipped build runs vanes
+     on the spring law (the diesels' low-end rows may be this); which commit made it (between the last green
+     soak and 223f4301).
+ 12. C (`host/`): on a build with a turbine a held step is measured only when the shaft's drift over the last
+     second is under 0.5 %, capped at 40 s, a capped step marked unsettled; a build without one bit-identical.
+     Local on C's side branch (99d51cc4): the step held in ROUNDS (the shaft settled, the heat settled again,
+     until a settle moves the shaft's 2 s mean under 3 %; the shaft alone read 320 at 1796 rpm): 383.4 N m
+     after 27 s at 1796 (N1's long hold 384.2; the default 239), 225.9 at 1503; five CSVs without a turbine
+     byte-identical; both cases fail with the rule off. And the long-hold case to read one point inside a
+     threshold: first.json at 1733 rpm, steady state 272 N m (5-minute holds from both sides), where the
+     predictor reads 293: C to explain the predictor's 8 %.
+ 13. CLOSED for this window (the steward, 05:17; its notes at cbbf48e7): `main`'s idle stands and the fixture
+     stays known. Read on all 31, every form that cures the fixture (the look-ahead held off through the
+     post-start phase, with or without the doubled gain) deepens the shipped builds' fall after the flare
+     (four-cam V8 681 to 536, supercharged V8 639 to 544, twin-turbo pickup 622 to 537; a 7-build sample had
+     passed). Left noted: the doubled post-start gain is marginal on `main` itself; the dashpot holds the
+     valve at 0.35 at full throttle on boost. N1 makes the dips' row a test.
+ 14. N2-38 is the rig's configuration only (N2's read): every shipped VGT build states a target and runs the
+     target loop. Beside it, for item 9, sourced before any number: (a) the back-pressure limit (1.4, a
+     judgement, at every speed) holds the 2.0 at 88 kPa of its 140 target at 1750 rpm (1.7: 111 kPa; 2.0:
+     131 kPa and 275 N m, still under 304); (b) on the pickup and the tractor the vanes make more boost than
+     a fixed nozzle and 3 to 5 % less torque: one target number where a maker has a map.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
