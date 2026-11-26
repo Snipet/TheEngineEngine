@@ -1,14 +1,17 @@
-// ui/kit/inspect/EditCommand.h: the commands a game controller edits a build with (the owner's card, 26 Nov: "integrate
+// ui/kit/gui/EditCommand.h: the commands a game controller edits a build with (the owner's card, 26 Nov: "integrate
 // some other buttons on [the G29] to make editing engines from the controller possible"). The seam between three
 // writers: card B maps the wheel's buttons to these (app/), U1's AppFrame::edit takes them (ui/app/), J2's inspector
-// does the most of them (ui/kit/inspect/). In the kit, so the inspector needs nothing of the frame's.
+// does the most of them (ui/kit/inspect/). Beside Item (Items.h), which takes them: Item::edit(EditCommand, bool fine),
+// false by default.
 //
 // AppFrame::edit(EditCommand, bool fine) -> bool, on the interface's thread (a wheel's thread posts to it): true when
-// something took the command. The frame's own: workspacePrev and workspaceNext (the rail's order, GAR ... SCP,
-// wrapping at the ends), pagePrev and pageNext (the inspector's pages, stopping at the ends), undo and redo (as the
-// UNDO and REDO buttons), back while the frame has something open (the part card, the settings page: closed). Every
-// other command goes to the shown page's rows, which are given the focus first when nothing has it (the first press
-// lands on a row); false where there are none. While a dialog asks (the key, a question), every command is false.
+// something took the command. Every command goes to the focused item first (the rows, a table: pagePrev and pageNext
+// move a table's cell); the frame does what comes back false: workspacePrev and workspaceNext (the rail's order,
+// wrapping at the ends), pagePrev and pageNext (the inspector's pages, stopping at the ends; the new page's rows given
+// the focus), undo and redo (as the UNDO and REDO buttons), back (the part card, the chat, the settings closed; from a
+// table's page, back to the rows it was opened from). With nothing focused, the shown page's rows are given the focus
+// first (the first press lands on a row). While a dialog asks (the key, a question), every command is false. `fine`:
+// a tenth of a step, for the coarse nudges too.
 //
 // The default map (card B's, so the owner's hands know): D-pad up and down rows; left and right the inspector's pages;
 // L2 and R2 the workspaces; the red dial a nudge of the focused value (SHARE held: fine); minus and plus a coarse
@@ -26,7 +29,7 @@ namespace tee::ui
         pageNext,
         workspacePrev,    // the rail's workspaces (the frame's)
         workspaceNext,
-        valueDown,        // the focused value: a step down (`fine`: a tenth of one); a choice the one before; a switch off
+        valueDown,        // the focused value: a step down (`fine`: a tenth of one, here and coarse); a choice the one before
         valueUp,
         valueDownCoarse,  // ten steps
         valueUpCoarse,
