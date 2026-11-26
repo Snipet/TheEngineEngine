@@ -616,8 +616,11 @@ smoothed over about 2 ms. So it caught a blowdown or the stroke's cool tail by t
 - **first.json, 16 points:**
   - most points move under 1 %;
   - two points at the turbo's spool move: 1733 rpm 249.7 → 382.3 N m and 2833 rpm 353.9 → 385.9;
-  - held 20 s at 1733 rpm (the old code's stepped dyno), it reads 383.4 N m at its 120 kPa target. So the old points
-    were wrong: the old settle left the turbo unspooled.
+  - held 20 s at 1733 rpm (the old code's stepped dyno), it read 383.4 N m at its 120 kPa target, and this note
+    said the old points were wrong because the old settle left the turbo unspooled. **Withdrawn (26 Nov):** the 383.4
+    was not an independent truth: that stepped dyno ran a mass-weighted settle of its own. C's ramps with no settle
+    put first.json's one steady state at 1733 rpm on main at about 272 N m and 41 kPa (from above in some 20 s, from
+    below over some 4 minutes; not bistable), so both settles read high there (293 at 51 kPa on 9e52a186).
 - **Weighted as the running path weights (26 Nov, C's finding):** weighted by mass, the settle landed hot. On the
   two-stage at 5879 rpm its port heat was 5.3 % over a 90 s hold and its torque 3 N m low (187.3 against 190.4). The
   running tPort weighs each 16 samples alike, and the blowdown is both the hottest and the heaviest gas. So the settle
@@ -627,7 +630,59 @@ smoothed over about 2 ms. So it caught a blowdown or the stroke's cool tail by t
   - Guarded by "the exhaust's heat settles where the long run lands" (the settle's gas within 2 % of the running
     path's: +0.15 % and +1.48 %; weighted by mass, +4.5 % and +8.1 %).
   - Whether the running path should itself weigh by mass (the heat the gas carries) is the next window's, with a
-    prediction across the builds.
+    prediction across the builds. The physics is below; the measurement is in the next window's queue (item 6).
+
+## Which mean the port's gas should be (26 Nov; the physics for item 6, nothing built)
+
+The running `tPort` (`Exhaust::gas`) is e/m within each 16 samples, then a 0.8 s first-order mean of those values,
+each weighed alike: a **time** mean of 16-sample blocks. The blowdown is the hottest and the heaviest gas and passes
+in little of the time, so this mean lies below the mass (enthalpy) mean: by 5 to 88 K in the mean port gas across the predictor's curves on six builds (below). The question is what receives `tPort` and which mean each
+receiver sees. In model 1, one number, `exitTemperature()` (tPort after the port's wall), goes to all of them:
+
+| receiver | where | what it computes with the gas's T | the mean it needs |
+|---|---|---|---|
+| the port's wall | `portLoss` | q = m cp (T - T_wall)(1 - e^-NTU), m the mean flow | mass: the heat carried is the sum of m cp T, not of T |
+| the pipes' walls and the gas's cooling down the chain | `XHeat::soak` (heat2.fm) | gas out = T_w + (T - T_w) e^-NTU on the mean flow; the wall's gain gIn = NTU m cp | mass, for the same reason: an enthalpy balance on the mean flow |
+| the pipes' sound speed and density | `tUse` → `cOf`, the ends' `design` | c = sqrt(gamma R T) of each section's gas | about the mass mean (see below), not the time mean |
+| the turbine's inlet | `net.jT[jHouse]` = `tUse[XH_COLL]`, `houseT` | the housing's T in the turbine's flow and energy | mass: a turbine's work is the enthalpy flux, m cp T |
+| telemetry `portTemperature` and the "Port gas, mass mean (information)" rows | spec help, this doc, P2's archetypes | read as the mass mean | mass, by its own label |
+| the thermocouples | `Exhaust::thermocouple` | their own per-sample local gas; tPort only as the port's mean drop | the bead's heat-transfer weighting is their own; the drop is an enthalpy drop (mass) |
+
+**The walls.** Convection is h (T_gas - T_wall) at each instant, and h rises with the flow (Re^0.8 in a pipe), so a
+wall's mean gain weighs the gas by about m^0.8: nearer the mass mean than the time mean. The model takes it one
+better already: its gain is NTU m cp (T - T_w) on the mean flow, which is exact only for a mass-mean T.
+
+**The sound speed.** A pipe at any instant holds slugs of gas in the order they passed. A slug of mass m_i at T_i
+fills a length proportional to m_i T_i and a wave crosses it in a time proportional to m_i T_i / sqrt(T_i). Over a
+pipe, the wave's mean speed is then sum(m T) / sum(m sqrt T): with T = T_m (1 + x), x's mass mean 0, that is
+sqrt(T_m) (1 + <x^2>/8 + ...), a temperature T_m (1 + <x^2>/4): the mass mean and a small excess (some 1 % for a
+20 % swing), never the time mean below it. (The pressure is near uniform across the slugs; judgement, since a
+blowdown's pressure differs.)
+
+**Anything rightly served by the time mean?** Only an instrument in the gas: a bead that sits there all the time.
+The model already has that, `portThermocouple` and `headerThermocouple`, weighted as a bead's heat transfer from
+the per-sample gas, not from tPort. Nothing else in model 1 takes a time mean on purpose. So the time-weighted
+`tPort` is a fault, not a second quantity, and item 6 (`eRun`/`mRun`: the 0.8 s means of the energy and the mass,
+tPort their ratio) cures it with one temperature: the thermocouples remain the one time-type reading, as now. The
+help of `portThermocouple` ("portTemperature is the mass mean of the gas, hotter") and this doc's "Mass means and
+thermocouples" already call it the mass mean, so the change makes those words true rather than changing them.
+
+**What it is not.** The reference (`sim/ref/engine.fm`, model 0) weighs by time and drives its turbine by
+mdot tPort / 1100. That is the reference's and stays: item 6 belongs to model 1 only, or model 0 stops being the
+reference (the scratch tree measured below changes `gas()` for both models; the code to propose gates it on
+`model != 0`, and the null test re-reads it).
+
+**What the measurements say** (scratch tree, main against mass-weighted; all 31 archetypes and the top-level files):
+- the port's mean gas rises 1 to 10 % (5 to 88 K by the predictor's curves), the thermocouple rows 1 to 3.5 %;
+- no idle row moves more than 1 %;
+- five builds cross an edge, four of them the speed of peak torque on a flat-topped curve: the turbo builds' peaks
+  move 19 to 32 % as the hotter gas brings their boost in earlier (the rally five's peak leaves its band). The
+  turbines' sizes are guessed, so these thresholds say nothing for or against the change; the cited rows cannot tell
+  the two means apart. The reason for the change is the table above.
+
+**The order (the lead's ruling, 26 Nov):** item 6 lands in the same window as N2's turbine match (item 9) and before
+it, never alone; the settle goes back to the cycle's mass mean with it (`eCyc/mCyc`, as 9e52a186 had), and C's long
+hold and "the exhaust's heat settles where the long run lands" are read again on the pair.
 
 ## Stated bores: the least, 10 mm (X-038, X-029)
 
