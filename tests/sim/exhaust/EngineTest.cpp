@@ -34,6 +34,35 @@ namespace
         REQUIRE(ok);
         return result.audio;
     }
+
+    // Route 1 (the integrator's: initialised over the build, EnginePlayer::reset(rate, true)), on a player of its own:
+    // every pipe designed from the build's own sizes, none from the defaults' before it. Then a free rev's driving:
+    // started, idled, blipped three times, held at full throttle into the limiter, let go
+    Audio renderRoute1(const EngineBuild& build, double seconds)
+    {
+        // (a player kept for route 1 alone: reset to the defaults, the build written, then initialised over it)
+        static EnginePlayer* p = test::enginePlayer(48000.0).release();
+        p->reset();
+        applyBuild(*p, build);
+        p->reset(48000.0, true);
+        Audio a;
+        a.sampleRate = 48000.0;
+        std::vector<float> l(512), r(512);
+        EnginePlayer::Controls& c = p->controls();
+        c.mode = EnginePlayer::kModeBench;
+        const int blocks = static_cast<int>(seconds * 48000.0 / 512.0);
+        for (int k = 0; k < blocks; ++k)
+        {
+            const double t = k * 512.0 / 48000.0;
+            c.ignition = t < 1.0 ? EnginePlayer::kIgnitionStart : EnginePlayer::kIgnitionOn;
+            const double u = t - 2.5;
+            c.throttle = (u > 0.0 && u < 3.0 && std::fmod(u, 1.0) < 0.25) || (t > 5.5 && t < 7.0) ? 1.0f : 0.0f;
+            p->process(l.data(), r.data(), 512);
+            a.left.insert(a.left.end(), l.begin(), l.end());
+            a.right.insert(a.right.end(), r.begin(), r.end());
+        }
+        return a;
+    }
 } // namespace
 
 // Card G, test 2: the assignment table at its defaults (the layout's own topology: all into one, a collector a bank
@@ -41,9 +70,16 @@ namespace
 // limiter, the overrun, off, a restart), every layout, model 1 against model 0. The builder starts its pipes as the
 // reference does at a configure (built at every configure, so its pipes carry the reference's history) and draws its
 // noise from the engine's stream in the reference's order. Measured: identical to the bit, every layout.
+// Each model loads by route 1 (initialised over the build: renderRoute1), on the lead's ruling of 26 Nov: the pipes'
+// wall at model 0 keeps the reference's key, the sound speed and length (sim/ref/pipes.fm), so where a build is written
+// over the defaults (the application's route, the null's) it keeps the defaults' wall when only the bore differs (the
+// V8's layout 12), a fault of the reference's load order that model 0 must keep; model 1 has the whole key and
+// redesigns it. On that route model 1 laid out as the reference is not the reference's stale exhaust; on route 1 both
+// design their walls from the build's own bores, and the property, the builder laid out as the reference is the
+// reference's exhaust, is met there.
 static void engineIdentity(bool full);
 
-TEST_CASE("model 1 at its defaults is model 0 in the engine, every layout", "[exhaust][engine]")
+TEST_CASE("model 1 at its defaults is model 0 in the engine, every layout", "[exhaust][engine][part-1]")
 {
     engineIdentity(false);
 }
@@ -55,7 +91,6 @@ TEST_CASE("model 1 at its defaults is model 0 in the engine, every layout, in fu
 
 static void engineIdentity(bool full)
 {
-    const EngineScenario scenario = test::engineScenario("free-revs");
     double worst = 1e9;
     // (quick: a four's, a V8's single and dual layouts; in full every layout)
     const std::vector<int> layouts = full ? std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
@@ -65,11 +100,11 @@ static void engineIdentity(bool full)
         EngineBuild b = test::engineBuild(player(), "v8");
         b.values["engine.layout"] = {static_cast<double>(layout)};
         b.values["exhaust.model"] = {0.0};
-        const Audio a = render(b, scenario, 8.0);
+        const Audio a = renderRoute1(b, 8.0);
         b.values["exhaust.model"] = {1.0};
         b.values["exhaust.portHeat"] = {0.0};   // (the port's cooling off: the reference has none)
         b.values["exhaust.flowClose"] = {0.0};  // (the valves' mean flow not closed: the reference's g q)
-        const Audio m = render(b, scenario, 8.0);
+        const Audio m = renderRoute1(b, 8.0);
         const double dl = test::nullDepth(a.left, m.left);
         const double dr = test::nullDepth(a.right, m.right);
         worst = std::min(worst, std::min(dl, dr));
@@ -126,7 +161,7 @@ namespace
 // stays in the pipes (the means at the collectors and the heads under 50 Pa) and the output is silent.
 static void engineSoak(bool full);
 
-TEST_CASE("random exhaust topologies changed while the engine runs", "[exhaust][engine][soak]")
+TEST_CASE("random exhaust topologies changed while the engine runs", "[exhaust][engine][soak][part-2]")
 {
     engineSoak(false);
 }
@@ -210,7 +245,7 @@ static void engineSoak(bool full)
 // throttle).
 static void turbineHousing(bool full);
 
-TEST_CASE("the turbine's housing: card F's machine on the builder's collectors", "[exhaust][engine][turbine]")
+TEST_CASE("the turbine's housing: card F's machine on the builder's collectors", "[exhaust][engine][turbine][part-1]")
 {
     turbineHousing(false);
 }
@@ -323,7 +358,7 @@ static void turbineHousing(bool full)
 // free revs, every sample finite and within full scale, on the builder (tel.exhaust.model 1)
 static void buildsPlay(bool full);
 
-TEST_CASE("every exhaust build plays", "[exhaust][engine][builds]")
+TEST_CASE("every exhaust build plays", "[exhaust][engine][builds][part-1]")
 {
     buildsPlay(false);
 }
@@ -371,7 +406,7 @@ static void buildsPlay(bool full)
 // them: over the next 20 s they move by under 3 %, where unsettled they move by much more. Both models.
 static void heatSettles(bool full);
 
-TEST_CASE("the exhaust's heat settles on request", "[exhaust][engine][settle]")
+TEST_CASE("the exhaust's heat settles on request", "[exhaust][engine][settle][part-1]")
 {
     heatSettles(false);
 }
@@ -438,7 +473,7 @@ static void heatSettles(bool full)
 // against 16044 W. A held engine here, with only the exhaust settled, differs by the coolant's and the intake's heat
 static void settleLands();
 
-TEST_CASE("the exhaust's heat settles where the long run lands", "[exhaust][engine][settle]")
+TEST_CASE("the exhaust's heat settles where the long run lands", "[exhaust][engine][settle][part-2]")
 {
     settleLands();
 }
@@ -489,7 +524,7 @@ static void settleLands()
 
 // Finding X-013: the exhaust's telemetry is physical from the first block (written at every configure, not only
 // every 16 samples)
-TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust][engine][telemetry]")
+TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust][engine][telemetry][part-1]")
 {
     for (int model : {0, 1})
     {
@@ -515,7 +550,7 @@ TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust]
 // after the key is off the output dies away
 static void dualXSoak(bool full);
 
-TEST_CASE("the dual X with stubs and valves soaks", "[exhaust][engine][soak]")
+TEST_CASE("the dual X with stubs and valves soaks", "[exhaust][engine][soak][part-2]")
 {
     dualXSoak(false);
 }
@@ -594,7 +629,7 @@ static void dualXSoak(bool full)
 // they glide against the second before, and the glide within 0.1 % of its target a second after the last step (0.2 s
 // its time constant). A kind (the
 // mufflers' change) still rebuilds: the fade goes down.
-TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][glide]")
+TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][glide][part-2]")
 {
     EnginePlayer& p = player();
     p.reset();
@@ -670,7 +705,7 @@ TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][g
 // (never warms it), by less than 400 K, and the header reads under the valve.
 static void portCools(bool full);
 
-TEST_CASE("the exhaust port's walls cool the gas", "[exhaust][engine][port]")
+TEST_CASE("the exhaust port's walls cool the gas", "[exhaust][engine][port][part-1]")
 {
     portCools(false);
 }
@@ -775,7 +810,7 @@ static void portCools(bool full)
 // (F's housingOf on one bank: by group), and both turbos' outlets into the one downpipe (Boost::exhaustSides, called
 // at every configure). Before it, the second turbo's outlet had no pipe: its shaft stood. Measured: both shafts' speeds
 // at 4300 rpm full throttle on the dyno, and the boost.
-TEST_CASE("a twin-turbo six into one pipe spins both turbos", "[exhaust][engine][turbine]")
+TEST_CASE("a twin-turbo six into one pipe spins both turbos", "[exhaust][engine][turbine][part-2]")
 {
     EnginePlayer& p = player();
     p.reset();
@@ -872,7 +907,7 @@ TEST_CASE("measure: the exhaust's temperatures at full load, mass means and ther
 // than the cylinders let out over a cycle; Exhaust::stepLet closes the mean (spec.exhaust.flowClose, on under model 1).
 // What the pipes are given against what the valves let out (exh.flowGiven, exh.flowLet: m^3, summed in blocks), over a
 // second: the big block at idle and at 4000 rpm full throttle, the 2.0 turbo four at 3000: within a per cent.
-TEST_CASE("the pipes are given what the exhaust valves let out", "[exhaust][engine][books]")
+TEST_CASE("the pipes are given what the exhaust valves let out", "[exhaust][engine][books][part-2]")
 {
     struct Case
     {
@@ -924,7 +959,7 @@ TEST_CASE("the pipes are given what the exhaust valves let out", "[exhaust][engi
 // content/builds/exhausts: every field of each part build, read back from the player after the build is applied,
 // equal to the file's, element by element, choices by name included (C's 127c350 found an array of choices given by
 // name dropped to its default: exhaust.mufKind, resonator, converter, bypass)
-TEST_CASE("every exhaust preset reads back as its file says", "[exhaust][engine][builds]")
+TEST_CASE("every exhaust preset reads back as its file says", "[exhaust][engine][builds][part-1]")
 {
     EnginePlayer& p = player();
     int fields = 0, elements = 0;

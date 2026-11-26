@@ -26,7 +26,7 @@ namespace
 } // namespace
 
 TEST_CASE("calibration boost: a matched wastegate holds its target spooled at the top speed (no runaway)",
-          "[calibration][boost]")
+          "[calibration][boost][gate]")
 {
     // Before (gate 0.85 of the nozzle's area): the 2 L four spooled at 5271 rpm ran away to 255 kPa against 120, its
     // gate wide open, knock retard at 15 degrees; the kei could not hold its 60 kPa spring above 5000 rpm.
@@ -83,7 +83,7 @@ TEST_CASE("calibration boost: back pressure against boost on a matched turbo", "
 }
 
 TEST_CASE("calibration boost: one state: stepped up from 1500 rpm or spooled at the top, the same boost",
-          "[calibration][boost]")
+          "[calibration][boost][state]")
 {
     // Before: the 2 L four stepped up from 1500 rpm (as the ledger and the stepped dyno run) read 348 kPa absolute
     // in its manifold at 5271 rpm, the runaway; spooled from 2000 it held its target. Within 10 % either way now.
@@ -104,7 +104,7 @@ TEST_CASE("calibration boost: one state: stepped up from 1500 rpm or spooled at 
 
 // (marked [!mayfail] by N2: on real exhaust mass (G's closing by mass at the housings) the 18 mm gate runs only to 168 kPa; N2 re-derives the
 // gate too small)
-TEST_CASE("calibration boost: the ECU's over-boost cut is the net under a gate too small", "[calibration][boost][!mayfail]")
+TEST_CASE("calibration boost: the ECU's over-boost cut is the net under a gate too small", "[calibration][boost][gate][!mayfail]")
 {
     // ecu.model 1 (every archetype): the 2 L four with a gate too small (18 mm) runs away spooled at 5271 rpm (251 kPa,
     // 409 N m) with the cut off (the gate it had before, 26.3 mm, ran away only on the exhaust's phantom fifth of flow:
@@ -252,7 +252,7 @@ TEST_CASE("calibration boost: a sequential pair at its join flow holds one state
     CHECK(lo > 0.75 * mean);
 }
 
-TEST_CASE("calibration boost: variable vanes past the surge line open: one state, short form", "[calibration][boost]")
+TEST_CASE("calibration boost: variable vanes past the surge line open: one state, short form", "[calibration][boost][vanes]")
 {
     // (the default tier's form of the [nightly] case above, the lead's ruling on the budget: the same property, one
     // state from below and from above, on two runs, not three: from 1100 rpm and from 2000, held 10 s with the heat
@@ -280,7 +280,7 @@ TEST_CASE("calibration boost: variable vanes past the surge line open: one state
     CHECK(std::fabs(up.at("boost.pressure") - down.at("boost.pressure")) < 0.15 * down.at("boost.pressure"));
 }
 
-TEST_CASE("calibration boost: a sequential pair with a stated join speed changes over without a hunt", "[calibration][boost]")
+TEST_CASE("calibration boost: a sequential pair with a stated join speed changes over without a hunt", "[calibration][boost][state]")
 {
     // (the lead's ruling on the join: on a build that states spec.boost.seqRpm the pair changes over on engine speed and
     // load (machine.fm); here the 13B-kind rotary as it ships, its build stating 4500 rpm, its source's figure (P's sources §16), swept across

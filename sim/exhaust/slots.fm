@@ -221,6 +221,9 @@ module XBuild
     void setup(float rateIn)
     {
         rate = rateIn;
+        // (the builder's pipes: the wall's whole key, Duct::wallWhole, from before their first design)
+        for (int i = 0; i < XN_DUCTS; ++i)
+            net.d[i].wallWhole = 1;
         // each slot's longest pipe, cold (300 m/s), at this rate, as the reference's init sizes its own
         const float k = rate / 300.0f;
         int cap[XN_DUCTS];

@@ -643,8 +643,61 @@ module Engine
             lay.port[c] = geo.rotary > 0 ? c / 3 : c;
         }
         lay.ports = geo.rotary > 0 ? geo.rotary : geo.n;
-        // the exhaust: one bank's cylinders into one pipe; two banks, each its own (dual); the table's split kept
-        lay.topo = keepSplit != 0 ? 1 : (twoBanks != 0 ? (lay.topo == 0 ? 2 : lay.topo) : 0);
+        // (the general form, the lead's ruling of 26 Nov: a one-bank engine whose headers want splitting, its table's
+        // family split (topology 1) or twin turbos a bank each to feed, takes two headers that each fire evenly: its cylinders in
+        // firing order, every other one to each (a straight six's 1-5-3-6-2-4 gives 1-3-2 and 5-6-4, the front and rear
+        // halves). Where no even split exists (an odd count, uneven firing), one collector, as before)
+        int evenSplit = 0;
+        // (twin turbos as the machine arranges them (Machine::apply): a bank each (layout 2, or the aspiration's own twin
+        // with layout 0), or four, two a bank; a sequential or compound pair shares one collector by design (N2))
+        const int bl = spec.boost.kind >= 1 && spec.boost.kind <= 3 ? (spec.boost.layout == 0 ? (spec.boost.kind == 2 ? 2 : (spec.boost.kind == 3 ? 5 : 1))
+                                                                                             : spec.boost.layout)
+                                                                    : 0;
+        const int twins = spec.boost.model != 0 && (bl == 2 || bl == 5) ? 1 : 0;
+        if (keepSplit == 0 && twoBanks == 0 && geo.rotary == 0 && geo.n >= 4 && geo.n % 2 == 0 && (tableTopo == 1 || twins != 0))
+            evenSplit = splitEvenly();
+        // the exhaust: one bank's cylinders into one pipe; two banks, each its own (dual); a split's two headers into one
+        lay.topo = keepSplit != 0 || evenSplit != 0 ? 1 : (twoBanks != 0 ? (lay.topo == 0 ? 2 : lay.topo) : 0);
+    }
+
+    // A one-bank engine's cylinders into two headers that each fire evenly: in firing order (geo.fire, degrees into the
+    // cycle), every other one to each; lay.bank set and 1 returned when both halves fire at twice the engine's spacing
+    // (within half a degree), else nothing changed and 0
+    int splitEvenly()
+    {
+        const int n = geo.n;
+        int order[MAX_CYL];
+        for (int c = 0; c < n; ++c)
+            order[c] = c;
+        for (int i = 1; i < n; ++i)
+        {
+            const int k = order[i];
+            int j = i - 1;
+            while (j >= 0 && geo.fire[order[j]] > geo.fire[k])
+            {
+                order[j + 1] = order[j];
+                j -= 1;
+            }
+            order[j + 1] = k;
+        }
+        const float step = 2.0f * geo.cyc / (float)n;
+        for (int h = 0; h < 2; ++h)
+        {
+            for (int i = h; i + 2 < n; i += 2)
+            {
+                const float gap = geo.fire[order[i + 2]] - geo.fire[order[i]];
+                if (fabsf(gap - step) > 0.5f)
+                    return 0;
+            }
+            // (and round the cycle: the last of the half to its first)
+            const int last = h + 2 * ((n - 1 - h) / 2);
+            const float wrapGap = geo.fire[order[h]] + geo.cyc - geo.fire[order[last]];
+            if (fabsf(wrapGap - step) > 0.5f)
+                return 0;
+        }
+        for (int i = 0; i < n; ++i)
+            lay.bank[order[i]] = i % 2;
+        return 1;
     }
 
     // What the mechanics need once the engine is configured: the moving masses (a custom engine's own, or the
