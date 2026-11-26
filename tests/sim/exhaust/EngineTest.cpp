@@ -425,6 +425,68 @@ static void heatSettles(bool full)
     }
 }
 
+// The settle's whole property (the lead's ruling, 26 Nov): it lands where the long run lands. C's case: the two-stage
+// at 5879 rpm on its high cam, settled by the ports' mass-weighted gas, read its port heat 5.3 % over a 90 s hold and
+// its torque 3 N m low. A settle weighs the ports' gas as the running tPort does (each 16 samples alike), so:
+// - here, on the dyno: the gas a settle takes (tel.exhaust.portTemperature just after it) is the gas the running
+//   path held just before it, within 2 % (the running gas is a 0.8 s mean, and first.json's boost hunts over about
+//   a second: measured +0.15 % and +1.48 %; weighted by mass, +4.5 % and +8.1 %): the two-stage at 5879 rpm, and
+//   first.json, a turbo, at 3200;
+// The long run itself is the predictor's to compare (it settles the intake's and the boost's heat too, and starts
+// warm): measured with tee-dyno --predict, the two-stage at 5879 rpm settled 15151 W and 189.4 N m against 15090 W and
+// 190.4 N m held 90 s unsettled (+0.4 %; weighted by mass 15897 W, +5.3 %, 187.3 N m); first.json at 3200 rpm 16047
+// against 16044 W. A held engine here, with only the exhaust settled, differs by the coolant's and the intake's heat
+static void settleLands();
+
+TEST_CASE("the exhaust's heat settles where the long run lands", "[exhaust][engine][settle]")
+{
+    settleLands();
+}
+
+static void settleLands()
+{
+    struct Point
+    {
+        const char* build;
+        double rpm;
+    };
+    for (const Point& pt : {Point{"archetypes/two-stage-cam-20", 5879.0}, Point{"first", 3200.0}})
+    {
+        EnginePlayer& p = player();
+        std::vector<float> l(512), r(512);
+        auto run = [&](double s) {
+            for (int k = 0; k < static_cast<int>(s * 48000.0 / 512.0); ++k)
+                p.process(l.data(), r.data(), 512);
+        };
+        auto start = [&] {
+            p.reset();
+            applyBuild(p, test::engineBuild(p, pt.build));
+            EnginePlayer::Controls& c = p.controls();
+            c.mode = EnginePlayer::kModeBench;
+            c.ignition = EnginePlayer::kIgnitionStart;
+            run(1.5);
+            c.ignition = EnginePlayer::kIgnitionOn;
+            c.throttle = 1.0f;
+            c.mode = 2;     // the engine dyno, at the point's speed
+            c.dynoSpeed = static_cast<float>(pt.rpm * 0.10471976);
+        };
+        auto settle = [&](int n) {
+            std::string error;
+            REQUIRE(p.setSpec("exhaust.heatSettle", n, error));
+            p.process(l.data(), r.data(), 512);
+        };
+        INFO(pt.build);
+        start();
+        run(8.0);
+        const double before = test::field(p, "tel.exhaust.portTemperature");
+        settle(1);
+        const double after = test::field(p, "tel.exhaust.portTemperature");
+        std::printf("settle lands, %s at %.0f rpm: the running port gas %.1f K, the settle's %.1f K (%+.2f %%)\n", pt.build,
+                    pt.rpm, before, after, 100.0 * (after / before - 1.0));
+        CHECK(std::fabs(after / before - 1.0) < 0.02);
+    }
+}
+
 // Finding X-013: the exhaust's telemetry is physical from the first block (written at every configure, not only
 // every 16 samples)
 TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust][engine][telemetry]")
