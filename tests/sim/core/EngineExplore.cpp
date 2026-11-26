@@ -842,3 +842,13 @@ TEST_CASE("custom one-bank twin turbos split by firing order", "[.splitturb]")
                     b.tel("valve.dpWave") / 1000.0, b.tel("engine.torque"));
     }
 }
+
+TEST_CASE("first.json: the runners' wall in use", "[.runnerwall]")
+{
+    Bench b("first");
+    b.start();
+    for (int k = 0; k < 4; ++k)
+        std::printf("intk.run[%d]: wallOn %g, len %.3f m, diam %.4f m, c %.1f\n", k, b.field("intk.run[" + std::to_string(k) + "].wallOn"),
+                    b.field("intk.run[" + std::to_string(k) + "].len"), b.field("intk.run[" + std::to_string(k) + "].diam"),
+                    b.field("intk.run[" + std::to_string(k) + "].c"));
+}

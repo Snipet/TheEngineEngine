@@ -795,9 +795,10 @@ TEST_CASE("the application's first build: no configuration field differs between
 {
     // (#337, the lead's ruling of 25 Nov: the starting state the two routes into first.json give, field by field. The
     // application loads every build by writing it over the program as it stands (route 0: the default V8 before it);
-    // the reference is the program initialised over the build (route 1). The same cylinder bias draws and both noise
-    // streams are written in the key's first block on both, after both have configured (route 0 configures at the key,
-    // route 1 at init and again at the key). After the start and 0.5 s later, a field that holds still on both runs and
+    // the reference is the program initialised over the build (route 1). Both noise streams are set before the key, and
+    // the same cylinder bias draws and noise streams again in the key's first block, after both have configured (each
+    // configure draws its own: the first block's valves' hiss drew each route's own noise until the streams were set
+    // before it, and the idle's target parted in its last digits from that). After the start and 0.5 s later, a field that holds still on both runs and
     // differs between them is a configuration one routes give differently, unless it is one of the kinds named below
     // with its reason. The check that would have caught the intake runners' wall (below).)
     std::vector<unsigned char> snap[2][2];
@@ -811,10 +812,14 @@ TEST_CASE("the application's first build: no configuration field differs between
         schema = &b.player().schema();
         if (route == 1)
             b.player().reset(Bench::kRate, true);
-        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
-        b.play(double(Bench::kBlock) / Bench::kRate);
         std::string e;
         auto& in = b.player().instance();
+        // (both noise streams set before the key's first block too: the configure in it and its first samples draw on
+        // them (the valves' hiss, Net::vnHp and vnLp), and each route had its own)
+        REQUIRE(in.write(*schema, "noise.rs", 12345.0, e));
+        REQUIRE(in.write(*schema, "ex.noise.rs", 67890.0, e));
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(double(Bench::kBlock) / Bench::kRate);
         for (int k = 0; k < 4; ++k)
             REQUIRE(in.write(*schema, "cyl[" + std::to_string(k) + "].bias", 0.01 * k, e));
         REQUIRE(in.write(*schema, "noise.rs", 12345.0, e));
@@ -888,11 +893,6 @@ TEST_CASE("the application's first build: no configuration field differs between
             return "an open end past the builder's count";
         if ((indexAfter(p, "exh.b.jMuf", i) && i / 5 >= nSides) || (indexAfter(p, "exh.b.prevMuf", i) && i >= nSides))
             return "a muffler's side past the build's count";
-        for (const char* r : {"ecu.one.idle.integral", "ecu.one.idle.startAir", "ecu.target", "ex.stPh", "ex.vo.fuel.closeKick[", "boost.mach.trailFlow[",
-                              "boost.mach.trailPr[", "listen.prePeak"})
-            if (p.rfind(r, 0) == 0)
-                return "the start's records: values the run's first seconds leave and hold (the idle's learned air and its target, the starter's "
-                       "sound, a fuel voice's last kick, the machine's trail, the listener's peak), not configuration";
         return nullptr;
     };
     // A KNOWN FINDING, named (D, 25 Nov; G's file and G's cure, the lead's ruling of 26 Nov): Duct::set
@@ -951,13 +951,15 @@ TEST_CASE("the application's first build, written after a default init, runs as 
         Bench b("first");
         if (route == 1)
             b.player().reset(Bench::kRate, true);
-        // (the same cylinder bias draws and both noise streams on every route, written in the key's first block once
-        // both routes have configured: each route draws its own at each configure, and the routes configure a different
-        // number of times)
-        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
-        b.play(double(Bench::kBlock) / Bench::kRate);
+        // (both noise streams set before the key, and the same cylinder bias draws and noise streams written again in the
+        // key's first block once both routes have configured: each route draws its own at each configure, and the routes
+        // configure a different number of times)
         std::string e;
         auto& in = b.player().instance();
+        REQUIRE(in.write(b.player().schema(), "noise.rs", 12345.0, e));
+        REQUIRE(in.write(b.player().schema(), "ex.noise.rs", 67890.0, e));
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(double(Bench::kBlock) / Bench::kRate);
         const double bias[4] = {0.0074, 0.0248, -0.0087, -0.0207};
         for (int k = 0; k < 4; ++k)
             REQUIRE(in.write(b.player().schema(), "cyl[" + std::to_string(k) + "].bias", bias[k], e));
@@ -981,7 +983,7 @@ TEST_CASE("the application's first build, written after a default init, runs as 
         b.play(1.0, [&] { s += b.tel("engine.torque"); n += 1.0; });
         tq[route] = s / n;
     }
-    std::printf("first.json at 1500 rpm full load, 5 to 6 s, paired: written after init %.2f N m, initialised over it %.2f N m, written after init again %.2f\n", tq[0], tq[1], tq[2]);
+    std::printf("first.json at 1500 rpm full load, 5 to 6 s, paired: written after init %.6f N m, initialised over it %.6f N m, written after init again %.6f\n", tq[0], tq[1], tq[2]);
     // (every model switch in use the same on both routes, exactly: a switch one route dropped fails here whatever its
     // torque (intake.model dropped moves 3000 rpm full load 2.1 %, ecu.model 0.3 %))
     for (int k = 0; k < 11; ++k)
@@ -990,13 +992,15 @@ TEST_CASE("the application's first build, written after a default init, runs as 
         CHECK(use[1][k] == use[0][k]);
         CHECK(use[2][k] == use[0][k]);
     }
-    // (the torque, read where the knock loop is quiet. Measured 26 Nov (D): at 3000 rpm full load the knock loop
-    // retards 8.6 to 10 deg and a 1e-6 nudge in one cylinder's gas at the key moved the 5 to 6 s mean by up to 1.44 %,
-    // more than the routes part (so the 2.5 % read there tested the knock loop's walk, not the routes). At 1500 rpm full
-    // load no run retards (0.00 deg), and over nine paired draws the routes part by -0.33 to +0.67 %, a 1e-6 nudge on one
-    // route alone by -0.75 to +0.43 %: what remains is a 1 s mean's cycle-to-cycle spread, which the nudge reshuffles.
-    // These draws read +0.27 %. Bound 1 %: the largest of either measured, 0.75 %, and a third over it (judgement))
-    CHECK(std::fabs(tq[0] / tq[1] - 1.0) < 0.01);
+    // (the torque, read where the knock loop is quiet, the routes paired from before the key. Measured 26 Nov (D): at
+    // 3000 rpm full load the knock loop retards 8.6 to 10 deg and a 1e-6 nudge in one cylinder's gas at the key moved
+    // the 5 to 6 s mean by up to 1.44 %, so the 2.5 % read there tested the knock loop's walk, not the routes. At 1500
+    // rpm full load no run retards; paired only after the key's first block the routes parted by -0.33 to +0.67 % over
+    // nine draws, because that block had already drawn each route's own noise (the valves' hiss). With both noise
+    // streams set before the key as well, the routes are the same: 231.750646 N m on both. The one configuration field
+    // that still differs, the runners' wall (the case above), is off on first.json's runners (wallOn 0): designed, never
+    // used. So the check is exact: any state one route leaves that reaches the run parts them)
+    CHECK(tq[0] == tq[1]);
     CHECK(tq[0] == tq[2]);
 }
 
