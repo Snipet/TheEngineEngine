@@ -388,8 +388,18 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
             Times tm;
             tee::test::Scenario off = scenario(kind, file, 0u, tm);
             off.at(0.0);
-            for (const Switch& w : switches())
-                off.spec(w.path, 0);
+            // BOUNDPROOF_OFF="boost.model exhaust.model": the reference turns only those off (X-014's own reference, the
+            // build with boost and exhaust off); unset, every switch
+            if (const char* only = std::getenv("BOUNDPROOF_OFF"); only != nullptr)
+            {
+                std::istringstream names(only);
+                std::string name;
+                while (names >> name)
+                    off.spec(name, 0);
+            }
+            else
+                for (const Switch& w : switches())
+                    off.spec(w.path, 0);
             off.spec("env.temperature", 293.15 + dT);
             const tee::test::Run r0 = off.run(tm.end);
             const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
