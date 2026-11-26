@@ -114,11 +114,13 @@ length runs, so today the bike gets twice its setting: 50 ms becomes about 100. 
 - The downshift's blip unchanged, or its change predicted.
 - N1's dips test and P's idle gate untouched.
 
-**Read beside item 17 (the lead, 26 Nov 10:36).** G's X-049 places the turbo six's shift click in the exhaust valve's
-flow solve (`Valve::flow`, `sim/exhaust/duct.fm`: three fixed passes) chattering on a first pulse into pipes the cut
-has emptied. X-030, X-031 and X-044 are also first firings back into quiet pipes, so item 17 moves the same rows. If
-both items land in one window, they are read one at a time: item 16 first, on today's valve, then item 17. Until
-G's spreads are in, how much of these rows' click is the chatter and how much the fuller first charge is open.
+**Read after item 17 (the lead, 26 Nov 12:33; this replaces the 10:36 order).** G's valve solve (item 17, X-051:
+a warm-started secant on one continuous equation, 38.3 ns a call against today's 50.5, the chatter counter at 0)
+comes first among the window's sim changes that move readings, because it moves every reference and every nightly
+bound. So item 17 lands first; then item 16, with its predictions restated on that tree before its code: the V8's
+upshift row and the four's rate. The 53 ms probe's figures above were taken on today's valve: they are a guide, not
+the acceptance. The clips with both fixes, shown on 26 Nov, stand as what the window is meant to deliver. X-044 is
+not carried by X-051 and stays with item 8, whole.
 
 ## 5. What it does not cure
 
