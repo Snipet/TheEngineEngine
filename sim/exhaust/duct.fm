@@ -130,8 +130,13 @@ module Duct
     float y;            // the admittance, up to a constant: area times the speed of sound
     float z;            // the impedance, Pa s / m^3: rho c / area
     float rho;          // the gas's density, kg/m^3 (at the outside pressure)
-    float cWall;        // the wall's design: the sound speed and length it was made for
-    float lWall;
+    float cWall;        // the wall's design: the sound speed, length, bore and rate it was made for (all four its
+    float lWall;        // loss depends on: the integrator's diff of the two init routes, 25 Nov: first.json written
+    float dWall;        // over the V8 kept the V8's runners' wall, the same length and sound speed at another bore)
+    float rWall;
+    int wallWhole;      // 1: the whole key, where a part runs a model of its own; 0 (as made): the reference's key, the
+                        // sound speed and length alone (sim/ref/pipes.fm's, its fault of load order kept), so that a
+                        // part's model 0 is the reference on every route. Its owner sets it; reset leaves it
     float qAbs;         // the flow through it, summed (|m^3/s|), and how many samples
     int qN;
     float mach;         // its mean Mach number, smoothed
@@ -218,6 +223,8 @@ module Duct
         rho = 0.6f;
         cWall = -1.0f;
         lWall = -1.0f;
+        dWall = -1.0f;
+        rWall = -1.0f;
         qAbs = 0.0f;
         qN = 0;
         mach = 0.0f;
@@ -306,6 +313,8 @@ module Duct
     {
         cWall = c;
         lWall = len;
+        dWall = diam;
+        rWall = rate;
         const float t = c * c / (1.35f * 287.0f);
         // the gas's viscosity (Sutherland's law) over its density at the outside pressure
         const float mu = 1.716e-5f * expf(1.5f * logf(t / 273.0f)) * (384.0f / (t + 111.0f));
@@ -339,7 +348,8 @@ module Duct
         rho = 1.35f * 101325.0f / (c * c);
         rateD = rate;
         setDelay(len * rate / c);
-        if (fabsf(c - cWall) > 1.5f || fabsf(len - lWall) > 0.001f)
+        if (fabsf(c - cWall) > 1.5f || fabsf(len - lWall) > 0.001f
+            || (wallWhole != 0 && (fabsf(diam - dWall) > 1.0e-5f || rate != rWall)))
             wall(rate);
         if (rate != rateK)
         {
