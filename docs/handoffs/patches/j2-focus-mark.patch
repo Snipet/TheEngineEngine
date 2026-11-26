@@ -1,0 +1,29 @@
+# j2-focus-mark.patch (J2, 26 Nov): the Rows inspector's focused row seen from a driving seat (the G29's buttons).
+# A 2 px accent outline round the focused row (FieldInspector::drawRows); no bar at the left, which hid the changed
+# dot. Applies with `git apply` on J2's push of the controller's commands (the commit named in its message to the lead;
+# FieldInspector.cpp as of fb2af5eb/6c27b4ce). It MOVES two of U1's goldens: tests/ui/views/golden/frame.ribbon.txt and
+# frame.ribbon.unsettled.txt (a row is focused in them); nothing else in the default tier (210 of 210 ui-alone otherwise).
+# To look: apply it, build tee-ui-build-tests, run `tee-ui-build-tests build.rows.focus.pictures` before and after:
+# out/ui/rows/rows.focus.png, rows.focus.changed.png (the focused row also changed: its dot), rows.focus.refused.png
+# (EXHAUST's crossover bore nudged to the least stated bore: refused, its sentence in red under it).
+diff --git a/ui/kit/inspect/FieldInspector.cpp b/ui/kit/inspect/FieldInspector.cpp
+index 1eaffae3..916f581e 100644
+--- a/ui/kit/inspect/FieldInspector.cpp
++++ b/ui/kit/inspect/FieldInspector.cpp
+@@ -1279,6 +1279,16 @@ namespace tee::ui
+                 case Row::Kind::empty: break;
+             }
+         }
++        // The focused row, seen from a driving seat (a controller's): an accent outline round it (no bar at its left: the
++        // changed dot is there).
++        if (focus_ >= 0 && focus_ < static_cast<int>(rows_.size()))
++        {
++            const Rect at = onScreen(rows_[static_cast<std::size_t>(focus_)].rect);
++            if (at.bottom() >= content.y && at.y <= content.bottom())
++            {
++                c.rrect(at.x + 3.0f, at.y + 1.0f, at.w - 6.0f, at.h - 2.0f, 5.0f, kClear, 2.0f, l.accent);
++            }
++        }
+     }
+ 
+     void FieldInspector::draw(Canvas& c, const funkgui::Theme& th, bool focusRing) const

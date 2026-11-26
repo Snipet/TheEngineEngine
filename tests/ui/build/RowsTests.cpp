@@ -310,6 +310,36 @@ namespace
         rig.host->move(10.0f, 690.0f);                   // the pointer away: no hover, the focus alone
         rig.host->tick(30);
         picture(rig, "rows.focus");
+        // The focused row also changed (its dot): the mark must not fight it.
+        rows->edit(tee::ui::EditCommand::valueUpCoarse, false);
+        rig.host->tick(60);
+        picture(rig, "rows.focus.changed");
+        // The focused row also refused (the bore's floor, its sentence in red under it), on EXHAUST.
+        show(rig, 1100, 700, "exhaust", "");
+        const int crossD = rig.doc->find("exhaust.crossD");
+        rows = nullptr;
+        for (int p = 0; p < rig.frame->inspectorPageCount() && rows == nullptr; ++p)
+        {
+            rig.frame->showInspectorPage(p);
+            tee::ui::RowsPage* r = rig.frame->inspectorRows();
+            if (r != nullptr && std::find(r->fields().begin(), r->fields().end(), crossD) != r->fields().end())
+                rows = r;
+        }
+        rig.host->tick(5);
+        CHECK_MSG(rows != nullptr && crossD >= 0, "exhaust.crossD is on no Rows page of EXHAUST");
+        if (rows == nullptr || crossD < 0)
+            return 0;
+        rig.doc->set(crossD, 0.012);
+        rows->focusFirst();
+        for (int k = 0; k < 120 && rows->rows().focusedField() != crossD; ++k)
+            if (!rows->edit(tee::ui::EditCommand::rowDown, false))
+                break;
+        CHECK_MSG(rows->rows().focusedField() == crossD, "exhaust.crossD not reached by rowDown");
+        rows->edit(tee::ui::EditCommand::valueDownCoarse, false);
+        CHECK_MSG(rows->rows().refusal().rfind("Out of range: ", 0) == 0, rows->rows().refusal());
+        rig.host->move(10.0f, 690.0f);
+        rig.host->tick(60);
+        picture(rig, "rows.focus.refused");
         return 0;
     }
 
