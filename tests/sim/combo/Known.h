@@ -151,5 +151,21 @@ const Known kKnown[] = {
      "boost.model at the shifts, on the mild twin's 2-3 upshift: 1 of 17 over 3.04; lowest 1.34, median 1.66, highest 3.14", "shift 2-3"},
     {"X-048", "2026-11-26", "N2 (boost.model)", "boost.model+exhaust.model+voices.model", "turbo-six-mild", "pull", "click",
      "boost.model at the shifts, on the mild twin's 2-3 upshift: 3 of 17 over 3.04; lowest 1.86, median 2.42, highest 3.60", "shift 2-3"},
+    // Shipped builds as built on the pull (the lead's ruling, 26 Nov 15:00): they run the map ECU, so the upshift's cut is
+    // X-047's over-long one and the steward's item 16 is expected to move them; 17 copies at 293.15 +- 0.15 K per event
+    // against each build's own reference's nightly bound; each event twice, as a click and as a click-shift-cut (the same
+    // window's worst step, named by whether it lies at the cut: a copy reads either), on 8ec06fd1 (the tip of 26 Nov afternoon)
+    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click",
+     "boost at the shifts, on a shipped build as built: the three-cylinder 1.0 turbo's 1-2 upshift: 6 of 17 over its nightly bound 2.84; lowest 1.26, median 2.62, highest 3.98", "shift 1-2"},
+    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click",
+     "boost at the shifts, on a shipped build as built: the three-cylinder 1.0 turbo's 2-3 upshift: 8 of 17 over its nightly bound 2.84; lowest 2.32, median 2.83, highest 3.56", "shift 2-3"},
+    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "kei-660-triple-turbo", "pull", "click",
+     "boost at the shifts, on a shipped build as built: the kei 660's 1-2 upshift: 2 of 17 over its nightly bound 2.77; lowest 1.53, median 2.08, highest 2.82", "shift 1-2"},
+    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click-shift-cut",
+     "as its click row, where the worst step lies at the upshift's cut (judge's click-shift-cut; the excess decides there too): the three-cylinder 1.0 turbo's 1-2 upshift: 6 of 17 over its nightly bound 2.84; lowest 1.26, median 2.62, highest 3.98", "shift 1-2"},
+    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click-shift-cut",
+     "as its click row, where the worst step lies at the upshift's cut (judge's click-shift-cut; the excess decides there too): the three-cylinder 1.0 turbo's 2-3 upshift: 8 of 17 over its nightly bound 2.84; lowest 2.32, median 2.83, highest 3.56", "shift 2-3"},
+    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "kei-660-triple-turbo", "pull", "click-shift-cut",
+     "as its click row, where the worst step lies at the upshift's cut (judge's click-shift-cut; the excess decides there too): the kei 660's 1-2 upshift: 2 of 17 over its nightly bound 2.77; lowest 1.53, median 2.08, highest 2.82", "shift 1-2"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

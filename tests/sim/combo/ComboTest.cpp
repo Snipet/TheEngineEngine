@@ -226,8 +226,9 @@ TEST_CASE("the scenario files of content/scenarios/combo are the ones the tests 
 
 namespace
 {
-    // One build of the corpus through the tour, judged against its own reference (every switch off).
-    void corpusBuild(const std::filesystem::path& f)
+    // One build of the corpus as built through a scenario (the tour unless named), judged against its own reference
+    // (every switch off).
+    void corpusBuild(const std::filesystem::path& f, Kind kind = Kind::Tour)
     {
         const Archetype generic{"corpus", 36.6, 209.4, false};
         Times tm;
@@ -237,7 +238,7 @@ namespace
         std::vector<double> excess;
         for (double dT : kBoundNudges)
         {
-            tee::test::Scenario off = scenario(Kind::Tour, f.string(), 0u, tm);
+            tee::test::Scenario off = scenario(kind, f.string(), 0u, tm);
             off.at(0.0);
             for (const Switch& w : switches())
                 off.spec(w.path, 0);
@@ -245,7 +246,7 @@ namespace
                 off.spec("env.temperature", 293.15 + dT);
             const tee::test::Run r0 = off.run(tm.end);
             from = tm.started + 0.5;
-            to = tm.off;
+            to = tm.off > 0.0 ? tm.off : tm.end;
             if (dT == 0.0)
                 ref = std::max(r0.left().during(from, to).largestStep(), r0.right().during(from, to).largestStep());
             excess.push_back(stepExcess(r0, from, to));
@@ -254,14 +255,14 @@ namespace
         }
         if (nightlyCase())
         {
-            std::printf("reference | %-28s | tour | excess over its copies:", f.stem().string().c_str());
+            std::printf("reference | %-28s | %s | excess over its copies:", f.stem().string().c_str(), kindName(kind));
             for (double e : excess)
                 std::printf(" %.2f", e);
             std::printf("; the bound twice the lowest, %.2f\n", 2.0 * lowestExcess(excess));
         }
-        const tee::test::Run r = scenario(Kind::Tour, f.string(), 0u, tm).run(tm.end);
+        const tee::test::Run r = scenario(kind, f.string(), 0u, tm).run(tm.end);
         const Verdict v = judge(r, tm, &generic, true, ref, lowestExcess(excess));
-        report(v, "as built", f.stem().string(), "tour");
+        report(v, "as built", f.stem().string(), kindName(kind));
     }
 
     std::filesystem::path corpusDir()
@@ -300,6 +301,24 @@ TEST_CASE("the archetype corpus: every build of content/builds/archetypes throug
     std::sort(files.begin(), files.end());
     for (const auto& f : files)
         corpusBuild(f);
+}
+
+// Shipped builds on the pull (the lead's ruling, 26 Nov 15:00: builds an owner drives, read per event on the pull, the
+// upshifts over where the tour read clean): three of the corpus as built, each against its own every-switch-off
+// reference, judged per event. The three-cylinder and the kei carry X-048's rows; the boxer is the build that reads
+// clean. The whole corpus on the pull is a proposal in docs/handoffs/x-combo.md, not a case.
+TEST_CASE("shipped builds on the pull: the kei 660 then the three-cylinder 1.0 then the boxer four", "[nightly][corpus]")
+{
+    for (const char* stem : {"kei-660-triple-turbo", "three-cylinder-10-turbo", "boxer-four-turbo-unequal"})
+    {
+        const auto f = corpusDir() / (std::string(stem) + ".json");
+        if (!std::filesystem::exists(f))
+        {
+            WARN("no " << f.string());
+            continue;
+        }
+        corpusBuild(f, Kind::Pull);
+    }
 }
 
 TEST_CASE("a handful of pairs where packages meet: fuel and ECU then boost and exhaust then ECU and car", "[nightly][combo][pairs]")

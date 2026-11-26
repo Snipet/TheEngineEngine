@@ -112,3 +112,17 @@ sets, X-030's 1-2 upshift on two, X-048's boost rows at the 1-2 and 2-3 upshifts
 on one build is the weakest kind of entry there is, kept because the rule is that none is waved off. The twin costs about
 7 minutes of the local nightly (3630 s against 3187 s), all in its triples; if the CI soak's share passes 10 minutes, its
 triples stay in the nightly and come out of the soak (the lead's ruling, 14:25).
+
+**26 Nov, shipped builds on the pull** (the lead's ruling, 15:00). The corpus's tour read clean; the pull is where the
+upshifts are. Three of the corpus as built (the two boosted small builds and a boxer four), each against its own
+every-switch-off reference's nightly bound, 17 copies at 293.15 +- 0.15 K per event, on 8ec06fd1: kei-660-triple-turbo
+(bound 2.77) over at its 1-2 upshift in 2 of 17; three-cylinder-10-turbo (2.84) at its 1-2 in 6 of 17 and its 2-3 in 8
+of 17; boxer-four-turbo-unequal (3.52) 0 of 17 everywhere; nothing over anywhere but at upshifts. The first two are X-048
+rows (N2, the steward named: as built they run the map ECU, so the upshift's cut is X-047's over-long one and item 16 is
+expected to move them). The nightly case "shipped builds on the pull" plays the three (a few minutes; the boxer stays
+as the build that reads clean); it leaves the CI soak with the twin's triples if the soak's added share passes 10
+minutes. Reproduce one build: `BOUNDPROOF="corpus <stem> pull" BOUNDPROOF_DT="<17 nudges>" tee-tests-combo
+"[.boundproof]"` (per-window lines "window | dT | event | excess | at | over|under").
+Proposal, not done: the whole corpus (31 builds) on the pull as a weekly entry, judged per event the same way: about 40
+minutes on this container's 4 shared cores, single draw at 293.15 K; a newly red row then gets its 17-copy spread (about
+4 minutes a build) before its entry.
