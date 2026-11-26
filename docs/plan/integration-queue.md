@@ -2187,11 +2187,11 @@ engines only where a source shows such an engine drawn split.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **26 Nov 11:53 UTC: `main` IS AT 317404d9** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
-  7c3e4d59, those trees unchanged; run 45806986323: Linux, macOS and Windows green on that commit; `ui/`,
-  tests, scripts and docs only since d586682c). Before it: 5278e3e9 (26 Nov 11:01), 3c42b4d2 (09:16), 5cd03815
-  (08:18), 07a08dc0 (07:50), d586682c (04:36). Next: 389ee865 (X-050, the dead cam dial's form; the lead's
-  render of the tip accepted) when its three jobs are green.
+- **26 Nov 12:25 UTC: `main` IS AT 389ee865** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
+  7c3e4d59, those trees unchanged; run 45811515179: Linux, macOS and Windows green on that commit; `ui/`,
+  tests, scripts and docs only since d586682c). Before it: 317404d9 (26 Nov 11:53), 5278e3e9 (11:01),
+  3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0 (07:50), d586682c (04:36). Nothing code-bearing is on the
+  branch past it.
 - **26 Nov 04:36 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items below and nothing
   else. From the first push under those trees the branch's baked tables are stale until the next bake; `main`
   stays the stable build. **A bake needs P, whose push is refused tonight: until the owner decides, land only
