@@ -558,6 +558,49 @@ second, nearly all at its 30 kPa ceiling, each with the same click tail.
 - Cost: one Wiebe step per burn alight, about 8 ns while one burns; nothing otherwise. `exhaust.model` 0 never reads
   it (the engine identity test passes with `bang` at its default).
 
+### The burns' gas is hot: what a housing books (26 Nov; the next window's item 1)
+
+A burn's volume source (`bangStep`: (γ−1)/(γp) of its heat's rate) is the expansion its heat makes, so the gas
+that reaches a turbine housing is that much hotter at the same pressure. Before this the housing booked the pipes'
+volume at the collector's own temperature (`heat.tUse[XH_COLL]`, which never saw the heat), so the burns' volume
+became mass the valves never let out.
+- **Measured before** (bench, the rally five held on its spark-cut limiter, BangTest's `measure` case, every 0.1 s):
+  - the housing booked 3.1 to 3.5 times the valves' mass;
+  - `bookLet`'s `tLet` was pinned at its 0.3 floor;
+  - the housing was at 6.5 to 7.0 bar abs and 750 K.
+  - On the tour (the soak's red, 223f4301): port 7.54 bar, turbine inlet 8.94, `valve.dpWave` −350 kPa against the
+    ±300 kPa bound.
+- **Now** (`Slots::houseT`): the housing receives T (1 + q_burns / q_ports) over the banks that feed it. That is
+  T + Q̇/(ṁ cp) in the mean.
+  - Both flows are means over some 20 ms, a bank each: the burns' source `net.popQ`, and the flow its ports let into
+    the collector, the valves' alone.
+  - At most 2600 K, about a stoichiometric charge's adiabatic flame from a hot start (judgement).
+  - The volume source is unchanged. The housing holds that enthalpy as its own `t`, and Boost's turbine expands it.
+- **Measured after:**
+  - **Bench:** the books average 0.99 (0.46 to 1.49 per window); `tLet` 0.36 to 0.51; the housing 2.0 to 5.2 bar abs
+    at 1700 to 2300 K; the port about 2.7 bar; `dpWave` −60 to −133 kPa.
+  - **Tour, 7.5 to 8.9 s:** port mean 3.33 bar (max 4.98); turbine inlet mean 3.16 bar (max 6.84) at 1750 K; boost
+    mean 1.27 bar (max 1.98); `dpWave` mean −100 kPa (min −155; −174 over the whole tour).
+  - **Tour, Carved, for comparison:** port 2.78 (max 3.84), turbine inlet 2.66 (max 4.72) at 633 K, `dpWave` −62
+    (min −92).
+- **The click at 8.74 s** (0.527 against Carved's 0.098 in 8.6 to 8.9 s) is gone: 0.088 there.
+  - The tour's largest steps are now the limiter's bangs, rising over 3 to 4 samples: 0.275 at 7.92 s, 50 ms after
+    9.8 MW of heat.
+  - X's corpus case (every archetype through the tour, as built): the rally five reads step 12.7 (33.7 at 223f4301),
+    and all thirty pass.
+- **Sound:**
+  - Only builds with a turbine and burns change. Of the five clip pairs the owner chose by, the rally five's is the
+    only one that changes: first.json's two burn nothing; the V8s have no turbine.
+  - The rally five's limiter, at the Tailpipe camera: the loudest 10 ms windows (99th percentile) are 2.0 dB lower,
+    the whole stretch's rms 2.2 dB higher, the peak the same.
+- **Not in this change:** builds without a turbine still meet their losses downstream at the cold gas's density. The
+  flat-plane V8 on its spark cut reads a port mean of 1.37 bar abs Burned against 1.13 Carved, and `dpWave` −20
+  against −11 kPa (min −37): small beside the bound.
+- **Whose:** the pipes' and the housing's inlet are G's. What Boost's turbine does with the hot gas, and its books,
+  are N2's.
+- **The auto level:** L's dense-burn rule (5dc80fc4) keeps the limiter's denser bangs from holding the body down.
+  With both in, the rally five's lift reads Burned +0.8 dB against Carved (L's measure; −4.5 without the rule).
+
 ## The heat's settle takes a cycle's gas (26 Nov; N1's finding)
 
 Card C's settle (`spec.exhaust.heatSettle`, `Exhaust::settleHeat`) soaks every wall to the gas at the ports and the
