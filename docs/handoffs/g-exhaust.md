@@ -215,3 +215,29 @@ multiply does.) Where it cannot hold, or holds only with care:
    it.
 4. **Model 0.** The reference (sim/ref) has its own literals; whether the reference's exhaust takes the stated air
    is the integrator's design. Either way, the default stays the reference's to the bit.
+
+### Finding: the pipes' impedance before a turbine is set at the outside, not at the pipe's mean (26 Nov; in no window)
+
+`Duct::set` (duct.fm:347-348) sets every pipe's z = gamma p / (c a) and rho = gamma' p / c^2 at the outside's
+pressure, the reference's way. The gas in a pipe is at its own mean pressure, the outside plus the back pressure
+there. That matters only where the mean pressure differs from the outside or between joined pipes. Where every pipe
+shares one mean, the ratios of z, and so the reflections, are unchanged, but the wave a valve's volume flow makes
+(z q) is not. Before a turbine the mean is some 1.5 to 2 times the outside (judgement, not measured), so there z
+and rho are low by that factor:
+- **in the primaries and collectors:** the valves' waves per unit flow are too small, the flow losses (K 1/2 rho
+  u^2) too small, and the wall loss (sqrt nu) too large;
+- **at the turbine:** the pipes either side meet at a mean pressure ratio of that size, and their impedances do not
+  show it.
+
+**What would measure it, before any change:**
+1. The size of the error, per build: the mean absolute pressure at the ports and the collectors (`pPortMean`, the
+   housings' pressures) over the outside, across the boosted archetypes at full load, from telemetry.
+2. Its effect: the same builds on a scratch tree with z and rho taken at each pipe's own slow mean pressure
+   (one pressure per section, 16-sample rate, as tUse follows the temperature), against the tree as it is. Read the
+   turbine inlet's pulse (its peak over its mean), the port's pulse, the boost and torque, and the tailpipe's level.
+3. Against what is known: a pulse-turbocharged engine's measured turbine-inlet pressure trace (the literature's
+   instantaneous traces, Watson and Janota's kind) for the pulse's height over its mean. No such reference is
+   cited here yet, so finding one is the first step.
+
+At the default no archetype may move, so the change would be a builder switch (model 1, hidden, as `portMean`),
+with test 2 setting the reference's. It is a reference fault, not an X-046 item.
