@@ -1619,19 +1619,63 @@ does, or says which state it did not read.
   dip, warm). From now on, an idle change of mine is read on p-idle-warm and the cold start for every archetype
   before it is proposed, and its note names the states it read.
 
+## 26 Nov 04:36 UTC: `main` AT d586682c; the next window and who can open it
+
+`main` was fast-forwarded b557c4a1..d586682c at 04:36:15 UTC by the lead, after its own checks: remote `main`
+still b557c4a1; d586682c descends from it; its `sim/`, `host/` and `tools/` trees (f23337cc, 2e7c1bec, 7c3e4d59)
+equal the bake b43ea339's; run 45752116326 is on d586682c and its linux-x64, windows-x64 and macos-arm64 jobs
+all concluded success (581 of 581; 573 of 573; macOS green). P's own tier (574 of 574) was on the bake before
+the wheel's chain was merged in; B's (580 of 580) was on the chain; CI's was the first whole run on the union.
+
+**The hold for it**: twelve "holding" before P's push, kept until all three jobs on the baked commit had started
+(Windows 04:03:54, Linux 04:04:37, macOS 04:13:59), so none was replaced while waiting; released at 04:14.
+
+**Three sessions' pushes are refused by their own permission checks tonight** (the integrator from 02:51, N2
+from 04:16, P from 04:24; the plain push's refusal reads "denied by the Claude Code auto mode classifier.
+Reason: [Undermining Oversight]"). Each stopped; none is worked around; no other session carries their commits.
+It is with the owner. Local to them meanwhile: the integrator's tests-only FieldDiff helper and X-045's cure;
+N2's design for "no wheel without a path" (it restates the integrator's notes with attribution: the lead's
+arrangement, withdrawn); P's Table P2 docs (ac0d0e77). **The next window's first item (N2 with the integrator)
+and any bake (P) wait on the owner's decision.**
+
+**From tonight, for every session:** a sha or a result goes into a message only after the command has printed
+it (four sessions sent one alongside a push that had not finished; one of those pushes had been refused).
+
+**X on the reverted tree** (fb32d4fc, Known.h): X-031 back (the V8's downshift, 4.73 against 4.03); X-044 as
+before the cure; two X-041 rows: the fixture turbo six's tour lift (3.23 against 2.97) and the shipped rally
+five's tour on its limiter (3.08 against 3.00; 3.92 on the old `main`, so the bake improves it); with the idle
+cure both read under their bounds, because the idle valve's rate term acts on a limiter's bounce at full
+throttle: the third measurement for the idle's design.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
-- **26 Nov 03:29 UTC: FROZEN FOR THE BAKE AGAIN, at e341bee3** (the steward's revert 2c4624e5 in it;
-  trees: **sim f23337cc, host 2e7c1bec, tools 7c3e4d59**, verified by the lead's fetch). `sim/`, `host/` and
-  `tools/` are CLOSED to every session until the baked commit is on `main`. P is baking on those trees (the
-  first bake, at 14bccbf7 on sim a86a64c9, stopped at its gate: the section above).
-- **Open at any time, as before:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the baked
-  tables), docs. One green whole default tier on a merged state, then merge a moved tip and push, saying what
-  was not in the run; `scripts/lint.sh` first; wait on the tier's process; a refusal of a session's permission
-  check is never worked around. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead
-  runs (every "holding" collected, then the tip named).
-- **Then:** P's final push by a hold; CI on the baked commit read on all three platforms; `main` fast-forwarded
-  by the lead's own check that the baked commit's `sim/`, `host/` and `tools/` trees equal the bake's, that it
-  descends from `main`, and that Linux, macOS and Windows are green on it; `[soak]` on it; then the next
-  window opens with the list of the section above.
+- **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
+  Linux, macOS and Windows green on that commit). Before it: b557c4a1 (25 Nov 23:25).
+- **26 Nov 04:36 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items below and nothing
+  else. From the first push under those trees the branch's baked tables are stale until the next bake; `main`
+  stays the stable build. **A bake needs P, whose push is refused tonight: until the owner decides, land only
+  what can wait for one, and say early what will not.**
+- **The list, in order** (each waits for the one before where their files meet):
+  1. N2 with the integrator: no wheel without a path. (ii) the guarantee first, as designed and ruled (the
+     builder's one call; feedOf; the shared volume summed; each nozzle by its own orifice law; acceptance: every
+     archetype and the null to the bit, then N2's predictions, then the gate's idle measure warm and cold on
+     every boosted archetype); (i) the split only where a source shows such an engine drawn split. BOTH OWNERS'
+     PUSHES ARE REFUSED: the item waits on the owner.
+  2. the steward: the idle's real cure, a design first (the fixture's lope; the 3.0 twin turbo's warm idle; the
+     rate term acting on a limiter's bounce at full throttle). Acceptance: the gate's own measure, WARM and
+     cold, on all 31 archetypes and the fixture, before any tier.
+  3. N2: the gate loop's limit cycle; X-041's pull row (the blow-off on a lift).
+  4. N2: the sequential rotary's pair after its join (#17).
+  5. N2 with C: step A of the turbine's match with the bake's stage (C's task #39).
+  6. G: the running path's port heat mass-weighted, a prediction across the builds first.
+  7. the integrator: X-045 (the cure local); the dyno loop's overshoot; a custom engine's friction.
+  8. the steward: the fuel's re-entry after an overrun cut, sources first, clips for the owner; X-036's cause.
+- **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
+  red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
+  default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
+  `scripts/lint.sh` before pushing; wait on the tier's process; a sha only after the command printed it; a
+  check that reads "the shipped builds" reads them as the bake's gate does (warm and cold) or says which state
+  it did not read; a refusal of a session's permission check is never worked around.
+- **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
+  baked tables), docs. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead runs.
+- **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**
