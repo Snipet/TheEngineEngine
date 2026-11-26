@@ -943,6 +943,15 @@ namespace tee::ui
     bool FieldInspector::edit(EditCommand cmd, bool fine)
     {
         using C = EditCommand;
+        if (cmd == C::undo || cmd == C::redo)
+        {
+            if (wheelField_ >= 0)            // a burst still open is closed first, so the frame's undo takes it
+            {
+                doc_.endGesture();
+                wheelField_ = -1;
+            }
+            return false;                    // the frame's
+        }
         if (editing_ >= 0)
         {
             if (cmd == C::back)

@@ -566,6 +566,15 @@ namespace tee::ui
     bool MapEdit::edit(EditCommand cmd, bool fine)
     {
         using C = EditCommand;
+        if (cmd == C::undo || cmd == C::redo)
+        {
+            if (burst_)                      // a burst still open is closed first, so the frame's undo takes it
+            {
+                burst_ = false;
+                source_.endEdit();
+            }
+            return false;                    // the frame's
+        }
         if (editing_)
         {
             if (cmd == C::back)

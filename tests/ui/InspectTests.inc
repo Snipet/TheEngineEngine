@@ -529,6 +529,15 @@
         CHECK_NEAR(mem.get(f), 97.8e3, 1.0);
         host.tick(60);                                    // the burst rests: one step
         CHECK_MSG(mem.steps() == steps + 1, std::to_string(mem.steps() - steps));
+        // Undo pressed inside a burst (before its rest): the burst is closed first, so the frame's undo takes it.
+        CHECK(col.edit(C::valueUp, false));
+        CHECK_NEAR(mem.get(f), 99.8e3, 1.0);
+        CHECK(!col.edit(C::undo, false));                 // the frame's, after the burst is closed
+        mem.undo();                                       // as the frame's undo does
+        CHECK_NEAR(mem.get(f), 97.8e3, 1.0);
+        mem.redo();
+        CHECK_NEAR(mem.get(f), 99.8e3, 1.0);
+        mem.undo();
         // toDefault: back to 80 kPa (one step); again: nothing to do.
         steps = mem.steps();
         CHECK(col.edit(C::toDefault, false) && mem.get(f) == 80e3 && mem.steps() == steps + 1);

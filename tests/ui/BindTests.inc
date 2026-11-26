@@ -449,6 +449,11 @@
         CHECK_NEAR(rig.doc.map(rig.doc.find("boost.duty")).z[0][1], z0 + 0.109, 1e-9);
         rig.host->tick(60);                               // the burst rests: one step
         CHECK_MSG(rig.doc.steps() == steps + 1, std::to_string(rig.doc.steps() - steps));
+        // Undo pressed inside a burst: closed first, so the frame's undo takes it.
+        CHECK(map.edit(C::valueUp, false));
+        CHECK(!map.edit(C::undo, false));
+        rig.doc.undo();
+        CHECK_NEAR(rig.doc.map(rig.doc.find("boost.duty")).z[0][1], z0 + 0.109, 1e-9);
         for (const C c : { C::activate, C::back, C::toDefault, C::changedOnly, C::undo, C::workspaceNext })
             CHECK(!map.edit(c, false));
         // A choice array: a whole step, at its end nothing; the element numbers' header takes nothing.
