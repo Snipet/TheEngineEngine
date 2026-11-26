@@ -155,6 +155,30 @@ against that tree's own bound, and is not assumed from these figures.
 
 ## 5. What it does not cure
 
+**After item 17, on the V8 (the steward, 26 Nov ~17:50; X's per-event mode 93b76f5a, 17 copies at +-0.15 K;
+probe trees only).** Item 17 is stood in for by the 30-pass stand-in, not G's secant tree. Each tree is judged
+against its own bound, twice the lowest of its reference's five copies.
+
+| V8 pull, fuel+ecu | tip (bound 3.91) | the cut probe (3.91) | both fixes (2.58) |
+|---|---|---|---|
+| the 1-2 | 4 of 17 (median 2.90) | 1 of 17 (2.51) | 8 of 17 (2.52) |
+| the 2-3 | 4 of 17 (2.57) | 0 of 17 (2.36) | 7 of 17 (2.48) |
+| the 3-2 | 1 of 17 (2.27) | 0 of 17 (2.60) | 12 of 17 (2.73) |
+
+- The converged valve quiets the reference: its five copies read 1.29 to 1.88, against 1.96 to 2.24.
+- It does not quiet the fuel+ecu case: the case's medians stay at 2.4 to 2.7, on the cut probe and on both fixes
+  alike.
+- So on that tree the V8 rows sit at their bound at every shift, including the 3-2 downshift, which has no cut.
+- **What item 16 is NOT expected to cure after item 17:**
+  - the V8's rows at its bound;
+  - the 3-2 above all, which no cut length touches.
+- The predicted cause of what remains at the upshifts is the purge: a spark cut pumps fresh charge through on every
+  cut cycle (residual 0.11 to 0.00 by the second intake). The reference's one-to-two-cycle fuel cut purges less, so
+  its first firing back is smaller on any valve.
+- The 3-2 is not that: it goes to item 8 (the fuel's return after an overrun cut, X-044's kind).
+- The steward's prediction (4 to 7 of 17 at the upshifts, 0 to 2 at the 3-2) held at the upshifts, which came in at
+  7 and 8, and failed at the 3-2, which came in at 12.
+
 On the probe with the cut at the reference's length, the four's first firing back still reads 1.30 against the
 reference's 1.16, and 4 of 15 copies remain over. A cut of any length purges the residual by its second intake. What
 is left is the burn of a purged, full charge (real engines do it too: a torque step on recovery, sourced; its size is
