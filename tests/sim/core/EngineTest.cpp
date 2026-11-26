@@ -902,8 +902,11 @@ TEST_CASE("the application's first build: no configuration field differs between
     // the cure's proof.
     const auto knownWall = [&](const std::string& p) {
         int i = 0;
+        // (the shelves, and the wall's design key kept with them (Duct::dWall, rWall: the bore and rate it was made for,
+        // e7088e2b), which records the same stale design)
         return indexAfter(p, "intk.run", i) && i < ports &&
-               (p.find(".sb0[") != std::string::npos || p.find(".sb1[") != std::string::npos || p.find(".sa1[") != std::string::npos);
+               (p.find(".sb0[") != std::string::npos || p.find(".sb1[") != std::string::npos || p.find(".sa1[") != std::string::npos ||
+                p.find(".dWall") != std::string::npos || p.find(".rWall") != std::string::npos);
     };
 
     std::vector<tee::test::core::Diff> across, moved0, moved1;
