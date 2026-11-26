@@ -107,6 +107,10 @@ namespace tee::ui::air
         double runnerArea = 0.0;        // m^2, as the simulator sizes it (sim/intake/intake.fm runners())
         double cylinderMean = 0.0;      // m^3: a cylinder's mean volume over the intake stroke (clearance + half swept)
         double ambientP = 101325, ambientT = 293.15;
+        // The document's env.pressure as set (U1 for U3, 26 Nov). The engine does not read it yet (only the car's drag
+        // does: the lead's finding, sim/engine.fm's literal 101325), so ambientP stays at sea level until the next
+        // window's item 15 makes the engine breathe it; this is what the owner set, for the warning that says so.
+        double docAmbientP = 101325;
         CompressorMap map;              // turbo 1's (or a centrifugal blower's)
         double omegaMax = 0;            // the shaft's limit, rad/s
         bool hasMap() const noexcept { return turbos > 0 || (charger == Charger::supercharger && blower == Blower::centrifugal); }

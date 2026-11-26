@@ -161,6 +161,35 @@ namespace tee::ui
             const double se = i < torqueSe.size() ? torqueSe[i] : 0.0, tq = i < torque.size() ? torque[i] : 0.0;
             return std::isfinite(se) && 2.0 * se > 0.02 * std::fabs(tq);
         }
+        // What card C's predictor says of each point beyond its numbers, as bits (the lead's ruling, 26 Nov, on C's
+        // numbers): kNotSettled it did not settle within its cycles (!PredictPoint::settled), kForced its state forced
+        // (PredictPoint::approachForced), kSpooling a stepped run's boost still coming (DynoPoint::spooling, once C's
+        // has it): biases the point's own statistics cannot see, so the point is distrusted (distrustAt: the plot's
+        // dashed ring, distrustText the cursor's words). kBoostRipple its boost ripples and the torque was taken as a
+        // mean over whole windows (PredictPoint::boostHunting): on a settled point a fact, known to its standard error,
+        // not a doubt (rippleText: the cursor's words only). Empty when the source says nothing. A limiter's point is
+        // neither: it is apart already.
+        static constexpr char kNotSettled = 1, kForced = 2, kSpooling = 4, kBoostRipple = 8;
+        std::vector<char> pointFlags;
+        char flagsAt(std::size_t i) const noexcept { return i < pointFlags.size() && !limitedAt(i) ? pointFlags[i] : 0; }
+        bool distrustAt(std::size_t i) const noexcept { return (flagsAt(i) & (kNotSettled | kForced | kSpooling)) != 0; }
+        std::string distrustText(std::size_t i) const
+        {
+            const char f = flagsAt(i);
+            std::string out;
+            const auto add = [&out](const char* s) { out += (out.empty() ? "" : "; ") + std::string(s); };
+            if ((f & kSpooling) != 0)
+                add("not steady: the turbo's boost still coming");
+            if ((f & kNotSettled) != 0)
+                add("not settled within its cycles");
+            if ((f & kForced) != 0)
+                add("its state forced: the approach could not release the latch");
+            return out;
+        }
+        std::string rippleText(std::size_t i) const
+        {
+            return (flagsAt(i) & kBoostRipple) != 0 ? "boost ripples: torque a mean over whole windows" : std::string();
+        }
         const char* wallsWord() const noexcept { return settled > 0 ? "walls settled" : settled == 0 ? "cold walls" : ""; }
         bool empty() const noexcept { return speed.empty(); }
         // The peak of torque or power: its value and the speed at it (NaN, NaN when empty).

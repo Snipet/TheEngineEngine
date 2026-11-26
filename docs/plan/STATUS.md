@@ -43,6 +43,34 @@
 
 ## Landed
 
+- **26 Nov 07:50 UTC: `main` at 07a08dc0** (from d586682c, fast-forward; run 45771252603 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged, so no table
+  moved). New in `main`, `ui/` and tests only: the dyno marks the points its program distrusts (a dashed ring and
+  NOT SETTLED for a step not settled, forced or still spooling; a boost's ripple said in the cursor's words) and
+  carries the predicted boost in the cursor card and a band; the boost card's notes; the reloader's test waits
+  on what an edit means (the flake of 26 Nov cured); the dips after a start's flare are a test on the shipped
+  builds; `Known.h` as of fb32d4fc. Not in it yet: the Air workspace's line for X-046 (the Air pressure field
+  moves the car's drag only), on the branch at b02ea957, its CI running.
+- **26 Nov 04:36 UTC: `main` at d586682c** (from b557c4a1, fast-forward; run 45752116326 on that commit: Linux
+  581 of 581, Windows 573 of 573, macOS green; every build re-baked on sim f23337cc / host 2e7c1bec / tools
+  7c3e4d59, 28 knock tables and 14 cam maps, all 31 gated warm and cold). New in `main`: the exhaust's heat settle
+  on a cycle's mean and weighted as the running path (a predicted point lands on a 90 s hold's within 1 %); the
+  burns' gas booked hot (the rally five's port 7.5 to 5.0 bar); a pipe's wall keyed on its bore and the rate
+  under the new models; a stopped engine reporting the loaded engine before the key; the stepped dyno approached
+  from below; a custom one-bank engine keeping its split exhaust, its headers split by firing order for twins a
+  bank each; the auto level's key for dense bangs; `boost.mismatch` bit 128 with the AIR page's words for it and
+  for bit 16; a bore under its least refused at input with its sentence in Rows and in table cells; the
+  inspector's wheel through the shared scroll rule (the owner's report: it scrolled a thirteenth of the others);
+  EDITING FROM THE G29 (the owner's request: the wheel's free buttons as the inspector's hands; B, U1, J2;
+  proven on made-up states only, the real wheel is the owner's to try). The first bake of this window stopped at
+  its own gate (the 3.0 twin turbo's warm idle, sd 54 against 25): the idle cure 98d0dc4d was the cause and was
+  reverted for the bake; its real cure is the next window's. Table P2 by P's numbers (the table's docs are local
+  to P, whose push is refused): 110 of 847 missed, 30 of 204 cited (113 on Table P); in: the 3.5 TT pickup's
+  peak torque, the rally five's speed of peak torque, the two-stage's sharpest point, the 3.2's VE at its
+  torque peak; out: the boxer's speed of peak torque (3509 against 3600 to 4400); the two-stage 192.3 / 189.5 /
+  197.4 N m about its switch, crossing 5921 rpm; first.json 226 N m at 1500, 389 at 1800, peak 391.8 against
+  333 to 368; the 2.0's 1750 rpm row 248.7 against 304. Left for the next window: no wheel without a path (a
+  dial reaches a turbo with no gas), the idle's cure, the gate loop's limit cycle, the rest of the queue's list.
 - **25 Nov 23:25 UTC: `main` at b557c4a1** (from 43006034, fast-forward; Linux 604 of 604, macOS 603 of 603,
   Windows green; every build re-baked, knock 6 and cam 4; Table P 113 of 847 missed). New in `main`: the diesel
   package (the compressor map fitted to the cited maps, the torque ceiling, the engine brake retuned); the

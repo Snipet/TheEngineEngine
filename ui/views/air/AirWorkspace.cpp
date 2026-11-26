@@ -236,6 +236,17 @@ namespace tee::ui
         }
 
     public:
+        std::vector<double> absolutes() const
+        {
+            std::vector<double> out;
+            for (const Part& part : parts_)
+            {
+                double pa = 0.0, k = 0.0;
+                after(part, pa, k);
+                out.push_back(pa);
+            }
+            return out;
+        }
         std::vector<std::string> warningLines() const
         {
             std::vector<std::string> out;
@@ -628,6 +639,11 @@ namespace tee::ui
         std::vector<Warn> warnings() const
         {
             std::vector<Warn> out;
+            // (U1 for U3, 26 Nov 2026) Air pressure set away from sea level does not reach the engine yet: it says so.
+            // LEAVES with the next window's item 15 (the engine reads env.pressure), with AirModel's held ambientP.
+            if (std::isfinite(build_.docAmbientP) && std::fabs(build_.docAmbientP - 101325.0) > 500.0)
+                out.push_back({ Kind::box, "AIR PRESSURE moves the car's drag only: this engine breathes sea-level air ("
+                                               + ctx_.units.format(Quantity::pressure, 101325.0) + ")" });
             const double bits = ctx_.live.get(N::mismatch);
             if (!std::isfinite(bits) || bits < 0.5)
                 return out;
@@ -1328,6 +1344,12 @@ namespace tee::ui
     {
         const auto* a = dynamic_cast<const AirWorkspace*>(&w);
         return a != nullptr ? a->hitList() : std::vector<AirHit>{};
+    }
+
+    std::vector<double> air::airAbsolutes(const Workspace& w)
+    {
+        const auto* a = dynamic_cast<const AirWorkspace*>(&w);
+        return a != nullptr ? a->absolutes() : std::vector<double>{};
     }
 
     std::vector<std::string> air::airWarnings(const Workspace& w)
