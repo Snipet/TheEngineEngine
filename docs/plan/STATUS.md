@@ -43,6 +43,14 @@
 
 ## Landed
 
+- **26 Nov 07:50 UTC: `main` at 07a08dc0** (from d586682c, fast-forward; run 45771252603 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged, so no table
+  moved). New in `main`, `ui/` and tests only: the dyno marks the points its program distrusts (a dashed ring and
+  NOT SETTLED for a step not settled, forced or still spooling; a boost's ripple said in the cursor's words) and
+  carries the predicted boost in the cursor card and a band; the boost card's notes; the reloader's test waits
+  on what an edit means (the flake of 26 Nov cured); the dips after a start's flare are a test on the shipped
+  builds; `Known.h` as of fb32d4fc. Not in it yet: the Air workspace's line for X-046 (the Air pressure field
+  moves the car's drag only), on the branch at b02ea957, its CI running.
 - **26 Nov 04:36 UTC: `main` at d586682c** (from b557c4a1, fast-forward; run 45752116326 on that commit: Linux
   581 of 581, Windows 573 of 573, macOS green; every build re-baked on sim f23337cc / host 2e7c1bec / tools
   7c3e4d59, 28 knock tables and 14 cam maps, all 31 gated warm and cold). New in `main`: the exhaust's heat settle

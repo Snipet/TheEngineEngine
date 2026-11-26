@@ -1980,8 +1980,11 @@ engines only where a source shows such an engine drawn split.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
-  Linux, macOS and Windows green on that commit). Before it: b557c4a1 (25 Nov 23:25).
+- **26 Nov 07:50 UTC: `main` IS AT 07a08dc0** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
+  7c3e4d59, those trees unchanged; run 45771252603: Linux, macOS and Windows green on that commit; `ui/` and
+  tests only since d586682c). Before it: d586682c (26 Nov 04:36), b557c4a1 (25 Nov 23:25). Next: 5cd03815
+  (U1's AIR line for X-046, carried by J2; the lead's own render of its picture is accepted), when its three
+  jobs are green.
 - **26 Nov 04:36 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items below and nothing
   else. From the first push under those trees the branch's baked tables are stale until the next bake; `main`
   stays the stable build. **A bake needs P, whose push is refused tonight: until the owner decides, land only
