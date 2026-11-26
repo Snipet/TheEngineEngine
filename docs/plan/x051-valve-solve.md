@@ -3,9 +3,11 @@
 Card G writes this page (the owner of `sim/exhaust/duct.fm`, where `Valve::flow` lives). Status: THE DESIGN, RULED (the lead, 26 Nov 12:33).
 Item 17 takes its place in the next window in the form measured below: the warm-started secant on the one
 continuous equation, the test at 1e-4 relative, the bracket kept with bisection, cold at each opening, reversal and
-reset, behind `spec.exhaust.valveSolve` with today's three passes kept verbatim for the null. **It goes first** among
-the window's sim changes that move readings, ahead of items 16 and 15: it moves every reference and every bound, so
-they are read once, on the converged valve. It needs, as every sim change does, a bake to follow (P), and the owner's
+reset, behind `spec.exhaust.valveSolve` with today's three passes kept verbatim for the null. Its place in the
+window's order is the lead's. **Corrected 26 Nov 17:40:** the reason given at 12:33 for putting it first ("it moves
+every reference and every bound") is false of this design. With a model off, each valve runs today's code to the bit,
+so the combo's every-switch-off references and every nightly bound stay as they are (below, "What moves").
+It needs, as every sim change does, a bake to follow (P), and the owner's
 two lines in the cylinder (the switch's hand-over; `wOn = 0` in `Cylinder::reset`), the integrator's. Nothing in
 `sim/` until the window can take a bake. The lead's ruling of 26 Nov 10:35 set its
 direction: one continuous equation, a bracketed root with a convergence test, both branches, a hidden switch.
@@ -171,19 +173,25 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
 
 ## The switch, and the line that is not mine
 
-- **The switch:** a hidden Spec field, `spec.exhaust.valveSolve` (0 Passes: the reference's three fixed passes; 1
-  Converged: the default), acting where `exhaust.model != 0`, as `portMean` does (docs/models/exhaust.md, "Which mean
-  the port's gas should be"). With exhaust.model 0, or valveSolve 0, `Valve::flow` runs today's code **unchanged, to
-  the bit**: the old passes are kept verbatim as one function and the new solve sits beside them.
-- **Test 2** ("model 1 at its defaults is model 0 in the engine, every layout", tests/sim/exhaust/EngineTest.cpp) sets
-  `exhaust.valveSolve 0` beside portHeat 0, flowClose 0 and portMean 0.
+- **The switches: each valve follows its own side's model** (the lead's ruling, 26 Nov 17:35).
+  - `vE` converges where `exhaust.model != 0`, under a hidden `spec.exhaust.valveSolve` (G's field).
+  - `vI` converges where `intake.model != 0`, under a hidden `spec.intake.valveSolve` (N1's field, to be added in the
+    window; the code is G's).
+  - Each defaults to the converged solve under its new model, and runs the old passes with its model off. A build
+    with the new exhaust and the reference intake keeps the reference's intake valve to the bit.
+  - With a valve's model off, or its switch 0, `Valve::flow` runs today's code **unchanged, to the bit**: the old
+    passes are kept verbatim as one function, and the new solve sits beside them.
+  - One `Valve` type, its instances told apart by a per-instance flag the cylinder sets from its side's model and
+    switch: nothing awkward. The instances in `sim/`: the core cylinder's `vE` and `vI`, and the two-stroke's
+    `cylinder2.fm` `vE` (card T's, which keeps the old passes unless T hands it a flag). The exhaust's `vLaw`
+    (slots.fm) uses only the table. The boost machine's ends are its own type (`BoostEnd`, gas.fm), untouched.
+- **The identity tests pin their own switches:** test 2 ("model 1 at its defaults is model 0 in the engine, every
+  layout", tests/sim/exhaust/EngineTest.cpp) sets `exhaust.valveSolve 0` beside portHeat 0, flowClose 0 and portMean
+  0; the intake's own "model 1 at its defaults is model 0" test sets `intake.valveSolve 0` (N1's).
 - **The one line I do not write:** the cylinder (`sim/core/cylinder.fm`, the integrator's) must hand the switch to
   its valves (e.g. `vE.converge = ...; vI.converge = ...` where the cylinder is set from the Spec), and so must the
   two-stroke's `cylinder2.fm` (card T's) if it is to share it. Named here as its owner's line. I write it only if
   my permission check allows it at the time, with a dated note in the owner's handoff.
-- **The intake valve:** `vI` runs the same code. Whether it converges under `exhaust.model`'s switch or under the
-  intake's own (N1's) is the lead's to say; the design works either way. X-051's measurements are all exhaust-side.
-
 ## The cost
 
 - **The ruler** (the lead's of 12:18): the solve's inputs captured sample by sample, cylinder 1's exhaust and intake
@@ -232,39 +240,43 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
   shipped against converged, the same seconds at one level, not normalised: a cold start (0 to 6 s), a full-throttle
   upshift (8.0 to 10.5 s), a steady 2nd-gear mid load (7 to 11 s). Their RMS levels agree within 0.2 dB. The
   waveforms part 0.27 s into the start (the first valve openings) and then drift, so only the ear can compare them.
-- **Every click reading and every bound.** On the stand-in the controls' medians move 0.1 to 0.5 both ways (the v8
-  pull exhaust.model case 2.28 to 1.78, its reference 2.09 to 1.61; the turbo V8 dual 2.56 to 2.20; the large diesel
-  1.59 to 1.66). Every reference moves, so **every nightly bound is recomputed on the new tree**. The list of rows
-  whose verdict changes is part of the change: each entered or released by X on the spread, never by a single draw.
+- **What does NOT move (corrected 26 Nov 17:40; from the code):**
+  - the combo's every-switch-off references, and so **every nightly bound**: with exhaust.model and intake.model off,
+    both valves run today's code to the bit;
+  - every case with both of those models off, which must read **the same to the bit**: X-030 (fuel+ecu+car), X-031
+    (fuel+ecu), X-044 (custom+fuel+ecu), X-048 (wallHeat+valve+boost), X-041's tour lift (valve+boost+ecu), and
+    X-052's wallHeat+ecu+car and the V8's valve+fuel+ecu.
+- **What moves:** a case with exhaust.model on (its `vE`) or intake.model on (its `vI`), read **against today's
+  unchanged bounds**. Among them: X-043's two rows (intake+exhaust+car), X-052's valve+intake+car and
+  intake+exhaust+voices, X-049's, and every shipped build, which runs every model, in its own cases and tables.
+- **How to read the stand-in tables below:** my 30-pass and secant scratch trees changed the solve for every run,
+  every case and every reference. So their "own bound" columns, and any bound computed on them (the steward's V8
+  "after item 17" reading against 2.58), describe a tree that will not exist. **The columns to read are "over X's
+  bound".** Even those overstate the change for a case with only one of the two models on: the scratch trees
+  converged both valves everywhere.
+- **The list of rows whose verdict changes** is part of the change: each entered or released by X on the spread,
+  never by a single draw.
 
 ## Acceptance, written before code
 
-1. **The null, to the bit,** with the switch off and with exhaust.model 0: ref.null (every preset, the layouts, the
+1. **The null, to the bit,** with both models off or both switches off: ref.null (every preset, the layouts, the
    rates and blocks) and test 2 on every layout (the nightly's 17).
 2. **The rows, by the evidence rule** (X's spread.sh, 17 copies, the two-tree mode, the source against the new code):
-   - **cured, 0 of 17, read per event** (X's part B): X-043's event, the start's catch (2.7 to 4.8 s), on both its
-     rows (intake+exhaust+car, the turbo six's tour and pull), and whatever the turbo six's mild-cam twin (X's, a dial
-     equal to the lab's default cam) shows. On the secant's scratch tree: the pull 7 -> 0 of 17, the tour 11 -> 0 at
-     the event. The tour's one copy over today's 2.96 (dT -0.05, 3.09 at 6.801 s, in the full-throttle stretch,
-     judged "none") is **another event**: it is spread on the new tree against the new tree's own bound when the
-     real code is in (0 of 17 against 3.46 on the scratch tree), and entered only if that spread shows a copy over.
-     X-049 is not evidence: on X's corrected corpus (the turbo six's lab cams stated equal to its dial) it reads 0 of
-     17 on the tip too (N1, 26 Nov). Its valve rows were comparing the lab's default 231 degree cam with the dial's 300.
-     The chatter itself (§1, the relight and the low-gear captures) was measured with valve.model off, the reference
-     valves on the dial's cam, and stands;
-   - **rates beside today's, no verdict:** X-030 (small four pull fuel+ecu+car: 13 of 17 today, 9 on the stand-in) and
-     X-048 (turbo six pull wallHeat+valve+boost: 14 today, 8 on the stand-in against X's bound, 3 against its own);
-   - **expected NOT to move, a move to be explained:** X-044 (11 and 12), X-041's tour lift (3 and 3) and the rally
-     five (1 over 3.00 on both);
-   - **read against both bounds:** X-031 (7 of 17 today; on the stand-in 2 against X's 3.92, 14 against its own 2.58,
-     its reference having fallen more than it did);
-   - **X-052's limiter rows** (the turbo six's and the V8's tour, the limiter window as the run's worst; spread.sh's
-     two-tree mode, tip against the stand-in, over the nightly 2.97 for the turbo six, each tree's own for the V8):
-     valve+intake+car **1 -> 4** of 17 (medians 2.23 -> 2.74); intake+exhaust+voices 0 -> 0 (2.22 -> 2.39);
-     wallHeat+ecu+car 0 -> 1 (1.88 -> 2.12); the V8's valve+fuel+ecu **5 -> 0** against each tree's own bound (3.94,
-     4.38), 2 against the tip's 3.94. Predicted to stay: roughly so, but the first rose and the V8's fell. Two of the
-     four carry valve.model on dial builds, which X has shown compare a cam swap: read them again on X's corrected
-     corpus before any is explained.
+   - **cured, read per event** (X's part B), against today's unchanged bounds: X-043's event, the start's catch (2.7
+     to 4.8 s), at 0 of 17 on both its rows (intake+exhaust+car, the turbo six's tour and pull), and whatever the turbo
+     six's mild-cam twin (X's, a dial equal to the lab's default cam) shows. On the secant's scratch tree, against X's
+     bounds: the pull 7 -> 0 of 17 (2.67); the tour 11 -> 1 (2.96). The tour's one is **another event** (dT -0.05,
+     3.09 at 6.801 s, in the full-throttle stretch, judged "none"): it is spread per event on the real code against
+     today's 2.96, and entered only if that spread shows a copy over;
+   - **untouched, to the bit** (both models off in the case): X-030, X-031, X-044, X-048, X-041's tour lift, and X-052's
+     wallHeat+ecu+car and V8 valve+fuel+ecu. Any move in one of them is a fault of the gate;
+   - **moved, read against today's bounds:** the rally five as built (every model on; 1 over 3.00 today), and X-052's
+     valve+intake+car and intake+exhaust+voices (on X's corrected corpus, per event, today: 0, and 1 at the limiter at
+     3.03; on the secant's scratch tree: 0, and the limiter's worst 2.99, one copy over 2.97).
+   - X-049 is not evidence: on X's corrected corpus (the turbo six's lab cams stated equal to its dial) it reads 0 of
+     17 on the tip too (N1, 26 Nov). Its valve rows were comparing the lab's default 231 degree cam with the dial's
+     300. The chatter itself (§1, the relight and the low-gear captures) was measured with valve.model off, the
+     reference valves on the dial's cam, and stands.
 3. **The instrument kept, the absence guarded** (the lead's ruling of 11:46, whatever is decided about the solve):
    - the chatter counter (§1) as a hidden telemetry field, `tel.exhaust.valveChatter` (a running count), written by
      the cylinders' valves;
