@@ -162,6 +162,9 @@ module Listen
     float autoKd;
     float autoKey;
     float autoQ80;      // the parts' running 80th percentile, and its step (a part's, log)
+    float autoQ50;      // the parts' running median (the same step)
+    float autoKa;       // while a burn is alight, a part over this times the median is a burst
+    float autoBurn;     // the time left (samples) of a burn in the pipe alight or on its way to the listener
     float autoEta;
     float autoCrank;    // the starter's largest in this call, and the time left of a start (samples)
     float autoStart;
@@ -294,6 +297,9 @@ module Listen
         autoKd = 1.0f - expf(-1.0f / (0.001f * rate));
         autoKey = -1.0f;
         autoQ80 = 0.0f;
+        autoQ50 = 0.0f;
+        autoBurn = 0.0f;
+        autoKa = 2.0f;
         autoEta = 0.003f;
         autoWin = 0.0f;
         autoN = 0;
@@ -499,8 +505,17 @@ module Listen
     void block(int v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim,
                float gainNorm, int nPipes, float bike, float tailD, SoundSpec* ssIn, SoundTel* stIn, float carSpeed,
                int driven, float vTotal, int nCyl, float fx, float fy, float mx, float my, float* fire, float cyc,
-               int rotary, int moto, float wheelbase, float tuck, float liftDeg)
+               int rotary, int moto, float wheelbase, float tuck, float liftDeg, float burnNow)
     {
+        // a burn in the pipe (the exhaust's bangHeat): held while its sound is on its way to the listener (the
+        // tailpipes' longest tap, the ground's) and 40 ms more (the pipe's run to the tail, the bang's ring, and a
+        // block's lag: the exhaust may write its telemetry after this call, some 10 ms at 512 samples)
+        if (burnNow > 0.0f && model != 0)
+        {
+            const SceneView* bv = &sc.vw[sc.cur];
+            const float dT = fmaxf(bv->d[LS_TAIL0 * 3 + 2], fmaxf(bv->d[LS_TAIL0 * 3], bv->d[LS_TAIL0 * 3 + 1]));
+            autoBurn = fmaxf(autoBurn, dT + 0.04f * rate);
+        }
         sc.moto = moto;
         wheelbaseNow = fmaxf(wheelbase, 0.5f);
         sc.motoK = fmaxf(wheelbase, 0.5f) / 1.41f;
@@ -871,6 +886,7 @@ module Listen
             autoKey = key;
             autoP = 0.0f;
             autoQ80 = 0.0f;
+            autoQ50 = 0.0f;
         }
         // a start (the starter turning, and 1.5 s after): what it is loud with is not exposed for long
         if (autoCrank > 1.0e-6f)
@@ -892,14 +908,20 @@ module Listen
             autoN = 0;
             autoStart = 3.0f * rate;
         }
-        // A burst, a part over twice the running 80th percentile of the parts (log domain, some 50 ms), does not raise
-        // P: a bang of a few ms (a burn in the pipe, a spark cut's crack) goes to the limiter, as a real limiter takes
-        // it, and does not hold the body down for seconds. A rev's parts rise together and pass. Bursts that fill more
-        // than a fifth of the parts are the body, and are exposed for
+        // A burst, a part over four times the running 80th percentile of the parts (log domain, some 50 ms), does not
+        // raise P: a bang of a few ms (a burn in the pipe, a spark cut's crack) goes to the limiter, as a real limiter
+        // takes it, and does not hold the body down for seconds. A rev's parts rise together and pass. Bursts that fill
+        // more than a fifth of the parts are the body, and are exposed for, unless a burn in the pipe is alight (its
+        // sound on its way, autoBurn): dense burns fill more, and then a part over twice the parts' median is a burst
         if (autoQ80 <= 0.0f)
             autoQ80 = pk;
         autoQ80 *= pk > autoQ80 ? expf(0.8f * autoEta) : expf(-0.2f * autoEta);
-        const bool burst = pk > 4.0f * autoQ80;
+        if (autoQ50 <= 0.0f)
+            autoQ50 = pk;
+        autoQ50 *= pk > autoQ50 ? expf(0.5f * autoEta) : expf(-0.5f * autoEta);
+        const bool alight = autoBurn > 0.0f;
+        autoBurn = fmaxf(autoBurn - (float)m, 0.0f);
+        const bool burst = pk > 4.0f * autoQ80 || (alight && pk > autoKa * autoQ50);
         if (pk > autoP && !burst)
             autoP = pk;
         autoWin = fmaxf(autoWin, burst ? autoWin : pk);
@@ -907,11 +929,14 @@ module Listen
         if ((float)autoN >= 0.1f * rate)
         {
             const float n = (float)autoN;
-            if (autoStart > 0.0f)
-                autoQ *= expf(logf(fmaxf(autoWin, 1.0e-6f) / autoQ) * 0.3f);    // as it comes, over some 0.3 s
-            else
-                autoQ = autoWin < autoQ ? autoQ * expf(logf(autoWin / autoQ) * fminf(n / rate, 1.0f))
-                                        : fminf(autoQ * expf(n * autoRise), autoWin);
+            if (autoWin > 0.0f)    // (a window whose every part was a burst leaves Q where it was)
+            {
+                if (autoStart > 0.0f)
+                    autoQ *= expf(logf(fmaxf(autoWin, 1.0e-6f) / autoQ) * 0.3f);    // as it comes, over some 0.3 s
+                else
+                    autoQ = autoWin < autoQ ? autoQ * expf(logf(autoWin / autoQ) * fminf(n / rate, 1.0f))
+                                            : fminf(autoQ * expf(n * autoRise), autoWin);
+            }
             if (autoStart > 0.0f)
                 autoP *= expf(-3.0f * n * autoRel);
             else if (autoWin > 0.5f * autoP)

@@ -1457,7 +1457,7 @@ module Engine
                          customUse != 0 ? shake.fx : 0.0f, customUse != 0 ? shake.fy : 0.0f,
                          customUse != 0 ? shake.mx : 0.0f, customUse != 0 ? shake.my : 0.0f, lay.fire, lay.cyc, lay.rotary,
                          spec.car.kind == 2 && spec.car.model == 1 ? 1 : 0, spec.car.wheelbase, spec.car.tuck,
-                         tel.car.liftAngle);
+                         tel.car.liftAngle, tel.exhaust.bangHeat);
             for (int i = 0; i < m; ++i)
             {
                 if (prime != 0)

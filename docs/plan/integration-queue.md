@@ -955,9 +955,13 @@ default after the clips; the idle's level; the listening questions.
   cell at 2000.
 - **Research list (the steward): X-030, X-031, X-032, X-036, nothing landed** (measured locally on 87a014f5, the
   pull, six shift phases, the click step and X's excess beside it; the scratch rows in the steward's hand-off).
-  - *A wrong prediction, kept:* with `exhaust.model` on, `exhaust.bang` 1 and 0 read the same, number for number, at
-    the tip and with the cure: the bang account books only the limiter's, the overrun's and a misfire's burns, not a
-    dog box's cut. Under either choice the dog cut sounds the same today.
+  - *A finding withdrawn (the steward, 26 Nov):* "with `exhaust.model` on, `exhaust.bang` 1 and 0 read the same" was the
+    probe's fault: Scenario::spec queues a write at the scenario's current time, and the probe set the choice after the
+    timeline was built, at its end, so both rows ran the default. Re-read with the write at 0 s, on the tip 6c1834f3+,
+    fuel+ecu+exhaust, six shift phases, excess against its bound: the V8 under Burned (bang 1, the default) 1.71 to
+    3.01, all green; under Carved (bang 0) 2.70 to 4.07, one shift-cut red (4.07 against 4.03). The small four under
+    Burned 1.60 to 1.98, all green; under Carved 2.26 to 3.69, three shift-cut reds against 2.85. So under the
+    default, with the exhaust model on, the dog cut's step is gone on both builds; the cut's charge is booked after all.
   - *The cure tried* (a dog box's cut takes the fuel with the spark, `launch.dogLeft` in Ecu1's `fuelCut`; c035fe75's
     ramp reverted): it clears X-030 on the V8 at every phase and not on the small four, so it did not land:
 
@@ -1341,6 +1345,41 @@ remaining default-run case still guards the same property, and name that case. N
 test-s before and after on the steward's measure (CI's Linux log through scripts/test-budget.sh). No share moves until
 the owners have reported what grouping alone recovers. D2 is woken for diesel's only after the window's sim work is
 in, unless its 217 keeps growing.
+
+## 26 Nov 00:23 UTC: the window an hour in: what is on the branch, what is held and for what
+
+**On the branch under `sim/`, `host/`, `tools/` (tip cba0ac43; the baked tables are stale from here):**
+
+- the integrator, 823e45cd (`sim/engine.fm`): a custom one-bank engine of its table's count keeps the table's
+  split exhaust; d5edd109 its default-run null (a custom engine written from its table configures as the table);
+- C, f600af2e (`host/src/Dyno.cpp`): a held step is reached as an upward sweep reaches it where the program says a
+  part has hysteresis; 1507cc1d (`host/src/Build.cpp`, `Fields.cpp`): a stated bore under its least is refused at a
+  person's input (the loader; the inspector through `Build::accepts`);
+- the steward, 98d0dc4d (`sim/ecu/idle.fm`): the idle valve's proportional part reads the speed alone, not its
+  rate (X-032, the turbo six's idle hunt).
+
+Item 4 of the last section (a custom engine's friction) is closed without a fault: custom turns on the physical
+friction model, which reads the oil's temperature; warm it equals the reference within 2 %, and the dyno and the
+predictor run warm.
+
+**Held locally, with what each waits for:**
+
+| who | what | waits for |
+|---|---|---|
+| G | `settleHeat` on a cycle's mean (two cascaded first-order means, one four-stroke cycle each) and the duct's wall key (bore and sample rate), ONE push; the identity test loading each model fresh; a load-order check | its own tier |
+| G | the burn's heat as hot gas (301ba06c); as a patch under docs/handoffs/patches/ for L meanwhile | L's dense-burn rule |
+| L | the dense-burn rule (a part over twice the running median while a burn is alight is a burst; `bangHeat` passed to `listen.block`, agreed by the integrator). The V8's spark-cut limiter with it: the limiter acts in 74 % of reads at a median 1.7 dB, the 50 ms envelope's spread 2.3 to 2.5 dB: no pumping | its tier (restarted 00:20); then measured with and without G's patch |
+| the integrator | the init order (b74a041b): after `readSpec()` a stopped, silent engine whose dials moved is configured there, not at the key (first.json before the key read 6500 rpm, 8 cylinders, 5.76 L; now 6800, 4, 1.98 L) | its tier; pushed alone |
+| the integrator | #337's new form (6c7b6add: the field diff as a default-run case; the paired torque at 1500 rpm, bound 1 %) | G's wall cure, so it lands unmarked |
+| U1 | three commits: the bore's refusal in Rows (c16fb7e5), J2's inspect.type case (34ae7bd8), a table cell refusing 3 mm as it refuses text that is no number | G's settle push, then the lead's hold |
+| N2 | step A of the turbine's match (6115fbf7, 5b6409fb) | NOT this window: lands with the bake's step B |
+| N1 | the cam bake's :1038 restated with C (89b53a35, to amend) | C's reading |
+
+**Tests' time, by grouping alone (the rule of the section above):** calibration (boost) 133 to 75 test-s (N2);
+calibration-na 85 to 44 (N1). Both local, both to be pushed and read again on CI's reference runner.
+
+**Next in the lead's hands:** the hold for U1 straight after G's sha; then the integrator lands #337 on it, N1
+measures the two-stage on it, P re-reads the crossing and the notch.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 

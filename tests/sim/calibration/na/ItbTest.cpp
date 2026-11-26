@@ -2,6 +2,7 @@
 // the manifold the ECU reads is the runners' far ends' mean pressure, a sum of linear waves: on the lift after the
 // limiter it read below zero absolute (-4330 Pa, found by card D), and the ECU's load with it. Held: through a
 // limiter-and-lift on the 3.2 six, the manifold reading never falls below 5 kPa absolute.
+#include "Player.h"
 #include "tee/EnginePlayer.h"
 #include "tee/Warm.h"
 
@@ -12,15 +13,16 @@
 #include <filesystem>
 #include <string>
 
-TEST_CASE("individual throttles: the manifold reading stays above 5 kPa through a limiter and a lift", "[calibration][na]")
+// (a section of the fast tier's one case, FastTest.cpp: "individual throttles: the manifold reading stays above 5 kPa
+// through a limiter and a lift")
+void n1::itbManifoldAbove5kPa()
 {
-    tee::EnginePlayer::Options options;
-    options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
-    options.sampleRate = 48000.0;
+    struct
+    {
+        double sampleRate = 48000.0;
+    } options;
     std::string errors, warnings;
-    auto p = tee::EnginePlayer::create(options, errors);
-    INFO(errors);
-    REQUIRE(p != nullptr);
+    tee::EnginePlayer* p = &n1::player(options.sampleRate);
     tee::EngineBuild b;
     REQUIRE(tee::loadBuild(*p, std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / "straight-six-32-high-rev.json",
                            b, errors, warnings));

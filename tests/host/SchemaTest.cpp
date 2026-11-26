@@ -154,7 +154,7 @@ TEST_CASE("the simulator passes the lint, and the committed snapshot holds", "[s
     if (!std::filesystem::exists(sim / "engine.fm"))
         SKIP("sim/engine.fm is not there yet (part K3 writes it): the lint runs on the stand-in meanwhile");
     std::string errors;
-    auto compiled = Sim::compile(sim, {}, errors);
+    auto compiled = test::compiled(sim, {}, errors);   // the run's one compile (not one of its own: the fast tier's cap)
     INFO(errors);
     REQUIRE(compiled != nullptr);
     const std::vector<std::string> problems = lint(compiled->fields());
