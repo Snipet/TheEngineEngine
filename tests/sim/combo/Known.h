@@ -115,8 +115,12 @@ const Known kKnown[] = {
     {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model+fuel.model", "turbo-six", "pull", "click",
      "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
      "this scenario 1.34): under the nightly bound 2.67, 8 of 17; under 3.37, 0 of 17; lowest 1.65, median 2.64, highest 3.06; at 8.82, 6.56, 9.86, 11.30 s"},
-    {"X-049", "2026-11-26", "N1 and G", "valve.model+exhaust.model+sound.model", "turbo-six", "pull", "click",
+    {"X-049", "2026-11-26", "L (part 1: sound.model's output steps tenfold in 10 ms at the return of power) and N1 (part 2: "
+     "the valve model with the exhaust's raises its rate); the lead's ruling, 26 Nov 09:58",
+     "valve.model+exhaust.model+sound.model", "turbo-six", "pull", "click",
      "valve, exhaust and sound on the turbo six's pull, no boost model: under the nightly bound 2.67, 2 of 17 over, both at "
-     "6.59 s; under 3.37, 0 of 17; lowest 1.26, median 2.30, highest 3.28"},
+     "6.59 s, the upshift's return to power (sound.peak 0.054 to 0.57 in about 10 ms, the gain flat); under 3.37, 0 of 17; "
+     "lowest 1.26, median 2.30, highest 3.28; the event appears with sound.model alone and with no combination "
+     "without it (G's and N1's spreads)"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
