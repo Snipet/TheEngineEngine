@@ -572,6 +572,15 @@
         col.edit(C::valueUp, false);
         CHECK(col.edit(C::changedOnly, false) && col.changedOnly());
         CHECK(col.focusedField() == mem.find("engine.compression"));
+        // The focused row's outline and its changed dot do not meet: the dot stands clear of the stroke by more than the
+        // stroke's own width (the lead, 26 Nov: a mark against a mark).
+        {
+            funkgui::Rect mark, dot;
+            CHECK(col.focusMarkRect(mark) && col.changedDotRect(mem.find("engine.compression"), dot));
+            const float stroke = tee::ui::FieldInspector::kFocusStroke;
+            CHECK_MSG(dot.x - (mark.x + stroke * 0.5f) >= stroke, std::to_string(dot.x - (mark.x + stroke * 0.5f)));
+            CHECK(dot.y > mark.y + stroke && dot.bottom() < mark.bottom() - stroke);
+        }
         CHECK(col.edit(C::changedOnly, false) && !col.changedOnly() && col.focusedField() == mem.find("engine.compression"));
         CHECK(col.edit(C::back, false) && col.focusedRow() < 0 && !col.edit(C::back, false));
         // The frame's: pages, workspaces, undo, redo.

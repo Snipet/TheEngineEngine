@@ -136,7 +136,7 @@ namespace tee::app
         Shown& operator=(Shown&&) = default;
         PanelGoing panelGoing;
         // The frame's editing hands for the wheel's edit buttons (input/g29/G29Input.h's EditCommand; `fine`: SHARE
-        // held): true when something took it. Empty until the frame serves edit() (U1's half, J2's inspector).
+        // held): AppFrame::edit, true when something took it. Empty where there is no frame (tee-headless's plain Panel).
         std::function<bool(input::g29::EditCommand, bool fine)> wheelEdit;
         ~Shown()                                    // the Panel first: it holds references into `keep`
         {

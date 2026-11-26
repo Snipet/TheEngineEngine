@@ -388,6 +388,37 @@ namespace tee::ui
         return out;
     }
 
+    Rect FieldInspector::changedDot(const Row& r, const Rect& at) const
+    {
+        const bool middle = style_ == Style::list || !numberKind(doc_.info(r.field));
+        const float cy = middle ? at.y + (at.h - r.said) * 0.5f : at.y + 16.0f;
+        return { at.x + 8.0f - 2.6f, cy - 2.6f, 5.2f, 5.2f };
+    }
+
+    bool FieldInspector::focusMarkRect(Rect& mark) const
+    {
+        if (focus_ < 0 || focus_ >= static_cast<int>(rows_.size()))
+            return false;
+        const Rect at = onScreen(rows_[static_cast<std::size_t>(focus_)].rect), content = contentRect();
+        if (at.bottom() < content.y || at.y > content.bottom())
+            return false;
+        mark = { at.x + 1.0f, at.y + 1.0f, at.w - 2.0f, at.h - 2.0f };   // the stroke's centre line
+        return true;
+    }
+
+    bool FieldInspector::changedDotRect(int field, Rect& dot) const
+    {
+        for (const Row& r : rows_)
+            if (r.kind == Row::Kind::field && r.field == field)
+            {
+                if (!changed(field))
+                    return false;
+                dot = changedDot(r, onScreen(r.rect));
+                return true;
+            }
+        return false;
+    }
+
     std::vector<std::string> FieldInspector::refusalShown() const
     {
         for (const Row& r : rows_)
@@ -1321,7 +1352,10 @@ namespace tee::ui
                         c.rrect(at.x + 4.0f, at.y + 1.0f, at.w - 8.0f, at.h - 2.0f, 4.0f,
                                 focused ? l.over(l.edge, 0.55f) : l.over(l.edge, 0.3f));
                     if (changed(r.field))
-                        c.disc(at.x + 8.0f, compact || !numberKind(f) ? at.y + (at.h - r.said) * 0.5f : at.y + 16.0f, 2.6f, l.accent);
+                    {
+                        const Rect dot = changedDot(r, at);
+                        c.disc(dot.centreX(), dot.centreY(), dot.w * 0.5f, l.accent);
+                    }
                     const Rect v = onScreen(r.value);
                     const float labelY = compact || !numberKind(f) ? at.y + (at.h - r.said) * 0.5f : at.y + 16.0f;
                     const std::string label = f.label.empty() ? f.path : f.label;
@@ -1365,6 +1399,11 @@ namespace tee::ui
                 case Row::Kind::empty: break;
             }
         }
+        // The focused row, seen from a driving seat (a controller's): an accent outline round it, at the row's own edge so
+        // the changed dot stands clear of it by more than the stroke (no bar at its left: the dot is there).
+        Rect mark;
+        if (focusMarkRect(mark))
+            c.rrect(mark.x, mark.y, mark.w, mark.h, 5.0f, kClear, kFocusStroke, l.accent);
     }
 
     void FieldInspector::draw(Canvas& c, const funkgui::Theme& th, bool focusRing) const

@@ -150,8 +150,28 @@ only what a frame's sample sees, so detents faster than the frames are not lost;
 Linux: tested with made-up kernel events (three detents between two frames, three nudges). macOS: compiled by CI,
 unproven until the owner turns the dial. Windows: only a frame's sample is known there, so a press counts once a frame.
 Minus and plus repeat as the D-pad's up and down do. Editing from the wheel works where its buttons are read:
-macOS and Linux today; on Windows once the owner's probe has given its table (below). Until the frame takes the
-commands (its `edit()`, being built), the console says once "editing from the wheel waits for the frame".
+macOS and Linux today; on Windows once the owner's probe has given its table (below). The commands go to the
+frame's `edit()` on the window's thread (`app/WheelEdit.h` names them into the interface's); where there is no frame,
+the console says once "editing from the wheel waits for the frame". The whole chain, a D-pad press to a moved focus
+and a dial's detent to a nudged value, is tested on made-up wheel states (`tests/shell/app/AskChainTest.cpp`); on the
+real wheel it is the owner's to try.
+
+**In the inspector.** The commands act on the inspector's focused row, the one with the orange outline. Until something
+has the focus, the first press gives it to the shown page's first row. Up and down move over every row of the page: a
+group's heading, a field, a table's OPEN row. The view scrolls so the focused row keeps half a row of the pane beyond
+it. The dial and minus/plus nudge the focused value exactly as the mouse wheel over it does: a run of nudges is one step
+of UNDO once the dial has rested half a second, and square undoes it at once (the run is closed first). A switch goes
+on with a nudge up and off with a nudge down. A value the build refuses (a bore under the least stated, 10 mm) is not
+moved. Its row says why in red under it ("Out of range: under the least stated bore, 10 mm (0: derived)") until the
+next nudge, and a long sentence wraps rather than being cut. Activate (the dial's return, cross): a switch flips, a
+choice steps to the next (after the last, the first), a group folds or unfolds, a table's row opens the table on its own
+page with its first cell chosen. On a number, activate does nothing: a number is nudged, not typed, from the wheel. L3
+puts the focused field back to its default (one step of UNDO). OPTIONS shows only what has changed and back again, the
+focus staying on its field. **In a table** (a map, an array of values): up and down move a row (an array on lines: a
+line), left and right a cell (left of the first column is the row's own header). The dial and minus/plus nudge the
+chosen cell: a hundredth of its range, or one whole step for a choice or a whole number. A refused value says why on the
+table's title line. Circle closes the table and puts the focus back on its row. Everywhere else circle lets the focus
+go. (The inspector's side is J2's: `ui/kit/inspect/`.)
 
 **On and off:** the settings page's WHEEL row (on macOS, Linux and Windows; its status line under it), or F9, "Read the racing wheel
 (Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
