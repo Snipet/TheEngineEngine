@@ -1479,37 +1479,103 @@ before any blocker (the steward with the integrator).
 87.5 s locally by grouping (three compiles needed by design remain: accepted as where grouping ends); host 142
 to 111 with one entry at 104 s for C to split.
 
+## 26 Nov 02:37 UTC: FROZEN FOR THE BAKE at 14bccbf7; what the window landed; what it found and left
+
+**The window (23:27 to 02:37) under `sim/`, `host/`, `tools/`, in the order it landed:**
+
+| who | commit | what |
+|---|---|---|
+| the integrator | 823e45cd, d5edd109 | a custom one-bank engine keeps its table's split exhaust; its null |
+| C | f600af2e, 1507cc1d | the stepped dyno reaches a held step from below; a stated bore under its least refused at input |
+| the steward | 98d0dc4d | the idle valve's proportional part reads the speed alone (X-032; X-031 gone with it, by two reads) |
+| L | 5dc80fc4 | a burn in the pipe alight is the auto level's key for dense bangs (the V8's lift -0.3 dB, was about -5) |
+| the integrator | 393519ea | a stopped, silent engine whose dials moved is configured as the Spec is read, not at the key |
+| G | 9e52a186 | `settleHeat` on a cycle's mean (the two-stage's port temperatures 1128 to 1607 K became 1405 to 1441) |
+| G | 5941904e, c09263bd | the housing books the burns' gas hot (the rally five's port 7.54 to 4.98 bar; the lift's click gone); the bores' help |
+| G | e6ae3a8b | the settle weighs the ports' gas as the running path does, by time (lands +0.4 % on a 90 s hold, was +5.3 %) |
+| G, N1 | e7088e2b, 62732766 | a pipe's wall keyed on its bore and the rate where its part runs its own model; model 0 keeps the reference's key |
+| the integrator | 9c107de6, e0bdc69f | a custom one-bank engine's headers split by firing order, for twins arranged a bank each |
+| N2 | cc934603 | `boost.mismatch` bit 128: a twin or quad turbo none of whose housings got gas (telemetry only) |
+
+Outside the trees, in the same hours: the inspector's refusal sentences in Rows and in table cells and the cell's
+caret (J2, U1); the inspector's wheel through `funkgui::scroll::wheelPx` (below); the AIR page's lines for bits
+16 and 128 (U1, N2's words); tests regrouped until the fast tier read 2347 against 2400 on the reference runner
+(2492 at the window's start); C's nightly "a predicted point lands where a 90 s hold lands" (bites on the settle
+by mass on the two-stage row only: 187.0 against 190.0).
+
+**How the claims under G's commits were measured (G's own list, asked for after G found four of its "bite"
+runs void).** G's bite runs had swapped code in `build-dev/bin/sim`, which the tests do not read (they load
+`TEE_SOURCE_DIR/sim`). By G's list: every before/after and every "fails without" under 9e52a186, 5941904e,
+e6ae3a8b and the wall's identity test was measured on the SOURCE (sim/ edited in place, or `tee-dyno --sim` /
+`tee-render --sim` on a copy). Unmeasured and withdrawn: "the load-order test does not bite"; "the runners read
+0.99458 on both routes with the old key"; "16 builder coefficients differ without the cure"; "bench numbers
+identical with the time-weighted settle". None of the four stands under a pushed change. The wall's proof on the
+application's route is the integrator's field diff: 40 of the runners' wall fields differed between first.json's
+two routes, 0 with G's cure and N1's line, and the case passes with the finding's name removed.
+
+**Found and NOT cured in this window (each with its owner; the next window's list, in order):**
+
+1. **No wheel without a path (N2 with the integrator, FIRST, a design to the lead first).** One click on the
+   Aspiration dial reaches a dead housing where the exhaust builds fewer collectors than the machine has wheels.
+   On `main` (b557c4a1): first.json as Twin 231 N m with turbo 1 at rest, as Quad 6 N m; the default V8 as Quad
+   598 N m with two of four at rest (as Twin 700 N m, a bank each, fed). On the frozen tip the integrator's split
+   feeds first.json's Twin (302 N m); its Quad still stands two wheels (164 N m); the V8's Quad is unchanged.
+   Bit 128 says so and the AIR page words it. The cure: (ii) the guarantee (wheels beyond the built collectors
+   share their gas), (i) the refinement where an even split exists; from what such engines really do.
+2. **The gate loop's limit cycle (N2).** The rally five flat out on its bench limiter: boost 0.853 to 1.897 bar
+   on 0.44 s (Carved 1.032 to 1.376; the spring alone 0.726 to 1.163): the gate travels its whole stroke each
+   cycle. Not the limiter's rhythm and older than the hot gas, which doubled it. With it **X-041's last row**
+   (the turbo six's pull lift, 3.69 against 3.37: the blow-off valve opening at ratio 1.94 against 1.81, G's
+   measurement).
+3. **The sequential rotary's pair after its join (N2's #17).** NOT "one wheel unfed": that was a probe below
+   the join, passed on by the lead before a second read and corrected to the owner. Real: boost 70 kPa at 2480
+   rpm falling to 44 to 47 from 5500, 311 to 249 N m.
+4. N2's step A of the turbine's match with C's bake stage (C's task #39), as ruled before the window.
+5. **The running path's port heat mass-weighted (G)**: right for the enthalpy carried, and it moves every steady
+   state and baked table: a prediction across the builds first.
+6. **X-045 (the integrator; the cure local, 3caccd1a):** boost.model or exhaust.model written while stopped, and
+   the application's own load, keep the model-0 exhaust configured until the key. Nothing keys an engine
+   without the configure: the bake, the dyno and the sound are not touched.
+7. The fuel's re-entry after an overrun cut (the steward): **X-044** is a triple nothing ships (engine.custom +
+   fuel + ecu without exhaust.model; green with every switch on). A ramp, if proposed, is sized from what
+   production ECUs do, sources first, with clips for the owner.
+8. The dyno loop's step overshoot; a custom engine's friction against a sourced oil table (the integrator).
+   **X-036**'s cause (the steward: `car.model`'s sustained negative offset at full load; no blocker before the
+   cause).
+
+Known for good, with reasons in Known.h: **X-043** (the fixture's cam at 0.9999; no shipped build hunts at any
+cam dial setting, 4 to 13 rpm sd; none of the 31 archetypes nears a stall at its start).
+
+**What the bake will show that the last one did not** (early reads on stale tables, by N1 and P to the
+decimal): the two-stage's notch about 3.7 % under its neighbours (was 9 %; its crossing near 5940 to 5990 rpm,
+90 to 140 after the cited 5850 switch: a counted miss; nothing fitted to it); first.json's hole at 1800 rpm gone
+(270 to 384 N m) and its peak now over the cited band (392.5 against 333 to 368); the 2.0's 1750 rpm row 248.5
+against a 304 floor.
+
+**From the owner on a Mac with `main`, 26 Nov:**
+- "the right sidebar looks great, but it scrolls slowly": the inspector used its own wheel factor (40 smooth,
+  72 notched) where every other list uses `funkgui::scroll::wheelPx`. J2's test failed first: 0.078 px a
+  trackpad point and 14.06 px a notch; now 1 px and three rows (108 px). In this bake (e708876b).
+- "My G29 worked well with the Mac app too" (the macOS port's first proof on the real wheel) "Could you
+  integrate some other buttons on it to make editing engines from the controller possible?": the card EDITING
+  FROM THE WHEEL, outside the trees: B (the wheel's side: an "Edit" group beside "Drive" in the learn menu, the
+  dial's detents counted in the transport, a saved map kept and new defaults on free buttons), U1 (the seam
+  ui/kit/gui/EditCommand.h and the frame's half), J2 (the inspector's half, and the focus mark seen from a
+  seat: a picture to the lead before any golden moves). The owner has the map. Not in this bake.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
-- **25 Nov 23:27 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items of the list in
-  the section above, and nothing else. From the first push under those trees the branch's baked tables are
-  stale until the next bake; `main` stays the stable build.
-- **Order under `sim/` (each waits for the one before to be on the branch where their files meet; say early what
-  will not make the window):**
-  1. G, then N2: the burn's heat as hot gas; the turbine seeing it; the rally five on its limiter re-measured.
-  2. the integrator: the starting state that differs between the two init routes; #337's paired form.
-  3. N2 with the integrator: the turbine's match under `engine.custom`.
-  4. N1: the two-stage's switch against its crossing; the ragged high stage.
-  5. the steward: X-032 (the turbo six's start and idle), X-031, X-036; X-030 after G's item 1.
-  6. C (`host/`): the stepped dyno's approach from below; refusal of a bore at input by a rule in the host.
-  7. N2: the rotary's pair, rule (c), the rated match (a design first, to the lead, before any number).
-  8. the integrator: the dyno loop's step overshoot, after C's item 6.
-  9. L: X-039's check with N2's inlet solve; the V8's dense bangs, after G's item 1.
-  10. M: the voices' cost on first.json (measure and report first).
-- **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
-  red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
-  default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
-  `scripts/lint.sh` before pushing; wait on the tier's process, not on a line in a reused log; a refusal of a
-  session's permission check is never worked around.
-- **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
-  baked tables), docs. **U1** pushes only a pure fast-forward of a tested state: it tells the lead; the lead
-  collects a "holding" from every pusher (breaking into running turns), then names the tip.
-- **26 Nov 01:16 UTC: what stands between here and FROZEN, in order** (the list above is otherwise done or
-  ruled out of the window in the sections above): (1) G: the burn's heat as hot gas (in its tier); (2) G: the
-  settle on the running path's weighting, measured, with its test; (3) the integrator: #337's field diff with
-  the wall named, the tests' grouping; (4) G with N1: the wall keyed on the model, ONLY if green before FROZEN,
-  else the next window; (5) N2: the rally five's boost swing re-read on (1); bit 128 if ready. Not in this
-  window: N2's step A (with C's bake stage), the rotary's pair, the running path mass-weighted, the fuel's
-  re-entry ramp, the dyno loop's overshoot, custom headers from the firing order unless ready.
-- **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**
+- **26 Nov 02:37 UTC: FROZEN FOR THE BAKE. `sim/`, `host/` and `tools/` are CLOSED to every session** until
+  the baked commit is on `main`. The frozen tip is **14bccbf7** (trees: sim a86a64c9, host 2e7c1bec, tools
+  7c3e4d59). All seven owners of those trees answered "nothing in flight"; the integrator holds X-045's cure
+  local for the next window. P bakes on that tip (the full bake: the settle moved every table).
+- **Open at any time, as before:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the baked
+  tables), docs. One green whole default tier on a merged state, then merge a moved tip and push, saying what
+  was not in the run; `scripts/lint.sh` first; wait on the tier's process; a refusal of a session's permission
+  check is never worked around. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead
+  runs (every "holding" collected, then the tip named).
+- **Then:** P's final push by a hold; CI on the baked commit read on all three platforms; `main` fast-forwarded
+  by the lead's own check that the baked commit's `sim/`, `host/` and `tools/` trees equal the bake's, that it
+  descends from `main`, and that Linux, macOS and Windows are green on it; `[soak]` on it; then the next
+  window opens with the list of the section above.

@@ -127,6 +127,7 @@ module BoostMachine
     int compOut[BOOST_TURBOS];      // 0: v1; 1: vInter; 2: vSec
     int turbOut[BOOST_TURBOS];      // -1: a downpipe (turbSide); a housing's index otherwise
     int turbSide[BOOST_TURBOS];
+    int houseSeen;      // the housings the exhaust has fed since its last configure (bit h), for the telemetry's bit 128
     int exSides;        // the exhaust's sides (card G tells, at every configure; 2 until it does): a turbo of side 1 on a
                         // one-sided exhaust empties into side 0's downpipe
     float omegaMax[BOOST_TURBOS];
@@ -287,6 +288,7 @@ module BoostMachine
         dt = 1.0f / rate;
         kAt = 1.0f - expf(-dt / 0.001f);
         exSides = 2;
+        houseSeen = 0;
         pOut = 101325.0f;
         tOut = 293.15f;
         vd = vdIn;
@@ -692,6 +694,23 @@ module BoostMachine
         return 0;
     }
 
+    // A twin's or a quad's turbo none of whose housings the exhaust feeds (the lead's ruling, the integrator's
+    // finding: a one-bank engine whose exhaust builds one collector leaves the second wheel without gas): 1 if any.
+    // Read from the housings a pipe reached (admittance over 0) since the exhaust's last configure, so it says what
+    // was built, not what was asked (a housing can be built with no pipe into it); 0 until
+    // it has fed one, and for the layouts whose second wheel takes its gas from the first (sequential, compound)
+    int unfedTurbo()
+    {
+        if (active == 0 || sc != 0 || houseSeen == 0 || (layout != BOOST_TWIN && layout != BOOST_QUAD))
+            return 0;
+        for (int t = 0; t < turbos; ++t)
+        {
+            if ((houseSeen & (3 << (2 * t))) == 0)
+                return 1;
+        }
+        return 0;
+    }
+
     // The downpipe (exhaust side) turbo t empties into: its own, or side 0's when the exhaust has one side
     int sideOf(int t)
     {
@@ -705,6 +724,8 @@ module BoostMachine
     {
         if (active == 0 || h < 0 || h >= 2 * turbos)
             return 0.0f;
+        if (admit > 0.0f)
+            houseSeen |= 1 << h;
         const float pg = house[h].solve(drive, admit, tGas, pOut, dt);
         sumMPipes += (double)(house[h].qPipes * house[h].p / (kBoostR * (house[h].qPipes >= 0.0f ? tGas : house[h].t)) * dt);
         return pg;

@@ -117,7 +117,7 @@ module BoostTel
     // (card N2, boost.model 1: the charge system far from the engine it is on; warnings, not physics: each a pair,
     // what the build has and what this engine's match would want; thresholds in sim/boost/boost.fm, telemetry)
     int mismatch [[ui::label("Charge system mismatch")]]
-        [[ui::help("1 intercooler rated flow under 0.4 of the engine's matched flow, 2 gate spring under a tenth of the boost asked, 4 charge pipes' volume under 0.3 or over 4 times the engine's match, 8 compressors' choke flow over 4 times a matched one's, 16 turbines' nozzle under half or over twice the design point's")]];
+        [[ui::help("1 intercooler rated flow under 0.4 of the engine's matched flow, 2 gate spring under a tenth of the boost asked, 4 charge pipes' volume under 0.3 or over 4 times the engine's match, 8 compressors' choke flow over 4 times a matched one's, 16 turbines' nozzle under half or over twice the design point's, 128 a twin's or a quad's turbo whose housings the exhaust feeds no gas")]];
     float coolerHas [[ui::label("Intercooler rated flow")]] [[ui::quantity("flow")]];
     float coolerWants [[ui::label("Engine's matched flow")]] [[ui::quantity("flow")]];
     float springHas [[ui::label("Gate spring")]] [[ui::quantity("pressure")]];
