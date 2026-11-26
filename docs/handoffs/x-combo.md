@@ -34,8 +34,8 @@ fuel.model 0 is bounded at a step of 42 (the lead's ruling, 24 Nov 23:15; "click
   initialised over the build (#337's reference, the integrator's FieldDiff.h), every field that holds still before the
   key; the leftovers named with their reasons (revision counts, a configure's draws, its pipes' delay history). Bites on
   393519ea's parent (engine.custom: customUse, layoutWhy, ecu.redRpm, the redline, dyno.j; boost and exhaust:
-  exh.b.eng.tPort); X-045 (the exhaust built at the key) under its own check. The guard the 12 s runs go to [nightly]
-  on, after the bake's commit reaches main (the lead's ruling, 26 Nov)
+  exh.b.eng.tPort); X-045 (the exhaust built at the key) under its own check. The guard of each switch's 12 s runs on
+  the default block, nightly since the bake reached main (07a08dc0; fast-3 77 s to 22 s here)
 - X-020 closed (N2 896c4b3) and out of Known.h; X-021 closed by the build: large-diesel.json carries D2's truck boost
   (gateSpring 220000, icFlow 0.8, chargeVolume 0.02): boost.model on, 2000 rpm, 1865 N m against the reference's 1933
 - fixed findings held as tests: X-001, X-003, X-007 (`[fixed]`)
