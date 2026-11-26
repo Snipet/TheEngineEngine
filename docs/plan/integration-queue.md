@@ -2185,6 +2185,32 @@ engines only where a source shows such an engine drawn split.
   start, the full-throttle upshift that holds its chatter, steady mid load), as shipped against the
   converged solve.
 
+## 26 Nov 12:34 UTC: item 17 has a form that costs less than today's; it goes FIRST in the window
+
+- **The cost, measured (G; the design at b2f177c3, `docs/plan/x051-valve-solve.md`).** Today's three passes
+  of every valve's solve are about 28 % of the whole program. A converged solve at 6 to 8 evaluations would
+  have added 28 to 47 %: refused by the lead at that price. A warm-started Newton with the exact slope cured
+  and missed the target by about a point of a core. **A warm-started SECANT with the test at 1e-4 relative
+  meets it:** on a replay of the solve's captured inputs (float32, faithful to the engine's flows to 6.3e-6
+  m3/s) 38.3 ns a call against today's 50.5 on the running windows (-24 %); dearer at the start (+11 %), in
+  low gear (+39 %) and at the lift and stop (+30 %), where flows reverse and the solve starts cold; the whole
+  pull over nine alternated runs -3 %. Evaluations a call: 2.26 to 2.29 in running, 2.68 over the pull.
+- **It cures on the scratch tree:** the chatter counter 0 in every window (today 243 on that run); the looser
+  test's error 2e-5 to 9e-5 relative where today's passes are off by up to 0.82 at the chatter; X-043's pull
+  7 to 0 of 17 and its tour 11 to 0 at its own event (one copy over today's number at another event, 6.801 s,
+  0 against that tree's own bound). The same run twice is identical to the bit; the bracket holds from any
+  start; a reversal starts cold. **A hazard found on the way, for the real code:** in float32 a Newton step
+  can land on the root exactly, the root be taken as the bracket's top and the next step bisect away from
+  it; the design names it with its test.
+- **RULED: item 17 takes its place in the next window in that form, and FIRST among the sim changes that
+  move readings, ahead of items 16 and 15** (it moves every reference and every nightly bound; the others are
+  read once on the converged valve). X-043's cure is read per event, as part B reads; the 6.801 s copy is
+  spread on the new tree against its own bound when the real code is in. It needs a bake to follow and the
+  integrator's two lines in the cylinder (the switch's hand-over; the memory cleared in `Cylinder::reset`).
+  Q reads the cost on the real code in the window. This reverses "16 first, then 17" (11:39).
+- **`main` is at 389ee865 (12:25): X-050's interface form.** The dead cam dial is no longer offered on a Lab
+  piston build; the pages follow the valvetrain model the moment it is switched.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 12:25 UTC: `main` IS AT 389ee865** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
@@ -2266,7 +2292,8 @@ engines only where a source shows such an engine drawn split.
  16. the steward with the integrator, a design first: X-047, the shift's cut. One length, asked once: the
      contract of `cutRequest()` (launch.fm:80 against car.fm:852), every asker, sourced lengths, and the
      acceptance in the section of 26 Nov above. The steward's design is a docs commit; `sim/` waits.
- 17. G, a design first: the exhaust valve's flow solved to convergence (`Valve::flow`, sim/exhaust/duct.fm),
+ 17. FIRST AMONG THE SIM CHANGES THAT MOVE READINGS (ruled 26 Nov): G, the design written
+     (`docs/plan/x051-valve-solve.md`): the exhaust valve's flow solved to convergence (`Valve::flow`, sim/exhaust/duct.fm),
      behind a hidden switch with the reference's three passes for the null. The line that hands the switch
      to the cylinder's valves is its file's owner's. Acceptance: the null to the bit; the sometimes rows by
      the evidence rule on the real code; the gate warm and cold on all 31; Q's cost; clips for the owner.
