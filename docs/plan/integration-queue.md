@@ -2086,6 +2086,37 @@ engines only where a source shows such an engine drawn split.
   cam whenever valve.model is on, so its valve rows compare cam against cam. X measures the valve rows with
   lab cams stated equal to the dial (a scratch copy) before anything in the corpus changes.
 
+## 26 Nov 10:36 UTC: X-049 PLACED: the exhaust valve's flow solve does not converge on a first pulse (item 17)
+
+- **G, on scratch trees with a sample-by-sample capture (the run unchanged by it): not a pipe front, not a
+  junction, not physics** (two of G's three predictions wrong, as G states). On the first pulse into pipes a
+  cut has emptied, `Valve::flow` (sim/exhaust/duct.fm: three fixed passes of a fixed-point iteration, a
+  slowly damped oscillation there: 1.67, 0.27, 0.75, 0.38 ... to 0.49) is left unconverged, and its choke
+  test acts on a ratio that wanders across 0.5457 from sample to sample: the valve's flow chatters between
+  about 0.6 and 1.2 m3/s, 29 jumps over 0.2 m3/s in 10 ms where running has none. The first pulse meets a
+  rarefaction of -57 kPa (the pipe near 60 kPa absolute) where running pulses meet -24 to -30.
+- **Whichever cylinder fires first into the emptied pipes has it, in every copy** (cylinders 1, 3, 4, 5, 6
+  seen); the row's 2 of 17 was the judge's draw on which cylinder that was. **The same at 48, 96 and 192 kHz**
+  (the solve is algebraic each sample; nothing thins). The collector and the primary's far end show nothing.
+- **With the solve converged (a 30-pass stand-in, a scratch tree): X-049 reads 0 of 17, median 1.52, highest
+  2.00** (was 2 of 17, 2.30, 3.28); its 6.58 s and 8.58 s events both gone. A stand-in, so no verdict.
+- **RULED: a fault, item 17 of the next window, G's, a design first.** The valve's flow solved to convergence
+  as one continuous equation (the flow function flat below critical), a bracketed root with a convergence
+  test and never a fixed count, both branches, behind a hidden switch (the converged solve the default
+  under the new models; the reference's three passes for the null, test 2 pinned). The running solve is
+  unconverged too, by about 5 % between its last two passes: every build's sound and every table moves, so
+  clips before and after for the owner and Q's cost are part of it.
+- **How wide it is, being measured (G, predictions per row first):** the spreads on the stand-in of every
+  sometimes row whose event is a first pulse into quiet pipes (X-030, X-031, X-044, X-043, X-041's two,
+  X-048's rows, the control, two background builds), case and reference both. **X's part C is HELD until
+  they are in:** on this row the judge was right to call a click, and dropping a cut's neighbours from the
+  median could have taught it to overlook a real numerical fault. Item 16's acceptance is read knowing
+  item 17 moves the same rows: 16 first on today's valve, then 17.
+- Also since 10:08: X-050 is the dead cam dial's number (U1 the interface, N1 the sim side; N1's notes at
+  9f11391c). U1's form, on the lead's render: on a Lab piston build the dial left out on both pages and NO
+  line (a healthy build carries no warning words); on a rotary it stays with a neutral line; on a Reference
+  build the lab-off warning.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 09:16 UTC: `main` IS AT 3c42b4d2** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
@@ -2166,6 +2197,10 @@ engines only where a source shows such an engine drawn split.
  16. the steward with the integrator, a design first: X-047, the shift's cut. One length, asked once: the
      contract of `cutRequest()` (launch.fm:80 against car.fm:852), every asker, sourced lengths, and the
      acceptance in the section of 26 Nov above. The steward's design is a docs commit; `sim/` waits.
+ 17. G, a design first: the exhaust valve's flow solved to convergence (`Valve::flow`, sim/exhaust/duct.fm),
+     behind a hidden switch with the reference's three passes for the null. The line that hands the switch
+     to the cylinder's valves is its file's owner's. Acceptance: the null to the bit; the sometimes rows by
+     the evidence rule on the real code; the gate warm and cold on all 31; Q's cost; clips for the owner.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
