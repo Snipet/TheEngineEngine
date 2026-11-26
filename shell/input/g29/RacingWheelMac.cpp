@@ -222,6 +222,7 @@ namespace tee::input::g29
     void RacingWheel::setOn(bool on) { impl_->driver.setOn(on); }
     bool RacingWheel::reading() const noexcept { return impl_->driver.reading(); }
     State RacingWheel::state() const { return impl_->driver.state(); }
+    Presses RacingWheel::takePresses() { return impl_->driver.takePresses(); }
     std::string RacingWheel::status() const { return impl_->driver.status(); }
 
     // SDL's Cocoa pump (SDL_PumpEvents: Cocoa_PumpEventsUntilDate, [NSApp nextEventMatchingMask:... untilDate:

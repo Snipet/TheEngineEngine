@@ -268,6 +268,11 @@ namespace tee::ui
 
     void MapEdit::step(float dt)
     {
+        if (burst_ && (burstRest_ += std::max(dt, 0.0f)) >= 0.5f)
+        {
+            burst_ = false;                  // the controller's burst rested: one undo step
+            source_.endEdit();
+        }
         map_ = source_.map();
         map_.nx = std::clamp(map_.nx, 0, kTableMax);
         map_.ny = std::clamp(map_.ny, 0, kTableMax);
@@ -507,6 +512,118 @@ namespace tee::ui
             c.rrect(s.x + 1.0f, s.y + 1.0f, s.w - 2.0f, s.h - 2.0f, 2.0f, l.ground);
             c.text(edit_.buffer.c_str(), typed.x, c.capCentreTop(s.centreY(), cellText), cellText, refused_ ? l.error : l.value);
             c.segment(caret.centreX(), caret.y, caret.centreX(), caret.bottom(), caret.w, l.accent);
+        }
+    }
+
+    bool MapEdit::focusFirstCell() noexcept
+    {
+        select(0, 0);
+        return map_.nx > 0 && map_.ny > 0;
+    }
+
+    bool MapEdit::nudgeCell(int dir, bool fine)
+    {
+        if (map_.nx <= 0 || map_.ny <= 0 || (sx_ < 0 && sy_ < 0))
+            return false;
+        const Axis& a = axisOf(sx_, sy_);
+        const auto fmt = [&a](double v) { return a.text.format ? a.text.format(v) : plainNumber(v); };
+        const double now = valueAt(sx_, sy_);
+        double probe = 0.0;
+        if (!a.text.parse || !a.text.parse(fmt(now), probe))
+            return false;                    // not editable (an array's numbers)
+        const double unit = a.step > 0.0 ? a.step : (a.hi - a.lo) / 100.0;
+        double v = std::clamp(now + static_cast<double>(dir) * unit * (fine && a.step <= 0.0 ? 0.1 : 1.0), std::min(a.lo, a.hi),
+                              std::max(a.lo, a.hi));
+        if (v == now)
+            return false;
+        const std::string t = fmt(v);
+        double taken = 0.0;
+        if (!a.text.parse(t, taken))         // refused (FieldDoc::accepts through the binding): said, nothing moved
+        {
+            refused_ = true;
+            refusal_ = a.text.refusal ? a.text.refusal(t) : std::string();
+            return false;
+        }
+        if (a.step <= 0.0)
+            taken = v;                       // the nudge's value, not its text's rounding
+        if (!burst_)
+        {
+            burst_ = true;
+            source_.beginEdit();
+        }
+        burstRest_ = 0.0f;
+        Map16 m = map_;
+        setValueAt(m, sx_, sy_, taken);
+        if (m == map_)
+            return false;
+        source_.setMap(m);
+        map_ = m;
+        refused_ = false;
+        refusal_.clear();
+        return true;
+    }
+
+    bool MapEdit::edit(EditCommand cmd, bool fine)
+    {
+        using C = EditCommand;
+        if (cmd == C::undo || cmd == C::redo)
+        {
+            if (burst_)                      // a burst still open is closed first, so the frame's undo takes it
+            {
+                burst_ = false;
+                source_.endEdit();
+            }
+            return false;                    // the frame's
+        }
+        if (editing_)
+        {
+            if (cmd == C::back)
+            {
+                editing_ = refused_ = false;
+                refusal_.clear();
+                return true;
+            }
+            if (!commit())
+                return true;                 // refused: the typing stays, its sentence said
+        }
+        const int px = sx_, py = sy_;
+        switch (cmd)
+        {
+            case C::rowUp:
+            case C::rowDown:
+            {
+                const int d = cmd == C::rowUp ? -1 : 1;
+                if (lines() > 1)             // an array on lines: a line up or down
+                {
+                    const int per = (map_.nx + lines() - 1) / lines();
+                    if (sx_ + d * per < 0 || sx_ + d * per >= map_.nx)
+                        return false;
+                    select(sx_ + d * per, sy_);
+                }
+                else
+                    select(sx_, sy_ + d);
+                return sx_ != px || sy_ != py;
+            }
+            case C::pagePrev:
+            case C::pageNext:
+                select(sx_ + (cmd == C::pagePrev ? -1 : 1), sy_);
+                return sx_ != px || sy_ != py;
+            case C::valueDown:
+            case C::valueUp:
+            case C::valueDownCoarse:
+            case C::valueUpCoarse:
+            {
+                const int dir = cmd == C::valueUp || cmd == C::valueUpCoarse ? 1 : -1;
+                const int n = cmd == C::valueDownCoarse || cmd == C::valueUpCoarse ? 10 : 1;
+                bool moved = false;
+                for (int k = 0; k < n; ++k)
+                    if (nudgeCell(dir, fine))
+                        moved = true;
+                    else
+                        break;
+                return moved || (refused_ && !refusal_.empty());
+            }
+            default: return false;           // activate (no typing from a controller), back, the rest: the frame's
         }
     }
 

@@ -10,12 +10,17 @@
 #include "Engine.h"
 #include "Offline.h"
 #include "Options.h"
+#include "WheelEdit.h"
 
 #include "files/BuildFiles.h"
 #include "input/Controls.h"
 #include "player/SimAdapter.h"
 
 #include "app/AppFrame.h"
+#include "input/Driver.h"
+#include "input/g29/G29Input.h"
+#include "kit/inspect/FieldInspector.h"
+#include "kit/inspect/RowsPage.h"
 #include "tee/assistant/Session.h"
 #include "tee/assistant/Tools.h"
 
@@ -299,4 +304,95 @@ TEST_CASE("app: a moved-from Shown never calls the panel's going hook; a move-as
         CHECK(calls == 1);
     }
     CHECK(calls == 11);                             // the last one, as its Shown went; the moved-from ones none
+}
+
+// The wheel's edit commands (shell/input/g29) are the interface's (ui/kit/gui/EditCommand.h) one to one, by name.
+TEST_CASE("app: each of the wheel's edit commands is the interface's command of the same name", "[shell][app]")
+{
+    std::vector<bool> seen(static_cast<std::size_t>(ui::kEditCommands), false);
+    for (int i = 0; i < static_cast<int>(input::g29::EditCommand::count); ++i)
+    {
+        const auto c = static_cast<input::g29::EditCommand>(i);
+        INFO(std::string(input::g29::editName(c)));
+        const std::optional<ui::EditCommand> u = app::uiEdit(c);
+        REQUIRE(u.has_value());
+        CHECK_FALSE(seen[static_cast<std::size_t>(*u)]);
+        seen[static_cast<std::size_t>(*u)] = true;
+    }
+    CHECK(app::uiEdit(input::g29::EditCommand::valueUpCoarse) == ui::EditCommand::valueUpCoarse);
+}
+
+// The whole chain without a wheel: made-up G29 states through the wheel's bindings (input/g29/G29Input.h) and the app's
+// hook (Shown::wheelEdit, by name into the interface's commands) to the frame's edit() and its inspector, over the
+// simulator's build, as the window drives it a frame at a time. A D-pad press moves the inspector's focus; a dial detent
+// (counted as the transport hands it) nudges the focused value, read back through the document.
+TEST_CASE("app: a wheel's D-pad press moves the inspector's focus and a dial detent nudges the focused value",
+          "[shell][app]")
+{
+    Rig rig;
+    ui::AppFrame* f = rig.frame();
+    REQUIRE(f != nullptr);
+    REQUIRE(static_cast<bool>(rig.shown.wheelEdit));
+    files::BuildFile& doc = *rig.shown.document;
+    f->show(f->find("engine"));
+    rig.host->tick(3);
+    ui::RowsPage* rows = f->inspectorRows();
+    REQUIRE(rows != nullptr);
+
+    namespace wh = tee::input::g29;
+    input::Driver driver{ input::DriverSettings{} };
+    wh::Input wheel;                                                   // the default bindings
+    int down = -1, dial = -1;
+    for (const wh::Binding& b : wh::editDefaults())
+    {
+        if (b.edit == wh::EditCommand::rowDown)
+            down = b.bit;
+        if (b.edit == wh::EditCommand::valueUp)
+            dial = b.bit;
+    }
+    REQUIRE(down >= 0);
+    REQUIRE(dial >= 0);
+    // one frame of the window: the wheel's state (and its counted presses) in, its commands to the frame
+    const auto frame = [&](std::uint32_t buttons, const wh::Presses* presses = nullptr) {
+        wh::State st;
+        st.buttons = buttons;
+        wheel.apply(st, true, driver, true, 1.0 / 60.0, presses);
+        int taken = 0;
+        for (const wh::Edit& e : wheel.edits())
+            taken += rig.shown.wheelEdit(e.command, e.fine) ? 1 : 0;
+        rig.tick();
+        return taken;
+    };
+    frame(0);
+
+    // the D-pad down: the inspector's focus moves, each press a row
+    const int before = rows->rows().focusedRow();
+    CHECK(frame(1u << down) == 1);
+    frame(0);
+    const int first = rows->rows().focusedRow();
+    CHECK(first >= 0);
+    CHECK(first != before);
+    CHECK(frame(1u << down) == 1);
+    frame(0);
+    CHECK(rows->rows().focusedRow() != first);
+
+    // down the rows until the dial's detent moves a value (a heading or a table's row takes no nudge): two detents
+    // between frames, counted, each a nudge
+    const std::uint64_t hash = doc.build().hash();
+    bool moved = false;
+    for (int k = 0; k < 60 && !moved; ++k)
+    {
+        wh::Presses two{};
+        two[static_cast<std::size_t>(dial)] = 2;
+        frame(0, &two);
+        moved = doc.build().hash() != hash;
+        if (!moved)
+        {
+            frame(1u << down);
+            frame(0);
+        }
+    }
+    INFO("focused row " << rows->rows().focusedRow());
+    CHECK(moved);
+    CHECK(doc.dirty());
 }

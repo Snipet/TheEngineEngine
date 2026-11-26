@@ -311,3 +311,203 @@ TEST_CASE("decisions: voices.model leaves the engine as it was: the turbo six's 
                                                   std::to_string(onLargest) + " rad/s"});
     report(v, "voices.model", "turbo-six", "idle");
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Each switch written while stopped, field by field before the key (the lead's form, 26 Nov: the integrator's #337 diff,
+// tests/sim/core/FieldDiff.h). Two routes from one reset of one kept player: the default block with the switch on,
+// and with it off then written on 0.1 s after the key turned on, the engine stopped. Snapshots at 0.2 s and 0.3 s,
+// before the start: a field that holds still on both routes and differs between them is the stopped write reaching
+// a different engine.
+#include "../core/FieldDiff.h"
+
+#include "tee/EnginePlayer.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <set>
+
+namespace
+{
+    constexpr double kKeyRate = 48000.0;
+    constexpr int kKeyBlock = 512;
+
+    // One compiled player a process, never destroyed (01-rules.md section 4); TEE_SIM_DIR as the harness's
+    tee::EnginePlayer& keyPlayer()
+    {
+        static tee::EnginePlayer* kept = nullptr;
+        if (kept != nullptr)
+            return *kept;
+        tee::EnginePlayer::Options options;
+        const char* other = std::getenv("TEE_SIM_DIR");
+        options.directory = other != nullptr && *other != '\0' ? std::filesystem::path(other)
+                                                                 : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+        options.sampleRate = kKeyRate;
+        std::string errors;
+        kept = tee::EnginePlayer::create(options, errors).release();
+        INFO(errors);
+        REQUIRE(kept != nullptr);
+        return *kept;
+    }
+
+    void keyPlay(tee::EnginePlayer& p, double seconds)
+    {
+        static float l[kKeyBlock], r[kKeyBlock];
+        for (long n = std::lround(seconds * kKeyRate); n > 0; n -= kKeyBlock)
+            p.process(l, r, int(std::min<long>(n, kKeyBlock)));
+    }
+
+    struct KeySnaps
+    {
+        std::vector<unsigned char> at, later;
+    };
+
+    // The route: the build applied over a reset, the key on, `late` written at 0.1 s, snapshots at 0.2 and 0.3 s
+    KeySnaps keyRoute(const std::string& build, const Values& late, bool initOver = false)
+    {
+        tee::EnginePlayer& p = keyPlayer();
+        p.reset(kKeyRate);
+        tee::EngineBuild b;
+        std::string errors, warnings;
+        REQUIRE(tee::loadBuild(p, build, b, errors, warnings));
+        tee::applyBuild(p, b);
+        if (initOver)
+            p.reset(kKeyRate, true);   // the program initialised over the build (#337's route 1)
+        auto& c = p.controls();
+        c.mode = 0;
+        c.lever = 0;
+        c.clutch = 0.0f;
+        c.throttle = 0.0f;
+        c.ignition = tee::EnginePlayer::kIgnitionOn;
+        keyPlay(p, 0.1);
+        for (const auto& [path, value] : late)
+        {
+            std::string e;
+            REQUIRE(p.setSpec(path, value, e));
+        }
+        keyPlay(p, 0.1);
+        if (std::getenv("KEY_AFTER") != nullptr)   // (the probe: the same after the start, 0.2 to 1.0 s held, read at 3 s)
+        {
+            c.ignition = tee::EnginePlayer::kIgnitionStart;
+            keyPlay(p, 0.8);
+            c.ignition = tee::EnginePlayer::kIgnitionOn;
+            keyPlay(p, 2.0);
+        }
+        const auto* d = static_cast<const unsigned char*>(p.instance().data());
+        KeySnaps s;
+        s.at.assign(d, d + p.instance().size());
+        keyPlay(p, 0.1);
+        s.later.assign(d, d + p.instance().size());
+        return s;
+    }
+
+    // The fields that hold still on both routes and differ between them
+    std::vector<tee::test::core::Diff> stillApart(const KeySnaps& a, const KeySnaps& b)
+    {
+        const tee::Schema& schema = keyPlayer().schema();
+        std::vector<tee::test::core::Diff> across, movedA, movedB, out;
+        tee::test::core::walk(schema.fields(), 0, "", a.at.data(), b.at.data(), across);
+        tee::test::core::walk(schema.fields(), 0, "", a.at.data(), a.later.data(), movedA);
+        tee::test::core::walk(schema.fields(), 0, "", b.at.data(), b.later.data(), movedB);
+        std::set<std::string> moving;
+        for (const auto& d : movedA)
+            moving.insert(d.path);
+        for (const auto& d : movedB)
+            moving.insert(d.path);
+        for (const auto& d : across)
+            if (moving.count(d.path) == 0)
+                out.push_back(d);
+        return out;
+    }
+} // namespace
+
+TEST_CASE("decisions: probe: each switch written while stopped, the fields apart before the key", "[.keyfields]")
+{
+    for (const Switch& w : switches())
+    {
+        std::string tag = w.path;
+        std::replace(tag.begin(), tag.end(), '.', '-');
+        const KeySnaps on = keyRoute(buildWith("", {{w.path, w.on}}, tag), {}, std::getenv("KEY_INIT_OVER") != nullptr);
+        const KeySnaps late = keyRoute(buildWith("", {{w.path, 0.0}}, tag + "-off"), {{w.path, w.on}});
+        const auto apart = stillApart(on, late);
+        std::printf("keyfields | %-16s | %zu still fields apart:", w.path.c_str(), apart.size());
+        const std::size_t shown = std::getenv("KEY_ALL") != nullptr ? apart.size() : 12;
+        for (std::size_t k = 0; k < apart.size() && k < shown; ++k)
+            std::printf(" %s (%g | %g)", apart[k].path.c_str(), apart[k].a, apart[k].b);
+        std::printf("\n");
+    }
+}
+
+namespace
+{
+    // The kinds a route may leave apart, each with its reason (the integrator's named() of #337 for these routes; a
+    // copy until it is shared in FieldDiff.h); nullptr: none
+    const char* keyNamed(const std::string& p)
+    {
+        const auto ends = [&](const char* s) {
+            const std::size_t n = std::strlen(s);
+            return p.size() > n && p.compare(p.size() - n, n, s) == 0;
+        };
+        if (ends(".rev") || p.rfind("revSeen[", 0) == 0 || p.rfind("modelRev[", 0) == 0 || p == "exh.seenRev" ||
+            p == "boost.mach.mapRev")
+            return "a revision count: each route writes the Spec a different number of times";
+        if ((p.rfind("cyl[", 0) == 0 && ends(".bias")) || p == "noise.rs")
+            return "a configure's draws (the cylinders' bias, the noise stream): each route configures a different number "
+                   "of times";
+        if ((p.rfind("exh.", 0) == 0 || p.rfind("intk.", 0) == 0) && (ends(".ageF") || ends(".dPrevF") || ends(".rF")))
+            return "a configure's pipes' delay history (the exhaust's and the intake runners'): each route configures a "
+                   "different number of times";
+        return nullptr;
+    }
+
+    // X-045's fields (the integrator's: a stopped engine's exhaust is built at the key): reported under their own check
+    bool exhaustBuilt(const std::string& p)
+    {
+        return p.rfind("tel.exhaust.", 0) == 0 || (p.rfind("exh.", 0) == 0 && p.rfind("exh.b.", 0) != 0) ||
+               p == "exh.b.gs.model" || p == "exh.b.gv.model";
+    }
+} // namespace
+
+// The stopped write's engine against the program initialised over the build (#337's reference), field by field
+// before the key: each switch on the default block. It bites on 393519ea's parent (a stopped engine configured only at
+// the key): with engine.custom, customUse, ecu.redRpm, geoUsed and layoutRefused apart; the two routes of the
+// eachSwitch runs (the build applied over a reset against the stopped write) are equal there and on the tip.
+TEST_CASE("decisions: each switch written while stopped reaches the engine initialised over the build: every field before the key",
+          "[fast][fast-1][combo][decisions]")
+{
+    for (const Switch& w : switches())
+    {
+        std::string tag = w.path;
+        std::replace(tag.begin(), tag.end(), '.', '-');
+        const KeySnaps over = keyRoute(buildWith("", {{w.path, w.on}}, tag), {}, true);
+        const KeySnaps late = keyRoute(buildWith("", {{w.path, 0.0}}, tag + "-off"), {{w.path, w.on}});
+        int named = 0;
+        std::string fields[2];
+        int counts[2] = {0, 0};
+        for (const auto& d : stillApart(over, late))
+        {
+            if (keyNamed(d.path) != nullptr)
+            {
+                ++named;
+                continue;
+            }
+            const int k = exhaustBuilt(d.path) ? 1 : 0;
+            if (++counts[k] <= 8)
+            {
+                char b[160];
+                std::snprintf(b, sizeof b, "%s%s %g against %g", fields[k].empty() ? "" : "; ", d.path.c_str(), d.b, d.a);
+                fields[k] += b;
+            }
+        }
+        std::printf("decisions | default        | %-16s | before the key, against the program initialised over it: %d "
+                    "fields apart, %d named\n",
+                    w.path.c_str(), counts[0] + counts[1], named);
+        Verdict v;
+        if (counts[0] > 0)
+            v.failures.push_back({"keyfields", std::to_string(counts[0]) + " fields apart (written while stopped against "
+                                                                            "initialised over): " + fields[0]});
+        if (counts[1] > 0)
+            v.failures.push_back({"keyfields-exhaust", std::to_string(counts[1]) + " of the exhaust's fields apart: " +
+                                                           fields[1]});
+        report(v, w.path, "default", "keyfields");
+    }
+}

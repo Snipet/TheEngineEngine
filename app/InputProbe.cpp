@@ -2,6 +2,7 @@
 #include "InputProbe.h"
 
 #include "input/g29/G29.h"
+#include "input/g29/G29Input.h"
 
 #include <SDL3/SDL.h>
 
@@ -366,6 +367,26 @@ namespace tee::app
                 std::printf("    hat %d went: %s\n", h, dirs.c_str());
             if (d.joystick != nullptr)
                 SDL_CloseJoystick(d.joystick);
+        }
+        // a G29 seen: the application's meaning of each of its buttons by default (the probe's indices are SDL's, not
+        // these: on Windows the table that joins them comes from this probe's lines)
+        bool g29 = false;
+        for (const auto& [id, d] : open)
+            g29 = g29 || tee::input::g29::isG29(SDL_GetJoystickVendorForID(id), SDL_GetJoystickProductForID(id));
+        if (g29)
+        {
+            std::printf("\nthe application's G29 buttons, by default (F9, Wheel buttons, moves them):\n");
+            const tee::input::g29::Buttons defaults = tee::input::g29::defaultButtons();
+            for (int b = 0; b < static_cast<int>(std::size(tee::input::g29::kBits)); ++b)
+            {
+                std::string meaning;
+                for (const tee::input::g29::Binding& x : defaults)
+                    if (x.bit == b)
+                        meaning += (meaning.empty() ? "" : ", ") + tee::input::g29::targetLabel({ x.action, x.edit });
+                if (b == tee::input::g29::kBitShare)
+                    meaning = "SHARE held: a value's edit is fine";
+                std::printf("  %-12s %s\n", tee::input::g29::kBits[b].name, meaning.empty() ? "(free)" : meaning.c_str());
+            }
         }
         std::printf("probe: done. Paste everything above into the conversation.\n");
         if (virtualId != 0)
