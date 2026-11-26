@@ -1601,6 +1601,24 @@ measure, WARM and cold, on all 31 archetypes and the fixture, before any tier.
 window's own checks had read only cold. A check that reads "the shipped builds" reads them as the bake's gate
 does, or says which state it did not read.
 
+**The steward's notes (26 Nov, beside the ruling).** Read on the frozen tip's trees with N1's WarmStartTest harness
+(p-idle-warm, held warm, 4 to 14 s), the sim tree varied by TEE_SIM_DIR:
+
+- **What the rate term holds today:** the 3.0 twin turbo's warm idle, 650 rpm sd 5.4 with it, 53.9 without (P's
+  read; mine 5.4 and 53.0). It goes into idle.fm's note with the real cure, next window.
+- **The two hunts are two loops.** The twin six's, without the rate term, is the valve's own loop through the
+  plenum and the charge piping: a period near 1.6 s, plus or minus 75 rpm, the valve 0.040 to 0.086 against the
+  speed. The rate term is its phase lead. The fixture's (cam 0.9999) is the cam's dilution lope, a period near
+  0.4 s; there the same lead drives the lope through the plenum's lag.
+- **No cheap cure:** the rate filtered first (one pole, 0.15 s) held the twin six warm at sd 6.1 (0.3 s: 19.7), but
+  the fixture came back: 61 rpm sd under ecu.model (19 with 98d0dc4d, 287 with the plain rate term), 359 under
+  exhaust, fuel and ecu (22, 291). A cure must separate the two by more than a filter's corner: next window's
+  design, with the gate's own measure, warm and cold, on all 31 and the fixture.
+- **My miss:** 98d0dc4d's acceptance read the 31 archetypes on the combo tour, 2.5 to 5 s after a cold start, and
+  wrote "within a few rpm either way" as if that were their idles. It was one state of three (cold, the start's
+  dip, warm). From now on, an idle change of mine is read on p-idle-warm and the cold start for every archetype
+  before it is proposed, and its note names the states it read.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
