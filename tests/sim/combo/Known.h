@@ -60,5 +60,12 @@ const Known kKnown[] = {
      "fuel returning whole on the blip's first firings after the overrun cut; 1 phase in 6 before 98d0dc4d, 3 in 6 after "
      "it (that cure moves which phases meet the return; the idle valve is not in it); green with every switch on (excess "
      "1.92 against 2.85 on the small four, 2.35 at most against 4.03 on the V8). Phase 0: 1.75 before, 3.48 after"},
+    {"X-045", "2026-11-26", "the integrator (engine.fm; the next window, the lead's ruling)", "boost.model", "default",
+     "keyfields", "keyfields-exhaust",
+     "boost.model or exhaust.model written while stopped, and the application's own load, keep tel.exhaust.model 0 and "
+     "the model-0 exhaust configured until the key (the exhaust is built at the key; holdModel() takes the switch with "
+     "no configure); they agree after it: nothing keys an engine without it, only what a stopped engine reports"},
+    {"X-045", "2026-11-26", "the integrator (engine.fm; the next window, the lead's ruling)", "exhaust.model", "default",
+     "keyfields", "keyfields-exhaust", "as boost.model's: the stopped engine reports the last exhaust until the key"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

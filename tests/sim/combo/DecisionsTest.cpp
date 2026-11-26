@@ -323,6 +323,7 @@ TEST_CASE("decisions: voices.model leaves the engine as it was: the turbo six's 
 #include "tee/EnginePlayer.h"
 
 #include <cstdlib>
+#include <cstring>
 #include <set>
 
 namespace
@@ -433,5 +434,80 @@ TEST_CASE("decisions: probe: each switch written while stopped, the fields apart
         for (std::size_t k = 0; k < apart.size() && k < shown; ++k)
             std::printf(" %s (%g | %g)", apart[k].path.c_str(), apart[k].a, apart[k].b);
         std::printf("\n");
+    }
+}
+
+namespace
+{
+    // The kinds a route may leave apart, each with its reason (the integrator's named() of #337 for these routes; a
+    // copy until it is shared in FieldDiff.h); nullptr: none
+    const char* keyNamed(const std::string& p)
+    {
+        const auto ends = [&](const char* s) {
+            const std::size_t n = std::strlen(s);
+            return p.size() > n && p.compare(p.size() - n, n, s) == 0;
+        };
+        if (ends(".rev") || p.rfind("revSeen[", 0) == 0 || p.rfind("modelRev[", 0) == 0 || p == "exh.seenRev" ||
+            p == "boost.mach.mapRev")
+            return "a revision count: each route writes the Spec a different number of times";
+        if ((p.rfind("cyl[", 0) == 0 && ends(".bias")) || p == "noise.rs")
+            return "a configure's draws (the cylinders' bias, the noise stream): each route configures a different number "
+                   "of times";
+        if ((p.rfind("exh.", 0) == 0 || p.rfind("intk.", 0) == 0) && (ends(".ageF") || ends(".dPrevF") || ends(".rF")))
+            return "a configure's pipes' delay history (the exhaust's and the intake runners'): each route configures a "
+                   "different number of times";
+        return nullptr;
+    }
+
+    // X-045's fields (the integrator's: a stopped engine's exhaust is built at the key): reported under their own check
+    bool exhaustBuilt(const std::string& p)
+    {
+        return p.rfind("tel.exhaust.", 0) == 0 || (p.rfind("exh.", 0) == 0 && p.rfind("exh.b.", 0) != 0) ||
+               p == "exh.b.gs.model" || p == "exh.b.gv.model";
+    }
+} // namespace
+
+// The stopped write's engine against the program initialised over the build (#337's reference), field by field
+// before the key: each switch on the default block. It bites on 393519ea's parent (a stopped engine configured only at
+// the key): with engine.custom, customUse, ecu.redRpm, geoUsed and layoutRefused apart; the two routes of the
+// eachSwitch runs (the build applied over a reset against the stopped write) are equal there and on the tip.
+TEST_CASE("decisions: each switch written while stopped reaches the engine initialised over the build: every field before the key",
+          "[fast][fast-1][combo][decisions]")
+{
+    for (const Switch& w : switches())
+    {
+        std::string tag = w.path;
+        std::replace(tag.begin(), tag.end(), '.', '-');
+        const KeySnaps over = keyRoute(buildWith("", {{w.path, w.on}}, tag), {}, true);
+        const KeySnaps late = keyRoute(buildWith("", {{w.path, 0.0}}, tag + "-off"), {{w.path, w.on}});
+        int named = 0;
+        std::string fields[2];
+        int counts[2] = {0, 0};
+        for (const auto& d : stillApart(over, late))
+        {
+            if (keyNamed(d.path) != nullptr)
+            {
+                ++named;
+                continue;
+            }
+            const int k = exhaustBuilt(d.path) ? 1 : 0;
+            if (++counts[k] <= 8)
+            {
+                char b[160];
+                std::snprintf(b, sizeof b, "%s%s %g against %g", fields[k].empty() ? "" : "; ", d.path.c_str(), d.b, d.a);
+                fields[k] += b;
+            }
+        }
+        std::printf("decisions | default        | %-16s | before the key, against the program initialised over it: %d "
+                    "fields apart, %d named\n",
+                    w.path.c_str(), counts[0] + counts[1], named);
+        Verdict v;
+        if (counts[0] > 0)
+            v.failures.push_back({"keyfields", std::to_string(counts[0]) + " fields apart (written while stopped against "
+                                                                            "initialised over): " + fields[0]});
+        if (counts[1] > 0)
+            v.failures.push_back({"keyfields-exhaust", std::to_string(counts[1]) + " of the exhaust's fields apart: " +
+                                                           fields[1]});
+        report(v, w.path, "default", "keyfields");
     }
 }
