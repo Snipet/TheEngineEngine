@@ -1,0 +1,104 @@
+diff --git a/sim/exhaust/exhaust.fm b/sim/exhaust/exhaust.fm
+index 99041a8f..95319872 100644
+--- a/sim/exhaust/exhaust.fm
++++ b/sim/exhaust/exhaust.fm
+@@ -165,7 +165,9 @@ module Exhaust
+     // 25 Nov: the last 16 samples caught a blowdown or the stroke's cool tail, 1128 to 1607 K point to point)
+     float eCyc[2];
+     float mCyc[2];
+-    float tCyc[2];      // the ports' gas over a cycle as the running tPort weights it: each 16 samples' alike (time)
++    float tCyc[2];      // the ports' gas over a cycle as the time-weighted tPort weights it: each 16 samples' alike
++    float eRun;         // the running mean of the ports' energy flow (gas(), 0.8 s; spec.exhaust.portMean 1)
++    float mRun;         // and of their mass flow: tPort = eRun / mRun, the mass (enthalpy) mean
+     float tExit;        // the gas leaving the ports into the headers, after the port walls' cooling (portLoss()), K
+     float qPort;        // the heat the port walls take from it, W (for the coolant's owner; telemetry)
+     float qCool;        // the heat the port walls give the coolant, W
+@@ -242,6 +244,8 @@ module Exhaust
+             mCyc[k] = 0.0f;
+             tCyc[k] = 0.0f;
+         }
++        eRun = 0.0f;
++        mRun = 0.0f;
+         loadNow = 0.0f;
+         tick128 = 0;
+         prepared = 0;
+@@ -768,14 +772,39 @@ module Exhaust
+             pop[1].nEv = 0;
+         }
+         // the exhaust's temperature: what the ports let out, slowly
++        // (model 1, spec.exhaust.portMean 1: the mass mean, the 0.8 s means of the energy and the mass, their ratio:
++        // every receiver of tPort, the walls' and the pipes' enthalpy balances, the sound speed and the turbine, wants it
++        // (docs/models/exhaust.md, "Which mean the port's gas should be"). Model 0 and portMean 0: the reference's time
++        // mean, each 16 samples alike)
++        const int massMean = model != 0 && spec->portMean != 0;
+         if (mSum > 1.0e-9f)
+         {
+             const float tNew = eSum / mSum;
+             tPortNow = tNew;
+-            tPort += (tNew - tPort) * (1.0f - expf(-d16 / 0.8f));
++            if (massMean)
++            {
++                const float kr = 1.0f - expf(-d16 / 0.8f);
++                if (mRun <= 0.0f)
++                {
++                    eRun = tPort * mSum;
++                    mRun = mSum;
++                }
++                eRun += kr * (eSum - eRun);
++                mRun += kr * (mSum - mRun);
++                tPort = eRun / mRun;
++            }
++            else
++                tPort += (tNew - tPort) * (1.0f - expf(-d16 / 0.8f));
+         }
+         else
++        {
+             tPort += (heat->tAmb - tPort) * (1.0f - expf(-d16 / 4.0f));
++            if (massMean)
++            {
++                mRun *= expf(-d16 / 0.8f);
++                eRun = tPort * mRun;
++            }
++        }
+         {
+             const float cyc = fminf(fmaxf(120.0f / fmaxf(rpmNow, 1.0f), 0.01f), 0.25f);
+             const float kc = 1.0f - expf(-d16 / cyc);
+@@ -1735,8 +1764,11 @@ module Exhaust
+     {
+         if (mCyc[1] > 1.0e-7f)
+         {
+-            tPort = tCyc[1] > 0.0f ? tCyc[1] : eCyc[1] / mCyc[1];
++            // (the running path's own mean: the cycle's mass mean with portMean 1, its time mean otherwise)
++            const int massMean = model != 0 && spec->portMean != 0;
++            tPort = massMean || tCyc[1] <= 0.0f ? eCyc[1] / mCyc[1] : tCyc[1];
+             mdotSlow = mCyc[1];
++            eRun = tPort * mRun;
+         }
+         else
+         {
+diff --git a/sim/spec/exhaust.fm b/sim/spec/exhaust.fm
+index 07599ec3..10616f80 100644
+--- a/sim/spec/exhaust.fm
++++ b/sim/spec/exhaust.fm
+@@ -156,6 +156,9 @@ module ExhaustSpec
+     int flowClose [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Valve flow closed")]] [[ui::hidden]]
+         [[ui::help("On (the builder): the pipes are given what the exhaust valves let out, on the mean (the valve's wave gain keeps the pulse's shape). Off: the reference's valve flow, 5 to 20 % more than the valves let out; it exists for the comparison with the reference and for listening before and after")]]
+         [[ui::choices("None", "Closed")]];
++    int portMean [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Port gas mean")]] [[ui::hidden]]
++        [[ui::help("How the gas at the ports is averaged for what it feeds (the walls, the pipes' sound speed, the turbine). Mass (the builder): the 0.8 s means of the energy and the mass the valves pass, their ratio, which every receiver's enthalpy balance wants. Time: the reference's, each 16 samples alike, below it since the blowdown is the hottest and heaviest gas in little of the time; it exists for the comparison with the reference")]]
++        [[ui::choices("Time", "Mass")]];
+     int bang [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Bangs")]]
+         [[ui::help("How the pops and bangs in the pipe are made (the builder only). Burned in the pipe (the default): the unburned fuel's heat released in the collector's gas over its own burn, the pipes making the sound. Only a charge that left its cylinder with its own air bangs (a spark cut, a misfire, a fuelled overrun burned late): a fuel-cut limiter and a stock lift-off make none; it needs ECU model Maps, the reference ECU's pops stay Carved. Carved: the reference's pulse and crackle")]]
+         [[ui::choices("Carved", "Burned in the pipe")]];
+diff --git a/tests/sim/exhaust/EngineTest.cpp b/tests/sim/exhaust/EngineTest.cpp
+index 6a7a6664..0edcdc42 100644
+--- a/tests/sim/exhaust/EngineTest.cpp
++++ b/tests/sim/exhaust/EngineTest.cpp
+@@ -104,6 +104,7 @@ static void engineIdentity(bool full)
+         b.values["exhaust.model"] = {1.0};
+         b.values["exhaust.portHeat"] = {0.0};   // (the port's cooling off: the reference has none)
+         b.values["exhaust.flowClose"] = {0.0};  // (the valves' mean flow not closed: the reference's g q)
++        b.values["exhaust.portMean"] = {0.0};   // (the port's gas a time mean: the reference's)
+         const Audio m = renderRoute1(b, 8.0);
+         const double dl = test::nullDepth(a.left, m.left);
+         const double dr = test::nullDepth(a.right, m.right);
