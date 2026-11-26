@@ -121,6 +121,34 @@ the outside):**
   with `pAmb` beneath them. The workspace prints the absolutes the engine reports, and its own addition is removed:
   part of this change, U1's file, asked of U1 by name.
 
+## 6. The sound at thin air (the lead's addition, 26 Nov)
+
+A source that radiates into the air, a pipe's open end or a vibrating surface, makes a sound pressure in proportion to
+the outside air's density for the same motion. A monopole's far field is rho0 / (4 pi r) times dQ/dt; a surface's is
+about rho0 c times its velocity. So at 70 kPa and the same temperature a real engine is quieter at the pipe by
+about the density's ratio, 0.69, some -3.2 dB, before any change in what flows. Today nothing in the sound reads the
+outside's density or pressure:
+
+| source | where | what it takes today | at thin air it should |
+|---|---|---|---|
+| the tailpipes' radiation (the builder, model 1) | exhaust/network.fm:571-586 (`solveOpen`: `rad = dq/dt` of the end's volume flow, plus the jet's noise `un^3`) | no density: the listener's gain is a constant (listen.fm:735 for the intake's; the exhaust's level fit, listen.fm:809) | x rho0 / rho0,ref; the jet's noise (Lighthill, u^8 rho0 over c0^5, recalled) by the same ratio to first order |
+| the open end's reflection and loss | exhaust/ends.fm:69-86 (`design`: the end's correction from tEnd / tAmb; `kOut`, `kIn` from the gas's rho) | the gas's density, from duct.fm:348's 101325 | G's question above (the pipe's own pressure) |
+| the reference's tailpipes (model 0) | exhaust/exhaust.fm:1385-1406 | no density | unchanged (model 0: the null) |
+| the intake's mouth (model 1's air box) | intake/airbox.fm:58 (`rho = 1.204`, the Helmholtz neck's mass and the box's compliance), :127 (`sound = dq/dt x 0.02`) | a fixed 1.204 kg/m^3 | the box's rho from pAmb and tAmb (its resonance goes with c, not rho: unchanged to first order); the radiated level x rho0 / rho0,ref |
+| the mechanical voices (sim/sound/*: valve gear, gears, fuel, starter, fan, chain) and the listener's bay and cabin (sim/listen/) | listen.fm:1001 (`sc.in[LS_BAY]`), the voices' own gains | no density | a surface's radiation x rho0 c / (rho0 c)ref: at 70 kPa, the same temperature, 0.69; the cabin's own path unchanged |
+
+So the change for the sound is one factor, `rho0 / rho0,ref` = (pAmb / 101325) x (tRef / tAmb), on what radiates into
+the outside air (the tailpipes, the mouth, the bay's surfaces), applied where the listener sums them (listen.fm), and
+only under the models (model 0's sound the null). One question with it: the outside air's TEMPERATURE moves the same
+density today and is read by nothing in the sound either. The factor should take both, but then the temperature's
+share changes today's sound at any temperature but 300 K, which breaks the "bit-identical at the default" rule for
+every build stated at another temperature. Either the factor is keyed on pressure alone (bit-identical, and
+temperature's share stays a known gap), or on density and every such build moves. That's the lead's to rule; I'd key it on
+pressure alone in this item, and the temperature's share as its own item.
+
+The listener (sim/listen/) is L's; the voices are M's; the air box is N1's. Each takes the factor from Engine, as
+`pAmb` is handed in section 1.
+
 ## Order of work, when the window opens
 
 1. The list of section A confirmed with each owner (G's two questions; C on combustion's load axis), by message.
@@ -129,3 +157,4 @@ the outside):**
 3. The boost target's meaning (section 3) to the lead, with its sources, before it changes.
 4. The predictions of section 4 measured at 70 kPa on the named builds, against what's written here.
 5. The interface (section 5) with U1.
+6. The sound's factor (section 6), with L, M and N1, after the lead's ruling on pressure alone or density.
