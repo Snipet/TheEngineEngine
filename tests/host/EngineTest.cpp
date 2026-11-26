@@ -350,11 +350,12 @@ TEST_CASE("the dyno runner starts a common-rail diesel and holds a twin turbo's 
     }
 }
 
-TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by speed, into ecu.maps.camIn",
-          "[engine][sim][predict]")
+namespace
 {
-    if (!haveSim())
-        SKIP("sim/engine.fm is not there yet");
+    // The intake cam baked by a sweep of the fast dyno, cells `step` apart from 0 to 50 deg over `speeds` speeds from
+    // 2000 to 6000 rpm, applied into ecu.maps.camIn: the machine, the map, its key (card N1)
+    void camSweep(double step, int speeds)
+    {
     std::string error;
     const auto sim = compiled(simDir(), {}, error);
     REQUIRE(sim != nullptr);
@@ -364,19 +365,20 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
                            BuildPart::Whole, warnings, error));
     unbaked(build);   // as before the content's tables were baked
     CamBakeOptions options;
-    options.step = 25.0;   // three cells (0, 25, 50) and three speeds: the machine, not N1's whole table
+    options.step = step;
     options.predict.from = 209.44;
     options.predict.to = 628.32;
-    options.predict.points = options.predict.coarse = 3;
+    options.predict.points = options.predict.coarse = speeds;
     CamBakeResult r;
     REQUIRE(bakeIntakeCam(sim, build, options, r, error));
     INFO(error);
-    REQUIRE(r.advances.size() >= 3);   // the grid's three, and the half steps beside each speed's best
-    for (const double cell : {0.0, 25.0, 50.0})
-        CHECK(std::find(r.advances.begin(), r.advances.end(), cell) != r.advances.end());
-    CHECK((r.halfSteps > 0) == (r.advances.size() > 3));
+    const int cells = static_cast<int>(std::lround(50.0 / step)) + 1;
+    REQUIRE(r.advances.size() >= static_cast<std::size_t>(cells));   // the grid's cells, and the half steps beside each best
+    for (int k = 0; k < cells; ++k)
+        CHECK(std::find(r.advances.begin(), r.advances.end(), k * step) != r.advances.end());
+    CHECK((r.halfSteps > 0) == (r.advances.size() > static_cast<std::size_t>(cells)));
     CHECK(std::is_sorted(r.advances.begin(), r.advances.end()));
-    REQUIRE(r.speeds.size() == 3);
+    REQUIRE(r.speeds.size() == static_cast<std::size_t>(speeds));
     for (std::size_t s = 0; s < r.speeds.size(); ++s)
     {
         CHECK(std::find(r.advances.begin(), r.advances.end(), r.best[s]) != r.advances.end());
@@ -388,7 +390,7 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     const std::vector<double>& map = build.values(build.fieldOf("ecu.maps.camIn"));
     REQUIRE(map.size() == 16 + 16 + 256 + 2);
     CHECK(std::fabs(map[0] - r.speeds[0]) < 1e-3 * r.speeds[0]);
-    CHECK(map[16 + 16 + 256] == 3.0);   // nx
+    CHECK(map[16 + 16 + 256] == static_cast<double>(speeds));   // nx
     CHECK(map[16 + 16 + 256 + 1] == 4.0);   // ny: the load axis 0, 0.75, 0.95, 3
     CHECK(map[16 + 16 + 0 * 16 + 0] == 0.0);   // parked at light load (idle)
     CHECK(map[16 + 16 + 0 * 16 + 1] == 0.0);
@@ -407,8 +409,29 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     CHECK(intakeCamCurrent(build, *sim));
     build.set("exhaust.heatSettle", build.get("exhaust.heatSettle") + 1.0);
     CHECK(intakeCamCurrent(build, *sim));
-    WARN("v12-65's intake cam baked in " << r.wallSeconds << " s: " << r.best[0] << ", " << r.best[1] << ", " << r.best[2]
-                                         << " deg at 2000, 4000, 6000 rpm");
+    WARN("v12-65's intake cam baked in " << r.wallSeconds << " s over " << speeds << " speeds: " << r.best.front()
+                                         << " deg at 2000 rpm, " << r.best.back() << " at 6000");
+    }
+} // namespace
+
+// (the fast tier's form: two cells, 0 and 50 deg with the half steps beside each best, at two speeds, 2000 and 6000
+// rpm: every check of the full form's (the grid, the half steps, never worse than parked, the map's axes and rows, its
+// undo, its key current, stale and current again) on half its points; the steward's budget for host.sim.cases, 26 Nov)
+TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by speed, into ecu.maps.camIn",
+          "[engine][sim][predict]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    camSweep(50.0, 2);
+}
+
+// (the full form: three cells and three speeds, a middle speed and a middle cell the fast form leaves out)
+TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by speed over three cells and three speeds",
+          "[engine][sim][predict][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    camSweep(25.0, 3);
 }
 
 namespace
