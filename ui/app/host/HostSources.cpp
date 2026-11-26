@@ -52,6 +52,9 @@ namespace tee::ui
             t.settledCycles.push_back(p.settledCycles);
             t.retardMin.push_back(p.retardMin);
             t.retardMax.push_back(p.retardMax);
+            t.pointFlags.push_back(static_cast<char>((!p.settled ? DynoTrace::kNotSettled : 0)
+                                                     | (p.approachForced ? DynoTrace::kForced : 0)
+                                                     | (p.boostHunting ? DynoTrace::kBoostRipple : 0)));
         }
         return t;
     }
