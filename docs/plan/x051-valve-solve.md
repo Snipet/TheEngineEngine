@@ -1,8 +1,52 @@
 # X-051: the valve's flow solve, the design (next window's item 17)
 
 Card G writes this page (the owner of `sim/exhaust/duct.fm`, where `Valve::flow` lives). Status: THE DESIGN, a DRAFT for the
-lead's ruling (26 Nov; the cost and X-052's rows still to be added); nothing in `sim/` until the window can take a bake. The lead's ruling of 26 Nov 10:35 set its
+lead's ruling (26 Nov; the cost and X-052's rows still to be added). In order it stands behind item 16 (the shift's cut) and item
+15 (the air's pressure); whether it is built in the next window is decided on its cost and on the owner's ears; nothing in `sim/` until the window can take a bake. The lead's ruling of 26 Nov 10:35 set its
 direction: one continuous equation, a bracketed root with a convergence test, both branches, a hidden switch.
+
+## 1. The fault's reach (26 Nov; the lead's ruling of 11:46: item 17 stays a design and drops behind items 16 and 15)
+
+**The instrument.** A counter in a scratch tree's `Valve::flow` (exhaust side): a sample whose returned flow (q g)
+reverses direction twice running, each step more than 25 % of its size and more than 0.15 m^3/s. That is the chatter's
+signature, summed over the cylinders. Checked on the combo turbo six's pull (exhaust.model 1): it finds the relights
+after the 2nd and 3rd shifts (6.5 s: 8 to 18; 8.5 s: 4 to 6), with the reference valves and with the lab's.
+
+**On what ships** (every model on: the lab's valves, the boost machine, the map ECU), as built:
+
+| build | combo cold start (253 K, through the catch) | combo pull | lug: up to 4th at 0.25 pedal, then full pedal 9.5-15 s |
+|---|---|---|---|
+| turbo-four-20-gdi | 0 | 0 | 0 (from 163 rad/s) |
+| kei-660-triple-turbo | 0 | **4** (9.03-9.12 s, after its 3rd shift) | 0 (from 179) |
+| straight-six-twin-turbo-30 | 0 | 0 | 0 (from 170) |
+| three-cylinder-10-turbo | 0 | 0 | 0 (from 179) |
+| v6-35-twin-turbo-pickup | 0 | 0 | 0, but not lugged: it held about 620 rad/s |
+| boxer-four-turbo-unequal | 0 | not run | 0 (from 161) |
+| inline-five-turbo-rally | 0 | not run | 0 (from 265) |
+| flat-plane-v8-39-twin-turbo | 0 | not run | 0 (from 308) |
+| twin-turbo-hot-vee-v8-40 | 0 | not run | 0, but not lugged: it held about 700 rad/s |
+| first.json, default.json | 0, 0 | 0, 0 | not run |
+
+So on shipped builds X-051 is nearly absent: one event train on one build. The rows it cures (X-049, X-043) are
+reference-model combinations on the combo fixtures.
+
+**What stays true:**
+- **(i) A real numerical fault, on every build.** The running solve is about 5 % unconverged on every build (the
+  median spread between its last two passes on the turbo six), so every reading and every table sits on it.
+- **(ii) An owner can make the combinations that chatter.** All nine model selectors are shown in the interface, none
+  hidden: boost ("Model": Reference, Machine), car ("Vehicle model"), ECU ("ECU model"), exhaust ("Exhaust model"),
+  fuel ("Combustion model"), intake ("Induction model"), sound ("Listener"), valve ("Valvetrain model"), voices
+  ("Mechanical voices"), each Reference against its new model. A shipped build with boost and the ECU set back to
+  Reference, keeping the Builder exhaust, is a click away from the fixtures' combinations.
+- **(iii) A running regime, not only a first pulse.** The combo turbo six (exhaust.model 1, the reference turbo) also
+  chatters through 1st gear at about 2000 rpm (210 to 230 rad/s) as the pedal goes from 0.5 to full (3.5 to 4.7 s of
+  the pull, 17 to 89 counted a half second). Captured at 3.95 to 4.01 s:
+  - the wave arriving at the valve as it opens is a deep rarefaction, -37 to -61 kPa (the primaries' return at low
+    speed); at its deepest the linear pipe pressure 101325 + 2 b is below zero and the 8000 Pa floor holds it;
+  - the cylinder is at 171 to 464 kPa, the solve's passes spread by 61 % (the median at the jumps);
+  - the same corner as the relight, reached in steady running.
+  None of the shipped builds reached it on the lug above. Two were not lugged (they held their speed), and the
+  lug ran in 4th only, so this is a probe, not a proof. The test below guards it.
 
 ## The fault, as measured (26 Nov; X-049's probes, G and N1)
 
@@ -139,8 +183,13 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
    - **read against both bounds:** X-031 (7 of 17 today; on the stand-in 2 against X's 3.92, 14 against its own 2.58,
      its reference having fallen more than it did);
    - **X-052's limiter rows:** as read in the two-tree mode (below, when in).
-3. **No unconverged solve:** the solve's counter (above) zero on all 31 archetypes' validation runs and every
-   scenario in the default tier.
+3. **The instrument kept, the absence guarded** (the lead's ruling of 11:46, whatever is decided about the solve):
+   - the chatter counter (§1) as a hidden telemetry field, `tel.exhaust.valveChatter` (a running count), written by
+     the cylinders' valves;
+   - a default-tier test that every shipped boosted build reads 0 on a cold start, a pull and a lug (the lug driven
+     into its high gear at low speed, so that it really lugs, which my scratch lug did not do for two builds);
+   - with the converged solve, the counter of solves that ran out of evaluations reads 0 on all 31 archetypes'
+     validation runs and every default-tier scenario.
 4. **The bake's gate,** warm and cold on all 31; **Table P2** re-read (the archetypes' cited rows, the two columns,
    every row crossing an edge listed with its direction and size); **Q's cost** on Q's hosts.
 5. **The owner's ears** on the clips and on the real code's, before the bake.
