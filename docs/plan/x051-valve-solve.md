@@ -123,6 +123,15 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
   - **reverse flow:** the into-cylinder branch, as above.
   - **the floors:** 8000 Pa on pq and 1000 Pa on the into-branch's pp stay inside pp(q); with them F and G are
     non-decreasing, not strictly, and the bracket still holds.
+  - **the floor in running, measured** (the lead's note of 11:53). In the low-gear regime (§1 iii, 3.95 to 4.01 s)
+    the 8000 Pa floor binds in 30 of 1389 flowing samples (2 %), and 2 of the 9 jumps fall on a floored sample. At
+    the relight (6.555 to 6.615 s) it binds in 6 of 1917 (0.3 %), 2 of 39 jumps. So the chatter is the solve's,
+    not the floor's. Where it binds, though, the linear wave puts the pipe's pressure below zero (101325 + 2 b down
+    to -38 kPa), the wave model beyond its range. **A converged root there is converged to the clamp, not to the
+    gas.** The converged solve cures the chatter; it does not cure that. Flagged here as its own question: the
+    pipes' linear rarefaction (a real one cannot go below some fraction of the gas's pressure; the simple wave's
+    nonlinearity limits it). A counter of floored solves goes beside the chatter counter, so its rate is known
+    before anyone designs for it.
   - **a chamber that empties within the sample:** not this solve's (the cylinder's step holds its own guard).
 
 ## The switch, and the line that is not mine
