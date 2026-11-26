@@ -114,13 +114,21 @@ length runs, so today the bike gets twice its setting: 50 ms becomes about 100. 
 - The downshift's blip unchanged, or its change predicted.
 - N1's dips test and P's idle gate untouched.
 
-**Read after item 17 (the lead, 26 Nov 12:33; this replaces the 10:36 order).** G's valve solve (item 17, X-051:
-a warm-started secant on one continuous equation, 38.3 ns a call against today's 50.5, the chatter counter at 0)
-comes first among the window's sim changes that move readings, because it moves every reference and every nightly
-bound. So item 17 lands first; then item 16, with its predictions restated on that tree before its code: the V8's
-upshift row and the four's rate. The 53 ms probe's figures above were taken on today's valve: they are a guide, not
-the acceptance. The clips with both fixes, shown on 26 Nov, stand as what the window is meant to deliver. X-044 is
-not carried by X-051 and stays with item 8, whole.
+**The order: item 16 first, on today's valve; then item 17 (the lead, 26 Nov 17:38; restored).** G's design
+(ef83ad06) gives a cylinder's valve the converged solve only where that side's model is on. So the every-switch-off
+references, and every case with both the exhaust and the intake models off, run today's code to the bit: no reference
+and no nightly bound moves with item 17. The V8's and the small four's pulls with fuel+ecu (X-030, X-031, X-044) are
+untouched by it.
+
+Item 16's acceptance figures, its prediction:
+
+- the V8's pull, fuel+ecu: 1, 0, 0 of 17 per event against 3.91;
+- the three shipped builds: 0 of 17 at every event;
+- the small four: stated as a rate.
+
+Item 17 then reads on top of item 16, and only on cases with the exhaust or the intake model on, which the shipped
+builds are. So the "both fixes" clips and X's "both fixes" counts on the three shipped builds (0 of 17) stay the
+picture of the window's end.
 
 **First evidence on shipped builds (26 Nov 15:32; X's per-event spread, 17 copies at 293.15 +- 0.15 K; probe trees
 only).** The three shipped boosted builds run as built on the pull. Their upshifts are X-048's rows, and their cut is
@@ -154,6 +162,10 @@ and the same row reads 11, 11 and 6 of 17. So item 16's V8 acceptance is read on
 against that tree's own bound, and is not assumed from these figures.
 
 ## 5. What it does not cure
+
+*Struck, 26 Nov 17:38:* a read of the V8 "after item 17" (8, 7 and 12 of 17 against a bound of 2.58) was taken on
+a stand-in that converged the reference's valve too. G's real switch does not touch this row, so the read does not
+apply.
 
 On the probe with the cut at the reference's length, the four's first firing back still reads 1.30 against the
 reference's 1.16, and 4 of 15 copies remain over. A cut of any length purges the residual by its second intake. What
