@@ -1342,7 +1342,7 @@ test-s before and after on the steward's measure (CI's Linux log through scripts
 the owners have reported what grouping alone recovers. D2 is woken for diesel's only after the window's sim work is
 in, unless its 217 keeps growing.
 
-## 26 Nov 00:25 UTC: the window an hour in: what is on the branch, what is held and for what
+## 26 Nov 00:23 UTC: the window an hour in: what is on the branch, what is held and for what
 
 **On the branch under `sim/`, `host/`, `tools/` (tip cba0ac43; the baked tables are stale from here):**
 
