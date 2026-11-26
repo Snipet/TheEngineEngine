@@ -1761,6 +1761,33 @@ engines only where a source shows such an engine drawn split.
   Note for a second time: in build.yml the application's upload (line 511) comes before Build (617) and Test (646),
   so an upload's failure stops the tests; if it recurs, the order (or `continue-on-error` on the uploads) is the look.
 
+## 26 Nov 07:23 UTC: a combo row's "excess" is a draw; item 6 is a patch that waits; what is asked of whom
+
+- **X-041's rally five tour row is chaotic (G's measurement, 15 runs on `main`'s tree).** The same run with
+  `env.temperature` moved by a thousandth of a kelvin reads an excess from 1.55 to 3.08, median about 2.2, 2 of
+  15 at or over the row's 3.00; on item 6's patch tree 1.93 to 3.00. One draw of such a row cannot tell two
+  trees apart, so every "the row came back" and "the row went" read tonight on a single run is withdrawn as
+  evidence for or against a change (the steward's line at 4d121479 says so of its idle section; the idle
+  design's conclusion rests on the gate and the dips row, which are continuous idles, and stands). `--set
+  env.pressure` nudges left the run bit-identical: not a nudge, and a question of its own (below).
+- **Asked of X with the steward, tests only, a proposal to the lead before code:** a measure for such rows that
+  a tree cannot pass or fail by luck (the median over nudged runs is the first candidate); the spread under the
+  same nudges of three rows believed real (X-031's V8 downshift, X-030's shift cut, one of X's choosing) and
+  three suspect ones; its cost to the nightly and the soak on CI's logs; what a `Known.h` entry means under it.
+  Until it is ruled, `Known.h` stands as it is and no entry is closed or opened on one draw.
+- **Asked of the integrator, read only:** whether a write to `env.pressure` after t 0 reaches a running engine
+  at all, and when (`dialsMoved()` watches the ambient temperature; the pressure may be read at a configure
+  only). If it does not, the altitude and pressure dials do nothing on a running engine until some later
+  event: a fault for the list, unconfirmed until that read.
+- **Item 6 (G) is ready and parked.** Physics note fc30811c: every receiver of the port's gas wants the mass
+  mean, so the reference's time weighting is a fault to fix under the new models, not a choice.
+  `docs/handoffs/patches/g-port-mass-mean.patch` (7e71f752): a hidden switch `spec.exhaust.portMean` (1 the
+  mass mean, the default; 0 the time mean, the reference's), the nulls 23 of 23 to the bit, the exhaust's
+  test 2 pinned to 0. It moves every table, so it lands with N2's item 9 and before it, never alone, and only
+  when a bake can follow.
+- **Nothing under `sim/`, `host/` or `tools/` has moved since the bake** (read at 4d121479: sim f23337cc, host
+  2e7c1bec, tools 7c3e4d59). The branch past `main` is tests, `ui/` and docs.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
@@ -1775,13 +1802,12 @@ engines only where a source shows such an engine drawn split.
      archetype and the null to the bit, then N2's predictions, then the gate's idle measure warm and cold on
      every boosted archetype); (i) the split only where a source shows such an engine drawn split. BOTH OWNERS'
      PUSHES ARE REFUSED: the item waits on the owner.
-  2. the steward: the idle's real cure, a design first (the fixture's lope; the 3.0 twin turbo's warm idle; the
-     rate term during the crank and the start's flare, which moves everything after it). Acceptance: the gate's own measure, WARM and
-     cold, on all 31 archetypes and the fixture, before any tier.
+  2. CLOSED (see 13): the idle's cure. `main`'s idle stands; the fixture stays known.
   3. N2: the gate loop's limit cycle; X-041's pull row (the blow-off on a lift).
   4. N2: the sequential rotary's pair after its join (#17).
   5. N2 with C: step A of the turbine's match with the bake's stage (C's task #39).
-  6. G: the running path's port heat mass-weighted, a prediction across the builds first.
+  6. G: the running path's port heat mass-weighted. READY AS A PATCH (7e71f752, `spec.exhaust.portMean`; the
+     nulls read); lands with item 9 and before it, never alone.
   7. the integrator: X-045 (the cure local); the dyno loop's overshoot; a custom engine's friction.
   8. the steward: the fuel's re-entry after an overrun cut, sources first, clips for the owner; X-036's cause.
   9. N2 (with item 5): first.json's boost threshold. N1's held points (--settle 40): 1503 rpm 225 N m with the
