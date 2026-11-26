@@ -150,8 +150,11 @@ only what a frame's sample sees, so detents faster than the frames are not lost;
 Linux: tested with made-up kernel events (three detents between two frames, three nudges). macOS: compiled by CI,
 unproven until the owner turns the dial. Windows: only a frame's sample is known there, so a press counts once a frame.
 Minus and plus repeat as the D-pad's up and down do. Editing from the wheel works where its buttons are read:
-macOS and Linux today; on Windows once the owner's probe has given its table (below). Until the frame takes the
-commands (its `edit()`, being built), the console says once "editing from the wheel waits for the frame".
+macOS and Linux today; on Windows once the owner's probe has given its table (below). The commands go to the
+frame's `edit()` on the window's thread (`app/WheelEdit.h` names them into the interface's); where there is no frame,
+the console says once "editing from the wheel waits for the frame". The whole chain, a D-pad press to a moved focus
+and a dial's detent to a nudged value, is tested on made-up wheel states (`tests/shell/app/AskChainTest.cpp`); on the
+real wheel it is the owner's to try.
 
 **In the inspector.** The commands act on the inspector's focused row, the one with the orange outline. Until something
 has the focus, the first press gives it to the shown page's first row. Up and down move over every row of the page: a
