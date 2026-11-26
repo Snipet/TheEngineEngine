@@ -1942,6 +1942,18 @@ engines only where a source shows such an engine drawn split.
   it is the real thing it is a sound for the owner's ears; if the model overdoes it, its cure waits for the
   window. The drive's read is dropped as not needed. The downshift follows, beside item 8.
 
+## 26 Nov 07:40 UTC: the downshift in its own window: X-044 is near-always, the others rare
+
+- **The steward, the judge's excess over 10.95 to 11.20 s in every copy (source tree, 15 nudges):** the V8 pull
+  with the fuel and ECU models (X-031 proper, 4.03) 2 of 15 over, median 2.34; the small four pull with fuel,
+  ECU and car (2.85) 4 of 15, median 2.20; **the small four pull with the custom engine, fuel and ECU (X-044,
+  2.85) 14 of 15, median 3.51**: the one near-decidable row of the six, a click at the overrun cut's end and
+  the blip, as its entry says. It goes to item 8 (the fuel's re-entry after an overrun cut) with X-030's
+  first burn back beside it.
+- **A row's named event is a draw as well as its figure:** a window's figures differ a little from the
+  worst-of-run ones because the edges change the neighbours. X is asked whether the judge can count PER EVENT
+  WINDOW (each shift, each cut, the start) from what the ECU and the scenario report, and at what cost.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
@@ -1964,6 +1976,8 @@ engines only where a source shows such an engine drawn split.
      nulls read); lands with item 9 and before it, never alone.
   7. the integrator: X-045 (the cure local); the dyno loop's overshoot; a custom engine's friction.
   8. the steward: the fuel's re-entry after an overrun cut, sources first, clips for the owner; X-036's cause.
+     With it (26 Nov): X-044's downshift under the custom engine (14 of 15 copies over in its own window), and
+     the first burn back after an upshift's cut (X-030), read against a real quick-shifted engine's report.
   9. N2 (with item 5): first.json's boost threshold. N1's held points (--settle 40): 1503 rpm 225 N m with the
      gate shut and boost 19.5 kPa against a 120 target; 1655 rpm 250 N m, 30 kPa; 1796 rpm 384 N m, 120 kPa. A
      steady-state match, not a lag; breathing per kPa of manifold the same at 1500 as at 1800. The cited engine
