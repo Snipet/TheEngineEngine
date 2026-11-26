@@ -22,4 +22,7 @@ namespace tee::ui
     std::string dynoWordsAt(Workspace& w, int row, double si);
     int dynoUnsteadyDrawn(Workspace& w);
     float dynoPlotX(Workspace& w, double si);   // where a speed (SI) is across the plot, px (NaN: not DYNO)
+    // Whether a curve's knock is its state (three quarters of its measured points knock-limited, four measured at the
+    // least; a limiter's point is not measured): then the ticks under the plot say it, no ring on each point.
+    bool dynoKnockIsState(const DynoTrace& t);
 }

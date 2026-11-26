@@ -528,6 +528,37 @@ namespace
         return 0;
     }
 
+    // (U1 for U4, 26 Nov; the lead's choice B) A curve knock-limited at three quarters of its measured points or more, four
+    // at the least, says it once (the ticks under the plot, the legend's tick); fewer keep a ring at each. A point the
+    // program limits is not measured.
+    VIEW_TEST(testDynoKnockState, "dyno.knock.state")
+    {
+        const auto curve = [](std::initializer_list<int> marks) {   // 1 knock-limited, 0 not, 2 the limiter's
+            tee::ui::DynoTrace t;
+            double rpm = 2000.0;
+            for (const int m : marks)
+            {
+                t.speed.push_back(rpm * 3.14159265358979 / 30.0);
+                t.torque.push_back(300.0);
+                t.power.push_back(300.0 * t.speed.back());
+                t.knock.push_back(m == 1 ? 1 : 0);
+                t.limited.push_back(m == 2 ? 1 : 0);
+                t.retardMin.push_back(m == 1 ? 3.0 : 0.0);
+                t.retardMax.push_back(m == 1 ? 5.0 : 0.0);
+                rpm += 500.0;
+            }
+            return t;
+        };
+        CHECK(tee::ui::dynoKnockIsState(curve({ 1, 1, 1, 0 })));        // 3 of 4: the state
+        CHECK(!tee::ui::dynoKnockIsState(curve({ 1, 1, 0, 0 })));       // 2 of 4: rings
+        CHECK(!tee::ui::dynoKnockIsState(curve({ 1, 1, 1 })));          // 3 measured, all knocking: rings (four the least)
+        CHECK(tee::ui::dynoKnockIsState(curve({ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 })));   // first.json's 16 of 16
+        CHECK(!tee::ui::dynoKnockIsState(curve({ 1, 1, 1, 2 })));       // the limiter's point not counted: 3 measured
+        CHECK(tee::ui::dynoKnockIsState(curve({ 1, 1, 1, 0, 2, 2 })));  // 3 of 4 measured, the limiter's two aside
+        CHECK(!tee::ui::dynoKnockIsState(curve({ 0, 0, 0, 0 })));       // no knock
+        return 0;
+    }
+
     // Knock-limited points (card C's, through DynoTrace::knock): rings on the torque curve, ticks under the plot, the
     // legend's word, the cursor's words, and three more CSV columns. The demo knocks past 160 kPa of boost from 4500 rpm.
     VIEW_TEST(testDynoKnock, "dyno.knock")

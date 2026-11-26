@@ -50,3 +50,13 @@ the legend; the cursor's card says the doubt in full (wrapped, never cut) and a 
 mark. The demo: its 6500 rpm unsettled point distrusted; from 185 kPa its 2000 rpm one rippling. Probes: `dynoWordsAt`,
 `dynoUnsteadyDrawn`, `dynoPlotX` (Dyno.h). Tests: `dyno.unsteady`; `build.dyno.unsteady`; the picture
 `build.dyno.unsteady.pictures` (nightly: first.json's real prediction, out/ui/dyno/). No golden moved.
+
+**Added by U1 for U4, 26 Nov 2026** (on the lead's word, choice B of two pictures): knock that is the curve's state is
+said once. A curve knock-limited at three quarters of its measured points or more (four measured at the least; a
+limiter's point is not counted: `knockIsState`, probe `dynoKnockIsState`) shows its knock by the amber ticks under the
+plot and the legend's tick, with no ring on each point (first.json: all 16 knock-limited, so its two dashed NOT SETTLED
+rings are the only marks on the curve); a curve that knocks at a few points keeps a ring at each. The cursor card's knock
+line takes the same mark. The cost, accepted: with no ring, a state curve's measured points show only as the ticks
+beneath, not on the curve. DO NOT add the rings back as "point markers": a mark on a point means something is true of
+that point. Also: the knock rings are drawn after the peaks' discs (a peak shows its own), and the cursor is carried
+down through the band under the plot with a dot on each curve. Test `dyno.knock.state` pins the rule.
