@@ -1,5 +1,6 @@
 // host/src/EnginePlayer.cpp: tee::EnginePlayer, builds, engine scenarios and their render (EnginePlayer.h).
 #include "tee/EnginePlayer.h"
+#include "tee/Sim.h"
 
 #include "tee/Build.h"
 #include "tee/Fields.h"
@@ -131,11 +132,36 @@ namespace tee
         compile.optimisation = options.optimisation;
         compile.checks = options.checks;
         std::unique_ptr<EnginePlayer> player(new EnginePlayer());
-        player->program_ = Program::fromDirectory(options.directory, options.entry, compile, errors);
-        if (!player->program_)
+        player->owned_ = Program::fromDirectory(options.directory, options.entry, compile, errors);
+        if (!player->owned_)
             return nullptr;
+        player->program_ = player->owned_.get();
         player->checks_ = options.checks;
         player->sampleRate_ = options.sampleRate > 0.0 ? options.sampleRate : 48000.0;
+        if (!player->bind(errors))
+            return nullptr;
+        player->begin(false);
+        return player;
+    }
+
+    std::unique_ptr<EnginePlayer> EnginePlayer::create(std::shared_ptr<Sim> sim, double sampleRate, std::string& errors)
+    {
+        if (!sim)
+        {
+            errors = "EnginePlayer: no Sim\n";
+            return nullptr;
+        }
+        if (sim->options().checks)
+        {
+            errors = "EnginePlayer: a Sim compiled with the checks plays for one host at a time: compile one for the "
+                     "player\n";
+            return nullptr;
+        }
+        std::unique_ptr<EnginePlayer> player(new EnginePlayer());
+        player->sim_ = std::move(sim);
+        player->program_ = &player->sim_->program();
+        player->checks_ = false;
+        player->sampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0;
         if (!player->bind(errors))
             return nullptr;
         player->begin(false);

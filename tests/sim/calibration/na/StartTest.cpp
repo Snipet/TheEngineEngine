@@ -4,6 +4,7 @@
 // The ECU went from cranking to running only above 550 rpm (the reference's petrol figure): a 15 L tractor cranks to
 // some 540 in the starter's second, already firing, and any 1 % change (the charge's heating, 5fdc5ad) left it off.
 // Under ecu.model 1 it runs above 0.75 of its own idle when that is lower (sim/ecu/ecu.fm).
+#include "Player.h"
 #include "tee/EnginePlayer.h"
 #include "tee/Warm.h"
 
@@ -20,13 +21,12 @@ namespace
     // The mean brake torque over the last second of 6 s, and the state then
     void startOnDyno(const std::string& slug, double& torque, int& state)
     {
-        tee::EnginePlayer::Options options;
-        options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
-        options.sampleRate = 48000.0;
+        struct
+        {
+            double sampleRate = 48000.0;
+        } options;
         std::string errors, warnings;
-        auto p = tee::EnginePlayer::create(options, errors);
-        INFO(errors);
-        REQUIRE(p != nullptr);
+        tee::EnginePlayer* p = &n1::player(options.sampleRate);   // (one compile a process: Player.h)
         tee::EngineBuild b;
         REQUIRE(tee::loadBuild(*p, std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json"), b,
                                errors, warnings));
@@ -71,8 +71,8 @@ namespace
 } // namespace
 
 // (the fast tier: the heaviest diesel, whose start the 550 rpm threshold left to chance, and the boosted petrol engine;
-// the steward's budget, a case under 30 s on CI's runner)
-TEST_CASE("a start on the engine dyno: the 15 L diesel and a boosted engine fire and pull", "[calibration][na]")
+// a section of FastTest.cpp's one case: "a start on the engine dyno: the 15 L diesel and a boosted engine fire and pull")
+void n1::dynoStartTractorAndTurbo()
 {
     startsAndPulls({"tractor-15-inline-six", "turbo-four-20-gdi"});
 }
@@ -90,7 +90,8 @@ TEST_CASE("a start on the engine dyno: diesels and a boosted engine fire and pul
     }
 }
 
-TEST_CASE("a start on the engine dyno: the 2.0 common-rail diesel fires and pulls", "[calibration][na]")
+// (a section of FastTest.cpp's one case: "a start on the engine dyno: the 2.0 common-rail diesel fires and pulls")
+void n1::dynoStartCommonRail()
 {
     // (it cranks to some 490 rpm in the starter's second, firing, and goes off as the key returns: the key's release
     // while cranking was Engine's: since card D's release rule, a firing engine let go from its start runs)

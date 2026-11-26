@@ -4,6 +4,7 @@
 // clearance leak running back into its charge pipe entered as air at 0 K (sim/boost/machine.fm, card N1): the pipe cooled
 // to its floor and went non-finite while cranking. Held: at rest nothing flows and nothing moves; from the key, idle and
 // blips without the guard's fault, everything finite, the charge pipe under a megapascal.
+#include "Player.h"
 #include "tee/EnginePlayer.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -18,13 +19,12 @@ namespace
     void machineHolds(const char* finding, double seconds)
     {
         CAPTURE(finding);
-        tee::EnginePlayer::Options options;
-        options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
-        options.sampleRate = 48000.0;
+        struct
+        {
+            double sampleRate = 48000.0;
+        } options;
         std::string errors, warnings;
-        auto p = tee::EnginePlayer::create(options, errors);
-        INFO(errors);
-        REQUIRE(p != nullptr);
+        tee::EnginePlayer* p = &n1::player(options.sampleRate);   // (one compile a process: Player.h)
         tee::EngineBuild b;
         REQUIRE(tee::loadBuild(*p, std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "combo" / "findings" /
                                        (std::string(finding) + ".json"),
@@ -81,7 +81,9 @@ namespace
 
 // (the fast tier, the lead's 21:51: the three builds that have traded faults today in one case, so that a fix for one
 // cannot undo another: X-022's throttles a runner behind a tiny charge pipe, X-024's huge inducer, X-026's 50 cc blower)
-TEST_CASE("X-022, X-024 and X-026 together: tiny charge paths start, idle and blip without a fault or a vacuum", "[calibration][na]")
+// (a section of FastTest.cpp's one case: "X-022, X-024 and X-026 together: tiny charge paths start, idle and blip without
+// a fault or a vacuum")
+void n1::tinyChargePathsHold()
 {
     for (const char* f : {"x022-supercharger-itb-small-charge", "x024-tiny-engine-huge-inducer", "x026-single-small-pipe"})
         machineHolds(f, 3.0);

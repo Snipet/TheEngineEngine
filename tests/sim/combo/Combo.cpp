@@ -439,19 +439,18 @@ namespace combo
         return static_cast<double>(at) / rate;
     }
 
+    // The reference's step and excess (judge's bounds) from one run of the reference: a case that asks for both, as every
+    // judged case does, plays the reference once per process (the fast tier's grouping, 26 Nov)
+    struct Reference
+    {
+        double step = 0.0;
+        double excess = -1.0;
+    };
+    const Reference& reference(const std::string& build, Kind kind);
+
     double referenceStep(const std::string& build, Kind kind)
     {
-        static std::map<std::pair<std::string, int>, double>* cache = new std::map<std::pair<std::string, int>, double>();
-        const auto key = std::make_pair(build, static_cast<int>(kind));
-        auto it = cache->find(key);
-        if (it != cache->end())
-            return it->second;
-        Times tm;
-        const tee::test::Run r = scenario(kind, build, 0u, tm).run(tm.end);
-        const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
-        const double step = std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
-        (*cache)[key] = step;
-        return step;
+        return reference(build, kind).step;
     }
 
     double stepExcess(const tee::test::Run& run, double from, double to, double* atOut, double* periodOut)
@@ -489,18 +488,24 @@ namespace combo
         return own / std::max(median, 1e-9);
     }
 
-    double referenceExcess(const std::string& build, Kind kind)
+    const Reference& reference(const std::string& build, Kind kind)
     {
-        static std::map<std::pair<std::string, int>, double>* cache = new std::map<std::pair<std::string, int>, double>();
+        static std::map<std::pair<std::string, int>, Reference>* cache = new std::map<std::pair<std::string, int>, Reference>();
         const auto key = std::make_pair(build, static_cast<int>(kind));
         if (auto it = cache->find(key); it != cache->end())
             return it->second;
         Times tm;
         const tee::test::Run r = scenario(kind, build, 0u, tm).run(tm.end);
         const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
-        const double e = stepExcess(r, from, to);
-        (*cache)[key] = e;
-        return e;
+        Reference ref;
+        ref.step = std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
+        ref.excess = stepExcess(r, from, to);
+        return (*cache)[key] = ref;
+    }
+
+    double referenceExcess(const std::string& build, Kind kind)
+    {
+        return reference(build, kind).excess;
     }
 
     namespace

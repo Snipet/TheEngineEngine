@@ -713,13 +713,20 @@ namespace
 {
     // The rally five (its own spark cut and anti-lag) floored 4 s from idle and let go, as card G's clips run it, its
     // bangs Burned in the pipe (exhaust.bang 1, the default) or Carved (0): the body (the median of the 0.1 s windows'
-    // rms, dBFS) over the lift, 7 to 9.5 s from the key
-    double liftBody(int bang)
+    // rms, dBFS) over the lift, 7 to 9.5 s from the key. Another build, and its rev limiter's kind (-1 its own), as
+    // card G's clips run the flat-plane V8 (a spark cut, 1)
+    double liftBody(int bang, const char* name = "archetypes/inline-five-turbo-rally", int limiter = -1)
     {
-        Bench b("archetypes/inline-five-turbo-rally");
+        Bench b(name);
         const int i = b.player().specIndex("exhaust.bang");
         REQUIRE(i >= 0);
         b.player().setSpec(static_cast<std::size_t>(i), double(bang), 0);
+        if (limiter >= 0)
+        {
+            const int l = b.player().specIndex("ecu.limiter.kind");
+            REQUIRE(l >= 0);
+            b.player().setSpec(static_cast<std::size_t>(l), double(limiter), 0);
+        }
         b.ctl().mode = 1;
         b.ctl().lever = 0;
         b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
@@ -761,5 +768,18 @@ TEST_CASE("the auto level and the bangs: a burn in the pipe does not hold the bo
     const double burned = liftBody(1);
     std::printf("the rally five's lift, the body (median 0.1 s rms): Carved %.1f dBFS, Burned %.1f dBFS (%+.1f dB)\n", carved,
                 burned, burned - carved);
+    CHECK(burned > carved - 2.0);
+}
+
+TEST_CASE("the auto level and the bangs: the flat-plane V8's dense burns do not hold its body down", "[listen][engine][nightly]")
+{
+    // The V8 on a spark cut, as card G's clips run it: its burns come close together and stand less than four times
+    // over the parts round them, so the level's percentile alone took them for the body. While a burn is alight (the
+    // exhaust's bangHeat, held while its sound is on its way), a part over twice the parts' median is a burst.
+    // Burned within 2 dB of Carved
+    const double carved = liftBody(0, "archetypes/flat-plane-v8-45", 1);
+    const double burned = liftBody(1, "archetypes/flat-plane-v8-45", 1);
+    std::printf("the flat-plane V8's lift, the body (median 0.1 s rms): Carved %.1f dBFS, Burned %.1f dBFS (%+.1f dB)\n",
+                carved, burned, burned - carved);
     CHECK(burned > carved - 2.0);
 }
