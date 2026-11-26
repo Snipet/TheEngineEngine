@@ -895,19 +895,9 @@ TEST_CASE("the application's first build: no configuration field differs between
             return "a muffler's side past the build's count";
         return nullptr;
     };
-    // A KNOWN FINDING, named (D, 25 Nov; G's file and G's cure, the lead's ruling of 26 Nov): Duct::set
-    // (sim/exhaust/duct.fm) redesigns a pipe's wall shelves on its length and sound speed, not its bore or the rate, so
-    // route 0's intake runners keep the default V8's wall (bore 60.8 mm, first.json's 51.6: sb0[0] 0.99540 against
-    // 0.99458). The cure (third in G's order, keyed on the model) removes this name: the case green without it is then
-    // the cure's proof.
-    const auto knownWall = [&](const std::string& p) {
-        int i = 0;
-        // (the shelves, and the wall's design key kept with them (Duct::dWall, rWall: the bore and rate it was made for,
-        // e7088e2b), which records the same stale design)
-        return indexAfter(p, "intk.run", i) && i < ports &&
-               (p.find(".sb0[") != std::string::npos || p.find(".sb1[") != std::string::npos || p.find(".sa1[") != std::string::npos ||
-                p.find(".dWall") != std::string::npos || p.find(".rWall") != std::string::npos);
-    };
+    // (the runners' wall, a finding of this case's first form (25 Nov): Duct::set kept the wall's shelves keyed on length
+    // and sound speed alone, so route 0's runners kept the default V8's wall; G's cure keys it on the bore and rate too
+    // (e7088e2b), taken by the runners under intake.model 1 (N1's line). Named here until then; it went with the cure)
 
     std::vector<tee::test::core::Diff> across, moved0, moved1;
     tee::test::core::walk(schema->fields(), 0, "", snap[0][0].data(), snap[1][0].data(), across);
@@ -918,7 +908,7 @@ TEST_CASE("the application's first build: no configuration field differs between
         moving.insert(d.path);
     for (const auto& d : moved1)
         moving.insert(d.path);
-    int still = 0, nameds = 0, known = 0;
+    int still = 0, nameds = 0;
     for (const auto& d : across)
     {
         if (moving.count(d.path) != 0)
@@ -929,16 +919,10 @@ TEST_CASE("the application's first build: no configuration field differs between
             ++nameds;
             continue;
         }
-        if (knownWall(d.path))
-        {
-            ++known;
-            continue;
-        }
         INFO(d.path << ": written after init " << d.a << ", initialised over it " << d.b);
         CHECK(false);
     }
-    std::printf("first.json's two routes after the key: %zu fields differ, %d hold still: %d named, %d the runners' wall (the known finding)\n",
-                across.size(), still, nameds, known);
+    std::printf("first.json's two routes after the key: %zu fields differ, %d hold still: %d named\n", across.size(), still, nameds);
 }
 
 TEST_CASE("the application's first build, written after a default init, runs as an init with it would (first.json)", "[core][engine][models]")
