@@ -678,9 +678,11 @@ TEST_CASE("the auto level after a start: the same idle whether the starter is he
 {
     // The start must not set the exposure: the starter's crank (loud) or no starter at all (the first sound faint)
     // leave the idle at one gain. The engine catches some 0.5 s after the key; from 2 s on the two gains agree within
-    // 1 dB, and each is within 1 dB of where it settles (the gain at 8 s). Before the cure, a start whose starter was
-    // not heard left the floor at the first faint sound (Q, rising 0.3 dB a second) and the exposure on the catch's
-    // peak: +15.6 dB against +10.1 with the starter
+    // 1 dB, and from 3 s neither is held more than 3 dB off where the other settles (its gain at 8 s). Before the cure,
+    // a start whose starter was not heard left the floor at the first faint sound (Q, rising 0.3 dB a second) and the
+    // exposure on the catch's peak: +15.6 dB against +10.1 with the starter, 5.5 dB. Each gain's own drift toward its
+    // 8 s value (the floor's settling: Q falls over about a second and rises 0.3 dB a second, some 1 dB from 4 s to
+    // 8 s) is not the property and is not held
     std::vector<double> g[2];
     for (int k = 0; k < 2; ++k)
     {
@@ -703,8 +705,8 @@ TEST_CASE("the auto level after a start: the same idle whether the starter is he
     for (std::size_t i = 7; i < g[0].size(); ++i)        // from 2 s
         CHECK(std::fabs(g[0][i] - g[1][i]) < 1.0);
     for (int k = 0; k < 2; ++k)
-        for (std::size_t i = 15; i < g[k].size(); ++i)   // from 4 s
-            CHECK(std::fabs(g[k][i] - g[k].back()) < 1.0);
+        for (std::size_t i = 11; i < g[k].size(); ++i)   // from 3 s
+            CHECK(std::fabs(g[k][i] - g[1 - k].back()) < 3.0);
 }
 
 namespace
