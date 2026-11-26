@@ -43,6 +43,14 @@
 
 ## Landed
 
+- **26 Nov 08:18 UTC: `main` at 5cd03815** (from 07a08dc0, fast-forward; run 45778173063 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). New in `main`:
+  the Air workspace says when the Air pressure field is off its default that it moves the car's drag only and the
+  engine breathes sea-level air (X-046: the engine never reads `env.pressure`; item 15 of the next window is its
+  cure), and the workspace's printed absolutes are the engine's own, over 101325. Docs: the queue's sections of
+  26 Nov to 07:49, G's and C's notes for item 15. Not in it yet, on the branch: the dyno's knock as the curve's
+  state and the cursor through the boost band (a5a58e90), `Known.h`'s six sometimes rows, eachSwitch's runs to
+  `[nightly]`.
 - **26 Nov 07:50 UTC: `main` at 07a08dc0** (from d586682c, fast-forward; run 45771252603 on that commit: Linux,
   Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged, so no table
   moved). New in `main`, `ui/` and tests only: the dyno marks the points its program distrusts (a dashed ring and
