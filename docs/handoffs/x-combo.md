@@ -159,3 +159,13 @@ and cures none, tightens the limiter rows, and on one reference leaves no excess
 items 16 and 17. The judge stays as parts A and B left it; the tables as measured in
 docs/measurements/combo/2026-11-26-part-c.md; the variant on a local branch, never pushed. Re-opened after the window
 as one question: with the cut at 60 ms and the valve converged, does dropping a shift's silent periods move a verdict.
+
+**26 Nov, the shipped corpus on the pull** (the lead's survey; docs/measurements/combo/2026-11-26-shipped-pull.md; no
+entries, as ruled). Item 16's probe brings every upshift over on the tip to 0 of 17 (the three-cylinder's 6 and 8, the
+kei's 2) and adds no copy anywhere. Not cured by it, for whoever reads them: flat-plane-v8-39-twin-turbo's 1-2 upshift,
+1 of 17 on both trees (a dual-clutch box: no shift cut); the same build at the LIMITER on the pull, 7 of 17 over its
+bound 2.33 (top 2.63), and in the rest 1 of 17 (2.76), both trees: beside X-052's limiter rows, and on no nightly path
+(the corpus nightly plays the tour); the rally five's cut 1 of 17 (3.85 over 3.51) on the tip only. Eight builds have no
+shift event on the pull (five automatics, the CVT, the eighteen-speed: the paddles do not apply). Proposal (not done):
+the whole corpus on the pull as a weekly entry, judged per event; this survey took about 12 minutes for the single
+draws and 2 hours for the 17-copy spreads of all 31 on two trees, on 4 shared cores.
