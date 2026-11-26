@@ -18,6 +18,10 @@ const Known kKnown[] = {
     {"X-030", "2026-11-25", "the steward (the ECU's shift cut)", "+fuel.model+ecu.model", "*", "pull", "click-shift-cut",
      "a firing unlike its neighbours as the spark returns after an upshift's cut, ecu.model 1 under fuel.model 1: excess "
      "3.21 to 3.80 against 2.85 (small four), 4.32 against 4.03 (V8); since c035fe75"},
+    {"X-031", "2026-11-25", "the steward (the ECU's downshift)", "+fuel.model+ecu.model", "v8", "pull", "click",
+     "a firing unlike its neighbours as the spark returns after the V8's downshift at 11.0 s, ecu.model and fuel.model "
+     "on: excess 4.73 to 5.17 against 4.03 (13.4 step before c035fe75); back with 98d0dc4d's revert for the bake (the "
+     "lead's ruling, 26 Nov 03:18), re-read on the reverted tree: fuel+ecu 4.73, custom+fuel+ecu 5.17 at 11.02 s"},
     {"X-036", "2026-11-25", "D (engine.custom) and the steward (car.model)", "+engine.custom+car.model", "turbo-v8-dual",
      "pull", "dc", "the turbo V8 dual's pull with a custom engine and car.model: the running mean 0.0057 to 0.0069 of "
      "full scale against 0.005, since the first soak (never green)"},
@@ -53,19 +57,12 @@ const Known kKnown[] = {
      "(316 against 299 rpm sd), and with ecu.model a near stall at the catch, 13 rpm at 0.96 s after a 2030 rpm flare; "
      "no shipped build runs the reference idle, none carries such a cam. The start's catch at 3.39 s: excess 3.27 "
      "against 2.97 (c40f0411 moved the hunt's phase onto it)"},
-    // X-044 stays (the lead's ruling, 26 Nov 01:08): nothing is cured for it this window.
+    // X-044 (the lead's ruling, 26 Nov 01:08; with 98d0dc4d reverted for the bake, as it was before it: 1 phase in 6)
     {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "engine.custom+fuel.model+ecu.model", "small-four",
      "pull", "click",
      "engine.custom + fuel.model + ecu.model without exhaust.model, the small four's pull at the downshift (11.02 s): the "
-     "fuel returning whole on the blip's first firings after the overrun cut; 1 phase in 6 before 98d0dc4d, 3 in 6 after "
-     "it (that cure moves which phases meet the return; the idle valve is not in it); green with every switch on (excess "
-     "1.92 against 2.85 on the small four, 2.35 at most against 4.03 on the V8). Phase 0: 1.75 before, 3.48 after"},
-    {"X-045", "2026-11-26", "the integrator (engine.fm; the next window, the lead's ruling)", "boost.model", "default",
-     "keyfields", "keyfields-exhaust",
-     "boost.model or exhaust.model written while stopped, and the application's own load, keep tel.exhaust.model 0 and "
-     "the model-0 exhaust configured until the key (the exhaust is built at the key; holdModel() takes the switch with "
-     "no configure); they agree after it: nothing keys an engine without it, only what a stopped engine reports"},
-    {"X-045", "2026-11-26", "the integrator (engine.fm; the next window, the lead's ruling)", "exhaust.model", "default",
-     "keyfields", "keyfields-exhaust", "as boost.model's: the stopped engine reports the last exhaust until the key"},
+     "fuel returning whole on the blip's first firings after the overrun cut; 1 phase in 6 without 98d0dc4d (reverted "
+     "for the bake: phase 0 reads 1.75 against 2.85, the triple's phase), 3 in 6 with it (3.48 at phase 0); green with "
+     "every switch on"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
