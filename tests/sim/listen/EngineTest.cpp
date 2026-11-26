@@ -72,7 +72,7 @@ TEST_CASE("loudness: the exhaust at full load is one level across the reference'
     CHECK(spread[0] < spread[1]);
 }
 
-TEST_CASE("loudness, quick: the inline three and the flat-plane V8, which the tables leave farthest apart", "[listen][engine]")
+TEST_CASE("loudness, quick: the inline three and the flat-plane V8, which the tables leave farthest apart", "[listen][engine][sim]")
 {
     // the nightly test's corner: through the reference's tables these two are the extremes of the sixteen (17 dB)
     double spread[2];
@@ -143,12 +143,12 @@ TEST_CASE("soak: a drive through the gears with the listener moving round the ca
     soak(40, 20.0);
 }
 
-TEST_CASE("soak, quick: ten seconds of the drive, every camera and place visited", "[listen][engine]")
+TEST_CASE("soak, quick: ten seconds of the drive, every camera and place visited", "[listen][engine][sim]")
 {
     soak(10, 8.0);
 }
 
-TEST_CASE("the cabin: shut windows take the highs, open ones let them in", "[listen][engine]")
+TEST_CASE("the cabin: shut windows take the highs, open ones let them in", "[listen][engine][sim]")
 {
     Bench b("v8");
     model1(b);
@@ -234,12 +234,12 @@ TEST_CASE("the ceiling: every source at its loudest and the camera at its closes
     ceiling(3);
 }
 
-TEST_CASE("the ceiling, quick: the V8 at the tailpipes at 0.5 m, LEVEL +12 dB, on the limiter", "[listen][engine]")
+TEST_CASE("the ceiling, quick: the V8 at the tailpipes at 0.5 m, LEVEL +12 dB, on the limiter", "[listen][engine][sim]")
 {
     ceiling(1);
 }
 
-TEST_CASE("a motorcycle heard from the rider's seat, revved and launched", "[listen][engine]")
+TEST_CASE("a motorcycle heard from the rider's seat, revved and launched", "[listen][engine][sim]")
 {
     Bench b("bike-superbike");
     model1(b);
@@ -360,12 +360,12 @@ TEST_CASE("the level at the defaults: a free rev peaks at 0.3 to 0.6, the idle p
     atDefaults({"first", "archetypes/kei-660-triple-turbo", "archetypes/v12-65", "archetypes/tractor-15-inline-six"});
 }
 
-TEST_CASE("the level at the defaults, quick: first.json and the tractor (a quiet idle, a loud let-off)", "[listen][engine]")
+TEST_CASE("the level at the defaults, quick: first.json and the tractor (a quiet idle, a loud let-off)", "[listen][engine][sim]")
 {
     atDefaults({"first", "archetypes/tractor-15-inline-six"});
 }
 
-TEST_CASE("the auto level: cameras near and far brought together; off, each its true level", "[listen][engine]")
+TEST_CASE("the auto level: cameras near and far brought together; off, each its true level", "[listen][engine][sim]")
 {
     // With true levels the cabin is under the Rear. With the auto level, each camera is exposed for its own loudest
     // moment (the louder of the rev's largest peak and 12 dB over the idle's): that lands at the target, 0.4 (-8 dBFS),
@@ -596,7 +596,7 @@ TEST_CASE("the voices through Places: their share is the reference view's, no to
     voicesHeld(3);
 }
 
-TEST_CASE("the voices through Places, quick: at Side (first.json's camera)", "[listen][engine]")
+TEST_CASE("the voices through Places, quick: at Side (first.json's camera)", "[listen][engine][sim]")
 {
     voicesHeld(1);
 }
@@ -642,7 +642,7 @@ namespace
 // has no ground); Rear 9: not a finding but the camera (the bay shaded by the body and the ground's notch near 1 kHz,
 // against a REAR whose bay no geometry gives). The Driver 9 to 4 kHz; at 8 kHz it is 12 dB under the reference's
 // CABIN, which hears the bay unfiltered (0.06 of it) where Places brings it through the firewall's mass law
-TEST_CASE("the engine's tilt through Places, quick: Tailpipe, and Side without the ground, against the reference's views", "[listen][engine]")
+TEST_CASE("the engine's tilt through Places, quick: Tailpipe, and Side without the ground, against the reference's views", "[listen][engine][sim]")
 {
     tiltHeld("Tailpipe / Exhaust", 0, 0, -1, 7.0, 9.0);
     tiltHeld("Side (ground None) / Side", 2, 2, 2, 7.0, 7.0);
@@ -674,7 +674,7 @@ TEST_CASE("explore: the auto level by camera on four builds", "[listen][engine][
             }
 }
 
-TEST_CASE("the auto level after a start: the same idle whether the starter is heard or not", "[listen][engine]")
+TEST_CASE("the auto level after a start: the same idle whether the starter is heard or not", "[listen][engine][sim]")
 {
     // The start must not set the exposure: the starter's crank (loud) or no starter at all (the first sound faint)
     // leave the idle at one gain. The engine catches some 0.5 s after the key; from 2 s on the two gains agree within
@@ -757,7 +757,7 @@ namespace
     }
 }
 
-TEST_CASE("the auto level and the bangs: a burn in the pipe does not hold the body down", "[listen][engine]")
+TEST_CASE("the auto level and the bangs: a burn in the pipe does not hold the body down", "[listen][engine][sim]")
 {
     // A bang burned in the pipe is a burst of 1 to 4 ms: the exposure leaves it to the limiter (a part over twice the
     // parts' running 80th percentile does not raise P), as a real limiter takes a crack, so the body over a lift with
