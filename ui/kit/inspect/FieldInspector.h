@@ -38,6 +38,9 @@ namespace tee::ui
     {
     public:
         enum class Style : std::uint8_t { rows, list };
+        // The row the wheel counts in: a notch of a notched wheel scrolls three (funkgui::scroll::wheelPx, as every
+        // list does); a smooth delta scrolls its own px.
+        static constexpr float kWheelRowH = 36.0f;
 
         FieldInspector(uint32_t id, FieldDoc& doc, const Units& units, Style style);
 

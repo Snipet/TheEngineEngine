@@ -230,6 +230,45 @@
         return 0;
     }
 
+    // The wheel scrolls as every list does (funkgui::scroll::wheelPx; the owner on a Mac, 26 Nov: "it scrolls
+    // slowly"): a trackpad's point (a smooth delta of 1/512) one px, a notch of a notched wheel three rows; over a value
+    // box the wheel nudges the value and does not scroll.
+    TEST(testInspectWheel, "inspect.wheel")
+    {
+        InspectRig rig(tee::ui::FieldInspector::Style::rows);
+        rig.col->setPlace({ 20, 20, 340, 300 }, true);   // short: the rows overflow
+        rig.host.tick(2);
+        CHECK(rig.col->contentHeight() > 600.0f);
+        const funkgui::Rect b = rig.col->bounds();
+        const float x = b.x + 30.0f, y = b.y + 200.0f;  // over a row's label, not its value
+        float before = rig.col->scroll();
+        rig.host.wheel(x, y, -1.0f / funkgui::scroll::kWheelPxPerUnit, true);
+        CHECK_MSG(std::fabs(rig.col->scroll() - before - 1.0f) < 0.01f, std::to_string(rig.col->scroll() - before));
+        before = rig.col->scroll();
+        rig.host.wheel(x, y, -funkgui::scroll::kWheelNotch, false);
+        const float row = tee::ui::FieldInspector::kWheelRowH;
+        CHECK_MSG(std::fabs(rig.col->scroll() - before - 3.0f * row) < 0.01f, std::to_string(rig.col->scroll() - before));
+        rig.host.wheel(x, y, funkgui::scroll::kWheelNotch, false);   // and back up
+        CHECK(std::fabs(rig.col->scroll() - before) < 0.01f);
+        // Over a value box: the value moves, the rows do not.
+        rig.host.tick(30);
+        funkgui::Rect r, v;
+        int field = -1;
+        for (const auto& row2 : rig.col->rows())
+            if (row2.kind == tee::ui::FieldInspector::Row::Kind::field && rig.doc.info(row2.field).kind == tee::ui::FieldKind::number
+                && rig.col->fieldRect(row2.field, r, v) && v.y > b.y + 60.0f && v.bottom() < b.bottom())
+            {
+                field = row2.field;
+                break;
+            }
+        CHECK(field >= 0);
+        const double was = rig.doc.get(field);
+        before = rig.col->scroll();
+        rig.host.wheel(v.centreX(), v.centreY(), funkgui::scroll::kWheelNotch, false);
+        CHECK(rig.doc.get(field) != was && rig.col->scroll() == before);
+        return 0;
+    }
+
     // The card (Style::list, setCard): a few fields under a title, no filter, its height from what it holds; a value
     // typed in it is kept or refused as in the rows.
     TEST(testInspectCard, "inspect.card")
