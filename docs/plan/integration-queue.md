@@ -2339,13 +2339,36 @@ engines only where a source shows such an engine drawn split.
   3.20 against 2.81; the level taken from the neighbouring periods to 3.59. The guard is near-monotone, not
   strictly (a measure can fall by a hundredth): every fall is to be named in its list.
 
+## 26 Nov 18:30 UTC: the flat-plane V8's limiter read three ways; X-054's plants; X-055
+
+- **The flat-plane 3.9 twin-turbo V8's limiter (7 of 17 on the pull, as built).** The steward: a hard
+  all-cylinder fuel cut at 8000 rpm bouncing near 25 Hz, about 40 episodes a run of 13 to 26 ms, the first
+  firing back mostly 1.0 to 1.5 of the next four and about one in ten near 2; the row's count is each copy's
+  worst of forty episodes against a bound whose reference's lowest copy is 1.17. G: the chatter counter 0
+  over the whole pull, and on a scratch tree WITH THE REAL GATE (the every-model-off pull identical to the bit;
+  the reference's copies identical) the limiter reads 7 to 6: not X-051's. So it is X-052's kind and the
+  steward's alone; item 17 has no evidence on a shipped build, only on the fixtures' combinations. The Spec
+  offers four limiter kinds (fuel cut, spark cut, soft, throttle; 29 of the 31 shipped builds state fuel
+  cut, the supercharged 6.2 soft, the rally five spark cut): clips of all four on the flat-plane are with
+  the owner. For the judge, after the window: a limiter's row read per episode, not as the worst of all.
+- **X-055 (X):** the flat-plane V8 as built on the pull, in the nightly's shipped-pull case as its fourth
+  build: the limiter 7 of 17 (the steward), the 1-2 on its dual clutch 1 of 17 (the integrator, with N2),
+  the rest 1 of 17 (owner not known).
+- **X-054, the plants (the unchanged judge; a single-sample click added to the case's output; 17 copies):**
+  caught at a start, at idle and at a shift in nearly every copy at +1.5 dB over the firing's sharpest edge;
+  on a steady full-throttle stretch in 7 and 10 of 17 on the small four (+1.5 and +11 dB) and 16 on the
+  turbo six; **at the LIMITER in 0 of 17 (the small four) and 3 of 17 (the turbo six) even at +11 dB.** +1.5
+  and +11 dB read the same windows to the digit (the saturation, measured); -9 dB passes nearly everywhere
+  (beyond this measure by design). So a "0 of 17" tonight is strong at starts, idles and shifts, weaker on a
+  steady full-throttle stretch, and says little at a limiter.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **26 Nov 16:31 UTC: `main` IS AT d6615852** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
-  7c3e4d59, those trees unchanged; run 45855822711: Linux, macOS and Windows green on that commit; `ui/`,
-  tests, the combo corpus, scripts and docs only since d586682c). Before it: 3f892823 (26 Nov 13:41), 389ee865
-  (12:25), 317404d9 (11:53), 5278e3e9 (11:01), 3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0 (07:50), d586682c
-  (04:36). Past it on the branch: a hidden proof case's mode (6e67ac62, tests) and docs.
+- **26 Nov 18:30 UTC: `main` IS AT 6e67ac62** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
+  7c3e4d59, those trees unchanged; run 45858950535: Linux, macOS and Windows green on that commit; `ui/`,
+  tests, the combo corpus, scripts and docs only since d586682c). Before it: d6615852 (26 Nov 16:31), 3f892823
+  (13:41), 389ee865 (12:25), 317404d9 (11:53), 5278e3e9 (11:01), 3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0
+  (07:50), d586682c (04:36). Past it on the branch: docs.
 - **THE WINDOW'S ORDER, as ruled on 26 Nov and corrected at 17:39 (each needs a bake to follow, so P):** item 16
   (X-047, the shift's cut; the steward; one file; evidence on three shipped builds), item 17 (X-051, the
   valve's flow solve; G; it moves only cases with the exhaust or intake model on, no reference and no
