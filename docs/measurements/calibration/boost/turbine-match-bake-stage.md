@@ -26,7 +26,15 @@ One stage, `match`, added to CalibrationBakeService in front of the two it runs 
    - `tel.boost.turbineInTemp[i]`: T3, K;
    - `tel.boost.efficiency[i]`: the compressor's efficiency at its operating point;
    - `tel.boost.engineAir`: kg/s, a 0.1 s mean.
-   On a build with two turbines, i is each turbine. See the open question below on what the fields hold then.
+   Which turbines feed the one rated pair, by `spec.boost.layout` (N2, 04:40):
+   - one turbine: it;
+   - twin and quad (a bank each, four two a bank): the mean of the turbines that are on. They are symmetric and share
+     one rated pair;
+   - sequential: the primary alone. Its housing is upstream of the transfer valve, and the secondary's sees the valve's
+     drop, so a mean would under-read the primary's p4 and T3. Suspected, not measured: N2 checks it on the rotary's
+     pair when step A runs;
+   - compound: the stage writes nothing and says so (its result: "a compound pair has no one rated state"). Its
+     stages' p4 differ by the whole high-stage expansion. The build stays on the stand-ins, bit 32 set.
 2. Write: `spec.boost.ratedP4`, `ratedT3`, `ratedEtaC` and `ratedAir` from that point, and then `matchKey`. Writing them
    raises the boost section's rev, so the program re-matches on its next block.
 3. Fail the stage (an error naming the reason; the build left on the stand-ins, mismatch bit 32 still set) when the
@@ -57,12 +65,15 @@ One stage, `match`, added to CalibrationBakeService in front of the two it runs 
 - Cost: a pass is one predicted point, 2 s of hold plus the approach, about 3 to 5 s. So the stage costs 6 to 20 s
   before the spark stage's minutes.
 
-**The rated speed.** This is the one input the stage cannot take from today's fields: N2's cells were 2.0 4000, pickup
-2800, truck's sets 2100 and tractor 1900, by hand. The program knows its own design point (it matches on the
-engine's flow at its redline). The stage should read it, not choose it. **Asked of N2: which field holds the match's
-design speed** (a tel field the program fills, so a governed diesel's governor and a petrol's redline come from one
-place). Until that field exists the stage reads `tel.engine.redline` less redlineMarginRpm. That is the predictor's
-top point, and it is right for a petrol build but wrong for a governed diesel.
+**The rated speed: the match's own design speed.** No single field holds it today (N2, 26 Nov 04:40). The rule is
+the program's, in `sim/boost/machine.fm` (nDesign, ~464), fed by `sim/engine.fm` (~526, boost.designSpeed):
+- spark ignition: `spec.boost.designShare` × the redline (`tel.engine.redline`, rad/s; designShare 0.85 by default);
+- a diesel (the engine's fuelUse not 0): `spec.ecu.ratedSpeed` (rad/s) when above 0, else the redline.
+The stage copies that rule exactly, with a comment pointing at both lines, until N2's proposed `tel.boost.designRpm`
+(the machine's resolved nDesign) lands when sim/ opens. Then the stage reads that field and the copy goes, so the rule
+lives in one place. The first sketch's "redline less 300 rpm" was wrong for both kinds and is not used. N2's hand-picked
+cells (2.0 4000, pickup 2800, truck's sets 2100, tractor 1900) are the rule's speeds on those builds; the nightly test
+checks that the stage's speed is each of them.
 
 ## The key, the cache, the reuse
 
@@ -147,11 +158,12 @@ The nightly tier:
 Each new case's bound gets its measured number and its reason in its comment, and each is shown to fail once by hand
 (the damping off, the key hashing a rated field, the fail rule off).
 
-## Open, for N2
+## Answered by N2 (26 Nov 04:40) and still open
 
-1. **The match's design speed:** which field holds it, so the stage reads it rather than choosing it. Above.
-2. **Two turbines:** do `turbineOut[]` and `turbineInTemp[]` per turbine feed one rated pair, or one each? The fields
-   are one value each today. Read on the twin, the stage takes the mean of the turbines that are on. Say if a
-   sequential pair wants the primary's alone.
-3. **The reuse floors:** after N2's scatter measure, the 0.5 % and 5 K above may move. The code reads them from
-   options, so a change is one line.
+- **Answered:** the design speed (the rule above, copied until `tel.boost.designRpm`); two turbines (the mean, the
+  primary alone for a sequential pair, nothing for a compound); the damping from pass 3 and the 4 passes; the spark key
+  moving with the rated fields.
+- **Open:** the reuse floors and the stop (0.5 % p4, 5 K T3, 0.01 efficiency, the air's scatter) stay options until
+  N2's scatter measure, N2's next window. The sequential pair's primary-alone rule is to be checked by N2 on the rotary.
+- **Tests added by the answers:** case 3 also plants a compound layout (the stage writes nothing, says why); the nightly
+  case 4 asserts the stage's speed on each of N2's four builds.
