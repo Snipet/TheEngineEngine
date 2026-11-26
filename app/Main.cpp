@@ -347,24 +347,25 @@ namespace
         input::g29::RacingWheel wheel(std::move(wheelHooks), now.wheelOn);
         input::g29::Input wheelInput;
         input::g29::ButtonLearn wheelLearn;
+        bool wheelEditSaid = false;          // "editing from the wheel waits for the frame", said once
         {
             std::string notes;
             wheelInput.setButtons(input::g29::loadButtons(now.wheelButtons, notes));
             if (!notes.empty())
                 std::fprintf(stderr, "settings: %s (left out)\n", notes.c_str());
         }
-        // a bindable action's line in the menu: "shiftUp: right paddle"
+        // a bindable target's line in the menu: "drive: shiftup: right paddle", "edit: undo: square"
         const auto wheelButtonLine = [&wheelInput](int i) {
-            const input::Action a = input::g29::bindableActions()[static_cast<std::size_t>(i)];
+            const input::g29::Target& t = input::g29::bindables()[static_cast<std::size_t>(i)];
             std::string held;
             for (const input::g29::Binding& b : wheelInput.buttons())
-                if (b.action == a)
+                if (b.edit == t.edit && (t.edit || b.action == t.action))
                     held += (held.empty() ? "" : ", ") + std::string(input::g29::kBits[b.bit].name);
-            return std::string(input::actionName(a)) + ": " + (held.empty() ? "no button" : held);
+            return input::g29::targetLabel(t) + ": " + (held.empty() ? "no button" : held);
         };
         // (the loop's `now` is its clock: the settings are kept through this)
         const auto learnedButtons = [&now](std::string text) { now.wheelButtons = std::move(text); };
-        commandsContext.wheelButtonCount = [] { return static_cast<int>(input::g29::bindableActions().size()); };
+        commandsContext.wheelButtonCount = [] { return static_cast<int>(input::g29::bindables().size()); };
         commandsContext.wheelButton = wheelButtonLine;
         commandsContext.learnWheelButton = [&](int i) {
             if (i < 0)
@@ -372,13 +373,13 @@ namespace
                 wheelLearn.cancel();
                 wheelInput.setButtons(input::g29::defaultButtons());
                 now.wheelButtons.clear();
-                note = "wheel: the buttons' defaults (the paddles shift, PS starts)";
+                note = "wheel: the buttons' defaults (the paddles shift, PS starts, the rest edit)";
                 showStatus();
                 return;
             }
-            const input::Action a = input::g29::bindableActions()[static_cast<std::size_t>(i)];
-            wheelLearn.begin(a, wheel.state());
-            note = "wheel: press the button for " + std::string(input::actionName(a)) + " (10 s)";
+            const input::g29::Target& t = input::g29::bindables()[static_cast<std::size_t>(i)];
+            wheelLearn.begin(t, wheel.state());
+            note = "wheel: press the button for " + input::g29::targetLabel(t) + " (10 s)";
             showStatus();
         };
         commandsContext.wheel = [&wheel] {
@@ -492,14 +493,16 @@ namespace
             if (wheelLearn.active())
             {
                 input::g29::Buttons buttons = wheelInput.buttons();
-                const input::Action learning = wheelLearn.action();
+                const input::g29::Target learning = wheelLearn.target();
                 if (wheelLearn.watch(wheel.state(), dt, buttons))
                 {
                     wheelInput.setButtons(buttons);
                     learnedButtons(input::g29::saveButtons(buttons));
-                    note = "wheel: " + wheelButtonLine(static_cast<int>(
-                               std::find(input::g29::bindableActions().begin(), input::g29::bindableActions().end(), learning)
-                               - input::g29::bindableActions().begin()));
+                    const auto& all = input::g29::bindables();
+                    const auto at = std::find_if(all.begin(), all.end(), [&](const input::g29::Target& t) {
+                        return t.edit == learning.edit && t.action == learning.action;
+                    });
+                    note = "wheel: " + wheelButtonLine(static_cast<int>(at - all.begin()));
                     showStatus();
                 }
                 else if (!wheelLearn.active())
@@ -507,8 +510,28 @@ namespace
                     note = "wheel: no button pressed (nothing changed)";
                     showStatus();
                 }
+                else if (wheelLearn.takeShareRefused())
+                {
+                    note = "wheel: SHARE is the fine modifier (held, a value's edit is fine): press another button";
+                    showStatus();
+                }
             }
-            wheelInput.apply(wheel.state(), wheel.reading(), controls.driver(), !wheelLearn.active());
+            const input::g29::Presses presses = wheel.takePresses();
+            wheelInput.apply(wheel.state(), wheel.reading(), controls.driver(), !wheelLearn.active(), dt, &presses);
+            // its edit commands to the frame (the inspector's hands), on this thread, the frame's; none to take them
+            // yet (the frame's edit() not served): said once, dropped
+            if (!wheelInput.edits().empty())
+            {
+                if (shown.wheelEdit)
+                    for (const input::g29::Edit& e : wheelInput.edits())
+                        shown.wheelEdit(e.command, e.fine);
+                else if (!wheelEditSaid)
+                {
+                    wheelEditSaid = true;
+                    std::printf("wheel: editing from the wheel waits for the frame (its buttons are read; nothing "
+                                "takes their edits yet)\n");
+                }
+            }
             if (wheelChanged)
             {
                 wheelChanged = false;

@@ -165,6 +165,14 @@ namespace tee::ui
         bool ribbonFolded() const noexcept { return folded_; }
         void foldRibbon(bool folded);
 
+        // A game controller's command (kit/gui/EditCommand.h: the owner's card, 26 Nov; card B maps the G29's buttons), on
+        // the interface's thread; true when something took it. Offered first to the item in focus: the frame's own, then
+        // the inspector's (the rows, given the focus first when nothing has it: RowsPage::focusFirst; a table's page: its
+        // table). What comes back false the frame does: the workspaces in the rail's order, wrapping; the inspector's
+        // pages, stopping at the ends; undo and redo as the buttons; back closes the part card, the chat, the settings,
+        // or leaves a table's page for the rows it was opened from (its row in focus). False while a dialog asks.
+        bool edit(EditCommand c, bool fine = false);
+
         // The builds on disk (GARAGE's; the shell's implementation): ticked once a frame. None: GARAGE uses its own.
         void setLibrary(garage::Library* library);
         // The stage the frame gives a workspace in a window of w x h (the same whatever the ribbon does): at the
@@ -223,6 +231,7 @@ namespace tee::ui
         };
         funkgui::Panel* inspectorPane() const;               // the shown page's rows, else its FieldPage
         void openTable(const RowsPage::Table& t);            // a table's row in Rows: its own page
+        Item* tableItem() const;                             // the shown table page's table (nullptr: none)
         void makeWorkspaces();
         void makeCockpit();
         void makeInspector();                                // the pages for the current workspace and selection
@@ -252,6 +261,7 @@ namespace tee::ui
         // the inspector
         std::vector<Page> pages_;
         int page_ = 0;
+        int tableFrom_ = -1, tableField_ = -1;               // openTable's: the Rows page it left, the table's first field
         bool unitsPage_ = false, folded_ = false;
         std::uint32_t selectionSeen_ = 0, unitsSeen_ = 0;
         std::string inspectorHead_, pagesFor_;

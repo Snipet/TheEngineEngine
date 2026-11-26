@@ -22,6 +22,7 @@ namespace tee::input::g29
     void RacingWheel::setOn(bool on) { impl_->on = on; }
     bool RacingWheel::reading() const noexcept { return false; }
     State RacingWheel::state() const { return {}; }
+    Presses RacingWheel::takePresses() { return {}; }
     std::string RacingWheel::status() const { return {}; }
     void RacingWheel::pump() {}
 }

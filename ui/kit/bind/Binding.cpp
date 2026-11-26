@@ -650,6 +650,8 @@ namespace tee::ui
             MapEdit::Axis x{ "#", 1.0, static_cast<double>(elements.size()), std::move(none) };
             MapEdit::Axis y{ unit.empty() ? std::string("value") : unit, 0.0, 0.0, std::move(row) };
             MapEdit::Axis z{ unit.empty() ? std::string("value") : unit, first.min, first.max, std::move(values) };
+            if (first.kind == FieldKind::choice || first.kind == FieldKind::integer)
+                z.step = 1.0;                // a controller's nudge: the next choice, the next whole number
             return std::make_unique<FieldArrayEdit>(id, title, doc, elements, std::move(x), std::move(y), std::move(z));
         }
         if (w == "map" || w == "curve")

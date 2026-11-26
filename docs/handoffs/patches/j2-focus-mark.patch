@@ -1,0 +1,118 @@
+# j2-focus-mark.patch (J2, 26 Nov; updated after the lead's ruling): the Rows inspector's focused row seen from a
+# driving seat (the G29's buttons). A 2 px accent outline round the focused row, drawn at the row's own edge so the
+# changed dot stands clear of its stroke by more than the stroke's width (the lead: "a mark against a mark"); no bar.
+# FieldInspector::focusMarkRect / changedDotRect / kFocusStroke for tests; inspect.edit checks the dot and the stroke do
+# not meet. Applies with `git apply` on 99963645 (J2's push carrying it names the sha it lands on). It MOVES two of
+# U1's goldens: tests/ui/views/golden/frame.ribbon.txt and frame.ribbon.unsettled.txt (a row is focused in them);
+# nothing else in the ui suites (212 of 212 with it, the two excepted).
+# To look: apply it, build tee-ui-build-tests, run `tee-ui-build-tests build.rows.focus.pictures`:
+# out/ui/rows/rows.focus.png, rows.focus.changed.png (the dot inside the outline, clear of it), rows.focus.refused.png.
+diff --git a/tests/ui/InspectTests.inc b/tests/ui/InspectTests.inc
+index 40d176b2..858cd27e 100644
+--- a/tests/ui/InspectTests.inc
++++ b/tests/ui/InspectTests.inc
+@@ -572,6 +572,15 @@
+         col.edit(C::valueUp, false);
+         CHECK(col.edit(C::changedOnly, false) && col.changedOnly());
+         CHECK(col.focusedField() == mem.find("engine.compression"));
++        // The focused row's outline and its changed dot do not meet: the dot stands clear of the stroke by more than the
++        // stroke's own width (the lead, 26 Nov: a mark against a mark).
++        {
++            funkgui::Rect mark, dot;
++            CHECK(col.focusMarkRect(mark) && col.changedDotRect(mem.find("engine.compression"), dot));
++            const float stroke = tee::ui::FieldInspector::kFocusStroke;
++            CHECK_MSG(dot.x - (mark.x + stroke * 0.5f) >= stroke, std::to_string(dot.x - (mark.x + stroke * 0.5f)));
++            CHECK(dot.y > mark.y + stroke && dot.bottom() < mark.bottom() - stroke);
++        }
+         CHECK(col.edit(C::changedOnly, false) && !col.changedOnly() && col.focusedField() == mem.find("engine.compression"));
+         CHECK(col.edit(C::back, false) && col.focusedRow() < 0 && !col.edit(C::back, false));
+         // The frame's: pages, workspaces, undo, redo.
+diff --git a/ui/kit/inspect/FieldInspector.cpp b/ui/kit/inspect/FieldInspector.cpp
+index fd797223..b021e74f 100644
+--- a/ui/kit/inspect/FieldInspector.cpp
++++ b/ui/kit/inspect/FieldInspector.cpp
+@@ -388,6 +388,37 @@ namespace tee::ui
+         return out;
+     }
+ 
++    Rect FieldInspector::changedDot(const Row& r, const Rect& at) const
++    {
++        const bool middle = style_ == Style::list || !numberKind(doc_.info(r.field));
++        const float cy = middle ? at.y + (at.h - r.said) * 0.5f : at.y + 16.0f;
++        return { at.x + 8.0f - 2.6f, cy - 2.6f, 5.2f, 5.2f };
++    }
++
++    bool FieldInspector::focusMarkRect(Rect& mark) const
++    {
++        if (focus_ < 0 || focus_ >= static_cast<int>(rows_.size()))
++            return false;
++        const Rect at = onScreen(rows_[static_cast<std::size_t>(focus_)].rect), content = contentRect();
++        if (at.bottom() < content.y || at.y > content.bottom())
++            return false;
++        mark = { at.x + 1.0f, at.y + 1.0f, at.w - 2.0f, at.h - 2.0f };   // the stroke's centre line
++        return true;
++    }
++
++    bool FieldInspector::changedDotRect(int field, Rect& dot) const
++    {
++        for (const Row& r : rows_)
++            if (r.kind == Row::Kind::field && r.field == field)
++            {
++                if (!changed(field))
++                    return false;
++                dot = changedDot(r, onScreen(r.rect));
++                return true;
++            }
++        return false;
++    }
++
+     std::vector<std::string> FieldInspector::refusalShown() const
+     {
+         for (const Row& r : rows_)
+@@ -1321,7 +1352,10 @@ namespace tee::ui
+                         c.rrect(at.x + 4.0f, at.y + 1.0f, at.w - 8.0f, at.h - 2.0f, 4.0f,
+                                 focused ? l.over(l.edge, 0.55f) : l.over(l.edge, 0.3f));
+                     if (changed(r.field))
+-                        c.disc(at.x + 8.0f, compact || !numberKind(f) ? at.y + (at.h - r.said) * 0.5f : at.y + 16.0f, 2.6f, l.accent);
++                    {
++                        const Rect dot = changedDot(r, at);
++                        c.disc(dot.centreX(), dot.centreY(), dot.w * 0.5f, l.accent);
++                    }
+                     const Rect v = onScreen(r.value);
+                     const float labelY = compact || !numberKind(f) ? at.y + (at.h - r.said) * 0.5f : at.y + 16.0f;
+                     const std::string label = f.label.empty() ? f.path : f.label;
+@@ -1365,6 +1399,11 @@ namespace tee::ui
+                 case Row::Kind::empty: break;
+             }
+         }
++        // The focused row, seen from a driving seat (a controller's): an accent outline round it, at the row's own edge so
++        // the changed dot stands clear of it by more than the stroke (no bar at its left: the dot is there).
++        Rect mark;
++        if (focusMarkRect(mark))
++            c.rrect(mark.x, mark.y, mark.w, mark.h, 5.0f, kClear, kFocusStroke, l.accent);
+     }
+ 
+     void FieldInspector::draw(Canvas& c, const funkgui::Theme& th, bool focusRing) const
+diff --git a/ui/kit/inspect/FieldInspector.h b/ui/kit/inspect/FieldInspector.h
+index 4bc63200..b40f4688 100644
+--- a/ui/kit/inspect/FieldInspector.h
++++ b/ui/kit/inspect/FieldInspector.h
+@@ -84,6 +84,11 @@ namespace tee::ui
+         const std::string& refusal() const noexcept { return refusal_; }
+         // The refusal's sentence as drawn: wrapped to the row's width, every word kept.
+         std::vector<std::string> refusalShown() const;
++        // The focused row's outline (its stroke's centre line, kFocusStroke wide) and a changed field's dot, on screen;
++        // false when there is none to show.
++        static constexpr float kFocusStroke = 2.0f;
++        bool focusMarkRect(funkgui::Rect& mark) const;
++        bool changedDotRect(int field, funkgui::Rect& dot) const;
+         float scroll() const noexcept { return scroll_; }
+         float contentHeight() const noexcept { return contentH_; }
+         int shownFields() const noexcept;    // fields the rows hold now (filter and CHANGED applied)
+@@ -188,5 +193,6 @@ namespace tee::ui
+         int refusalLaidField_ = -1;
+         std::string refusalLaid_;
+         std::vector<std::string> refusalLines(float width) const;
++        funkgui::Rect changedDot(const Row& r, const funkgui::Rect& at) const;
+     };
+ }

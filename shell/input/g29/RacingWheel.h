@@ -58,6 +58,9 @@ namespace tee::input::g29
         bool reading() const noexcept;           // a G29 is read now
         State state() const;                     // its state (at rest while not reading)
         std::string status() const;              // a short line, "" when there is none
+        // Each button's presses since the last take (g29/G29.h's Presses): every press the transport saw, a dial's
+        // detents between two frames included. All zero where buttons are only sampled (Windows) or none are read.
+        Presses takePresses();
 
         // Once a frame: the system's run loop serviced once, so the device's sources and the timers run whatever the
         // window's event pump does.

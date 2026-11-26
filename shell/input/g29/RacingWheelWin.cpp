@@ -109,6 +109,7 @@ namespace tee::input::g29
     }
     bool RacingWheel::reading() const noexcept { return impl_->on && impl_->reader.reading(); }
     State RacingWheel::state() const { return reading() ? impl_->reader.state() : State{}; }
+    Presses RacingWheel::takePresses() { return {}; }   // sampled a frame at a time: Input counts the frame's edge
     std::string RacingWheel::status() const { return impl_->on ? impl_->reader.status() : std::string(); }
     void RacingWheel::pump() { impl_->pump(); }
 }
