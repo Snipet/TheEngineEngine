@@ -281,6 +281,17 @@ namespace
         }
         host.keys("escape");
         CHECK(!table->editing() && table->refusal().empty());
+        // From a controller (EditCommand): nudged down from 12 mm, the cell stops at the least stated bore and says why.
+        doc.set(first, 0.012);
+        host.tick(2);
+        CHECK(table->focusFirstCell());
+        int nudges = 0;
+        while (nudges < 200 && table->edit(tee::ui::EditCommand::valueDown, false) && table->refusal().empty())
+            ++nudges;
+        CHECK_MSG(table->refusal().rfind("Out of range: under the least stated bore", 0) == 0, table->refusal());
+        CHECK_MSG(doc.get(first) >= 0.010 - 1e-9 && doc.get(first) < 0.012, std::to_string(doc.get(first)));
+        std::printf("  exhaust.primD[0] nudged down from 12 mm: stops at %.2f mm, \"%s\"\n", doc.get(first) * 1e3,
+                    table->refusal().c_str());
         return 0;
     }
 

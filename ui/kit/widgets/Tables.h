@@ -114,6 +114,7 @@ namespace tee::ui
             std::string label;
             double lo = 0.0, hi = 1.0;
             TableText text;
+            double step = 0.0;            // a controller's nudge: a whole step (a choice, an integer); 0: a hundredth of lo..hi
         };
         MapEdit(uint32_t id, std::string title, MapSource& source, Axis x, Axis y, Axis z);
 
@@ -133,6 +134,13 @@ namespace tee::ui
         // While typing: the caret (a line high, centred on the text, a caret's width or more clear of the glyph before
         // it at the end of the text) and the typed text's box; false when not typing.
         bool caretRect(funkgui::Rect& caret, funkgui::Rect& text) const noexcept;
+        // A controller's command (EditCommand.h): rowUp/rowDown a row (an array on lines: a line), pagePrev/pageNext a
+        // cell left or right, value* the cell nudged (a hundredth of its range or a whole step; Coarse ten; fine a
+        // tenth; a burst one undo step after a 0.5 s rest; a value refused says why on the title's line); back leaves
+        // typing. False where nothing takes it (the frame's turn: back closes the table's page).
+        bool edit(EditCommand cmd, bool fine) override;
+        // The table just opened from a controller: its first cell chosen.
+        bool focusFirstCell() noexcept;
         // What the last refused typing was told (TableText::refusal), drawn on the title's line; "" when none.
         const std::string& refusal() const noexcept { return refusal_; }
         const Map16& shownMap() const noexcept { return map_; }
@@ -166,6 +174,7 @@ namespace tee::ui
         void setValueAt(Map16& m, int column, int row, double v) const noexcept;
         const Axis& axisOf(int column, int row) const noexcept;
         bool commit();
+        bool nudgeCell(int dir, bool fine);       // false: at an end, not editable, or refused (said)
         funkgui::Col heat(const Look& l, double z) const noexcept;
 
         MapSource& source_;
@@ -177,6 +186,8 @@ namespace tee::ui
         std::string refusal_;                     // the sentence for refused_ (TableText::refusal), "" when none
         funkgui::text::LineEdit edit_;
         bool dragging_ = false;
+        bool burst_ = false;                      // a controller's nudges open on the source (one undo step)
+        float burstRest_ = 0.0f;
         float dragY0_ = 0.0f;
         double dragZ0_ = 0.0;
         // The live point as places across the table (column, row fractions), eased; NaN: none.
