@@ -1866,6 +1866,94 @@ engines only where a source shows such an engine drawn split.
   reference, or the pipe's mean) and to C (the tables' load axis; what in the bake and the predictor assumes
   sea level), each to answer in its own handoff.
 
+## 26 Nov 07:34 UTC: item 15's answers from G and C; why the upshift row is a draw (the steward's read; a probe)
+
+- **Item 15, the exhaust (G, `docs/handoffs/g-exhaust.md`, "The stated air in the exhaust", 2ac9f0f7):** all 24
+  sites classed. A pipe's impedance and density (duct.fm:347-348) TAKE THE OUTSIDE (the waves are linear about
+  it); the pipe's own mean before a turbine, 1.5 to 2 times the outside by G's judgement, is a separate
+  reference fault, in no window. `steep = 0.87/101325` and its numerator stay as the cancelling pair; the
+  denominator at duct.fm:596 takes the outside; its 50000 floor becomes p - 51325 (exact at the default; the
+  field's range starts at 50000). No expression reshaped; the stated float copied, never computed.
+- **Item 15, the tables and the bake (C, `docs/handoffs/c-host-tools.md`):** the knock table is absolute over
+  a literal 101325 on both sides (combustion.fm:352, Bake.cpp:1006) and stays; the CAM map is relative to the
+  outside (ecu1.fm:194, :204 over ecu.fm:317), so the ECU's barometer takes the stated pressure. Nothing in
+  `host/` or `tools/` corrects for density. **Ruled, C's own change in the bake's window:** the bake measures
+  at 288.15 K and 101325 Pa whatever a build states (every shipped build states that air already: all 31 and
+  first.json; today a copy runs at the stated air while env is in no key), env stays out of the keys, no
+  temperature axis (the knock control hears a hot day). Acceptance: every shipped table to the bit, and a
+  made-up build at 322.04 K and 70 kPa bakes its standard-day twin's tables, shown to differ today first.
+- **Item 15, the sound (the integrator; ruled):** nothing in the sound reads the outside's density today.
+  The pressure's share alone, one factor p/101325 on what radiates into the outside (tailpipes, mouth, bay),
+  exactly 1.0 at the default; the temperature's share is its own later item (it moves every build stated off
+  300 K). Prediction: about -3.2 dB at 70 kPa for the default V8 at full load, the pipes taking the outside.
+- **The upshift's row (the steward's read; the lead's mid-cycle guess REFUTED):** each firing is decided once,
+  at its cylinder's intake closing (ecu1.fm fire(c)). On 15 V8 copies the worst step is time-locked 20 ms
+  after the cut's end, inside the 0.1 s reinstatement ramp (launch.fm: half the firings still cut at first),
+  at every crank phase; the under copy's firing is the larger. The judge takes the step over the median of
+  its neighbouring periods and the ramp's train is thinned by design, so the verdict follows which neighbours
+  were cut. **Hypothesis: a judge question, not a fault in the burn.** A probe is allowed (a sim copy through
+  TEE_SIM_DIR with kReinstateShare 0; nothing committed; figures named by tree). Predictions on record: the
+  V8 0 of 15 over at the 6.6 s event, the small four's X-030 at most 2 of 15 at its upshift, the downshift's
+  copies unmoved. If it collapses: X restates the judge on the property (a firing the ECU reports cut is no
+  neighbour for a median) with proof it bites on a real click in a shift's window; `sim/` untouched. If not:
+  X-030 is the burn's on return, the steward's. The downshift (the overrun cut and the blip) is traced next.
+
+## 26 Nov 07:37 UTC: the probe: no collapse; X-030 is a real sometimes fault; the bound is itself a draw
+
+- **The steward's probe (a copy of sim f23337cc with launch.fm's kReinstateShare 0, through TEE_SIM_DIR,
+  nothing committed; the same 15 nudges, the source tree beside it). The pattern story is REFUTED and so are
+  the lead's predictions** (0 of 15 on the V8's 6.6 s event; at most 2 of 15 at the small four's upshift).
+  Small four pull, fuel+ecu+car: 12 of 15 over on both trees (9 of 15 at the upshifts either way). V8 pull,
+  fuel+ecu: 4 of 15 on the source, 1 of 15 on the probe (the 6.6 s event 2 against 1: marginal both ways,
+  undecided). With the retard at 0 instead (the share kept), the small four reads 6 of 15: the 15 degrees that
+  is there to soften the return doubles the rate.
+- **By the ruling made before the number: X-030 is a real sometimes fault at the upshift's return, the
+  steward's for the next window, its cause not yet named.** The worst step is time-locked 21.1 to 22.7 ms
+  after the cut's end (20 ms on the V8) at every crank phase. Being read: whether that is one engine cycle
+  after the cut's end; the step and the judge's median apart per copy, with the count of neighbours that fall
+  in the cut's silence; the same with the drive off. Then the downshift, beside item 8.
+- **The reference's side (the steward; X's own measurement to follow):** its shift cut is the fuel cut, no
+  ramp and no retard (ecu.fm:246). Its excess in the shift windows: V8 1.26 to 2.52, small four 1.20 to 1.88;
+  its whole-run excess per copy 1.80 to 2.56 and 1.33 to 1.75. **Each row's bound is twice ONE draw of that
+  (4.03 = 2 x 2.015; 2.85 = 2 x 1.425): the bound is a draw from a spread about 20 % wide either way.** X is
+  asked for a proposal, no code: what the bound should be made of so that it is one number on every tree,
+  and, row by row, whether that form loosens any row against today's bound.
+
+## 26 Nov 07:39 UTC: the upshift's step is the first firing back, judged partly against the cut's silence
+
+- **The steward's reads on the source tree (15 nudges) NARROW the section before this one.** The worst step
+  is the FIRST burning firing back, about one revolution after the cut's flags end (332 to 360 degrees on the
+  four at 2920 to 2940 rpm; 266 to 339 on the V8 at 3580 to 3620): a firing is decided at intake closing. Not
+  a cycle (the lead's second guess refuted), not a crank phase.
+- **Small four:** the step in its own firing period reads 12.6 to 17.2 in over and under copies ALIKE; the
+  judge's median of the 8 neighbouring periods reads 3.9 to 4.9 where 3 of 8 neighbours fall inside the cut
+  and 5.39 where 2 of 8 do. The median sits between two populations (the cut's side 3.3 to 5.1, the running
+  side 5.3 to 17), and the count of neighbours in the silence moves it. **V8:** the first firing's own size
+  also varies by two (18.4 against a median of 3.60 in an over copy; 9.0 against 5.11 in an under). The
+  reference has the same silence (a fuel cut) and a first firing back that reads 1.2 to 2.5.
+- **So X-030 is two questions, and "a real sometimes fault" is withdrawn until they are answered.** (A) X: the
+  judge at a cut, a proposal and no code: periods inside a cut the ECU reports are no neighbours for the
+  median, symmetric on case and reference, with the bound's make-up, what each row then reads over 17
+  copies, every row it loosens named, and proof it bites (X-014, X-015 on 62a6a7fd; a click planted in a
+  shift's window). (B) the steward, a read with predictions and sources first: why the fuel and ECU models'
+  first burn back is larger against the running firings after it than the reference's (no burnt residual
+  after a spark cut; the reinstatement's retard into the blowdown: the probe without the retard halved the
+  rate; the wall film on re-entry), and whether a real quick-shifted engine's first report is that size. If
+  it is the real thing it is a sound for the owner's ears; if the model overdoes it, its cure waits for the
+  window. The drive's read is dropped as not needed. The downshift follows, beside item 8.
+
+## 26 Nov 07:40 UTC: the downshift in its own window: X-044 is near-always, the others rare
+
+- **The steward, the judge's excess over 10.95 to 11.20 s in every copy (source tree, 15 nudges):** the V8 pull
+  with the fuel and ECU models (X-031 proper, 4.03) 2 of 15 over, median 2.34; the small four pull with fuel,
+  ECU and car (2.85) 4 of 15, median 2.20; **the small four pull with the custom engine, fuel and ECU (X-044,
+  2.85) 14 of 15, median 3.51**: the one near-decidable row of the six, a click at the overrun cut's end and
+  the blip, as its entry says. It goes to item 8 (the fuel's re-entry after an overrun cut) with X-030's
+  first burn back beside it.
+- **A row's named event is a draw as well as its figure:** a window's figures differ a little from the
+  worst-of-run ones because the edges change the neighbours. X is asked whether the judge can count PER EVENT
+  WINDOW (each shift, each cut, the start) from what the ECU and the scenario report, and at what cost.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
@@ -1888,6 +1976,8 @@ engines only where a source shows such an engine drawn split.
      nulls read); lands with item 9 and before it, never alone.
   7. the integrator: X-045 (the cure local); the dyno loop's overshoot; a custom engine's friction.
   8. the steward: the fuel's re-entry after an overrun cut, sources first, clips for the owner; X-036's cause.
+     With it (26 Nov): X-044's downshift under the custom engine (14 of 15 copies over in its own window), and
+     the first burn back after an upshift's cut (X-030), read against a real quick-shifted engine's report.
   9. N2 (with item 5): first.json's boost threshold. N1's held points (--settle 40): 1503 rpm 225 N m with the
      gate shut and boost 19.5 kPa against a 120 target; 1655 rpm 250 N m, 30 kPa; 1796 rpm 384 N m, 120 kPa. A
      steady-state match, not a lag; breathing per kPa of manifold the same at 1500 as at 1800. The cited engine
