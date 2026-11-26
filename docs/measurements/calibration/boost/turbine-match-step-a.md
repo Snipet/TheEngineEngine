@@ -68,3 +68,17 @@ The low end on pass 3's fill against today's (the torque peaks):
 - the rated flow should be the engine's measured one, not the 0.9 VE design flow. The bake has both from its rated run;
 - the convergence measure is the open area's change between passes, under 1 % (measured here: 0.0-0.2 % on three
   builds after pass 2), with the 2.0 needing a damped or repeated pass.
+
+## The low cells re-read on G's settle fix (9e52a186, tip 897d111d), 26 Nov ~01:10
+
+Today's match (stand-ins), run at the cell's speed, 40 s, heat settled, the last 20 s. The prediction was within 2 % of
+torque and 0.03 of vanes of the readings above. It was right:
+
+| cell | before N m (vanes) | on the fix N m (vanes) |
+|---|---|---|
+| 2.0 1750 | 251 (0.371) | 248.2 (0.376), -1.1 % |
+| pickup 1700 | 996 (0.488) | 997.3 (0.489) |
+| tractor 1000 | 2589 (0.449) | 2584.8 (0.441) |
+
+The settle fix does not move the low end, so the turbine's sizing can use these cells. This run did not step up from
+below (no `--from`) as the passes above did.
