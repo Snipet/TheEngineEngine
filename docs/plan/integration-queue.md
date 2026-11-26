@@ -2003,6 +2003,27 @@ engines only where a source shows such an engine drawn split.
   four's remaining 4 of 15 and its first firing back at 1.30 against 1.16 (the per-cylinder residual and
   film reads are for that).
 
+## 26 Nov 07:53 UTC: the background is clean (the lead's prediction refuted); the first firing back is the purge
+
+- **X's background, fixed before it ran (every 5th of the 31 archetypes sorted; as built, the tour, 17 nudges
+  on fb32d4fc): 0 of 6 show a copy over.** The flat six, the economy four, the kei triple, the side-port
+  rotary, the 1.0 turbo three and the two-stage 2.0: every case at 2.18 or under across all copies. The lead
+  had predicted at least two with a copy over: REFUTED. So the six known rows are particular faults, and the
+  soak's "new" rows were not one population sampled again.
+- **The references move far more than the cases** (the flat six 1.41 to 3.90; the economy four's bound 5.10 is
+  twice a reference drawn at 2.55 over a case that never passes 1.82). Today's bound is set by the noisier
+  side. A symmetric worst over copies would loosen and is not the form; X's proposal fixes what the bound is
+  made of.
+- **The first firing back (the steward; a print of each cylinder's burned share and charge at intake closing
+  on a probe copy, the run the source's):** through a spark cut each cylinder pumps fresh charge; the burned
+  share falls 0.11 to 0.00 by the second intake and the trapped charge rises 385 to 460-468 mg (+21 %). The
+  first firings back burn a charge a fifth fuller with nothing inert in it. Purging is done in two cycles;
+  the cut's length sets how many cylinders come back purged and how long the silence before them is. No wall
+  film exists under fuel.model 1 (mixture.fm): struck. **So X-030's cure candidate is X-047's cut length, not
+  the burn**; what remains with the cut right (1.30 against the reference's 1.16 on the four) is checked then.
+- **For the owner's ears:** two more clips asked of the steward, each upshift on the probe with the cut at
+  53 ms, beside the six already shown.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 07:50 UTC: `main` IS AT 07a08dc0** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
