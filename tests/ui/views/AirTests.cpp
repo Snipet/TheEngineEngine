@@ -374,6 +374,44 @@ namespace
         return 0;
     }
 
+    // (U1 for U3, 26 Nov) The two mismatch bits that had no words: 16, the turbines' nozzle far from the build's design
+    // point's, and 128, card N2's turbo with no exhaust feeding it. Each on the demo's telemetry: its bit set, its line
+    // shown (with its values for 16); cleared, gone.
+    VIEW_TEST(testAirMismatchTurbo, "air.mismatch.turbo")
+    {
+        AirRig rig("turbo4", 696, 574, 2.0f);
+        const auto has = [&rig](const char* start) {
+            for (const std::string& l : tee::ui::air::airWarnings(*rig.ws))
+                if (l.rfind(start, 0) == 0)
+                    return l;
+            return std::string();
+        };
+        CHECK(tee::ui::air::airWarnings(*rig.ws).empty());
+        rig.demo.engine.set("boost.turbineHas", 2.0e-4);
+        rig.demo.engine.set("boost.turbineWants", 6.0e-4);
+        rig.demo.engine.set("boost.mismatch", 16.0);
+        rig.host->tick(2);
+        const std::string nozzle = has("TURBINE NOZZLE");
+        CHECK_MSG(!nozzle.empty() && nozzle.find('-') == std::string::npos, "bit 16: \"" + nozzle + "\"");
+        CHECK(has("A TURBO with no exhaust").empty());
+        std::printf("  16: %s\n", nozzle.c_str());
+        rig.demo.engine.set("boost.mismatch", 128.0);
+        rig.host->tick(2);
+        const std::string rest = has("A TURBO with no exhaust");
+        CHECK_MSG(!rest.empty(), "bit 128: no line");
+        CHECK(has("TURBINE NOZZLE").empty());
+        std::printf("  128: %s\n", rest.c_str());
+        rig.demo.engine.set("boost.mismatch", 144.0);
+        rig.host->tick(2);
+        CHECK(tee::ui::air::airWarnings(*rig.ws).size() == 2);
+        const std::string hits = tee::test::u3::textCollisions(rig.host->draw());
+        CHECK_MSG(hits.empty(), hits);
+        rig.demo.engine.set("boost.mismatch", 0.0);
+        rig.host->tick(2);
+        CHECK(tee::ui::air::airWarnings(*rig.ws).empty());
+        return 0;
+    }
+
     VIEW_TEST(testAirScopeMap, "air.scopemap")
     {
         AirRig rig("turbo4", 696, 574, 2.0f);

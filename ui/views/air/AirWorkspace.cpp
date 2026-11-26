@@ -236,6 +236,13 @@ namespace tee::ui
         }
 
     public:
+        std::vector<std::string> warningLines() const
+        {
+            std::vector<std::string> out;
+            for (const Warn& w : warns_)
+                out.push_back(w.text);
+            return out;
+        }
         std::vector<AirHit> hitList() const
         {
             std::vector<AirHit> out;
@@ -643,6 +650,12 @@ namespace tee::ui
             if ((m & 4) != 0)
                 out.push_back({ build_.itb ? Kind::runners : Kind::plenum, "CHARGE PIPES " + val(N::volumeHas, Quantity::volume)
                                                                                + ", this engine's " + val(N::volumeWants, Quantity::volume) });
+            // (U1 for U3, 26 Nov: the bits card N2's flags had without words)
+            if ((m & 16) != 0)
+                out.push_back({ Kind::turbo, "TURBINE NOZZLE " + val(N::turbineHas, Quantity::area) + ", this build's design point "
+                                                 + val(N::turbineWants, Quantity::area) });
+            if ((m & 128) != 0)
+                out.push_back({ Kind::turbo, "A TURBO with no exhaust feeding it: it stays at rest" });
             return out;
         }
         // An amber outline on each part concerned, and the words a line each under the row, from the row's left (the
@@ -1314,5 +1327,11 @@ namespace tee::ui
     {
         const auto* a = dynamic_cast<const AirWorkspace*>(&w);
         return a != nullptr ? a->hitList() : std::vector<AirHit>{};
+    }
+
+    std::vector<std::string> air::airWarnings(const Workspace& w)
+    {
+        const auto* a = dynamic_cast<const AirWorkspace*>(&w);
+        return a != nullptr ? a->warningLines() : std::vector<std::string>{};
     }
 }
