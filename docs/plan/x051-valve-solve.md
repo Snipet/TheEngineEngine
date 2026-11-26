@@ -1,8 +1,13 @@
 # X-051: the valve's flow solve, the design (next window's item 17)
 
-Card G writes this page (the owner of `sim/exhaust/duct.fm`, where `Valve::flow` lives). Status: THE DESIGN, a DRAFT for the
-lead's ruling (26 Nov). In order it stands behind item 16 (the shift's cut) and item
-15 (the air's pressure); whether it is built in the next window is decided on its cost and on the owner's ears; nothing in `sim/` until the window can take a bake. The lead's ruling of 26 Nov 10:35 set its
+Card G writes this page (the owner of `sim/exhaust/duct.fm`, where `Valve::flow` lives). Status: THE DESIGN, RULED (the lead, 26 Nov 12:33).
+Item 17 takes its place in the next window in the form measured below: the warm-started secant on the one
+continuous equation, the test at 1e-4 relative, the bracket kept with bisection, cold at each opening, reversal and
+reset, behind `spec.exhaust.valveSolve` with today's three passes kept verbatim for the null. **It goes first** among
+the window's sim changes that move readings, ahead of items 16 and 15: it moves every reference and every bound, so
+they are read once, on the converged valve. It needs, as every sim change does, a bake to follow (P), and the owner's
+two lines in the cylinder (the switch's hand-over; `wOn = 0` in `Cylinder::reset`), the integrator's. Nothing in
+`sim/` until the window can take a bake. The lead's ruling of 26 Nov 10:35 set its
 direction: one continuous equation, a bracketed root with a convergence test, both branches, a hidden switch.
 
 ## 1. The fault's reach (26 Nov; the lead's ruling of 11:46: item 17 stays a design and drops behind items 16 and 15)
@@ -237,12 +242,16 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
 1. **The null, to the bit,** with the switch off and with exhaust.model 0: ref.null (every preset, the layouts, the
    rates and blocks) and test 2 on every layout (the nightly's 17).
 2. **The rows, by the evidence rule** (X's spread.sh, 17 copies, the two-tree mode, the source against the new code):
-   - **cured, 0 of 17:** X-043, both rows (intake+exhaust+car, the turbo six's tour and pull), and whatever the
-     turbo six's mild-cam twin (X's, a dial equal to the lab's default cam) shows. X-049 is not evidence: on X's
-     corrected corpus (the turbo six's lab cams stated equal to its dial) it reads 0 of 17 on the tip too (N1, 26
-     Nov). Its valve rows were comparing the lab's default 231 degree cam with the dial's 300. The chatter itself
-     (§1, the relight and the low-gear captures) was measured with valve.model off, the reference valves on the
-     dial's cam, and stands;
+   - **cured, 0 of 17, read per event** (X's part B): X-043's event, the start's catch (2.7 to 4.8 s), on both its
+     rows (intake+exhaust+car, the turbo six's tour and pull), and whatever the turbo six's mild-cam twin (X's, a dial
+     equal to the lab's default cam) shows. On the secant's scratch tree: the pull 7 -> 0 of 17, the tour 11 -> 0 at
+     the event. The tour's one copy over today's 2.96 (dT -0.05, 3.09 at 6.801 s, in the full-throttle stretch,
+     judged "none") is **another event**: it is spread on the new tree against the new tree's own bound when the
+     real code is in (0 of 17 against 3.46 on the scratch tree), and entered only if that spread shows a copy over.
+     X-049 is not evidence: on X's corrected corpus (the turbo six's lab cams stated equal to its dial) it reads 0 of
+     17 on the tip too (N1, 26 Nov). Its valve rows were comparing the lab's default 231 degree cam with the dial's 300.
+     The chatter itself (§1, the relight and the low-gear captures) was measured with valve.model off, the reference
+     valves on the dial's cam, and stands;
    - **rates beside today's, no verdict:** X-030 (small four pull fuel+ecu+car: 13 of 17 today, 9 on the stand-in) and
      X-048 (turbo six pull wallHeat+valve+boost: 14 today, 8 on the stand-in against X's bound, 3 against its own);
    - **expected NOT to move, a move to be explained:** X-044 (11 and 12), X-041's tour lift (3 and 3) and the rally
@@ -264,7 +273,7 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
    - with the converged solve, the counter of solves that ran out of evaluations reads 0 on all 31 archetypes'
      validation runs and every default-tier scenario.
 4. **The bake's gate,** warm and cold on all 31; **Table P2** re-read (the archetypes' cited rows, the two columns,
-   every row crossing an edge listed with its direction and size); **Q's cost** on Q's hosts.
+   every row crossing an edge listed with its direction and size); **Q's cost** on Q's hosts, on the real code in the window.
 5. **The owner's ears** on the clips and on the real code's, before the bake.
 
 ## The rows as measured on the stand-in (26 Nov; spread.sh, 17 copies, one hand, tip against the 30-pass tree)
