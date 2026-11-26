@@ -124,8 +124,6 @@ const Known kKnown[] = {
      "at the limiter, a row part B's per-event judge brought in; the mechanism not read; X-051's stand-in (the exhaust valve's flow solve run to convergence) to be read on it (the lead's ruling, 26 Nov 11:11): 6 of 17 copies over the nightly bound 3.94; lowest 2.84, median 3.82, highest 5.85", "limiter"},
     {"X-052", "2026-11-26", "the steward (ecu.model's limiter)", "engine.wallHeat+ecu.model+car.model", "turbo-six", "tour", "click",
      "at the limiter, a row part B's per-event judge brought in; the mechanism not read; X-051's stand-in (the exhaust valve's flow solve run to convergence) to be read on it (the lead's ruling, 26 Nov 11:11): 3 of 17 over 2.97; lowest 2.17, median 2.59, highest 3.20", "limiter"},
-    {"X-052", "2026-11-26", "G (the reference ECU's limiter: a train of cuts, X-051 the suspect)", "valve.model+intake.model+car.model", "turbo-six", "tour", "click",
-     "at the limiter, a row part B's per-event judge brought in; the mechanism not read; X-051's stand-in (the exhaust valve's flow solve run to convergence) to be read on it (the lead's ruling, 26 Nov 11:11): 2 of 17 over 2.97; lowest 2.09, median 2.49, highest 3.24", "limiter"},
     {"X-052", "2026-11-26", "G (the reference ECU's limiter: a train of cuts, X-051 the suspect)", "intake.model+exhaust.model+voices.model", "turbo-six", "tour", "click",
      "at the limiter, a row part B's per-event judge brought in; the mechanism not read; X-051's stand-in (the exhaust valve's flow solve run to convergence) to be read on it (the lead's ruling, 26 Nov 11:11): 1 of 17 over 2.97; lowest 1.96, median 2.28, highest 3.03", "limiter"},
     {"X-053", "2026-11-26", "the integrator (a switch taken while running)", "flip engine.wallHeat", "turbo-six", "flip", "click",
@@ -154,7 +152,10 @@ const Known kKnown[] = {
     // Shipped builds as built on the pull (the lead's ruling, 26 Nov 15:00): they run the map ECU, so the upshift's cut is
     // X-047's over-long one and the steward's item 16 is expected to move them; 17 copies at 293.15 +- 0.15 K per event
     // against each build's own reference's nightly bound; each event twice, as a click and as a click-shift-cut (the same
-    // window's worst step, named by whether it lies at the cut: a copy reads either), on 8ec06fd1 (the tip of 26 Nov afternoon)
+    // window's worst step, named by whether it lies at the cut: a copy reads either), on 8ec06fd1 (the tip of 26 Nov afternoon).
+    // EACH PAIR IS ONE ROW, NOT TWO FINDINGS (the lead's ruling, 26 Nov 15:26): one build, one scenario, one named event,
+    // the same excess against the same bound under either name, and the spread counted a copy over under either; a cure
+    // (item 16 on the real code) is 0 of 17 under BOTH names, and the pair leaves together
     {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click",
      "boost at the shifts, on a shipped build as built: the three-cylinder 1.0 turbo's 1-2 upshift: 6 of 17 over its nightly bound 2.84; lowest 1.26, median 2.62, highest 3.98", "shift 1-2"},
     {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click",
