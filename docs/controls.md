@@ -101,8 +101,12 @@ in hand: the code was written against SDL's documentation and compiled.
 
 **A Logitech G29** (the wheel, its pedals and the Driving Force Shifter on one USB cable) is read on **macOS** (IOKit)
 and **Linux** (the kernel's own driver, hid-lg4ff) with no software of Logitech's installed, and on **Windows** read
-only, as a plain joystick (below). Never yet run with a real wheel in this repository: the owner's run is the first
-(the code is TestingPlayground's, where it drove the owner's G29: `shell/input/g29/SEED.tsv`).
+only, as a plain joystick (below). The code is TestingPlayground's, where it drove the owner's G29
+(`shell/input/g29/SEED.tsv`).
+
+**What is verified where.** macOS: the owner reports (26 Nov, on `main` at b557c4a1) that their G29 "worked well with
+the Mac app": the owner's report, not a test of ours, and it says nothing in particular of the lights or the shifter.
+Linux and Windows: never yet run with a real wheel. No test here opens a device.
 
 - **The switch on the wheel at PS3.** At PS4 it is not read (the status line says to set it to PS3). At PS3, without
   Logitech's software, a G29 starts in a compatibility mode: the application switches it to its full mode once each
@@ -121,13 +125,36 @@ only, as a plain joystick (below). Never yet run with a real wheel in this repos
 | PS button | By default, the start key, held as long as it is held (a press starts a stopped engine; held on a running one, off). |
 | The steering | Read but not driven: the car runs in a straight line. |
 | Its five shift lights | The DRIVE view's own count (the same five steps below the redline), all five flashing on the limiter. |
-| Other buttons | Nothing until one is bound (below). |
+| The other buttons | Editing the engine (below): the inspector's hands, by default. |
+
+**Editing from the wheel.** The buttons the wheel does not drive with edit the engine while it runs: no mode, the
+pedals, paddles, shifter and PS drive exactly as above. Each is a binding (moved as below), by default:
+
+| On the wheel | What it does (once a press) |
+|---|---|
+| D-pad up / down | The inspector's row up / down; held, it repeats after 0.35 s, then about 12 a second |
+| D-pad left / right | The inspector's page before / after (ENGINE 1, ENGINE 2, VOICES, ...) |
+| L2 / R2 | The workspace before / after (GAR, ENG, VLV, AIR, EXH, TUNE, CAR, DYNO, DRV, LSN, SCP) |
+| The red dial, a detent left / right | The focused value down / up a nudge (as the mouse wheel over it: a hundredth of its travel; a choice or a whole number, one step) |
+| Minus / plus | Ten nudges down / up |
+| SHARE, held | Makes a value's nudge fine (a thousandth, as Shift) |
+| The dial's return, cross | Activate: a switch flips, a group folds or unfolds, a choice steps on, a table opens |
+| Circle | Back: a table closes, else the focus is let go |
+| Square / triangle | Undo / redo |
+| L3 | The focused field to its default |
+| OPTIONS | The "changed only" filter on and off |
+| R3 | Free |
+
+The buttons are read once a frame: a dial's detent is one nudge, and detents faster than the frames (two between two
+frames) count once; at most one command a button a frame. Editing from the wheel works where its buttons are read:
+macOS and Linux today; on Windows once the owner's probe has given its table (below). Until the frame takes the
+commands (its `edit()`, being built), the console says once "editing from the wheel waits for the frame".
 
 **On and off:** the settings page's WHEEL row (on macOS, Linux and Windows; its status line under it), or F9, "Read the racing wheel
 (Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
 the device is left open (shared: another program may read it too) but nothing is read from it or sent to it. The
 status line says what the wheel is doing ("wheel: G29 read", "wheel: set the switch on the wheel to PS3", ...), and the
-console prints each change.
+console prints each change. On, the wheel's buttons also edit the engine (Editing from the wheel, above).
 
 **On Linux** the kernel's hid-lg4ff drives the wheel: it switches a G29 at PS3 to its full mode by itself, and the
 application reads its input device (`/dev/input/event…`, never grabbed), sets the range through hid-lg4ff's `range`
@@ -142,14 +169,17 @@ lights stay dark (the status line says so). A rule that gives them to you, in `/
 
 `evtest` (its own package) shows what the wheel sends there; `tee-wheel-dump` is macOS's.
 
-**The buttons can be moved.** F9, "Wheel buttons": choose an action (start, shift up, shift down, neutral, handbrake,
-splitter, range, engine brake), then press the wheel's button for it within 10 s ("wheel: press the button for ...";
-a button already held counts once it is let go and pressed again). The button takes that action from any button that
-had it and loses whatever it did before; the status line says the new binding, and while it listens the buttons drive
-nothing. "The defaults" puts back the paddles and PS. The bindings are kept in the settings file (`wheelButtons`, as
-`4=shiftup,5=shiftdown,17=start`: a button's bit, the table of `shell/input/g29/G29.h`, and an action's name); a pair it
-cannot read is left out with a line on the console. The pedals, the steering and the shifter are fixed by the wheel's
-table, not bound.
+**The buttons can be moved.** F9, "Wheel buttons": choose a driving action (start, shift up, shift down, neutral,
+handbrake, splitter, range, engine brake) or an edit (the table above), then press the wheel's button for it within
+10 s ("wheel: press the button for ..."; a button already held counts once it is let go and pressed again; SHARE is
+not taken while it is the modifier). The button loses whatever it did before; a driving action is also taken from the
+button that had it (it lives on one), an edit may stay on others too (activate is on two). The status line says the
+new binding, and while it listens the buttons drive and edit nothing. "The defaults" puts back the map above. The
+bindings are kept in the settings file (`wheelButtons`, as `2:4=shiftup,...,18=e.rowup,...`: a button's bit, the table
+of `shell/input/g29/G29.h`, and an action's or an edit's name); a pair it cannot read is left out with a line on the
+console. A `wheelButtons` saved before editing from the wheel (no `2:`) keeps every binding in it and gains each edit
+on a button it left free: driving wins, an edit never takes a button the owner bound. A binding on SHARE makes it the
+owner's, no longer the modifier. The pedals, the steering and the shifter are fixed by the wheel's table, not bound.
 
 **On Windows** the wheel is only read, never written to: Windows sends a device's output reports at the length its
 descriptor gives (17 bytes), and the G29 takes its commands (the switch to its full mode, the range, the spring, the
