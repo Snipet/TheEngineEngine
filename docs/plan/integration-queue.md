@@ -1919,6 +1919,29 @@ engines only where a source shows such an engine drawn split.
   asked for a proposal, no code: what the bound should be made of so that it is one number on every tree,
   and, row by row, whether that form loosens any row against today's bound.
 
+## 26 Nov 07:39 UTC: the upshift's step is the first firing back, judged partly against the cut's silence
+
+- **The steward's reads on the source tree (15 nudges) NARROW the section before this one.** The worst step
+  is the FIRST burning firing back, about one revolution after the cut's flags end (332 to 360 degrees on the
+  four at 2920 to 2940 rpm; 266 to 339 on the V8 at 3580 to 3620): a firing is decided at intake closing. Not
+  a cycle (the lead's second guess refuted), not a crank phase.
+- **Small four:** the step in its own firing period reads 12.6 to 17.2 in over and under copies ALIKE; the
+  judge's median of the 8 neighbouring periods reads 3.9 to 4.9 where 3 of 8 neighbours fall inside the cut
+  and 5.39 where 2 of 8 do. The median sits between two populations (the cut's side 3.3 to 5.1, the running
+  side 5.3 to 17), and the count of neighbours in the silence moves it. **V8:** the first firing's own size
+  also varies by two (18.4 against a median of 3.60 in an over copy; 9.0 against 5.11 in an under). The
+  reference has the same silence (a fuel cut) and a first firing back that reads 1.2 to 2.5.
+- **So X-030 is two questions, and "a real sometimes fault" is withdrawn until they are answered.** (A) X: the
+  judge at a cut, a proposal and no code: periods inside a cut the ECU reports are no neighbours for the
+  median, symmetric on case and reference, with the bound's make-up, what each row then reads over 17
+  copies, every row it loosens named, and proof it bites (X-014, X-015 on 62a6a7fd; a click planted in a
+  shift's window). (B) the steward, a read with predictions and sources first: why the fuel and ECU models'
+  first burn back is larger against the running firings after it than the reference's (no burnt residual
+  after a spark cut; the reinstatement's retard into the blowdown: the probe without the retard halved the
+  rate; the wall film on re-entry), and whether a real quick-shifted engine's first report is that size. If
+  it is the real thing it is a sound for the owner's ears; if the model overdoes it, its cure waits for the
+  window. The drive's read is dropped as not needed. The downshift follows, beside item 8.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
