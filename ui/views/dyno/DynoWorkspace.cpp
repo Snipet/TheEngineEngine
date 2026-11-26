@@ -92,6 +92,20 @@ namespace tee::ui
         // A point the program itself distrusts (DynoTrace::distrustAt; U1 for U4, 26 Nov): a hollow dashed ring, wider
         // than the knock's solid amber one (4.5 px), so both read on one point and the curve's line runs on through.
         constexpr float kUnsteadyR = 7.5f;
+        // Knock-limited on most of a curve is a state of the build, truly said, not a warning at a point (C, 26 Nov:
+        // first.json is knock-limited at all sixteen): at three quarters of its measured points or more (and four at the
+        // least) the curve's knock is said by the amber ticks under the plot alone, no ring on each point.
+        bool knockIsState(const DynoTrace& t)
+        {
+            int measured = 0, knocked = 0;
+            for (std::size_t i = 0; i < t.speed.size(); ++i)
+                if (!t.limitedAt(i))
+                {
+                    ++measured;
+                    knocked += t.knockLimited(i) ? 1 : 0;
+                }
+            return measured >= 4 && 4 * knocked >= 3 * measured;
+        }
         void dashedRing(funkgui::Canvas& c, float x, float y, float r, funkgui::Col col)
         {
             constexpr int kDashes = 8;
@@ -748,12 +762,19 @@ namespace tee::ui
             lx += c.textWidth("POWER (LIGHT)", look::kCaps) + 18.0f;
             // What the amber rings are, when a shown curve has any.
             {
-                bool knock = false;
+                bool knock = false, ringed = false;
                 for (int row : allRows())
-                    knock = knock || (isShown(row) && trace(row).knockCount() > 0);
+                    if (isShown(row) && trace(row).knockCount() > 0)
+                    {
+                        knock = true;
+                        ringed = ringed || !knockIsState(trace(row));
+                    }
                 if (knock && lx + 14.0f + c.textWidth("KNOCK-LIMITED", look::kCaps) < plotBox_.right() - look::kPad)
                 {
-                    c.disc(lx + 5.0f, ly, 4.5f, kClear, 1.75f, p.warning);
+                    if (ringed)
+                        c.disc(lx + 5.0f, ly, 4.5f, kClear, 1.75f, p.warning);
+                    else   // the ticks under the plot say it (a state of the curve)
+                        c.segment(lx + 5.0f, ly - 4.0f, lx + 5.0f, ly + 3.0f, 2.0f, p.warning);
                     c.text("KNOCK-LIMITED", lx + 14.0f, ly - 5.0f, look::kCaps, p.warning);
                     lx += 14.0f + c.textWidth("KNOCK-LIMITED", look::kCaps) + 18.0f;
                 }
@@ -876,23 +897,13 @@ namespace tee::ui
                         c.disc(q.first, q.second, 3.0f, kClear, 1.25f, p.dim);
                 chart::stroke(c, xs, yt, kTorqueW, s.ink, s.dash);
                 chart::stroke(c, xs, yp, kPowerW, s.ink, s.dash);
-                // Knock-limited points (card C's): a ring on the torque curve and a tick under the plot, amber; the words
-                // are the cursor's (knockText).
+                // Knock-limited points (card C's): a tick under the plot, amber, at each; a ring on the torque curve too
+                // unless the knock is the curve's state (knockIsState: the ticks alone then); the words are the cursor's
+                // (knockText). The rings are drawn after the peaks' discs, so a peak shows its own.
+                const bool knockState = knockIsState(t);
                 for (std::size_t i = 0; i < xs.size(); ++i)
                     if (t.knockLimited(i) && std::isfinite(yt[i]))
-                    {
-                        c.disc(xs[i], yt[i], 4.5f, kClear, 1.75f, p.warning);
                         c.segment(xs[i], a.bottom() - 7.0f, xs[i], a.bottom() - 1.0f, 2.0f, p.warning);
-                    }
-                // Points the program itself distrusts (not settled, forced, spooling: DynoTrace::distrustAt; U1 for U4,
-                // 26 Nov): a dashed ring wider than the knock's, hollow, round the torque curve's point, so the line runs
-                // on through it; the words are the cursor's (distrustText). A settled point whose boost ripples has none.
-                for (std::size_t i = 0; i < xs.size(); ++i)
-                    if (t.distrustAt(i) && std::isfinite(yt[i]))
-                    {
-                        dashedRing(c, xs[i], yt[i], kUnsteadyR, p.text);
-                        ++unsteadyDrawn_;
-                    }
                 // The peaks: a disc on each; the lead's with its number.
                 const auto tq = t.peakTorque(), pw = t.peakPower();
                 const bool lead = row == leadRow();
@@ -910,6 +921,19 @@ namespace tee::ui
                 };
                 mark(tq.speed, tq.value, Chart::torque, Quantity::torque);
                 mark(pw.speed, pw.value, Chart::power, Quantity::power);
+                if (!knockState)
+                    for (std::size_t i = 0; i < xs.size(); ++i)
+                        if (t.knockLimited(i) && std::isfinite(yt[i]))
+                            c.disc(xs[i], yt[i], 4.5f, kClear, 1.75f, p.warning);
+                // Points the program itself distrusts (not settled, forced, spooling: DynoTrace::distrustAt; U1 for U4,
+                // 26 Nov): a dashed ring wider than the knock's, hollow, round the torque curve's point, so the line runs
+                // on through it; the words are the cursor's (distrustText). A settled point whose boost ripples has none.
+                for (std::size_t i = 0; i < xs.size(); ++i)
+                    if (t.distrustAt(i) && std::isfinite(yt[i]))
+                    {
+                        dashedRing(c, xs[i], yt[i], kUnsteadyR, p.text);
+                        ++unsteadyDrawn_;
+                    }
             }
             // The run as it draws: its points so far in the stroke it will have, a disc at its newest.
             if (const DynoTrace* so = ctx_.dyno.runSoFar(); so != nullptr && !so->empty())
@@ -1026,6 +1050,24 @@ namespace tee::ui
                     yv.push_back(std::isfinite(vals[i]) ? ys.px(toUser(ex, vals[i])) : std::nanf(""));
                 }
                 chart::stroke(c, xs, yv, 1.75f, s.ink, s.dash);
+            }
+            // The cursor carried down through the band (the lead, 26 Nov): its line, and a dot on each curve where it
+            // stands, so the quantity reads there without the card.
+            if (cursorPx_ >= 0)
+            {
+                const float x = static_cast<float>(cursorPx_);
+                const double si = xScale_.data(x) * xToSi_;
+                c.segment(x, a.y, x, a.bottom(), 1.0f, p.text);
+                for (int row : order)
+                {
+                    const DynoTrace& t = trace(row);
+                    const int f = fieldIndex(t, ex.field);
+                    if (!isShown(row) || f < 0)
+                        continue;
+                    const double v = chart::at(t.speed, t.values[static_cast<std::size_t>(f)], si);
+                    if (std::isfinite(v))
+                        c.disc(x, ys.px(toUser(ex, v)), 3.0f, strokeOf(p, row).ink, 1.5f, p.panel);
+                }
             }
         }
 
@@ -1151,9 +1193,12 @@ namespace tee::ui
                     c.text(look::num(std::isfinite(l.ex) ? toUser(*ex, l.ex) : l.ex, ex->quantity == Quantity::none ? "%.2f" : "%.1f").c_str(),
                            cx + w - 10.0f, y, look::kUnit, p.value, funkgui::Align::right);
                 y += rowH;
-                if (!l.knock.empty())   // under its line: the knock's words, amber, with the ring
+                if (!l.knock.empty())   // under its line: the knock's words, amber, with its mark (a ring, or the state's tick)
                 {
-                    c.disc(cx + 29.0f, y + 5.0f, 3.5f, kClear, 1.5f, p.warning);
+                    if (knockIsState(trace(l.row)))
+                        c.segment(cx + 29.0f, y + 1.5f, cx + 29.0f, y + 8.5f, 2.0f, p.warning);
+                    else
+                        c.disc(cx + 29.0f, y + 5.0f, 3.5f, kClear, 1.5f, p.warning);
                     const Canvas::ClipScope clip(c, { cx, y - 2.0f, w - 8.0f, rowH });
                     c.text(l.knock.c_str(), cx + 38.0f, y, look::kUnit, p.warning);
                     y += rowH;
@@ -1343,6 +1388,8 @@ namespace tee::ui
         auto* d = dynamic_cast<DynoWorkspace*>(&w);
         return d != nullptr ? d->wordsAt(row, si) : std::string();
     }
+    bool dynoKnockIsState(const DynoTrace& t) { return knockIsState(t); }
+
     float dynoPlotX(Workspace& w, double si)
     {
         auto* d = dynamic_cast<DynoWorkspace*>(&w);
