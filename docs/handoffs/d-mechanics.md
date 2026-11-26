@@ -131,3 +131,8 @@ before the bound moves. Changes after this note are docs only; not pushed while 
 **Open for the next window (26 Nov)**: heat.fm's oil viscosity (viscK 15 at 20 C oil, 5.9 at 40 C, against some 7 to 9
 for a 15W-40) against a sourced viscosity table; the engine dyno's overshoot (above, after C's ramp); a V custom engine's
 bank angles in the custom null (one-bank builds only today).
+
+**Later, after X-047's cure (the lead's ruling, 26 Nov; docs/plan/x047-shift-cut.md, the steward's page)**: under
+contract (b) the engine is cut while the vehicle asks and the number Car::cutRequest() hands is no longer read as a
+length. Its name and meaning are the integrator's to tidy in car.fm (a flag, or the seconds remaining; the comment at
+car.fm:847 says "how long"), with model 1's shiftTime and model 0's 0.05 out of it. Not in X-047's change.
