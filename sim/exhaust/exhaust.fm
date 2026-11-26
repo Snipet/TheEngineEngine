@@ -160,6 +160,11 @@ module Exhaust
     int tick128;
     int seenSettle;     // spec.exhaust.heatSettle as last acted on
     float tPortNow;     // the ports' gas as the cylinders give it now (gas(), before its 0.8 s smoothing)
+    // The ports' energy and mass flow over a cycle (gas()): two means in cascade, each over a four-stroke cycle at the
+    // engine's speed, so the firing's pulses leave some 2.5 % of their swing; settleHeat's gas and flow (N1's finding,
+    // 25 Nov: the last 16 samples caught a blowdown or the stroke's cool tail, 1128 to 1607 K point to point)
+    float eCyc[2];
+    float mCyc[2];
     float tExit;        // the gas leaving the ports into the headers, after the port walls' cooling (portLoss()), K
     float qPort;        // the heat the port walls take from it, W (for the coolant's owner; telemetry)
     float qCool;        // the heat the port walls give the coolant, W
@@ -230,6 +235,11 @@ module Exhaust
         smTsNow = 1.0f;
         vAirNow = 0.0f;
         rpmNow = 0.0f;
+        for (int k = 0; k < 2; ++k)
+        {
+            eCyc[k] = 0.0f;
+            mCyc[k] = 0.0f;
+        }
         loadNow = 0.0f;
         tick128 = 0;
         prepared = 0;
@@ -750,6 +760,14 @@ module Exhaust
         }
         else
             tPort += (heat->tAmb - tPort) * (1.0f - expf(-d16 / 4.0f));
+        {
+            const float cyc = fminf(fmaxf(120.0f / fmaxf(rpmNow, 1.0f), 0.01f), 0.25f);
+            const float kc = 1.0f - expf(-d16 / cyc);
+            eCyc[0] += kc * (eSum / 16.0f - eCyc[0]);
+            mCyc[0] += kc * (mSum / 16.0f - mCyc[0]);
+            eCyc[1] += kc * (eCyc[0] - eCyc[1]);
+            mCyc[1] += kc * (mCyc[0] - mCyc[1]);
+        }
         bookLet(mSum / rate + backBlk);
         backBlk = 0.0f;
         eSum = 0.0f;
@@ -888,10 +906,11 @@ module Exhaust
     }
 
     // The gas as it leaves the ports for the headers and the turbine (after the port's walls): card F's turbine's
-    // energy goes by it
+    // energy goes by it. Until portLoss() has run once (a stopped engine configured before its first rendered block),
+    // the port's gas (integrator D, 26 Nov, with G's agreement: the Telemetry true from the first block)
     float exitTemperature()
     {
-        return model != 0 && spec->portHeat != 0 ? tExit : tPort;
+        return model != 0 && spec->portHeat != 0 && tExit > 0.0f ? tExit : tPort;
     }
 
     // Every 16 samples: the system's heat (soak) and what the pipes are set to (vAir: the car's speed past them)
@@ -1687,9 +1706,17 @@ module Exhaust
     // some 20 minutes in 3 s steps), the pipes then set to the gas: what a long run at this load leaves. Either model.
     void settleHeat()
     {
-        if (tPortNow > 0.0f)
-            tPort = tPortNow;
-        mdotSlow = mdot;
+        if (mCyc[1] > 1.0e-7f)
+        {
+            tPort = eCyc[1] / mCyc[1];
+            mdotSlow = mCyc[1];
+        }
+        else
+        {
+            if (tPortNow > 0.0f)
+                tPort = tPortNow;
+            mdotSlow = mdot;
+        }
         portLoss(0.0f);
         if (model != 0)
         {

@@ -35,7 +35,8 @@ namespace tee::ui
         int count() const override { return static_cast<int>(infos_.size()); }
         const FieldInfo& info(int i) const override { return infos_[static_cast<std::size_t>(i)]; }
         double get(int i) const override;
-        void set(int i, double si) override;
+        void set(int i, double si) override;   // a value Build::accepts refuses is not set
+        bool accepts(int i, double si, std::string* why = nullptr) const override;
         Curve16 curve(int i) const override;
         void setCurve(int i, const Curve16& c) override;
         Map16 map(int i) const override;

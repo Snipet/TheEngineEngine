@@ -558,6 +558,24 @@ second, nearly all at its 30 kPa ceiling, each with the same click tail.
 - Cost: one Wiebe step per burn alight, about 8 ns while one burns; nothing otherwise. `exhaust.model` 0 never reads
   it (the engine identity test passes with `bang` at its default).
 
+## The heat's settle takes a cycle's gas (26 Nov; N1's finding)
+
+Card C's settle (`spec.exhaust.heatSettle`, `Exhaust::settleHeat`) soaks every wall to the gas at the ports and the
+mass flow. It took the gas of the last 16 samples (gas(): 0.33 ms, against a 20 ms cycle at 5879 rpm) and a mass flow
+smoothed over about 2 ms. So it caught a blowdown or the stroke's cool tail by timing, and soaked the walls to it.
+- **Now:** gas() keeps the ports' energy and mass flow through two first-order means in cascade, each over a
+  four-stroke cycle at the engine's speed (120/rpm, 10 to 250 ms). That leaves some 2.5 % of the firing's swing. The
+  settle takes T = e/m and the flow m from them; the running 0.8 s tPort and the soak are as they were.
+- **Measured** (tee-dyno --predict, 48 points, the two-stage, old against new):
+  - the port temperature at the points' ends scattered from 1097 to 1606 K point to point; now it rises smoothly from
+    1200 to 1489 K, neighbours within about 15 K;
+  - 5915 rpm: 181.7 → 189.1 N m. Table P's "notch" is now about 3 N m against its neighbours.
+- **first.json, 16 points:**
+  - most points move under 1 %;
+  - two points at the turbo's spool move: 1733 rpm 249.7 → 382.3 N m and 2833 rpm 353.9 → 385.9;
+  - held 20 s at 1733 rpm (the old code's stepped dyno), it reads 383.4 N m at its 120 kPa target. So the old points
+    were wrong: the old settle left the turbo unspooled.
+
 ## Stated bores: the least, 10 mm (X-038, X-029)
 
 Every pipe bore a person or a build can state (`primD`, `colD`, `mainD`, `crossD`, `resD`, `bypassD`, `tailD`) takes

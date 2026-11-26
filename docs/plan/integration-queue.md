@@ -1346,6 +1346,12 @@ test-s before and after on the steward's measure (CI's Linux log through scripts
 the owners have reported what grouping alone recovers. D2 is woken for diesel's only after the window's sim work is
 in, unless its 217 keeps growing.
 
+**How grouping pays on CI (the steward, 26 Nov, from the first readings):** CI runs each ctest entry as its own process,
+and `catch_discover_tests` makes one entry a case. A compiled program or player kept "once per binary" is then still
+built once a case. It pays only when several cases share one process: one `add_test` entry over a tag or a file (the
+boost.engine and ecu.integrated pattern), or the cases folded into one case's sections. Read at 0315de80: calibration-na
+grouped into one process, 115 to 58; calibration.boost with a kept program but one process a case, 143 to 148.
+
 ## 26 Nov 00:23 UTC: the window an hour in: what is on the branch, what is held and for what
 
 **On the branch under `sim/`, `host/`, `tools/` (tip cba0ac43; the baked tables are stale from here):**
@@ -1380,6 +1386,56 @@ calibration-na 85 to 44 (N1). Both local, both to be pushed and read again on CI
 
 **Next in the lead's hands:** the hold for U1 straight after G's sha; then the integrator lands #337 on it, N1
 measures the two-stage on it, P re-reads the crossing and the notch.
+
+## 26 Nov 00:55 UTC: the wall's ruling; the init order landed; X-043 closed as the fixture's own
+
+**The duct's wall cannot land as first ruled (G), and how it will.** With the whole key (c, length, bore, rate) at
+model 0, nine `ref.null` cases went red ("every preset", "every layout"; default/free-revs -0.99 dB): the frozen
+reference keeps the default V8's stale wall when a build is written over the defaults, so model 0 must keep it too.
+G took the wall out of its push (the settle fix goes alone) and proposed loading the null and the identity test
+from the build itself (route 1). **Ruled against:** the null is "model 0 is the frozen reference, bit for bit",
+its faults included, and writing a build over the defaults is the application's own route, the one the null must
+keep covering. **Ruled instead:** the cure is keyed on the model. A duct under a part at model 0 keeps the
+reference's key (G's exhaust at model 0; the intake's runners at `intake.model` 0, sim/intake/intake.fm:223, one
+line in N1's file with N1's agreement); under model 1 it has the whole key. G's identity test (the builder against
+the reference's exhaust) is restated in its own helper on route 1, where the reference's wall is designed from the
+build's own bore, with proof it still bites. Third in G's order (the settle, the burn's heat, the wall); the bake
+does not wait for it (0.01 N m).
+
+**#337's new form no longer waits for the wall.** The integrator lands the field diff with the runners' 36 wall
+shelves NAMED as a known finding, not among the inert leftovers; the case fails on any field outside the named
+ones; G's wall push removes the name, and the case going green without it is the cure's proof.
+
+**The init order is on the branch (the integrator, 393519ea; tip 430ce5d2; tier 600 of 600; read by the lead).**
+After `readSpec()`, a stopped and silent engine whose dials moved is configured there, not at the next key.
+Before: on the application's own load of first.json a stopped engine reported the default V8 (redline 6500 rpm,
+8 cylinders, 5.76 L; the tach's red band from it) until the key. Now 6800 rpm, 4 cylinders, 1.98 L on both
+routes. It carries one line in G's exhaust.fm with G's agreement (`exitTemperature()` gives the port's gas until
+the port's loss has run once). G's 16 builder-pipe coefficients that differed between two routes: equal on the
+application's route with this in; if they persist on G's cranked route the cause is the 1.5 m/s tolerance carrying
+a wall across a load, and it is G's finding.
+
+**X-043 (the turbo six's start click) is the fixture's own (N1's diagnosis, the steward's table).** N1's
+prediction (its plenum term starves one charge) was wrong: the term only moves the phase of a hunt that is there
+without it (570 to 2250 rpm, 0.4 to 0.5 s period). The steward's table: the fixture's cam at 0.9999 lopes 299 rpm
+sd with every switch off; `intake.model` deepens it under either idle loop (370 with the reference's; 247 with
+the steward's where the ECU alone holds 56); every switch with `ecu.model` 316; the reference turbo is not the
+driver (under 30 kPa in every row). With `ecu.model` the fixture also falls to 13 rpm at 0.96 s after its
+flare. Checked against what ships: the twin-turbo six and first.json at their cam, 0.9, 0.95 and 0.9999, on the
+Lab valvetrain and on the reference's dial: 4 to 13 rpm sd at every setting; none of the 31 archetypes nears a
+stall at its start (some dip 10 to 25 % under their idle target 1.2 to 1.8 s after the flare and recover). So
+X-043 stays in Known.h for good with that reason; nothing for N1 or P from it.
+The steward found and withdrew a fault in its own probes on the way (a Spec write queued after the timeline was
+built never took effect: 6d674ef4) and re-read what it touched: with `exhaust.model` on, Burned in the pipe (the
+default) is green on the V8's and the small four's shift cuts where Carved has reds; X-030 remains only without
+`exhaust.model`. X-031 is gone on the tip by the idle cure (X re-reads before it is retired).
+
+**Tests' time on CI's reference runner at 0315de80 (the steward):** the fast tier 2427 against 2400 (was 2492).
+calibration-na 115 to 58 (N1); combo 202 to 188 (X); calibration 143 to 148 (N2's kept object saved nothing where
+each case is its own ctest process: regrouped since, d41e7258). **Grouping pays on CI only as one ctest process
+over several cases.** `eachSwitch` on the default block stays in the default run through this window and its
+bake (it reads what the init-order cure changed, and "every switch loaded over" is a weaker guard); X proposes a
+field-diff form to the integrator after #337 lands.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
