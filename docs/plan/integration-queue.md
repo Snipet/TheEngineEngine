@@ -1738,6 +1738,25 @@ engines only where a source shows such an engine drawn split.
      With it the cited plateau (350 N m from 1500 to 4400) is a ceiling first.json may state, and P counts the
      rows it holds as held by a stated limit, not as predictions. WITHOUT it nobody shapes the boost map by
      speed to reach 350: that would build the row from its own target.
+ 11. N2, a design first (its own number in its list): the variable vanes on the spring law past the gain's
+     reversal. The nightly case "variable vanes past the surge line open" (GateTest.cpp:197-198) has been red
+     for two soaks (223f4301: 163.1 kPa; d586682c: 165.4) and is RIGHT: the 15 L truck at 1300 rpm, full load,
+     no target: vanes 0.52, 165 kPa and 2551 N m, where a fixed nozzle makes 208 kPa and 2708; only the
+     back-pressure limit (1.4) stops the vanes shutting. The guard against the reversal acts on the target
+     loop only. Its two "no worse than a fixed nozzle" checks are to be MARKED on the finding (printing their
+     figures every run), the one-state check live; no restatement. Open: whether any shipped build runs vanes
+     on the spring law (the diesels' low-end rows may be this); which commit made it (between the last green
+     soak and 223f4301).
+ 12. C (`host/`): on a build with a turbine a held step is measured only when the shaft's drift over the last
+     second is under 0.5 %, capped at 40 s, a capped step marked unsettled; a build without one bit-identical.
+     And the long-hold case to read one point inside a threshold (first.json at 1733 rpm: the predictor 293
+     against 256 on a 90 s hold with no settle).
+ 13. the steward's idle design, state at 05:05: through the post-start phase neither the look-ahead nor the
+     doubled gain (each alone fails); after it `main`'s. The fixture 287 to 20 rpm sd; all 31 pass the gate
+     within about 0.5 rpm sd of `main`; the dips after the flare shallower on most (big-block 545 to 598) and
+     deeper on the twin six (639 to 564, a slower catch). NOT proposed: the twin six's dip, the switch-on at
+     the phase's end and the combo rows are still to read. The acceptance has a new row: each archetype's
+     lowest speed from 2 to 8 s on p-idle-warm against `main`'s (N1 to make it a test: nothing guards it).
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
