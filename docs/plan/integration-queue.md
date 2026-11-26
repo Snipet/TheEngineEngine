@@ -1676,6 +1676,20 @@ boost is right, and how close the rally row sits to its bound on other trees.
   6. G: the running path's port heat mass-weighted, a prediction across the builds first.
   7. the integrator: X-045 (the cure local); the dyno loop's overshoot; a custom engine's friction.
   8. the steward: the fuel's re-entry after an overrun cut, sources first, clips for the owner; X-036's cause.
+  9. N2 (with item 5): first.json's boost threshold. N1's held points (--settle 40): 1503 rpm 225 N m with the
+     gate shut and boost 19.5 kPa against a 120 target; 1655 rpm 250 N m, 30 kPa; 1796 rpm 384 N m, 120 kPa. A
+     steady-state match, not a lag; breathing per kPa of manifold the same at 1500 as at 1800. The cited engine
+     makes its plateau from 1500: the build's turbine (about 50 mm, A/Rs for which no source was found) is the
+     suspect. No number from N1. For C: the stepped dyno's default settle reads this turbo at 27 kPa where 20 s
+     reaches 120.
+ 10. the steward, a design first: a torque ceiling that acts on a petrol build. `ecu.torqueMax` and `powerMax`
+     are read only by the diesel's electronic governor (sim/combustion/heavy.fm:221); nothing in sim/ecu reads
+     them, and the petrol path carries no torque at all (N1's read). Shape proposed by N1: the brake torque
+     over 0.1 s into the ECU; the same integral against min(torqueMax, powerMax/omega) lowering the BOOST
+     TARGET first, the plate only at zero boost, never raising either, the spark left alone; 0 keeps the null.
+     With it the cited plateau (350 N m from 1500 to 4400) is a ceiling first.json may state, and P counts the
+     rows it holds as held by a stated limit, not as predictions. WITHOUT it nobody shapes the boost map by
+     speed to reach 350: that would build the row from its own target.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
