@@ -10,6 +10,7 @@
 #include "Engine.h"
 #include "Offline.h"
 #include "Options.h"
+#include "WheelEdit.h"
 
 #include "files/BuildFiles.h"
 #include "input/Controls.h"
@@ -299,4 +300,20 @@ TEST_CASE("app: a moved-from Shown never calls the panel's going hook; a move-as
         CHECK(calls == 1);
     }
     CHECK(calls == 11);                             // the last one, as its Shown went; the moved-from ones none
+}
+
+// The wheel's edit commands (shell/input/g29) are the interface's (ui/kit/gui/EditCommand.h) one to one, by name.
+TEST_CASE("app: each of the wheel's edit commands is the interface's command of the same name", "[shell][app]")
+{
+    std::vector<bool> seen(static_cast<std::size_t>(ui::kEditCommands), false);
+    for (int i = 0; i < static_cast<int>(input::g29::EditCommand::count); ++i)
+    {
+        const auto c = static_cast<input::g29::EditCommand>(i);
+        INFO(std::string(input::g29::editName(c)));
+        const std::optional<ui::EditCommand> u = app::uiEdit(c);
+        REQUIRE(u.has_value());
+        CHECK_FALSE(seen[static_cast<std::size_t>(*u)]);
+        seen[static_cast<std::size_t>(*u)] = true;
+    }
+    CHECK(app::uiEdit(input::g29::EditCommand::valueUpCoarse) == ui::EditCommand::valueUpCoarse);
 }

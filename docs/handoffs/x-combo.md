@@ -30,20 +30,27 @@ fuel.model 0 is bounded at a step of 42 (the lead's ruling, 24 Nov 23:15; "click
   engine the build with it on reaches; every switch loaded over every switch off reaches the fresh build; on the
   default block (nightly: V8, turbo six). the routes agree before f89d40c too (444 N m), so the size line holds the fix: with fuel.model or wallHeat on,
   the default block's torque within 3 % of the line between 5.0 and 6.2 L (old tree -17 %, tip -0.3 %)
+- decisions, field by field (fast-1, 13 s for the 11 switches): each switch written while stopped against the program
+  initialised over the build (#337's reference, the integrator's FieldDiff.h), every field that holds still before the
+  key; the leftovers named with their reasons (revision counts, a configure's draws, its pipes' delay history). Bites on
+  393519ea's parent (engine.custom: customUse, layoutWhy, ecu.redRpm, the redline, dyno.j; boost and exhaust:
+  exh.b.eng.tPort); X-045 (the exhaust built at the key) under its own check. The guard the 12 s runs go to [nightly]
+  on, after the bake's commit reaches main (the lead's ruling, 26 Nov)
 - X-020 closed (N2 896c4b3) and out of Known.h; X-021 closed by the build: large-diesel.json carries D2's truck boost
   (gateSpring 220000, icFlow 0.8, chargeVolume 0.02): boost.model on, 2000 rpm, 1865 N m against the reference's 1933
 - fixed findings held as tests: X-001, X-003, X-007 (`[fixed]`)
 - `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype|build.json> <scenario> <switches> [--set path=value]`
   (prints the step and the excess against the reference's), `--checks`, `--match`
 
-**Findings** (X-001 to X-044; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
+**Findings** (X-001 to X-045; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
 it so it fails again if it returns). Open: X-016 (the heavy case's cost, Q), X-030 (the new ECU's shift cut under
 fuel.model 1: a firing unlike its neighbours as the spark returns; the steward), X-044 (the small four's downshift
-with engine.custom, fuel and ecu: the fuel returning whole after the overrun cut; the steward's, kept this window), X-036 (a DC with
+with engine.custom, fuel and ecu: the fuel returning whole after the overrun cut; the steward's, kept this window), X-045 (boost.model or exhaust.model written while stopped, and the application's load: the
+last exhaust reported until the key; the integrator, the next window), X-036 (a DC with
 car.model and a turbo: the turbo V8 dual, random 103, and the large diesel on the dyno with everything on; D, the
 steward and the integrator), X-039 (a supercharged 50 cc single with a recirculating blow-off, N2: cured in its held
-package), X-041 (Burned in the pipe: since G's 5941904e one row, the turbo six's lift on the pull with valve, boost and
-ecu on; its tour lift and the rally five's two rows retired by it; G), X-042 (the large diesel's dpWave under
+package), X-041 (the turbo six's pull lift with valve, boost and ecu: the blow-off opening at a compressor ratio of 1.94
+since G's 5941904e spooled the turbo harder; N2, the next window; its other three rows retired by 5941904e), X-042 (the large diesel's dpWave under
 engine.custom, valve and boost: one collector feeds one of its two turbos; N2 with the integrator), X-043 (the turbo
 six's start with intake, exhaust and car on: the reference idle's hunt on the fixture's cam lope; kept for good by
 the lead's ruling, a pairing nothing ships). Closed on 26 Nov: X-031

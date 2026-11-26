@@ -128,6 +128,7 @@ namespace tee::input::g29
     void RacingWheel::setOn(bool on) { impl_->hub->driver().setOn(on); }
     bool RacingWheel::reading() const noexcept { return impl_->hub->driver().reading(); }
     State RacingWheel::state() const { return impl_->hub->driver().state(); }
+    Presses RacingWheel::takePresses() { return impl_->hub->driver().takePresses(); }
     std::string RacingWheel::status() const { return impl_->hub->driver().status(); }
     void RacingWheel::pump() { impl_->pump(); }
 }

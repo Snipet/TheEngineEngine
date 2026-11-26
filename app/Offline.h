@@ -7,6 +7,7 @@
 
 #include "Options.h"
 
+#include "input/g29/G29Input.h"
 #include "tee/app/Sources.h"
 
 #include <funkgui/panel/Panel.h>
@@ -134,6 +135,9 @@ namespace tee::app
         Shown(Shown&&) = default;
         Shown& operator=(Shown&&) = default;
         PanelGoing panelGoing;
+        // The frame's editing hands for the wheel's edit buttons (input/g29/G29Input.h's EditCommand; `fine`: SHARE
+        // held): true when something took it. Empty until the frame serves edit() (U1's half, J2's inspector).
+        std::function<bool(input::g29::EditCommand, bool fine)> wheelEdit;
         ~Shown()                                    // the Panel first: it holds references into `keep`
         {
             if (panelGoing)

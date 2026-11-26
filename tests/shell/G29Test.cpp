@@ -475,33 +475,69 @@ TEST_CASE("g29: its state into the driver: the pedals beside a gamepad's, paddle
 TEST_CASE("g29: the buttons' bindings: the defaults, kept and read back, a bad pair left out", "[shell][input][g29]")
 {
     const wh::Buttons d = wh::defaultButtons();
-    CHECK(wh::saveButtons(d) == "4=shiftup,5=shiftdown,17=start");
+    const std::string saved = wh::saveButtons(d);
+    CHECK(saved.rfind("2:4=shiftup,5=shiftdown,17=start,18=e.rowup,", 0) == 0);
     std::string notes;
     CHECK(wh::loadButtons("", notes) == d);
-    CHECK(wh::loadButtons(wh::saveButtons(d), notes) == d);
+    CHECK(wh::loadButtons(saved, notes) == d);
     CHECK(notes.empty());
+    CHECK(wh::saveButtons({}) == "2:");
+    CHECK(wh::loadButtons("2:", notes).empty());                          // every button unbound, as the owner left it
 
-    const wh::Buttons b = wh::loadButtons("0=splitter,99=range,3=gear1,x=neutral,2=handbrake,,21=enginebrake", notes);
-    REQUIRE(b.size() == 3);
-    CHECK(b[0] == wh::Binding{ 0, Action::splitter });
-    CHECK(b[1] == wh::Binding{ 2, Action::handbrake });
-    CHECK(b[2] == wh::Binding{ 21, Action::engineBrake });
+    const wh::Buttons b = wh::loadButtons("2:0=splitter,99=range,3=gear1,x=neutral,2=handbrake,,21=enginebrake,1=e.undo,"
+                                  "6=e.nothing",
+                                  notes);
+    REQUIRE(b.size() == 4);
+    CHECK(b[0] == wh::drive(0, Action::splitter));
+    CHECK(b[1] == wh::drive(2, Action::handbrake));
+    CHECK(b[2] == wh::drive(21, Action::engineBrake));
+    CHECK(b[3] == wh::editOn(1, wh::EditCommand::undo));
     CHECK(notes.find("99=range") != std::string::npos);            // outside the mask
     CHECK(notes.find("3=gear1") != std::string::npos);             // not a button's (the shifter's)
     CHECK(notes.find("x=neutral") != std::string::npos);
-    CHECK(wh::saveButtons({}).empty());
+    CHECK(notes.find("6=e.nothing") != std::string::npos);         // no such edit command
+}
+
+TEST_CASE("g29: a saved binding from before editing keeps every pair and gains the edit defaults on free buttons",
+          "[shell][input][g29]")
+{
+    // the owner moved the start key to cross (the edit default's activate) and bound the splitter to the d-pad's up
+    std::string notes;
+    const wh::Buttons b = wh::loadButtons("4=shiftup,5=shiftdown,0=start,18=splitter", notes);
+    CHECK(notes.empty());
+    CHECK(std::find(b.begin(), b.end(), wh::drive(0, Action::start)) != b.end());
+    CHECK(std::find(b.begin(), b.end(), wh::drive(18, Action::splitter)) != b.end());
+    // cross and the d-pad's up stay theirs: no edit lands on a button the owner bound
+    for (const wh::Binding& x : b)
+        if (x.bit == 0 || x.bit == 18)
+            CHECK_FALSE(x.isEdit());
+    // the other edit defaults arrive; activate stays on the dial's return; the row down still on the d-pad
+    CHECK(std::find(b.begin(), b.end(), wh::editOn(16, wh::EditCommand::activate)) != b.end());
+    CHECK(std::find(b.begin(), b.end(), wh::editOn(20, wh::EditCommand::rowDown)) != b.end());
+    CHECK(std::find(b.begin(), b.end(), wh::editOn(1, wh::EditCommand::undo)) != b.end());
+    // PS was the start key's: the owner moved it, so PS is free (nothing edits with it)
+    for (const wh::Binding& x : b)
+        CHECK(x.bit != wh::kBitPs);
+    // saved again it is the new format, read back exactly
+    const std::string again = wh::saveButtons(b);
+    CHECK(again.rfind("2:", 0) == 0);
+    CHECK(wh::loadButtons(again, notes) == b);
+    // the owner's SHARE: a binding of theirs is kept, and SHARE is no longer the modifier (Input's rule)
+    const wh::Buttons shared = wh::loadButtons("8=handbrake", notes);
+    CHECK(std::find(shared.begin(), shared.end(), wh::drive(8, Action::handbrake)) != shared.end());
 }
 
 TEST_CASE("g29: learning a button: the next press binds it; a held one waits; it moves; time runs out",
           "[shell][input][g29]")
 {
-    wh::Buttons buttons = wh::defaultButtons();
+    wh::Buttons buttons = wh::drivingDefaults();
     wh::ButtonLearn learn;
     wh::State s;
+    const wh::Target splitter{ Action::splitter, std::nullopt }, start{ Action::start, std::nullopt };
 
     // the cross held as learning begins: it is not the answer until let go and pressed again
     s.buttons = 1u << 0;
-    learn.begin(Action::splitter, s);
+    learn.begin(splitter, s);
     CHECK(learn.active());
     CHECK_FALSE(learn.watch(s, 0.1, buttons));
     s.buttons = 0;
@@ -509,23 +545,39 @@ TEST_CASE("g29: learning a button: the next press binds it; a held one waits; it
     s.buttons = 1u << 0;
     CHECK(learn.watch(s, 0.1, buttons));
     CHECK_FALSE(learn.active());
-    CHECK(buttons.back() == wh::Binding{ 0, Action::splitter });
+    CHECK(buttons.back() == wh::drive(0, Action::splitter));
     CHECK(buttons.size() == 4);
 
     // the right paddle for the start key: the paddle loses shift up, and PS loses the start key
     s.buttons = 0;
-    learn.begin(Action::start, s);
+    learn.begin(start, s);
     s.buttons = 1u << wh::kBitRightPaddle;
     CHECK(learn.watch(s, 0.1, buttons));
-    CHECK(wh::saveButtons(buttons) == "5=shiftdown,0=splitter,4=start");
+    CHECK(wh::saveButtons(buttons) == "2:5=shiftdown,0=splitter,4=start");
+
+    // an edit command: it may stay on other buttons (activate on two), the learned button loses its own
+    wh::Buttons edits = { wh::editOn(16, wh::EditCommand::activate), wh::drive(1, Action::handbrake) };
+    s.buttons = 0;
+    learn.begin({ Action::none, wh::EditCommand::activate }, s);
+    s.buttons = 1u << 1;
+    CHECK(learn.watch(s, 0.1, edits));
+    CHECK(wh::saveButtons(edits) == "2:16=e.activate,1=e.activate");
+
+    // SHARE, the modifier while unbound, is never the answer
+    s.buttons = 0;
+    learn.begin({ Action::none, wh::EditCommand::undo }, s);
+    s.buttons = 1u << wh::kBitShare;
+    CHECK_FALSE(learn.watch(s, 0.1, edits));
+    CHECK(learn.active());
+    learn.cancel();
 
     // nothing pressed: it ends with nothing after its seconds
     s.buttons = 0;
-    learn.begin(Action::neutral, s);
+    learn.begin({ Action::neutral, std::nullopt }, s);
     for (int i = 0; i < 99 && learn.active(); ++i)
         CHECK_FALSE(learn.watch(s, 0.25, buttons));
     CHECK_FALSE(learn.active());
-    CHECK(wh::saveButtons(buttons) == "5=shiftdown,0=splitter,4=start");
+    CHECK(wh::saveButtons(buttons) == "2:5=shiftdown,0=splitter,4=start");
 }
 
 TEST_CASE("g29: bound buttons drive their actions; a learn listening holds them back; new bindings let go",
@@ -538,7 +590,7 @@ TEST_CASE("g29: bound buttons drive their actions; a learn listening holds them 
     const EngineSeen seen{};
     wh::State s;
     std::string notes;
-    input.setButtons(wh::loadButtons("0=splitter,1=handbrake", notes));
+    input.setButtons(wh::loadButtons("2:0=splitter,1=handbrake", notes));
     input.apply(s, true, driver);                                   // (the frame that takes the new bindings)
     const int ups = driver.advance(0.01f, seen).shiftUp;
 
@@ -572,4 +624,221 @@ TEST_CASE("g29: bound buttons drive their actions; a learn listening holds them 
     input.setButtons(wh::defaultButtons());
     input.apply(s, true, driver);
     CHECK(driver.advance(0.01f, seen).handbrake == 0.0f);
+}
+
+TEST_CASE("g29: each edit default gives its command once a press; driving buttons give none", "[shell][input][g29]")
+{
+    tee::input::Driver driver{ DriverSettings{} };
+    wh::Input input;
+    wh::State s;
+    input.apply(s, true, driver, true, 0.016);
+    for (const wh::Binding& b : wh::editDefaults())
+    {
+        INFO(wh::kBits[b.bit].name);
+        s.buttons = 1u << b.bit;
+        input.apply(s, true, driver, true, 0.016);
+        REQUIRE(input.edits().size() == 1);
+        CHECK(input.edits()[0] == wh::Edit{ *b.edit, false });
+        // held one more frame: no second command (the row keys repeat only after kRepeatAfter)
+        input.apply(s, true, driver, true, 0.016);
+        CHECK(input.edits().empty());
+        s.buttons = 0;
+        input.apply(s, true, driver, true, 0.016);
+        CHECK(input.edits().empty());
+    }
+    // the driving defaults and R3: no edit
+    for (const int bit : { wh::kBitRightPaddle, wh::kBitLeftPaddle, wh::kBitPs, 10 })
+    {
+        s.buttons = 1u << bit;
+        input.apply(s, true, driver, true, 0.016);
+        CHECK(input.edits().empty());
+        s.buttons = 0;
+        input.apply(s, true, driver, true, 0.016);
+    }
+}
+
+TEST_CASE("g29: the d-pad's rows repeat while held; SHARE makes a command fine; a learn or no reading gives none",
+          "[shell][input][g29]")
+{
+    tee::input::Driver driver{ DriverSettings{} };
+    wh::Input input;
+    wh::State s;
+    const double dt = 0.01;
+    input.apply(s, true, driver, true, dt);
+
+    // the d-pad down held 1 s: one at the press, the first repeat at 0.35 s, then 12 a second
+    int downBit = -1;
+    for (const wh::Binding& b : wh::editDefaults())
+        if (b.edit == wh::EditCommand::rowDown)
+            downBit = b.bit;
+    REQUIRE(downBit >= 0);
+    s.buttons = 1u << downBit;
+    std::vector<double> at;
+    for (int f = 0; f <= 100; ++f)
+    {
+        input.apply(s, true, driver, true, dt);
+        for (std::size_t k = 0; k < input.edits().size(); ++k)
+            at.push_back(f * dt);
+        CHECK(input.edits().size() <= 1);                            // at most one a frame
+    }
+    REQUIRE(at.size() >= 2);
+    CHECK(at[0] == 0.0);
+    CHECK(at[1] >= wh::kRepeatAfter - 1e-9);
+    CHECK(at[1] < wh::kRepeatAfter + 2 * dt);
+    // (1.0 - 0.35) s at 12 a second: 7 or 8 repeats after the first
+    CHECK(at.size() >= 1 + 1 + 7);
+    CHECK(at.size() <= 1 + 1 + 9);
+    // the dial does not repeat: held, one command
+    s.buttons = 0;
+    input.apply(s, true, driver, true, dt);
+    int dialUp = -1;
+    for (const wh::Binding& b : wh::editDefaults())
+        if (b.edit == wh::EditCommand::valueUp)
+            dialUp = b.bit;
+    s.buttons = 1u << dialUp;
+    int n = 0;
+    for (int f = 0; f < 100; ++f)
+    {
+        input.apply(s, true, driver, true, dt);
+        n += static_cast<int>(input.edits().size());
+    }
+    CHECK(n == 1);
+
+    // SHARE held: the dial's nudge is fine
+    s.buttons = 1u << wh::kBitShare;
+    input.apply(s, true, driver, true, dt);
+    CHECK(input.edits().empty());                                    // SHARE itself commands nothing
+    s.buttons = 1u << wh::kBitShare | 1u << dialUp;
+    input.apply(s, true, driver, true, dt);
+    REQUIRE(input.edits().size() == 1);
+    CHECK(input.edits()[0] == wh::Edit{ wh::EditCommand::valueUp, true });
+
+    // SHARE bound by the owner: theirs, not a modifier
+    std::string notes;
+    input.setButtons(wh::loadButtons("2:8=handbrake,14=e.valueup", notes));
+    s.buttons = 0;
+    input.apply(s, true, driver, true, dt);
+    s.buttons = 1u << wh::kBitShare;
+    input.apply(s, true, driver, true, dt);
+    s.buttons = 1u << wh::kBitShare | 1u << 14;
+    input.apply(s, true, driver, true, dt);
+    REQUIRE(input.edits().size() == 1);
+    CHECK_FALSE(input.edits()[0].fine);
+
+    // a learn listening, or the wheel not read: nothing
+    input.setButtons(wh::defaultButtons());
+    s.buttons = 0;
+    input.apply(s, true, driver, true, dt);
+    s.buttons = 1u << dialUp;
+    input.apply(s, true, driver, false, dt);
+    CHECK(input.edits().empty());
+    s.buttons = 0;
+    input.apply(s, false, driver, true, dt);
+    s.buttons = 1u << dialUp;
+    input.apply(s, false, driver, true, dt);
+    CHECK(input.edits().empty());
+}
+
+TEST_CASE("g29: a button the owner bound to driving stays driving: its press drives, and no edit", "[shell][input][g29]")
+{
+    DriverSettings instant;
+    instant.handbrake.rise = instant.handbrake.fall = 0.0f;
+    tee::input::Driver driver(instant);
+    wh::Input input;
+    const EngineSeen seen{};
+    std::string notes;
+    // the pre-edit format: the owner's handbrake on cross (an edit default's button) and on the d-pad's up
+    input.setButtons(wh::loadButtons("4=shiftup,5=shiftdown,17=start,0=handbrake", notes));
+    wh::State s;
+    input.apply(s, true, driver, true, 0.016);
+    s.buttons = 1u << 0;
+    input.apply(s, true, driver, true, 0.016);
+    CHECK(input.edits().empty());
+    CHECK(driver.advance(0.01f, seen).handbrake == 1.0f);
+    // the dial's return still activates (the default kept on a free button)
+    s.buttons = 1u << 16;
+    input.apply(s, true, driver, true, 0.016);
+    REQUIRE(input.edits().size() == 1);
+    CHECK(input.edits()[0].command == wh::EditCommand::activate);
+}
+
+TEST_CASE("g29: a dial's detents between two frames are each a nudge (counted as the transport hands them, capped)",
+          "[shell][input][g29]")
+{
+    // the dial right is button 22 on kButtonPage: three detents (press, let go) between two frames
+    wh::Map map;
+    int dialRight = -1;
+    for (int b = 0; b < static_cast<int>(std::size(wh::kBits)); ++b)
+        if (std::string(wh::kBits[b].name) == "dial right")
+            dialRight = b;
+    REQUIRE(dialRight >= 0);
+    const int usage = wh::kBits[dialRight].button;
+    for (int k = 0; k < 3; ++k)
+    {
+        map.input(wh::kButtonPage, usage, 1, 0, 1);
+        map.input(wh::kButtonPage, usage, 0, 0, 1);
+    }
+    CHECK(map.state().buttons == 0u);                                 // the frame's sample sees none of them
+    wh::Presses p = map.takePresses();
+    CHECK(p[static_cast<std::size_t>(dialRight)] == 3);
+    CHECK(map.takePresses()[static_cast<std::size_t>(dialRight)] == 0); // taken: counted from zero again
+
+    // Input: three nudges this frame; a hundred detents in one frame: kMostPerFrame
+    tee::input::Driver driver{ DriverSettings{} };
+    wh::Input input;
+    wh::State s;
+    input.apply(s, true, driver, true, 0.016);
+    input.apply(s, true, driver, true, 0.016, &p);
+    REQUIRE(input.edits().size() == 3);
+    for (const wh::Edit& e : input.edits())
+        CHECK(e == wh::Edit{ wh::EditCommand::valueUp, false });
+    wh::Presses many{};
+    many[static_cast<std::size_t>(dialRight)] = 100;
+    input.apply(s, true, driver, true, 0.016, &many);
+    CHECK(static_cast<int>(input.edits().size()) == wh::kMostPerFrame);
+    // where nothing is counted (Windows's sample): a press seen in the sample is one
+    s.buttons = 1u << dialRight;
+    wh::Presses none{};
+    input.apply(s, true, driver, true, 0.016, &none);
+    CHECK(input.edits().size() == 1);
+    // a learn listening: counted presses are the learn's, not edits
+    s.buttons = 0;
+    input.apply(s, true, driver, false, 0.016, &p);
+    CHECK(input.edits().empty());
+}
+
+TEST_CASE("g29: minus and plus repeat as the rows do; SHARE pressed in a learn is refused and said", "[shell][input][g29]")
+{
+    CHECK(wh::repeats(wh::EditCommand::valueUpCoarse));
+    CHECK(wh::repeats(wh::EditCommand::valueDownCoarse));
+    CHECK_FALSE(wh::repeats(wh::EditCommand::valueUp));
+    tee::input::Driver driver{ DriverSettings{} };
+    wh::Input input;
+    wh::State s;
+    input.apply(s, true, driver, true, 0.01);
+    int plus = -1;
+    for (const wh::Binding& b : wh::editDefaults())
+        if (b.edit == wh::EditCommand::valueUpCoarse)
+            plus = b.bit;
+    s.buttons = 1u << plus;
+    int n = 0;
+    for (int f = 0; f <= 50; ++f)                                     // 0.5 s held
+    {
+        input.apply(s, true, driver, true, 0.01);
+        n += static_cast<int>(input.edits().size());
+    }
+    CHECK(n >= 2);                                                    // the press, then repeats after 0.35 s
+    CHECK(n <= 4);
+
+    wh::Buttons buttons = wh::defaultButtons();
+    wh::ButtonLearn learn;
+    wh::State q;
+    learn.begin({ Action::none, wh::EditCommand::undo }, q);
+    q.buttons = 1u << wh::kBitShare;
+    CHECK_FALSE(learn.watch(q, 0.1, buttons));
+    CHECK(learn.takeShareRefused());
+    CHECK_FALSE(learn.takeShareRefused());                            // said once
+    CHECK_FALSE(learn.watch(q, 0.1, buttons));                        // still held: not said again
+    CHECK_FALSE(learn.takeShareRefused());
+    CHECK(learn.active());
 }

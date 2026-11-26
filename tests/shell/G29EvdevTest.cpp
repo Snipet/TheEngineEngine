@@ -285,6 +285,15 @@ TEST_CASE("g29 on Linux: the Hub over a made-up kernel: found, read, its range, 
         k.pump(hub);
         CHECK(hub.driver().state().button(wh::kBitPs));          // the start key
 
+        // three detents of the dial (right: button 22, BTN_TRIGGER_HAPPY6) between two frames: each counted
+        hub.driver().takePresses();
+        for (int d = 0; d < 3; ++d)
+            k.events(node, { inputEvent(EV_KEY, BTN_TRIGGER_HAPPY6, 1, 2100 + d * 20), inputEvent(EV_SYN, SYN_REPORT, 0, 2100 + d * 20),
+                             inputEvent(EV_KEY, BTN_TRIGGER_HAPPY6, 0, 2110 + d * 20), inputEvent(EV_SYN, SYN_REPORT, 0, 2110 + d * 20) });
+        k.pump(hub);
+        CHECK_FALSE(hub.driver().state().button(14));            // the frame's sample: let go
+        CHECK(hub.driver().takePresses()[14] == 3);              // the transport's count: three
+
         // the shift lights
         k.asked = 0x05;
         k.fire(hub, wh::Timer::lights);
