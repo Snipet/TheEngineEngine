@@ -155,6 +155,11 @@ against that tree's own bound, and is not assumed from these figures.
 
 ## 5. What it does not cure
 
+> **On hold (the lead, 26 Nov 17:35): read on a stand-in that also converges the reference; the real switch may
+> leave this row untouched; G confirming.** G's design puts item 17 under exhaust.model, and this row has
+> exhaust.model off in the case and the reference, so on the real change its bound would stay 3.91 and its reading
+> after item 16 the cut probe's 1, 0, 0 of 17. Do not build on the section below until G answers.
+
 **After item 17, on the V8 (the steward, 26 Nov ~17:50; X's per-event mode 93b76f5a, 17 copies at +-0.15 K;
 probe trees only).** Item 17 is stood in for by the 30-pass stand-in, not G's secant tree. Each tree is judged
 against its own bound, twice the lowest of its reference's five copies.
