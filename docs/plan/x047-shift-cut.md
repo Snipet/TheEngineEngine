@@ -122,6 +122,23 @@ upshift row and the four's rate. The 53 ms probe's figures above were taken on t
 the acceptance. The clips with both fixes, shown on 26 Nov, stand as what the window is meant to deliver. X-044 is
 not carried by X-051 and stays with item 8, whole.
 
+**First evidence on shipped builds (26 Nov 15:32; X's per-event spread, 17 copies at 293.15 +- 0.15 K; probe trees
+only).** The three shipped boosted builds run as built on the pull. Their upshifts are X-048's rows, and their cut is
+this fault's: 210 ms on the flags, 60 ms with the cut held only while the vehicle asks.
+
+| build, event | tip | the cut probe | both fixes (with item 17's valve) |
+|---|---|---|---|
+| the three-cylinder 1.0 turbo, the 1-2 | 6 of 17 (bound 2.84) | 0 of 17 (2.84) | 0 of 17 (3.51) |
+| the three-cylinder 1.0 turbo, the 2-3 | 8 of 17 | 0 of 17 | 0 of 17 |
+| the kei 660, the 1-2 | 2 of 17 (2.77) | 0 of 17 (2.77) | 0 of 17 |
+| the boxer four | 0 of 17 everywhere | 0 of 17 everywhere | 0 of 17 everywhere |
+
+- The three-cylinder's medians at its upshifts fall from 2.62 and 2.83 to 1.26 and 1.30.
+- Its first firing back over the next four falls from 2.65 and 2.82 to 1.12 and 1.07: level with the next firings.
+- The steward's prediction (0 to 1 of 17 on both trees) was met, at 0.
+- By the evidence rule, the rows are cured on the cut-probe tree. They stay in Known.h until this item's change is on
+  the branch and the nightly reads them on the real code.
+
 ## 5. What it does not cure
 
 On the probe with the cut at the reference's length, the four's first firing back still reads 1.30 against the
