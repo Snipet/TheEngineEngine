@@ -2158,6 +2158,33 @@ engines only where a source shows such an engine drawn split.
 - **CI:** aa8d6c4c's Linux job red on apt's 404 before Build (infrastructure); the steward's bootstrap retry
   (one more update, one retry, logged) is at 0d040a4b.
 
+## 26 Nov 11:46 UTC: TWO CORRECTIONS OF RECORD: X-051 is nearly absent on what ships; five valve rows measured a cam swap
+
+- **The lead wrote at 11:39 that item 17 was worth a window "on X-043 alone: heard on every start of every
+  build". WITHDRAWN.** G's probe (a counter of the chatter's signature in a scratch tree's `Valve::flow`): all
+  nine shipped turbo archetypes as built, the default build and first.json read 0 on the cold start; on the
+  pull only the kei 660 triple shows any (4 events at 9.03 to 9.12 s, half a second after its third shift).
+  The rows X-051 cures (X-049, X-043) are reference-model combinations on the combo fixtures. On the combo
+  turbo six the counter also shows sustained chatter in 1st gear at low speed under load (3.5 to 4.7 s), a
+  running regime, not yet read on shipped builds. **Ruled: item 17 stays as a design and drops behind items
+  16 and 15;** it remains a real numerical fault (the running solve about 5 % unconverged on every build),
+  and an owner can make the combinations that chatter from the model selectors. The design carries the
+  counter as hidden telemetry and a test that the shipped builds read 0 on a start, a pull and a lug.
+- **The valve rows on the turbo six measured a CAM SWAP (X's run of N1's fields; a scratch copy).** With lab
+  cams stated equal to the dial every valve row reads 0 of 17 (X-049 2 to 0; X-048's valve+boost 4 to 0,
+  wallHeat+valve+boost 14 to 0, valve+boost+fuel 8 to 0; X-041's tour lift 3 to 0), the references identical
+  on both builds. valve.model Lab without stated cams runs the lab's default 231 degree cam where the dial
+  says 300: X-050 seen from the corpus. N1 withdraws "the valve model raises the gate loop's swing" and
+  X-049's valve share: both were the cam swap. **Ruled:** the combo builds state lab cams equal to their
+  dials (references bit-identical with valve.model off, shown in the commit); the lab's default cam keeps
+  its coverage by a fair twin (the turbo six with a mild dial equal to that cam), whose valve rows are
+  measured before anything is entered; the five rows on the dial build leave `Known.h` when the builds
+  change, with a dated line saying what they measured; X-048 keeps its rows without valve.model. And the
+  shipped boosted builds are sampled on the PULL (the background was the tour only).
+- **Clips with the owner:** the steward's upshifts with both of the window's fixes; G's kei 660 triple (a cold
+  start, the full-throttle upshift that holds its chatter, steady mid load), as shipped against the
+  converged solve.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 11:01 UTC: `main` IS AT 5278e3e9** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
