@@ -42,8 +42,8 @@ fuel.model 1: a firing unlike its neighbours as the spark returns; the steward),
 with engine.custom, fuel and ecu: the fuel returning whole after the overrun cut; the steward's, kept this window), X-036 (a DC with
 car.model and a turbo: the turbo V8 dual, random 103, and the large diesel on the dyno with everything on; D, the
 steward and the integrator), X-039 (a supercharged 50 cc single with a recirculating blow-off, N2: cured in its held
-package), X-041 (Burned in the pipe: since G's 5941904e one row, the turbo six's lift on the pull with valve, boost and
-ecu on; its tour lift and the rally five's two rows retired by it; G), X-042 (the large diesel's dpWave under
+package), X-041 (the turbo six's pull lift with valve, boost and ecu: the blow-off opening at a compressor ratio of 1.94
+since G's 5941904e spooled the turbo harder; N2, the next window; its other three rows retired by 5941904e), X-042 (the large diesel's dpWave under
 engine.custom, valve and boost: one collector feeds one of its two turbos; N2 with the integrator), X-043 (the turbo
 six's start with intake, exhaust and car on: the reference idle's hunt on the fixture's cam lope; kept for good by
 the lead's ruling, a pairing nothing ships). Closed on 26 Nov: X-031
