@@ -200,10 +200,18 @@ A burst does not set the exposure: a part over four times the parts' running 80t
 1, the default since 25 Nov) is a burst of 1 to 4 ms; before, each one raised P and held it 1.5 s, the body falling with
 it. Card G's clips (25 Nov, 81ec1b12): the rally five's lift, Burned against Carved, from 6.4 dB under to 0.8 over; its
 anti-lag, from 3.5 dB under to 2.1; the limiter then acts in 22 to 31 % of the 0.4 s reads, 3 dB when it does. The
-flat-plane V8's lift stays 4.5 dB under (5.0 before): its bangs come close together and stand less than four times over
-the parts round them, so they are its body, and are exposed for. At twice, not four times, a free rev's own pulses
-counted as bursts (the kei's and the V12's revs to 0.65 and 0.68, typical): four keeps the revs where they were.
-`the auto level and the bangs` holds the rally's lift within 2 dB (it reads 5.8 dB under without the rule).
+flat-plane V8's lift stayed 4.5 dB under (5.0 before): its bangs come close together and stand less than four times over
+the parts round them, so the level's percentile alone took them for its body. At twice, not four times, a free rev's own
+pulses counted as bursts (the kei's and the V12's revs to 0.65 and 0.68, typical): four keeps the revs where they were.
+So a burn is keyed by what it is, not by its level alone (26 Nov): while a burn in the pipe is alight (the exhaust's
+bangHeat, held while its sound is on its way: the tailpipes' longest tap and 40 ms for the pipe's run and the ring), a
+part over twice the parts' running median is a burst too. A window whose every part is a burst leaves Q where it was.
+The V8's lift (card G's clip): 4.9 dB under, then 0.3; the rally's +0.8, then +1.5; the free revs the same to two
+decimals (they burn nothing). Its price: on the V8's spark cut, the limiter acts in 74 % of the 0.4 s reads, not
+45 %, and the body there is 4.4 dB over Carved's: those bangs are now limited, not exposed for. Carved bangs, and a
+model 0 exhaust's pops, have no bangHeat: for them only the level's rule acts.
+`the auto level and the bangs` holds the rally's lift within 2 dB (5.8 dB under without the burst rule); its nightly
+form holds the V8's (-0.2 dB; -5.1 without the key).
 
 Its known limit: a sound whose loudest state is its steady one is exposed about 12 dB under the target, by design,
 for the headroom a rev would need. The tractor's cabin is the case: its governed rev rises 1.4 dB over its idle there,

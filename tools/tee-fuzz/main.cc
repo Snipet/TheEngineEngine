@@ -12,7 +12,9 @@
 //   tee-fuzz --build file.json --seed 17                that build (and nothing random) under seed 17's driving
 //   tee-fuzz --play v8 tour car.model+engine.custom     one combination (switch paths joined by +, or none, or all)
 //                                                       on an archetype through a scenario, judged as the tests do
-//                                                       (against the reference's own step); --wav f.wav keeps it
+//                                                       (against the reference's own step); --wav f.wav keeps it;
+//                                                       --set path=value writes the Spec at 0 s; --tel a,b prints
+//                                                       those columns around the worst step (or --at T)
 //   tee-fuzz --write-scenarios                          content/scenarios/combo/*.json from the harness
 //   tee-fuzz --match -20 a.wav b.wav ...                the files to one loudness, in place (the listening pack's
 //                                                       pairs): each file's gated RMS (100 ms windows, those within
@@ -211,7 +213,7 @@ namespace
     int usage();
 
     int play(const std::string& build, const std::string& kindArg, const std::string& comboArg, const std::string& wav,
-             const std::vector<Value>& sets)
+             const std::vector<Value>& sets, const std::string& tel = std::string(), double telAt = -1.0)
     {
         // a build file (a path ending .json) plays as well as an archetype: no idle band is judged then
         const bool file = build.size() > 5 && build.compare(build.size() - 5, 5, ".json") == 0;
@@ -283,6 +285,34 @@ namespace
                         : v.stepExcess > 2.0 * refExcess    ? "OVER"
                                                             : "within");
         }
+        // --tel a,b,c: those columns around the worst step (or --at T): the range over +-50 ms and the value at offsets
+        if (!tel.empty())
+        {
+            const double t0 = telAt >= 0.0 ? telAt : v.stepAt;
+            static const double kOffsets[] = {-0.02, -0.01, -0.005, -0.002, 0.0, 0.002, 0.005, 0.01, 0.02};
+            std::printf("  telemetry around %.3f s, at offsets (ms):", t0);
+            for (double o : kOffsets)
+                std::printf(" %+6.0f", 1000.0 * o);
+            std::printf("\n");
+            std::string rest = tel;
+            while (!rest.empty())
+            {
+                const auto comma = rest.find(',');
+                const std::string path = rest.substr(0, comma);
+                rest = comma == std::string::npos ? std::string() : rest.substr(comma + 1);
+                const tee::test::Series s = r.tel(path);
+                if (s.empty())
+                {
+                    std::printf("  %-28s no such column\n", path.c_str());
+                    continue;
+                }
+                const tee::test::Series w = s.during(t0 - 0.05, t0 + 0.05);
+                std::printf("  %-28s %g to %g:", path.c_str(), w.empty() ? 0.0 : w.min(), w.empty() ? 0.0 : w.max());
+                for (double o : kOffsets)
+                    std::printf(" %g", s.at(t0 + o));
+                std::printf("\n");
+            }
+        }
         if (!wav.empty())
         {
             tee::Audio a;
@@ -301,7 +331,7 @@ namespace
     {
         std::fprintf(stderr, "usage: tee-fuzz --seeds A-B | --seed N [--corners] [--seconds S] [--reduce] "
                              "[--build file.json] | --play <archetype> <tour|pull|launch|cold> <switches|none|all> "
-                             "[--wav f.wav] | --match <dBFS> files... | --write-scenarios\n");
+                             "[--wav f.wav] [--set path=value] [--tel a,b] [--at T] | --match <dBFS> files... | --write-scenarios\n");
         return 2;
     }
 } // namespace
@@ -339,14 +369,20 @@ int main(int argc, char** argv)
         else if (a == "--play")
         {
             const std::string build = next(), kindArg = next(), comboArg = next();
-            std::string wav;
+            std::string wav, tel;
+            double telAt = -1.0;
             std::vector<Value> sets;
-            while (i + 2 < argc && (std::string(argv[i + 1]) == "--wav" || std::string(argv[i + 1]) == "--set"))
+            while (i + 2 < argc && (std::string(argv[i + 1]) == "--wav" || std::string(argv[i + 1]) == "--set" ||
+                                    std::string(argv[i + 1]) == "--tel" || std::string(argv[i + 1]) == "--at"))
             {
                 const std::string opt = argv[++i];
                 const std::string arg = next();
                 if (opt == "--wav")
                     wav = arg;
+                else if (opt == "--tel")
+                    tel = arg;
+                else if (opt == "--at")
+                    telAt = std::atof(arg.c_str());
                 else
                 {
                     const auto eq = arg.find('=');
@@ -355,7 +391,7 @@ int main(int argc, char** argv)
                     sets.push_back({arg.substr(0, eq), std::atof(arg.substr(eq + 1).c_str())});
                 }
             }
-            return play(build, kindArg, comboArg, wav, sets);
+            return play(build, kindArg, comboArg, wav, sets, tel, telAt);
         }
         else if (a == "--match")
         {

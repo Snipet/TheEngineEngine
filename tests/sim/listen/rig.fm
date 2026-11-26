@@ -128,7 +128,7 @@ module LRig
             const float sh = src == 3 ? shake : 0.0f;
             ln.block(view, intakeK, mechK, distance, room, levelDb, asp, exTrim, gainNorm, nPipes, bike, tailD, &ss, &st,
                      carSpeed, driven, vTotal, nCyl, 0.0f, 0.0f, 0.0f, 0.0f, fire, cyc, 0, moto, 1.41f,
-                     tuck, lift);
+                     tuck, lift, 0.0f);
             for (int i = 0; i < 16; ++i)
             {
                 const float x = signal();
