@@ -1653,6 +1653,54 @@ against 3.00 reads chaotic. The design's third measurement is therefore the rate
 the start's flare. Open with the steward: whether the dashpot holding the valve at 0.35 at full throttle on
 boost is right, and how close the rally row sits to its bound on other trees.
 
+## 26 Nov 04:49 UTC: after `main` d586682c: first.json's boost threshold, read four ways; corrections of record
+
+Measurement and design only since `main` moved; nothing under `sim/`, `host/` or `tools/` is pushed until a bake
+can follow (P's push is refused; with the owner).
+
+**first.json between 1500 and 1800 rpm is a boost threshold, and three earlier statements about it are
+corrected.**
+- N1, held points on `main`'s sim (stepped, --settle 40): 1503 rpm 225 N m with the gate shut and boost 19.5 kPa
+  against a 120 target; 1655 rpm 250 N m at 30 kPa; 1796 rpm 384 N m at 120 kPa. Steady (20 s and 40 s holds
+  agree): a match, not a lag. Breathing per kPa of manifold is the same at 1500 as at 1800: not the cam.
+- G, 1733 rpm, 60 s holds: on `main` 272 N m at 42 kPa approached from below and from above alike (not
+  bistable by these approaches); 256 at 35 kPa on a 90 s hold with no settle; the predictor reads 293 at 51.
+  With the running path mass-weighted (item 6, scratch): 383 at 120 kPa every way. The weighting moves the
+  threshold across 1733; it is not shown more right on a turbine whose size is a guess.
+- **Corrected (G):** the record under 9e52a186 that the stepped dyno "held 20 s reads 383.4" at 1733 as the
+  truth the old settle missed was not independent: that settle weighed by mass at the step and moved the
+  threshold itself. The hole P read at 1800 rpm on Table P (270) was the old settle's; the 1733 point was not.
+- **Corrected (N2):** the boost falling to 85 kPa at 6000 rpm is not the shaft's ceiling (omegaMax is 560 m/s
+  over the tip radius, a judgement, and the shaft ran far under it) but the build's 60 kPa gate spring against a
+  120 target: with a 120 kPa spring, on target and 327 N m (+13 %). Content, with its source to find.
+- **Corrected (N2, by N1's check):** "a smaller turbine costs torque everywhere" priced the cam with the
+  turbine. At 3000 rpm and equal boost the mean back pressure moves 4 %; the loss is the exhaust pushing back in
+  the overlap under a cam map baked for the larger turbine: holding the intake phase at 20 deg recovers about
+  60 % (designShare 0.6: -18.8 % becomes -7.2 %). A turbine cannot be priced without re-baking spark and cam
+  for it: item 9 opens with C's bake stage (match, spark, cam, spark), not with a published map.
+- For C, agreed for when `host/` may be pushed: on a build with a turbine a held step is measured only when the
+  shaft's drift over the last second is under 0.5 %, capped at 40 s, a capped step marked unsettled. And the
+  long-hold case does not look inside a threshold: at 1733 the predictor reads 14 % over the no-settle hold.
+
+**Corrected (the steward), already in the section above:** the idle's rate term does not act on the rally
+five's limiter; the runs part at the crank.
+
+**The idle's design is measured (the steward; no code pushed).** The fixture's lope is a 0.4 s limit cycle
+seeded at the catch by the proportional part reading the flare's rate; held off through the post-start window
+(the one the integrator hold already uses: no new number) it never starts, and the rate switching on after it
+does not restart it. A filtered rate and a clamped rate both fail the fixture. On the gate's own measure, warm
+and cold, all 31 archetypes pass within about 1 rpm sd of `main` (the 3.0 twin turbo warm 5.5; 49.0 with
+98d0dc4d); the fixture 287 to 19 rpm sd under ecu.model. To code locally, with: what happens at the instant
+the rate switches on (the fixture and two shipped builds, 10 ms steps); the same constant as the integrator
+hold's, by one name; X-031 (4.02 against 4.03) not rested on; the diesel's rows to the digit; alone and first
+when a bake can follow.
+
+**The guarantee for "no wheel without a path" is designed and ruled (N2; local, its push refused):** the
+builder's one call saying which housings a collector reaches; a turbine without a fed housing draws from its
+bank's fed sibling's (twin and quad only); the shared housing's volume the two summed; each nozzle by its own
+orifice law from the one gas, as the twin scroll's are; no new number. The split by firing order on table
+engines only where a source shows such an engine drawn split.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
