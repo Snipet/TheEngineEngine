@@ -107,14 +107,44 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
 
 ## The solve: a bracket and a test, never a count
 
-- **Method:** Illinois (regula falsi with the stale end's value halved) on the bracket above. It keeps the bracket,
-  so it cannot leave it or oscillate as the fixed point does. Its first guess is the old first pass (which keeps
-  running flows close to today's on the first step).
-- **The test:** stop when the bracket's width or the last step is under 1e-5 m^3/s + 1e-4 q, or F's magnitude is
-  under 1e-4 of kd A pc sqrt(R tc) psi*. At most 24 evaluations: if none of those holds there, return the midpoint and
-  count it (a telemetry counter, to be zero on every build; a test holds it there).
-- **Expected:** 4 to 8 evaluations in running, more on the edge cases. Each evaluation is one `tOf`, one sqrt and
-  a few multiplies, as one of today's passes.
+- **The form, measured (26 Nov; the lead's ruling of 12:18 set the target):** a **warm-started secant** in the
+  bracket. The first guess is the last sample's root when the valve flowed the same way, with the last solve's secant
+  slope as the first step's slope. The bracket's top is free on a warm start (C psi* / pq, as Psi <= psi*); a cold
+  start (each opening, each reversal, after a reset) takes the tighter C Psi(r0) / pq (one lookup) and starts at
+  the bracket's middle. Each step is a secant between the last two evaluated points. Whenever a step would leave the
+  open bracket, it bisects instead. No slope of Psi, no division by one.
+- **The test:** stop when |F| < 1e-6 C (into: |G| < 1e-6 of the bracket's top), **testing F first and keeping the
+  evaluated q**, or when the last step is under 1e-6 m^3/s + 1e-4 q. At most 24 evaluations: the bisection
+  fallback bounds it, and a counter of solves that ran out goes to telemetry, to read 0 (a test holds it there).
+- **A named hazard: the root hit exactly.** In float32 a step can land on the root exactly (F = 0.0). In the first
+  scratch build the test came after the bracket update: the root became the bracket's top, the next step "left" the
+  open bracket, and the solve bisected away from the root. The |F| test then stopped on the bisected point, not the
+  evaluated one: half the flow, alternating sample to sample, worse than today (16,435 counted in 1.4 s). Duct.fm's
+  old note ("a Newton iteration on the compressible law chattered where the drop is tiny") may be the same thing.
+  **Its test:** a case whose root is hit exactly, found for the form that is built. For the warm Newton, my float32
+  emulation found one in the captured stream: pc 206546 Pa, tc 1215.93 K, b -34549.3 Pa, z 339833, area 3.38782e-4
+  m^2, started from q 0.3, lands F on 0.0 at q 0.20369. The solve must return 0.20369, not 0.10184. The secant's own
+  case is found the same way, a search of the captured stream for F = 0.0, before its code is accepted.
+- **Evaluations measured** (the combo turbo six's pull, exhaust.model 1; one evaluation = one Psi lookup, the cold
+  top's counted):
+
+  | window | warm Newton (exact slope, 1e-5) | warm secant (1e-4) |
+  |---|---|---|
+  | start 0.2-2.0 s | 2.60 (95th 6) | 2.53 (95th 5) |
+  | low gear 3.5-4.7 s | 2.66 (6) | 2.61 (5) |
+  | steady 2nd 5.0-6.4 s | 2.41 (3) | 2.29 (3) |
+  | relight 6.45-6.70 s | 2.38 (3) | 2.29 (3) |
+  | relight 8.45-8.70 s | 2.37 (3) | 2.26 (3) |
+  | steady 3rd 9.0-10.4 s | 2.39 (3) | 2.27 (3) |
+  | lift, downshift, stop 12-14 s | 3.81 (10) | 3.57 (9) |
+  | the whole pull | | 2.68 (7) |
+
+  The chatter counter reads 0 in every window with either form (today: 243 on the same run).
+- **The memory and correctness:** the answer does not depend on the memory, because the bracket holds from any
+  start; only the number of evaluations does. The same run twice is identical to the bit. A reset clears it (`wOn =
+  0` in `Cylinder::reset`: the owner's line). A reload carries it with the state by field name, and a model switch
+  leaves a valid root as the start: either way the same root to the tolerance. A reversal (the remembered root's sign
+  against the branch) is a cold start, so a remembered root never sits on the wrong side of the new bracket.
 - **The edges:**
   - **lift near zero:** `area <= 1e-9` returns 0 as now. Small areas make q_hi small and the bracket tight; nothing
     divides by the area.
@@ -151,21 +181,35 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
 
 ## The cost
 
-- **Measured** (26 Nov, G's container, idle; `tee-fuzz --play turbo-six pull none`, its "% of a core", three runs
-  each): the tip **15.2, 15.0, 16.2 %**; the 30-pass stand-in **55.2, 54.3, 54.1 %**. So one pass of every valve's
-  solve (vE and vI on all six cylinders) costs about 1.45 % of a core, and **today's three passes are about 4.3 %,
-  some 28 % of the whole program**. The valve's solve is not a small part of a sample's work.
-- **Expected for the real solve:** at 6 to 8 evaluations, about +4 to +7 % of a core, **+28 to +47 % on the whole
-  program**: too much to take without Q's measure and the lead's word. What would bring it near today's:
-  - **a warm start:** the bracket and the first guess from the last sample's root (the flow moves little sample to
-    sample in running), 2 to 4 evaluations typical. It gives up the solve's "no memory" property (duct.fm: "Each
-    solve starts from the pipe with nothing flowing"), which the shared-port memo (cylinder.fm `memoE`) and the
-    null do not need; it stays deterministic;
-  - **the converged solve only where the fixed passes disagree:** run today's passes, and solve to convergence only
-    when the last two passes differ by more than a tolerance, or the choke test falls within a band of rc. Running
-    (5 % spread) would mostly qualify too, so this saves less than it seems; to be measured.
-  - TEE_FAST keeps its 2 fixed passes (its own note already counts the passes).
-  Q measures on Q's hosts before the window's code is accepted; the figures above are one container's.
+- **The ruler** (the lead's of 12:18): the solve's inputs captured sample by sample, cylinder 1's exhaust and intake
+  valves, 0.17 s windows of the combo turbo six's pull, replayed outside the engine. The replay is C++ in float32,
+  built -O2 -ffp-contract=off, written as the FMinus code. Its form of today's code reproduces the engine's captured
+  flows to 6.3e-6 m^3/s in every window, both valves. Nanoseconds per call, the median of 15 batches (each of 20
+  repeats of the stream), the batch range in brackets:
+
+  | window | today: 3 passes | warm Newton 1e-5 | warm Newton 1e-4 | warm secant 1e-5 | warm secant 1e-4 |
+  |---|---|---|---|---|---|
+  | running (steady 2nd, 3rd, both relights) | 50.5 (48.6-60.7) | 51.4 | 47.4 | 41.9 | **38.3 (37.8-39.4)** |
+  | start | 38.6 (32.5-55.6) | 53.8 | 49.9 | 45.3 | 43.0 |
+  | low gear | 39.7 (38.9-48.1) | 55.3 | 51.7 | 50.0 | 55.0 (47.2-66.0) |
+  | lift, downshift, stop | 52.0 (51.6-57.2) | 82.4 | 79.2 | 74.3 | 67.4 |
+
+  - **On the running windows** the secant at 1e-4 costs 24 % less than today's three passes. The secant alone buys
+    18 % (51.4 to 41.9), the looser test alone 8 % (51.4 to 47.4).
+  - **Where flows reverse often** (start, low gear, the stop) it costs 11 to 39 % more per call; the cold starts are
+    most of it.
+  - **The looser test's price in the answer:** against a tight solve (1e-7), the largest difference in the returned
+    flow is 2.2e-6 m^3/s in running, 3.0e-4 at the start, 8.9e-5 in low gear and 5.6e-4 at the stop: relative 2e-5
+    to 9e-5. Today's three passes differ from it by up to 0.56 m^3/s (relative 0.82) at the chatter.
+- **The whole program** (`tee-fuzz --play turbo-six pull none`, % of a core, nine alternated runs, counters
+  stripped): the tip 15.1, 16.6, 16.3, 15.8, 16.4, 16.3, 16.2, 14.9, 14.8 (median 16.2); the warm secant 15.4, 15.2,
+  15.9, 15.3, 15.4, 15.7, 15.1, 15.6, 16.1 (median 15.4). Pairwise median **-0.5 points (-3 %)**.
+- **Against the target** (per call on the running windows no more than today's; the whole pull no more than 2 %
+  over): **met**, on one container. The earlier forms for the record:
+  - 30 passes: 55 % of a core against 15 %;
+  - the warm Newton as first built: a median +1.0 point over five runs, its noise a point.
+  Q reads the secant on Q's hosts.
+- TEE_FAST keeps its 2 fixed passes.
 
 ## What moves that nobody asked to move
 
