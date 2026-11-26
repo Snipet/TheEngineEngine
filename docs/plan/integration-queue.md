@@ -2024,6 +2024,36 @@ engines only where a source shows such an engine drawn split.
 - **For the owner's ears:** two more clips asked of the steward, each upshift on the probe with the cut at
   53 ms, beside the six already shown.
 
+## 26 Nov 08:07 UTC: the combo judge: X's proposal in three parts, ruled; the dyno's knock look; the shift's cut
+
+- **X's proposal (text; every figure from 17 nudges on fb32d4fc), ruled in X's order, each part proved before
+  the next:**
+  - **A, the bound: twice the reference's LOWEST excess over 5 copies at fixed nudges, in the nightly; the
+    default tier keeps the single draw as the tripwire.** A tightening or equal on every measured row (copies
+    over, today to the new bound: X-031 6 to 9, X-030 12 to 15, X-043 11 to 11, the rally five 1 to 5, the
+    tour's lift 3 to 3, X-044 11 to 11) and the six background builds stay 0 of 17. The lowest, not the
+    median or highest: the references' highs are what spread. Before it lands: it bites on X-014 and X-015
+    at 62a6a7fd; every nightly row outside `Known.h` that it turns red is listed with its spread and entered
+    as a sometimes row, none waved off; its cost read from CI's log.
+  - **B, per-event windows** (the start, each shift, each cut onset, each lift, each limiter episode, the
+    rest), judge-side only: a row becomes "this event: n of N". `Known.h` gains an event field, a pattern
+    change: each entry's old and new pattern to the lead before any is made.
+  - **C, the judge at a cut:** periods overlapping a cut flag are no neighbours for the median, case and
+    reference alike. Agreed as a design; a measurement-only variant, local and never pushed, is allowed, and
+    its readings (the six rows, the background, X-030 still showing on today's tree, the planted click) come
+    before any proposal to push. C is the only part that can loosen.
+- **eachSwitch's default-block runs go to `[nightly]`** under the fast tier's rule (the field form the named
+  default-run guard; combo's test-s before and after).
+- **The dyno (U1, carried by J2):** knock as the curve's state at three quarters of its measured points and
+  four at the least (ticks under the plot, no ring on each point), the lead's choice on its own render of
+  both looks; the cursor through the boost band; five goldens move by the band's cursor line and dots alone
+  (dyno.stage and dyno.large at two densities, dyno.paper).
+- **X-047's design is ruled and on the branch** (`docs/plan/x047-shift-cut.md`, e7d1246b): the engine cut while
+  the vehicle asks and no longer, the number's size not read, no floor, a test that every asker's window is
+  at least two ECU steps; the whole change launch.fm (the steward's); the bike's quickshifter, today cut for
+  twice its setting, cured by the same. Clips for the owner's ears are in the steward's session (each
+  upshift as shipped, on the reference, without the retard, and with the cut at 53 ms).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 07:50 UTC: `main` IS AT 07a08dc0** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
