@@ -458,3 +458,60 @@ TEST_CASE("measure: the rally five's largest output steps against the burns, sam
     typical = all[all.size() * 99 / 100];
     std::printf("99th percentile step %.4f\n", typical);
 }
+
+// The rally five held on its limiter (spark cut, Burned in the pipe): the bangs' mean pressures against the housing's
+// books, every 0.1 s; PROBE_BANG sets exhaust.bang
+TEST_CASE("measure: the rally five on its limiter, the bangs' pressures and the housing's books", "[.][measure]")
+{
+    auto player = tee::test::enginePlayer(48000.0);
+    tee::applyBuild(*player, tee::test::engineBuild(*player, "archetypes/inline-five-turbo-rally"));
+    if (const char* b = std::getenv("PROBE_BANG"))
+    {
+        const int i = player->specIndex("exhaust.bang");
+        REQUIRE(i >= 0);
+        player->setSpec(static_cast<std::size_t>(i), std::atof(b), 0);
+    }
+    auto rd = [&](const std::string& path) {
+        double v = 0.0;
+        std::string error;
+        if (!player->read(path, v, error))
+        {
+            std::printf("(%s: %s)\n", path.c_str(), error.c_str());
+            return -1.0;
+        }
+        return v;
+    };
+    std::vector<float> l(512), r(512);
+    auto run = [&](double s) {
+        for (int b = 0; b < static_cast<int>(s * 48000.0 / 512.0 + 0.5); ++b)
+            player->process(l.data(), r.data(), 512);
+    };
+    player->controls().mode = tee::EnginePlayer::kModeBench;
+    player->controls().ignition = tee::EnginePlayer::kIgnitionStart;
+    run(1.5);
+    player->controls().ignition = tee::EnginePlayer::kIgnitionOn;
+    run(0.5);
+    player->controls().throttle = 1.0f;
+    run(3.0);
+    for (int k = 0; k < 20; ++k)
+    {
+        double rate = 0.0, port = 0.0, coll = 0.0, hp = 0.0, ht = 0.0, tc = 0.0;
+        int n = 0;
+        for (int b = 0; b < 9; ++b)
+        {
+            player->process(l.data(), r.data(), 512);
+            rate += rd("exh.b.bangRate");
+            port += rd("exh.pPortMean");
+            coll += rd("exh.b.pTurb");
+            hp += rd("boost.mach.house[0].p");
+            ht += rd("boost.mach.house[0].t");
+            tc += rd("exh.b.heat.tUse[1]");
+            ++n;
+        }
+        std::printf("%.1f s rpm %.0f flags %.0f | heat %.0f kW | port %.2f bar coll %.2f housing %.2f bar %.0f K | collector gas %.0f K | "
+                    "boost %.2f bar dpWave %.0f kPa | tLet %.3f books %.3f\n",
+                    5.0 + 0.096 * (k + 1), rd("crank.rpm"), rd("tel.engine.flags"), rate / n / 1e3, port / n / 1e5,
+                    coll / n / 1e5, hp / n / 1e5, ht / n, tc / n, rd("tel.boost.pressure") / 1e5, rd("tel.valve.dpWave") / 1e3,
+                    rd("exh.tLet"), rd("exh.bookRatio"));
+    }
+}
