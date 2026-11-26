@@ -143,3 +143,13 @@ against the nightly bound 2.67: engine.wallHeat over in 3/17 (1.65 / 2.08 / 3.27
 2.84 / 3.89). Reproduce once B's harness is on the branch: FLIPPROOF="5 turbo-six" BOUNDPROOF_DT="..."
 build-dev/bin/tee-tests-combo "[.flipproof]". First read: what the fade (cutWant, holdModel's held switch) does across a
 running flip for those two models, and whether their step is the fade's or the model's.
+
+**X-055 (X's, 26 Nov 18:11; my part, not yet read): the flat-plane twin-turbo V8 as built on the pull**
+(content/builds/archetypes/flat-plane-v8-39-twin-turbo.json, the nightly's shipped-pull case). Mine: its 1-2 upshift on
+the dual clutch, 1 of 17 copies over the nightly bound 2.33 (2.66 at +0.01 K, at 6.882 s; lowest 1.23, median 1.61),
+the same on the tip and on the steward's cut probe (a DCT cuts nothing, so X-047 doesn't reach it). N2 is named for
+the boost, the steward for the limiter (7 of 17); the "rest" (1 of 17, 2.76 at 4.532 s) has no owner yet. Reproduce:
+BOUNDPROOF="corpus flat-plane-v8-39-twin-turbo pull" BOUNDPROOF_DT="<17 nudges, -0.15 to +0.15 K>" tee-tests-combo
+"[.boundproof]". First read: the DCT's torque handover (gearbox.fm:294-320, aFrom / aTo across dur, a smoothstep) at
+1-2 with the boost spooled: whether the step is the handover's shape, the driveline's lash or the boost's response to
+the load step (N2's).
