@@ -188,8 +188,12 @@ namespace tee::ui
                                             { "MAY REST", "FROM", "TO", "BELOW LOAD" });
             const pages::Section springs = sec("SPRINGS", { VF::train, VF::springRate, VF::springPreload, VF::valveMass },
                                                { "TRAIN", "RATE", "PRELOAD", "VALVE MASS" });
-            const pages::Section head = sec("HEAD", { VF::valves, VF::dIn, VF::dEx, VF::portIn, VF::portEx },
-                                            { "VALVES", "INTAKE DIA", "EXHAUST DIA", "INTAKE PORT", "EXHAUST PORT" });
+            pages::Section head = sec("HEAD", { VF::valves, VF::dIn, VF::dEx, VF::portIn, VF::portEx },
+                                      { "VALVES", "INTAKE DIA", "EXHAUST DIA", "INTAKE PORT", "EXHAUST PORT" });
+            // X-050's other side (N1, 26 Nov): the Reference model reads none of these; its valves' areas are the bore's
+            // (valvetrain.fm: the curtain at full lift a share of the piston's area).
+            if (dial() == Dial::reference)
+                head.warnings.push_back("THE LAB IS OFF: THE REFERENCE MODEL SIZES ITS VALVES FROM THE BORE; THESE TAKE EFFECT WITH THE LAB MODEL");
             if (engine::twoStrokeOf(ctx_.doc).on)
             {
                 const pages::Section ports{ "PORTS", { "engine.tsExhaustDur", "engine.tsExhaustWidth", "engine.tsExhaustRadius",

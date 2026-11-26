@@ -9,6 +9,7 @@
 #include "build/BuildKit.h"
 
 #include "Png.h"
+#include "views/engine/EngineWorkspace.h"
 
 #include <funkgui/canvas/SoftRaster.h>
 #include <funkgui/text/FontService.h>
@@ -82,6 +83,27 @@ namespace
         g = show("");
         CHECK_MSG(g.find(kLabOff) != std::string::npos && g.find(kDead) == std::string::npos && g.find("valve.cam ") != std::string::npos, g);
         shot("camdial.reference.generated.png");
+        // valve.head under Reference: none of its fields read (N1), and said so; under Lab, not.
+        const std::string head = show("valve.head");
+        CHECK_MSG(head.find("THE LAB IS OFF: THE REFERENCE MODEL SIZES ITS") != std::string::npos, head);
+        shot("camdial.reference.head.png");
+        // ENGINE under Reference: no lift figure (the lab's inLift/exLift are not the reference's; N1), and under Lab the
+        // lab's lift again.
+        const int engine = f.find("engine");
+        CHECK(engine >= 0);
+        if (engine >= 0)
+        {
+            f.show(engine);
+            rig.host->tick(5);
+            const auto [refIn, refEx] = tee::ui::engineFullLifts(f.current());
+            CHECK_MSG(!std::isfinite(refIn) && !std::isfinite(refEx), std::to_string(refIn) + ", " + std::to_string(refEx));
+            shot("camdial.reference.engine.png");
+            set("valve.model", 1.0);
+            rig.host->tick(5);
+            const auto [labIn, labEx] = tee::ui::engineFullLifts(f.current());
+            CHECK_MSG(std::isfinite(labIn) && std::isfinite(labEx), std::to_string(labIn) + ", " + std::to_string(labEx));
+            set("valve.model", 0.0);
+        }
         // The model switched with the page open (no new selection): the page follows at once (Workspace::inspectorKey),
         // the dial gone and no line.
         t = show("valve.timing");
@@ -89,6 +111,7 @@ namespace
         rig.host->tick(3);
         t = f.inspectorGui(0);
         CHECK_MSG(t.find("valve.cam ") == std::string::npos && t.find(kDead) == std::string::npos && t.find("color=yellow") == std::string::npos, t);
+        CHECK(show("valve.head").find("THE REFERENCE MODEL SIZES") == std::string::npos);
 
         // A two-stroke (N1: nothing reads spec.valve there, its ports are the engine's two-stroke fields): VALVES shows
         // its ports alone, whatever is selected, so no valve field and no dial, under either model.

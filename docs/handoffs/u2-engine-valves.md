@@ -44,3 +44,12 @@ the units changed, so switching `valve.model` with a page open left the old rows
 `dial()`; the default, 0, changes no other workspace. Test `build.valves.camdial` (made-up states over the real Spec:
 the three states, the model switched with the page open, a two-stroke under both models); pictures
 out/ui/valves/camdial.*.png.
+
+**Added by U1 for U2, 26 Nov 2026, X-050's Reference side** (N1: under `valve.model` Reference none of the HEAD fields
+is read, and the valvetrain has no lift in metres, only a share of full lift over its events). `valve.head`'s HEAD
+section says "THE LAB IS OFF: THE REFERENCE MODEL SIZES ITS VALVES FROM THE BORE; THESE TAKE EFFECT WITH THE LAB MODEL"
+under its fields on a Reference build. ENGINE (`EngineWorkspace.cpp`, `Model::referenceLift`): on a Reference build the
+full lifts are not the lab's `inLift`/`exLift` (NaN; `engineFullLifts` says so) and the IN LIFT / EX LIFT readouts give way
+to "NO LIFT FIGURE UNDER THE REFERENCE MODEL" (the lead's ruling: not the lab's lift, not the bare shape); the valves
+still move by the Scope's share at a nominal height. Test `build.valves.camdial`; pictures
+out/ui/valves/camdial.reference.{head,engine}.png.
