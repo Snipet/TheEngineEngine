@@ -32,6 +32,27 @@ namespace tee::ui
 
         std::string firstLine(const std::string& s) { return s.substr(0, s.find('\n')); }
 
+        // A generated page with a workspace's notes on its section (Workspace::sectionNotes) at its top, amber, each in
+        // lines of at most 46 characters (a label's most is 48) broken at spaces.
+        std::string withNotes(std::string gui, const std::vector<std::string>& notes)
+        {
+            const std::size_t open = gui.find('{');
+            if (notes.empty() || open == std::string::npos)
+                return gui;
+            std::string labels;
+            for (const std::string& note : notes)
+                for (std::size_t at = 0; at < note.size();)
+                {
+                    std::size_t end = std::min(note.size(), at + 46);
+                    if (end < note.size())
+                        if (const std::size_t sp = note.rfind(' ', end); sp != std::string::npos && sp > at)
+                            end = sp;
+                    labels += " label \"" + note.substr(at, end - at) + "\" size=small color=yellow ;";
+                    at = end + (end < note.size() && note[end] == ' ' ? 1 : 0);
+                }
+            return gui.insert(open + 1, labels);
+        }
+
         // A quantity's unit as a stepped parameter: its units' index (the units page's steppers).
         class UnitPort final : public funkgui::ParamPort
         {
@@ -704,6 +725,7 @@ namespace tee::ui
         pages_.clear();
         page_ = 0;
         const Workspace& ws = current();
+        inspectorKeySeen_ = ws.inspectorKey();
         const std::string& sel = selection_.path();
         inspectorHead_ = sel.empty() ? std::string(ws.title()) : upper(sel);
         for (char& ch : inspectorHead_)
@@ -732,12 +754,16 @@ namespace tee::ui
                     for (const std::string& sec : sectionsOf(shown_))
                     {
                         std::vector<int> scalars, tables;
+                        const std::vector<std::string> omits = ws.sectionOmits(sec);
                         for (const int f : sectionFields(doc_, sec))
-                            (doc_.info(f).table() ? tables : scalars).push_back(f);
+                            if (std::find(omits.begin(), omits.end(), doc_.info(f).path) == omits.end())
+                                (doc_.info(f).table() ? tables : scalars).push_back(f);
                         const auto split = scalars.empty() ? std::vector<std::vector<int>>{} : splitPages(doc_, scalars, 60);
+                        const std::vector<std::string> notes = ws.sectionNotes(sec);
                         for (std::size_t k = 0; k < split.size(); ++k)
                             pages_.push_back({ upper(sec) + (split.size() > 1 ? " " + std::to_string(k + 1) : std::string()),
-                                               pageGui(doc_, split[k], {}), nullptr, nullptr });
+                                               withNotes(pageGui(doc_, split[k], {}), k == 0 ? notes : std::vector<std::string>{}),
+                                               nullptr, nullptr });
                         for (const int f : tables)
                         {
                             const FieldInfo& info = doc_.info(f);
@@ -1527,6 +1553,12 @@ namespace tee::ui
         if (units_.revision() != unitsSeen_ && !(gestures() != nullptr && gestures()->dragging()))
         {
             unitsSeen_ = units_.revision();
+            makeInspector();
+            arrange();
+        }
+        // What decides the shown workspace's pages moved (Workspace::inspectorKey: VALVES' model): the pages again.
+        if (current().inspectorKey() != inspectorKeySeen_ && !(gestures() != nullptr && gestures()->dragging()))
+        {
             makeInspector();
             arrange();
         }

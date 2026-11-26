@@ -425,6 +425,16 @@ namespace tee::ui
         // widgets and dotted field paths. "" (the default): the frame's generated pages for the selection's fields,
         // or for sections() when nothing is selected or the selection has no fields.
         virtual std::string inspectorPage() const { return {}; }
+        // Lines in words for the frame's generated page of a section of sections() (when inspectorPage() is ""), amber,
+        // under its fields: what a field does or does not do in this build (U1, 26 Nov: the cam dial a Lab build does not
+        // read). None (the default): none.
+        virtual std::vector<std::string> sectionNotes(const std::string& /*section*/) const { return {}; }
+        // Fields of a section the frame's generated page leaves out in this build: read by nothing, so no row a person
+        // could touch to no effect (the lead, 26 Nov: the cam dial a Lab piston build does not read). Paths; none: none.
+        virtual std::vector<std::string> sectionOmits(const std::string& /*section*/) const { return {}; }
+        // Moves when what inspectorPage(), sectionNotes() or sectionOmits() give would change though the selection did not
+        // (a value elsewhere decides them: VALVES' valve.model): the frame makes the inspector again. Default: never.
+        virtual std::uint64_t inspectorKey() const { return 0; }
         // Whether the dyno ribbon is under the inspector (not on DYNO and DRIVE).
         virtual bool ribbon() const { return true; }
         // Wants full rate: something on the stage moves (live values, an ease). Default: whatever the Board says.

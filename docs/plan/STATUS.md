@@ -43,6 +43,27 @@
 
 ## Landed
 
+- **26 Nov 12:25 UTC: `main` at 389ee865** (from 317404d9, fast-forward; run 45811515179 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). New in `main`, `ui/` only: X-050's
+  interface form. On a build running the Lab valvetrain with a piston engine the reference's cam dial, which
+  nothing reads there, is no longer offered (VALVES' MODEL section and the generated valve page); on a rotary
+  it stays and is named for its ports; on a Reference build the lab's fields say they take effect with the
+  Lab model (the generated page and the head), and ENGINE says there is no lift figure. The inspector's
+  pages now follow the valvetrain model the moment it is switched, not at the next click.
+- **26 Nov 11:53 UTC: `main` at 317404d9** (from 5278e3e9, fast-forward; run 45806986323 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). Scripts, tests and docs only: the cloud
+  bootstrap retries its package install once after one more index update (a mirror's 404 had failed a Linux
+  job before Build); `tests/sim/combo/spread.sh` plays every copy on a second sim tree too (a cure's before and
+  after from one invocation). Nothing an owner sees or hears moved.
+- **26 Nov 11:01 UTC: `main` at 5278e3e9** (from 3c42b4d2, fast-forward; run 45796819517 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). Tests and
+  docs only: the nightly's click bound is twice the reference's LOWEST excess over five fixed nudged copies (the
+  default tier keeps its single draw); what it found, all on the turbo six's pull, entered as sometimes rows
+  (X-043 widened to the pull, X-048, X-049); the six older rows' counts under it. Found since and NOT cured in
+  `main` (each waits for a window and a bake): X-046 (the engine never reads the air's pressure; said in the
+  Air workspace), X-047 (a shift's cut lasts the vehicle's window plus its number: 210 ms where 60 is meant),
+  X-050 (the cam dial does nothing on a Lab piston build; the interface's form on its way), X-051 (the exhaust
+  valve's flow solve does not converge on a first pulse into emptied pipes: the click after a cut).
 - **26 Nov 09:16 UTC: `main` at 3c42b4d2** (from 5cd03815, fast-forward; run 45781892920 on that commit: Linux,
   Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). New in `main`:
   the dyno says knock once when it is the curve's state (three quarters of its measured points and four at the

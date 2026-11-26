@@ -2054,12 +2054,170 @@ engines only where a source shows such an engine drawn split.
   twice its setting, cured by the same. Clips for the owner's ears are in the steward's session (each
   upshift as shipped, on the reference, without the retard, and with the cut at 53 ms).
 
+## 26 Nov 10:08 UTC: the nightly bound is in; what it found on the turbo six's pull; a dead cam dial
+
+- **`main` is at 3c42b4d2 (09:16).** Past it on the branch: X's part A (97a7f92e, 24d51259: the nightly's click
+  bound twice the reference's lowest excess over five fixed copies; the default tier's single draw kept) and
+  docs. Tests only; the baked trees unchanged.
+- **Under the nightly bound, combo's nightly reads 117 of 127; every new red is the turbo six's PULL** (its
+  bound 3.37 to 2.67; the control with nothing on 0 of 17, highest 2.06). Entered in three groups by the
+  lead's ruling: **X-043 widened to the pull** as two exact rows (intake+exhaust+car 7 of 17 and
+  custom+intake+exhaust 3 of 17, the start's catch); **X-048**, the pull at its shifts with boost.model on
+  (alone 2, valve+boost 4, wallHeat+valve+boost 14, valve+boost+fuel 8 of 17; N2, N1 on the valve rows);
+  **X-049**, valve+exhaust+sound (2 of 17 at 6.59 s). The six older rows under the nightly bound: X-031 7,
+  X-030 13, X-043 11, the rally five 5, the tour's lift 3, X-044 11 of 17.
+- **X-048 (N1's read): its over copies are the gate loop's limit cycle at steady full load**, item 3, N2's.
+- **X-049, read three ways (N1, G, L).** The event exists only with sound.model on, sound alone included; no
+  exhaust or valve combination without it shows it. L (its note e664691e): sound.model does not starve the
+  cut; both models' cuts are the exhaust's pumping pulses alone, the new one 9.4 dB under its firing. The
+  REFERENCE SITS ON ITS 0.85 LIMITER FOR THE WHOLE PULL at the combo build's view and cannot show a relight
+  standing out. So part (1) is the judge's (X, inside part C, with a measurement of each side's excess with
+  the reference off its limiter). Part (2) is real and N1's: the turbo six's first pulse after the shift's
+  cut is +10 dB over its own firing (0.569 against 0.175) where the small four's is +0.6 dB.
+- **A dead dial (N1's read of sim/, U1's of the interface; X numbers it).** Under valve.model Lab the
+  reference's cam dial moves no event on a piston engine (valvetrain.fm:113-129) and its idle term is
+  bypassed with ecu.model Maps and a stated idle speed. All 31 archetypes and first.json run that way, so on
+  30 of 32 the dial does nothing; it is on screen and editable with no word beside it (ValvesWorkspace.cpp:133,
+  :176-177; the generated pages, Binding.cpp:427). On the two rotaries it is live. **Ruled:** the fault is
+  cured in the interface now (U1: not offered as live on a Lab piston build, a line saying where the cams
+  are; pictures first); N1's "the dial as the lab's seat events" behind an explicit flag is a feature for the
+  owner to want, not in the window; the idle term on a Lab build without Maps is a small item of N1's.
+- **A corpus question (N1):** a combo build that states only the dial (the turbo six) runs the lab's default
+  cam whenever valve.model is on, so its valve rows compare cam against cam. X measures the valve rows with
+  lab cams stated equal to the dial (a scratch copy) before anything in the corpus changes.
+
+## 26 Nov 10:36 UTC: X-049 PLACED: the exhaust valve's flow solve does not converge on a first pulse (item 17)
+
+- **G, on scratch trees with a sample-by-sample capture (the run unchanged by it): not a pipe front, not a
+  junction, not physics** (two of G's three predictions wrong, as G states). On the first pulse into pipes a
+  cut has emptied, `Valve::flow` (sim/exhaust/duct.fm: three fixed passes of a fixed-point iteration, a
+  slowly damped oscillation there: 1.67, 0.27, 0.75, 0.38 ... to 0.49) is left unconverged, and its choke
+  test acts on a ratio that wanders across 0.5457 from sample to sample: the valve's flow chatters between
+  about 0.6 and 1.2 m3/s, 29 jumps over 0.2 m3/s in 10 ms where running has none. The first pulse meets a
+  rarefaction of -57 kPa (the pipe near 60 kPa absolute) where running pulses meet -24 to -30.
+- **Whichever cylinder fires first into the emptied pipes has it, in every copy** (cylinders 1, 3, 4, 5, 6
+  seen); the row's 2 of 17 was the judge's draw on which cylinder that was. **The same at 48, 96 and 192 kHz**
+  (the solve is algebraic each sample; nothing thins). The collector and the primary's far end show nothing.
+- **With the solve converged (a 30-pass stand-in, a scratch tree): X-049 reads 0 of 17, median 1.52, highest
+  2.00** (was 2 of 17, 2.30, 3.28); its 6.58 s and 8.58 s events both gone. A stand-in, so no verdict.
+- **RULED: a fault, item 17 of the next window, G's, a design first.** The valve's flow solved to convergence
+  as one continuous equation (the flow function flat below critical), a bracketed root with a convergence
+  test and never a fixed count, both branches, behind a hidden switch (the converged solve the default
+  under the new models; the reference's three passes for the null, test 2 pinned). The running solve is
+  unconverged too, by about 5 % between its last two passes: every build's sound and every table moves, so
+  clips before and after for the owner and Q's cost are part of it.
+- **How wide it is, being measured (G, predictions per row first):** the spreads on the stand-in of every
+  sometimes row whose event is a first pulse into quiet pipes (X-030, X-031, X-044, X-043, X-041's two,
+  X-048's rows, the control, two background builds), case and reference both. **X's part C is HELD until
+  they are in:** on this row the judge was right to call a click, and dropping a cut's neighbours from the
+  median could have taught it to overlook a real numerical fault. Item 16's acceptance is read knowing
+  item 17 moves the same rows: 16 first on today's valve, then 17.
+- Also since 10:08: X-050 is the dead cam dial's number (U1 the interface, N1 the sim side; N1's notes at
+  9f11391c). U1's form, on the lead's render: on a Lab piston build the dial left out on both pages and NO
+  line (a healthy build carries no warning words); on a rotary it stays with a neutral line; on a Reference
+  build the lab-off warning.
+
+- **aa8d6c4c, Linux, run 45806403099 (job 139862779783): infrastructure.** The bootstrap's apt install got 404s from
+  security.ubuntu.com for libasound2t64 and libasound2-data 1.2.11-1ubuntu0.5 right after a clean `apt-get update`
+  (the mirror's race: a fresh index naming a version the pool had just replaced). Build and Test were not reached.
+  Fixed by the lead's approval (11:01): one more update and one retry of the install, both logged; a second failure
+  fails the job as before. If the step fails again after that, the package set is pinned or cached (the lead's word).
+- **`main` at 5278e3e9** (11:01, the lead; run 45796819517 green on Linux 584, macOS 583, Windows 576; tests only
+  since 3c42b4d2).
+
+## 26 Nov 11:39 UTC: how wide X-051 is (G's two columns); part C lifted in two-tree form; part B's rows; X-050 on the branch
+
+- **X-051, the tip against a tree differing only in the valve solve's passes (30 for 3), X's spread.sh in its
+  two-tree mode, 17 copies; counts over the nightly bounds (own-tree bound in brackets where it differs):**
+  X-049 2 to 0, X-043 tour 11 to 0, X-043 pull 7 to 0: **cured on the stand-in**. X-048 (wallHeat+valve+boost)
+  14 to 8 (3) and X-030 (fuel+ecu+car) 13 to 9, its highest 7.09 to 4.03: **partly**. X-044 11 to 12, X-041's
+  lift 3 to 3 (0), the rally five 5 to 4 over 2.48: **not carried**. X-031 7 to 2 against today's bound, 14
+  against the stand-in's own (its reference's median fell 2.09 to 1.61): bound-dependent. The controls and
+  background rows stay 0 of 17 but their medians move 0.1 to 0.5 either way: every reading, case and
+  reference, sits partly on this solve's noise. G's predictions scored by G: X-043 predicted to stay (cured),
+  X-044 and the rally five predicted to fall (they stay). A stand-in: no verdict until the real solve.
+- **Ruled:** item 17 stands (a start's first firings are heard on every start); G writes its design
+  (`docs/plan/x051-valve-solve.md`) with acceptance in this table's terms, and "what moves that nobody asked
+  to move": every nightly bound recomputed on the new tree, rows entered or released by the spread, never by
+  a draw. Clips for the owner asked of G (a shipped turbo build: a cold start, an upshift, steady running,
+  as shipped against the stand-in) and of the steward (each upshift with both of the window's fixes).
+- **Part C's hold is lifted in one form:** a proposal with measurements, every reading taken on both trees
+  (the tip and G's stand-in), so the restated judge is not fitted to today's unconverged valve.
+- **Part B (X, local until its proof and its final nightly):** per-event windows (the start, each shift, each
+  limiter episode, each cut, each lift, the rest; a worst sample's neighbours never clipped to a window).
+  Ten rows it uncovers, entered by the lead's ruling: X-044 gains the small four's 3-2 downshift rows, the
+  V8 tour's cut at 9.46 s and the turbo six's 3-2 downshift with custom+boost+ecu; one new number at the
+  limiter (the V8's tour, the turbo six's tour: the steward for the rows with ecu.model, G for the rest);
+  a "flip" window for a model switched in mid-run, entered only on its spread. `Known.h` gains an event
+  field, every present row "*"; narrowing any present row is a ruling of its own.
+- **X-050 is on the branch at 389ee865** (U1, carried by J2; 578 of 578): the dead cam dial left out on a Lab
+  piston build with no line; a rotary's named for its ports; the Reference build's lab-off words on the
+  generated page and the head; ENGINE's "no lift figure under the reference model"; the frame's pages follow
+  valve.model at once. The lead rendered all six pictures from the tip: accepted. `main` when its three
+  jobs are green.
+- **CI:** aa8d6c4c's Linux job red on apt's 404 before Build (infrastructure); the steward's bootstrap retry
+  (one more update, one retry, logged) is at 0d040a4b.
+
+## 26 Nov 11:46 UTC: TWO CORRECTIONS OF RECORD: X-051 is nearly absent on what ships; five valve rows measured a cam swap
+
+- **The lead wrote at 11:39 that item 17 was worth a window "on X-043 alone: heard on every start of every
+  build". WITHDRAWN.** G's probe (a counter of the chatter's signature in a scratch tree's `Valve::flow`): all
+  nine shipped turbo archetypes as built, the default build and first.json read 0 on the cold start; on the
+  pull only the kei 660 triple shows any (4 events at 9.03 to 9.12 s, half a second after its third shift).
+  The rows X-051 cures (X-049, X-043) are reference-model combinations on the combo fixtures. On the combo
+  turbo six the counter also shows sustained chatter in 1st gear at low speed under load (3.5 to 4.7 s), a
+  running regime, not yet read on shipped builds. **Ruled: item 17 stays as a design and drops behind items
+  16 and 15;** it remains a real numerical fault (the running solve about 5 % unconverged on every build),
+  and an owner can make the combinations that chatter from the model selectors. The design carries the
+  counter as hidden telemetry and a test that the shipped builds read 0 on a start, a pull and a lug.
+- **The valve rows on the turbo six measured a CAM SWAP (X's run of N1's fields; a scratch copy).** With lab
+  cams stated equal to the dial every valve row reads 0 of 17 (X-049 2 to 0; X-048's valve+boost 4 to 0,
+  wallHeat+valve+boost 14 to 0, valve+boost+fuel 8 to 0; X-041's tour lift 3 to 0), the references identical
+  on both builds. valve.model Lab without stated cams runs the lab's default 231 degree cam where the dial
+  says 300: X-050 seen from the corpus. N1 withdraws "the valve model raises the gate loop's swing" and
+  X-049's valve share: both were the cam swap. **Ruled:** the combo builds state lab cams equal to their
+  dials (references bit-identical with valve.model off, shown in the commit); the lab's default cam keeps
+  its coverage by a fair twin (the turbo six with a mild dial equal to that cam), whose valve rows are
+  measured before anything is entered; the five rows on the dial build leave `Known.h` when the builds
+  change, with a dated line saying what they measured; X-048 keeps its rows without valve.model. And the
+  shipped boosted builds are sampled on the PULL (the background was the tour only).
+- **Clips with the owner:** the steward's upshifts with both of the window's fixes; G's kei 660 triple (a cold
+  start, the full-throttle upshift that holds its chatter, steady mid load), as shipped against the
+  converged solve.
+
+## 26 Nov 12:34 UTC: item 17 has a form that costs less than today's; it goes FIRST in the window
+
+- **The cost, measured (G; the design at b2f177c3, `docs/plan/x051-valve-solve.md`).** Today's three passes
+  of every valve's solve are about 28 % of the whole program. A converged solve at 6 to 8 evaluations would
+  have added 28 to 47 %: refused by the lead at that price. A warm-started Newton with the exact slope cured
+  and missed the target by about a point of a core. **A warm-started SECANT with the test at 1e-4 relative
+  meets it:** on a replay of the solve's captured inputs (float32, faithful to the engine's flows to 6.3e-6
+  m3/s) 38.3 ns a call against today's 50.5 on the running windows (-24 %); dearer at the start (+11 %), in
+  low gear (+39 %) and at the lift and stop (+30 %), where flows reverse and the solve starts cold; the whole
+  pull over nine alternated runs -3 %. Evaluations a call: 2.26 to 2.29 in running, 2.68 over the pull.
+- **It cures on the scratch tree:** the chatter counter 0 in every window (today 243 on that run); the looser
+  test's error 2e-5 to 9e-5 relative where today's passes are off by up to 0.82 at the chatter; X-043's pull
+  7 to 0 of 17 and its tour 11 to 0 at its own event (one copy over today's number at another event, 6.801 s,
+  0 against that tree's own bound). The same run twice is identical to the bit; the bracket holds from any
+  start; a reversal starts cold. **A hazard found on the way, for the real code:** in float32 a Newton step
+  can land on the root exactly, the root be taken as the bracket's top and the next step bisect away from
+  it; the design names it with its test.
+- **RULED: item 17 takes its place in the next window in that form, and FIRST among the sim changes that
+  move readings, ahead of items 16 and 15** (it moves every reference and every nightly bound; the others are
+  read once on the converged valve). X-043's cure is read per event, as part B reads; the 6.801 s copy is
+  spread on the new tree against its own bound when the real code is in. It needs a bake to follow and the
+  integrator's two lines in the cylinder (the switch's hand-over; the memory cleared in `Cylinder::reset`).
+  Q reads the cost on the real code in the window. This reverses "16 first, then 17" (11:39).
+- **`main` is at 389ee865 (12:25): X-050's interface form.** The dead cam dial is no longer offered on a Lab
+  piston build; the pages follow the valvetrain model the moment it is switched.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **26 Nov 09:16 UTC: `main` IS AT 3c42b4d2** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
-  7c3e4d59, those trees unchanged; run 45781892920: Linux, macOS and Windows green on that commit; `ui/`,
-  tests and docs only since d586682c). Before it: 5cd03815 (26 Nov 08:18), 07a08dc0 (07:50), d586682c (04:36),
-  b557c4a1 (25 Nov 23:25). Nothing code-bearing is on the branch past it at 09:16.
+- **26 Nov 12:25 UTC: `main` IS AT 389ee865** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
+  7c3e4d59, those trees unchanged; run 45811515179: Linux, macOS and Windows green on that commit; `ui/`,
+  tests, scripts and docs only since d586682c). Before it: 317404d9 (26 Nov 11:53), 5278e3e9 (11:01),
+  3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0 (07:50), d586682c (04:36). Nothing code-bearing is on the
+  branch past it.
 - **26 Nov 04:36 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items below and nothing
   else. From the first push under those trees the branch's baked tables are stale until the next bake; `main`
   stays the stable build. **A bake needs P, whose push is refused tonight: until the owner decides, land only
@@ -2134,6 +2292,11 @@ engines only where a source shows such an engine drawn split.
  16. the steward with the integrator, a design first: X-047, the shift's cut. One length, asked once: the
      contract of `cutRequest()` (launch.fm:80 against car.fm:852), every asker, sourced lengths, and the
      acceptance in the section of 26 Nov above. The steward's design is a docs commit; `sim/` waits.
+ 17. FIRST AMONG THE SIM CHANGES THAT MOVE READINGS (ruled 26 Nov): G, the design written
+     (`docs/plan/x051-valve-solve.md`): the exhaust valve's flow solved to convergence (`Valve::flow`, sim/exhaust/duct.fm),
+     behind a hidden switch with the reference's three passes for the null. The line that hands the switch
+     to the cylinder's valves is its file's owner's. Acceptance: the null to the bit; the sometimes rows by
+     the evidence rule on the real code; the gate warm and cold on all 31; Q's cost; clips for the owner.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;

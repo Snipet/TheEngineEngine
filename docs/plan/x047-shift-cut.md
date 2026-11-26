@@ -114,6 +114,14 @@ length runs, so today the bike gets twice its setting: 50 ms becomes about 100. 
 - The downshift's blip unchanged, or its change predicted.
 - N1's dips test and P's idle gate untouched.
 
+**Read after item 17 (the lead, 26 Nov 12:33; this replaces the 10:36 order).** G's valve solve (item 17, X-051:
+a warm-started secant on one continuous equation, 38.3 ns a call against today's 50.5, the chatter counter at 0)
+comes first among the window's sim changes that move readings, because it moves every reference and every nightly
+bound. So item 17 lands first; then item 16, with its predictions restated on that tree before its code: the V8's
+upshift row and the four's rate. The 53 ms probe's figures above were taken on today's valve: they are a guide, not
+the acceptance. The clips with both fixes, shown on 26 Nov, stand as what the window is meant to deliver. X-044 is
+not carried by X-051 and stays with item 8, whole.
+
 ## 5. What it does not cure
 
 On the probe with the cut at the reference's length, the four's first firing back still reads 1.30 against the

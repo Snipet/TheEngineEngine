@@ -74,6 +74,47 @@ namespace tee::ui
         const char* id() const override { return "valves"; }
         const char* title() const override { return "VALVES"; }
         std::vector<std::string> sections() const override { return { "valve" }; }
+
+        // What the reference's CAM DIAL (spec.valve.cam) does in this build (N1's finding, the lead's word, 26 Nov):
+        // under the Reference model it is the engine's cams; under Lab a piston engine's cams are the intake and exhaust
+        // pages and the dial is read by nothing, while a rotary's ports still run from it. A two-stroke: unknown, as its
+        // VALVES shows its ports alone (N1: nothing reads spec.valve there). X-050.
+        enum class Dial { unknown, reference, labDead, labPorts };
+        Dial dial() const
+        {
+            const int f = en::findField(ctx_.doc, path(VF::model));
+            const double m = f >= 0 ? ctx_.doc.get(f) : en::kNaN;
+            if (!std::isfinite(m) || engine::twoStrokeOf(ctx_.doc).on)
+                return Dial::unknown;
+            if (m < 0.5)
+                return Dial::reference;
+            return en::layoutOf(ctx_.doc).rotors > 0 ? Dial::labPorts : Dial::labDead;
+        }
+        static constexpr const char* kLabOff = "THE LAB IS OFF: ITS FIELDS TAKE EFFECT WITH THE LAB MODEL; THE ENGINE RUNS THE CAM DIAL";
+
+        // The frame's generated valve page (nothing selected) carries the lab-off words of the named pages on a Reference
+        // build. A Lab piston build gets no line (the lead, 26 Nov): with the dial gone nothing is promised, and the cams
+        // are the page's next sections; a line there would be warning-coloured words on every healthy build.
+        std::vector<std::string> sectionNotes(const std::string& section) const override
+        {
+            if (section != "valve")
+                return {};
+            switch (dial())
+            {
+                case Dial::reference: return { kLabOff };
+                default: return {};
+            }
+        }
+        // ... and leaves out the dial where nothing reads it (the cams are the page's next sections).
+        std::vector<std::string> sectionOmits(const std::string& section) const override
+        {
+            if (section != "valve" || dial() != Dial::labDead)
+                return {};
+            const int f = en::findField(ctx_.doc, path(VF::cam));
+            return f >= 0 ? std::vector<std::string>{ ctx_.doc.info(f).path } : std::vector<std::string>{};
+        }
+        // The model switched (or the engine became a rotary): the pages say so at once, not at the next selection.
+        std::uint64_t inspectorKey() const override { return 1 + static_cast<std::uint64_t>(dial()); }
         bool moving() const override { return drag_ >= 0 || Workspace::moving(); }
 
         std::uint64_t drawKey() const override
@@ -130,7 +171,14 @@ namespace tee::ui
             const pages::Section exA = sec("EXHAUST CAM", { VF::exKind, VF::exDurSeat, VF::exDur1mm, VF::exLift, VF::exCentre, VF::exFat }, cam);
             const pages::Section inB = sec("INTAKE, STAGE B", { VF::inDurSeatB, VF::inDur1mmB, VF::inLiftB, VF::inCentreB }, camB);
             const pages::Section exB = sec("EXHAUST, STAGE B", { VF::exDurSeatB, VF::exDur1mmB, VF::exLiftB, VF::exCentreB }, camB);
-            const pages::Section model = sec("MODEL", { VF::model, VF::cam }, { "MODEL", "CAM DIAL" });
+            // The dial where it is read (the Reference model; a rotary's ports under Lab), else left out, with no line.
+            const Dial d = dial();
+            pages::Section model = d == Dial::labDead ? sec("MODEL", { VF::model }, { "MODEL" })
+                                                      : sec("MODEL", { VF::model, VF::cam }, { "MODEL", d == Dial::labPorts ? "PORT TIMING" : "CAM DIAL" });
+            // The Rows show a field's own label ("Cam") and draw every note in the accent colour (no neutral one): the
+            // dial's job on a rotary in words.
+            if (d == Dial::labPorts)
+                model.warnings.push_back("ON A ROTARY THE CAM DIAL TIMES THE PORTS");
             const pages::Section timing = sec("VARIABLE TIMING", { VF::inPhaseRange, VF::exPhaseRange, VF::phaseRate },
                                               { "INTAKE RANGE", "EXHAUST RANGE", "SPEED" });
             const pages::Section stages = sec("TWO STAGES", { VF::stages, VF::stageSpeed, VF::stageHyst }, { "TWO STAGES", "CHANGE AT", "HYSTERESIS" });
@@ -140,8 +188,12 @@ namespace tee::ui
                                             { "MAY REST", "FROM", "TO", "BELOW LOAD" });
             const pages::Section springs = sec("SPRINGS", { VF::train, VF::springRate, VF::springPreload, VF::valveMass },
                                                { "TRAIN", "RATE", "PRELOAD", "VALVE MASS" });
-            const pages::Section head = sec("HEAD", { VF::valves, VF::dIn, VF::dEx, VF::portIn, VF::portEx },
-                                            { "VALVES", "INTAKE DIA", "EXHAUST DIA", "INTAKE PORT", "EXHAUST PORT" });
+            pages::Section head = sec("HEAD", { VF::valves, VF::dIn, VF::dEx, VF::portIn, VF::portEx },
+                                      { "VALVES", "INTAKE DIA", "EXHAUST DIA", "INTAKE PORT", "EXHAUST PORT" });
+            // X-050's other side (N1, 26 Nov): the Reference model reads none of these; its valves' areas are the bore's
+            // (valvetrain.fm: the curtain at full lift a share of the piston's area).
+            if (dial() == Dial::reference)
+                head.warnings.push_back("THE LAB IS OFF: THE REFERENCE MODEL SIZES ITS VALVES FROM THE BORE; THESE TAKE EFFECT WITH THE LAB MODEL");
             if (engine::twoStrokeOf(ctx_.doc).on)
             {
                 const pages::Section ports{ "PORTS", { "engine.tsExhaustDur", "engine.tsExhaustWidth", "engine.tsExhaustRadius",
