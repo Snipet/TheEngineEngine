@@ -36,15 +36,18 @@ fuel.model 0 is bounded at a step of 42 (the lead's ruling, 24 Nov 23:15; "click
 - `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype|build.json> <scenario> <switches> [--set path=value]`
   (prints the step and the excess against the reference's), `--checks`, `--match`
 
-**Findings** (X-001 to X-043; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
-it so it fails again if it returns). Open: X-016 (the heavy case's cost, Q), X-030 and X-031 (the new ECU's shift cut
-and downshift under fuel.model 1: a firing unlike its neighbours as the spark returns; the steward), X-036 (a DC with
+**Findings** (X-001 to X-044; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
+it so it fails again if it returns). Open: X-016 (the heavy case's cost, Q), X-030 (the new ECU's shift cut under
+fuel.model 1: a firing unlike its neighbours as the spark returns; the steward), X-044 (the small four's downshift
+with engine.custom, fuel and ecu: the fuel returning whole after the overrun cut; the steward's, kept this window), X-036 (a DC with
 car.model and a turbo: the turbo V8 dual, random 103, and the large diesel on the dyno with everything on; D, the
 steward and the integrator), X-039 (a supercharged 50 cc single with a recirculating blow-off, N2: cured in its held
 package), X-041 (Burned in the pipe meeting the new boost: lift clicks on the turbo six and the rally five, and the
 rally five's dpWave on its limiter; G, then N2; G's fix 301ba06c local), X-042 (the large diesel's dpWave under
 engine.custom, valve and boost: one collector feeds one of its two turbos; N2 with the integrator), X-043 (the turbo
-six's start with intake, exhaust and car on, from N1's c40f0411, unseen until every triple shard ran). Closed on the
+six's start with intake, exhaust and car on: the reference idle's hunt on the fixture's cam lope; kept for good by
+the lead's ruling, a pairing nothing ships). Closed on 26 Nov: X-031
+(the V8's downshift, by the steward's 98d0dc4d; triple shards 3 and 4 pass here). Closed on the
 bake's soak (223f4301, 213 of 221): X-029, X-038, X-040 (G's and N1's bore floors), X-032 (excess 1.84), X-037 (N1's
 b07522fc). The turbo six's remaining hunt with intake.model on (intake+ecu idle sd 227 rpm, 307 with every switch off)
 is its cam's own lope (cam dial 0.9999, a dilution recursion near 0.4 s; the steward, 25 Nov), not the idle valve's:

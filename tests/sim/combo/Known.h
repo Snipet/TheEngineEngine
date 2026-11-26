@@ -18,9 +18,6 @@ const Known kKnown[] = {
     {"X-030", "2026-11-25", "the steward (the ECU's shift cut)", "+fuel.model+ecu.model", "*", "pull", "click-shift-cut",
      "a firing unlike its neighbours as the spark returns after an upshift's cut, ecu.model 1 under fuel.model 1: excess "
      "3.21 to 3.80 against 2.85 (small four), 4.32 against 4.03 (V8); since c035fe75"},
-    {"X-031", "2026-11-25", "the steward (the ECU's downshift)", "+fuel.model+ecu.model", "v8", "pull", "click",
-     "a firing unlike its neighbours as the spark returns after the V8's downshift at 11.0 s, ecu.model and fuel.model "
-     "on: excess 4.73 to 5.17 against 4.03 (13.4 step before c035fe75)"},
     {"X-036", "2026-11-25", "D (engine.custom) and the steward (car.model)", "+engine.custom+car.model", "turbo-v8-dual",
      "pull", "dc", "the turbo V8 dual's pull with a custom engine and car.model: the running mean 0.0057 to 0.0069 of "
      "full scale against 0.005, since the first soak (never green)"},
@@ -54,8 +51,20 @@ const Known kKnown[] = {
      "the exhaust 337 to 350 kPa over the intake at full throttle, 2480 rpm, the charge at 111.7 kPa (every switch on; "
      "engine.custom+valve.model+boost.model): N2, engine.custom's one collector leaves the rear turbo unfed and the "
      "front's compressor chokes; shown from 9aa2acac (the map's lower choke flow), valve+boost or custom+boost pass"},
-    {"X-043", "2026-11-25", "N1 (the intake's plenum)", "intake.model+exhaust.model+car.model", "turbo-six", "tour", "click",
-     "the start's catch at 3.39 s (121 to 237 rad/s in 40 ms): excess 3.27 against 2.97; from c40f0411 (the plenum "
-     "gives up what the valves took: 3.02), unseen until every triple shard ran"},
+    // X-043 stays for good (the lead's ruling, 26 Nov 00:34): a pairing nothing ships.
+    {"X-043", "2026-11-25", "none: kept (the lead's ruling; N1 diagnosed it, the steward worded it)",
+     "intake.model+exhaust.model+car.model", "turbo-six", "tour", "click",
+     "the reference idle valve's look-ahead on the speed's rate, over intake.model's plenum and the reference turbo's "
+     "spool at a shut throttle, on the fixture's cam-0.9999 lope; with ecu.model on it falls to the lope's own size "
+     "(316 against 299 rpm sd), and with ecu.model a near stall at the catch, 13 rpm at 0.96 s after a 2030 rpm flare; "
+     "no shipped build runs the reference idle, none carries such a cam. The start's catch at 3.39 s: excess 3.27 "
+     "against 2.97 (c40f0411 moved the hunt's phase onto it)"},
+    // X-044 stays (the lead's ruling, 26 Nov 01:08): nothing is cured for it this window.
+    {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "engine.custom+fuel.model+ecu.model", "small-four",
+     "pull", "click",
+     "engine.custom + fuel.model + ecu.model without exhaust.model, the small four's pull at the downshift (11.02 s): the "
+     "fuel returning whole on the blip's first firings after the overrun cut; 1 phase in 6 before 98d0dc4d, 3 in 6 after "
+     "it (that cure moves which phases meet the return; the idle valve is not in it); green with every switch on (excess "
+     "1.92 against 2.85 on the small four, 2.35 at most against 4.03 on the V8). Phase 0: 1.75 before, 3.48 after"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
