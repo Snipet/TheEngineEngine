@@ -358,7 +358,8 @@ TEST_CASE("a handful of pairs where packages meet: fuel and ECU then boost and e
 
 // The nightly bound's proof, on demand (hidden): one case judged as a [nightly] case is, against the reference's lowest
 // excess over its copies. BOUNDPROOF="<archetype> <tour|pull|launch|cold> <switches>" or "<corpus stem>" (the corpus's
-// own route) or "corpus <stem> <scenario>" (a corpus build as built through any scenario); with TEE_SIM_DIR, on another tree (X-014 and X-015 on 62a6a7fd: the lead's condition, 26 Nov 08:07)
+// own route) or "corpus <stem> <scenario>" (a corpus build as built through any scenario); BOUNDPROOF_SET and
+// BOUNDPROOF_REF with BOUNDPROOF_DT: below; with TEE_SIM_DIR, on another tree (X-014 and X-015 on 62a6a7fd: the lead's condition, 26 Nov 08:07)
 TEST_CASE("the nightly bound's proof: one case judged against its reference's lowest copy", "[.boundproof][nightly]")
 {
     const char* spec = std::getenv("BOUNDPROOF");
@@ -435,8 +436,48 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
     }
     // BOUNDPROOF_DT="dT dT ...": a spread, every window's excess at each copy (the reference's copies played once);
     // each line "window | dT | event | excess | at | over" against the nightly bound
+    // BOUNDPROOF_SET="path=value ...": Spec values (under spec) set on the case AND on its reference (part C: the reference
+    // off its limiter); the reference is then played here at kBoundNudges with the same values, and at each copy its own
+    // windows are printed too ("refwindow | dT | event | excess | at"): each side's excess per event. BOUNDPROOF_REF=1:
+    // the same with no values set (the reference's own windows beside the case's)
+    std::vector<std::pair<std::string, double>> sets;
+    const bool withRef = std::getenv("BOUNDPROOF_SET") != nullptr || std::getenv("BOUNDPROOF_REF") != nullptr;
+    if (const char* st = std::getenv("BOUNDPROOF_SET"); st != nullptr)
+    {
+        std::istringstream in2(st);
+        std::string kv;
+        while (in2 >> kv)
+            if (const auto eq = kv.find('='); eq != std::string::npos)
+                sets.push_back({kv.substr(0, eq), std::stod(kv.substr(eq + 1))});
+    }
     if (const char* dts = std::getenv("BOUNDPROOF_DT"); dts != nullptr)
     {
+        double refStep = referenceStep(build, kind), refExcess = referenceExcess(build, kind);
+        auto playRef = [&](double dT, Times& tm) {
+            tee::test::Scenario off = scenario(kind, build, 0u, tm);
+            off.at(0.0).spec("env.temperature", 293.15 + dT);
+            for (const auto& [path, value] : sets)
+                off.spec(path, value);
+            return off.run(tm.end);
+        };
+        if (withRef)
+        {
+            std::vector<double> excess;
+            for (double dT : kBoundNudges)
+            {
+                Times tm;
+                const tee::test::Run r0 = playRef(dT, tm);
+                const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+                if (dT == 0.0)
+                    refStep = std::max(r0.left().during(from, to).largestStep(), r0.right().during(from, to).largestStep());
+                excess.push_back(stepExcess(r0, from, to));
+            }
+            refExcess = lowestExcess(excess);
+            std::printf("reference | %s | %s | with BOUNDPROOF_SET | excess over its copies:", build.c_str(), kindName(kind));
+            for (double e : excess)
+                std::printf(" %.2f", e);
+            std::printf("; the bound twice the lowest, %.2f\n", 2.0 * refExcess);
+        }
         std::istringstream list(dts);
         double dT = 0.0;
         while (list >> dT)
@@ -444,11 +485,21 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
             Times tm;
             tee::test::Scenario sc = scenario(kind, build, mask, tm);
             sc.at(0.0).spec("env.temperature", 293.15 + dT);
+            for (const auto& [path, value] : sets)
+                sc.spec(path, value);
             const tee::test::Run r = sc.run(tm.end);
-            const Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, kind), referenceExcess(build, kind));
+            const Verdict v = judge(r, tm, archetype(build), true, refStep, refExcess);
             for (const auto& w : v.windows)
                 std::printf("window | %+.2f | %s | %.2f | %.3f | %s\n", dT, w.event.c_str(), w.excess, w.at,
                             v.excessBound >= 0.0 && w.excess > v.excessBound ? "over" : "under");
+            if (withRef)
+            {
+                Times t0;
+                const tee::test::Run r0 = playRef(dT, t0);
+                const Verdict v0 = judge(r0, t0, archetype(build), true, refStep, -1.0);
+                for (const auto& w : v0.windows)
+                    std::printf("refwindow | %+.2f | %s | %.2f | %.3f\n", dT, w.event.c_str(), w.excess, w.at);
+            }
         }
         return;
     }
