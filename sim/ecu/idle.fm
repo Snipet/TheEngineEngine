@@ -93,14 +93,7 @@ module IdleControl
     void control(EcuSpeed* s, float pedal, bool driven, float sinceLift, bool gasoline, float sinceStart, float d16)
     {
         const float ie = (target - s->avg) * 0.001f;
-        // (the valve's proportional part reads the speed alone, not its rate as well: the valve's air reaches the
-        // cylinders a plenum's filling later, so a look-ahead on the rate drove a big cam's lope instead of damping it.
-        // The turbo six (cam 0.9999) on the tour, idle sd over 2.5 to 5 s: ecu.model 287 rpm with the rate, 19
-        // without; exhaust, fuel and ecu 291 to 22 (X-032); intake and ecu 379 to 227 (its cam's own lope, 307 with
-        // every switch off, stays). The 31 archetypes under ecu.model within a few rpm either way, the V10 and V12
-        // 2 and 5 rpm to 1 and 3 with and without the intake, boost and exhaust models (measured 25 Nov). The spark's
-        // hand keeps its look-ahead below: it acts within a cycle)
-        const float iep = (target - s->avg) * 0.001f;
+        const float iep = (target - s->avg - 0.2f * s->rate) * 0.001f;
         // (not down through the start and post-start phase, the first 3 s, as Bosch's idle-speed control holds its
         // integrator then (Gasoline-Engine Management: the start and post-start phases): the start's flare is the
         // proportional part's to shave, not the integral's to unlearn. Unlearned, it left the valve at its idle
@@ -121,9 +114,8 @@ module IdleControl
         // gain on a valve whose air arrives half a lope late: the turbo six (cam 0.9999) on the bench with the intake
         // and boost models hunted sd 151 rpm, the valve swinging 0.04 to 0.52; with the gain read slow, 127, the
         // V10's, V12's and turbo four's warm idles unchanged (17.7, 12.7, 6.3 against 17.7, 9.4, 6.3). The valve's
-        // quick reading itself stays: read slow (0.15 or 0.5 s), the V10 and V12 hunted 41 to 160 rpm, their plenum's
-        // loop wanting it (that note's "or without its rate" no longer reads so: see iep above). 0.5 s: judgement,
-        // longer than a lope)
+        // quick reading itself stays: read slow (0.15 or 0.5 s) or without its rate, the V10 and V12 hunted 41 to 160
+        // rpm, their plenum's loop wanting it. 0.5 s: judgement, longer than a lope)
         slow += (s->avg - slow) * (1.0f - expf(-d16 / 0.5f));
         const float off = s->avg < 0.6f * target ? 1.0f : fminf(fmaxf((fabsf(target - slow) * 0.001f - 0.15f) / 0.15f, 0.0f), 1.0f);
         const float near = !gasoline ? 1.0f : (sinceStart < 3.0f ? 0.5f : 0.25f + 0.25f * off);
