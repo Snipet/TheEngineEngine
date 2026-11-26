@@ -553,10 +553,13 @@ TEST_CASE("predicted points are the stepped dyno's settled torque within 3 %: th
 // held). Measured on f7b94c73 (G's settle weighted by time, e6ae3a8b), predicted against held, N m: the two-stage at 5879
 // rpm 189.9 / 190.0 (-0.08 %); the turbo four at 6000 rpm 288.9 / 289.9 (-0.34 %; its boost hunting, a mean over
 // windows). At tee-dyno's 96 kHz the held points read 190.5 and 290.5 (-0.3 %, -0.55 %).
-// The bounds: 1 % on the two-stage (three times the most seen, and under the 2.7 % of the overshooting settle) and 1.5 %
-// on the turbo four (its boost's hunt adds a window mean's scatter; at 5500 rpm, at knock control's edge, 1.4 % is seen,
-// and that point is not taken). The default run's guard beside it: "a predicted point is the stepped dyno's settled
-// torque within 3 %: the economy four at 5439 rpm"
+// The bounds: 1 % on the two-stage and 1.5 % on the turbo four (its boost's hunt adds a window mean's scatter; at 5500
+// rpm, at knock control's edge, 1.4 % is seen, and that point is not taken). Shown to bite: run on this tip with only
+// e6ae3a8b reverted (the settle weighing the ports' gas by mass), the two-stage reads 187.0 against 190.0 (-1.55 %) and
+// fails its 1 %; the turbo four reads 289.2 against 289.9 (-0.24 %) and passes either way (its port heat lands within
+// 0.1 % by mass or by time, G's read). So only the two-stage row guards the settle's weighting; the turbo four's guards
+// the predictor's point on a boosted build against a long hold. The default run's guard beside it: "a predicted point is
+// the stepped dyno's settled torque within 3 %: the economy four at 5439 rpm"
 TEST_CASE("a predicted point lands where a 90 s hold without a settle lands: the two-stage at 5879 rpm, the turbo four at "
           "6000 rpm",
           "[engine][sim][predict][dyno][nightly]")

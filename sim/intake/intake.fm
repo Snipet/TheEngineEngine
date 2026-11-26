@@ -220,6 +220,10 @@ module Intake
         }
         for (int i = 0; i < np; ++i)
         {
+            // (G's wall, e7088e2b: under intake.model 1 the runners' walls are keyed on their bore and the rate too, so a
+            // build written over another takes its own; under 0 the reference's key, c and length, so the null holds. Set
+            // here, not in clear(): control() takes model 1 between configures without passing through clear())
+            run[i].wallWhole = model != 0 ? 1 : 0;
             run[i].set(lRun, sqrtf(aRun * 1.2732395f), aRun, 350.0f, rate);
             run[i].extra(0.0f, 1.0f, rate);
             if (itbs == 1)

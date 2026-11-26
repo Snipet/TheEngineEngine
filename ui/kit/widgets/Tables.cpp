@@ -3,6 +3,9 @@
 
 #include "kit/gui/GuiLayout.h"
 
+#include <funkgui/text/FontService.h>
+#include <funkgui/text/TextFit.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -498,15 +501,35 @@ namespace tee::ui
         // The selection, and the value being typed in it.
         const Rect s = cellRect(sx_, sy_);
         c.rrect(s.x, s.y, s.w, s.h, 2.0f, kClear, focusRing || editing_ ? 2.0f : 1.5f, l.accent);
-        if (editing_)
+        funkgui::Rect caret, typed;
+        if (caretRect(caret, typed))
         {
             c.rrect(s.x + 1.0f, s.y + 1.0f, s.w - 2.0f, s.h - 2.0f, 2.0f, l.ground);
-            const std::string& b = edit_.buffer;
-            const float w = c.textWidth(b.c_str(), cellText), tx = s.centreX() - w * 0.5f;
-            c.text(b.c_str(), tx, c.capCentreTop(s.centreY(), cellText), cellText, refused_ ? l.error : l.value);
-            const float cx = tx + c.textWidth(b.substr(0, static_cast<std::size_t>(std::clamp<int>(edit_.caret, 0, static_cast<int>(b.size())))).c_str(), cellText);
-            c.segment(cx, s.y + 3.0f, cx, s.bottom() - 3.0f, 1.0f, l.accent);
+            c.text(edit_.buffer.c_str(), typed.x, c.capCentreTop(s.centreY(), cellText), cellText, refused_ ? l.error : l.value);
+            c.segment(caret.centreX(), caret.y, caret.centreX(), caret.bottom(), caret.w, l.accent);
         }
+    }
+
+    bool MapEdit::caretRect(funkgui::Rect& caret, funkgui::Rect& text) const noexcept
+    {
+        if (!editing_)
+            return false;
+        const funkgui::TextStyle st = kWidgetSmall;
+        const funkgui::FontAtlasSdf& atlas = funkgui::FontService::get().atlas();
+        const std::string& b = edit_.buffer;
+        const std::size_t at = static_cast<std::size_t>(std::clamp<int>(edit_.caret, 0, static_cast<int>(b.size())));
+        constexpr float kCaretW = 1.0f, kGap = 1.5f;   // the gap: more than the caret's width
+        const Rect s = cellRect(sx_, sy_);
+        const float w = funkgui::text::width(atlas, b.c_str(), st);
+        const float lead = at == b.size() ? kGap + kCaretW : 0.0f;   // the caret after the text needs its room
+        const float tx = s.centreX() - (w + lead) * 0.5f;
+        const float lineH = std::min(st.px, s.h - 4.0f);             // the text's line, never past the cell
+        text = { tx, s.centreY() - lineH * 0.5f, w, lineH };
+        float cx = tx + funkgui::text::width(atlas, b.substr(0, at).c_str(), st);
+        if (at == b.size())
+            cx += kGap;
+        caret = { cx, s.centreY() - lineH * 0.5f, kCaretW, lineH };
+        return true;
     }
 
     funkgui::Cursor MapEdit::cursorAt(funkgui::Point p) const

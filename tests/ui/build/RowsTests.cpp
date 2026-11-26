@@ -271,6 +271,14 @@ namespace
         host.keys("x,return");
         host.tick(2);
         CHECK_MSG(table->refusal().rfind("Not a number of mm: ", 0) == 0, table->refusal());
+        // The caret in this tall row: a text line high, not the cell's height, and clear of the typed text.
+        {
+            funkgui::Rect caret, text;
+            CHECK(table->caretRect(caret, text));
+            const funkgui::Rect c0 = table->cellRect(0, 0);
+            CHECK_MSG(caret.h <= text.h + 0.01f && caret.h < c0.h * 0.5f, std::to_string(caret.h) + " in " + std::to_string(c0.h));
+            CHECK(caret.x >= text.right() + caret.w && std::fabs(caret.centreY() - c0.centreY()) < 0.5f);
+        }
         host.keys("escape");
         CHECK(!table->editing() && table->refusal().empty());
         return 0;
