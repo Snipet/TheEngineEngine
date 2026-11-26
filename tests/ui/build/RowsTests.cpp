@@ -295,6 +295,24 @@ namespace
         return 0;
     }
 
+    // The focus from a driving seat (the G29's buttons, 26 Nov): the frame with a row focused by a controller's
+    // commands, at the smallest window, for the lead to judge at an arm's length further than a keyboard's.
+    BUILD_TEST(rowsFocusPictures, "build.rows.focus.pictures")
+    {
+        show(rig, 1100, 700, "engine", "");
+        tee::ui::RowsPage* rows = rig.frame->inspectorRows();
+        CHECK(rows != nullptr);
+        if (rows == nullptr)
+            return 0;
+        rows->focusFirst();
+        for (int k = 0; k < 3; ++k)
+            rows->edit(tee::ui::EditCommand::rowDown, false);
+        rig.host->move(10.0f, 690.0f);                   // the pointer away: no hover, the focus alone
+        rig.host->tick(30);
+        picture(rig, "rows.focus");
+        return 0;
+    }
+
     BUILD_TEST(rowsPictures, "build.rows.pictures")
     {
         struct Page
