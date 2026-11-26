@@ -1721,7 +1721,13 @@ corrected.**
   for it: item 9 opens with C's bake stage (match, spark, cam, spark), not with a published map.
 - For C, agreed for when `host/` may be pushed: on a build with a turbine a held step is measured only when the
   shaft's drift over the last second is under 0.5 %, capped at 40 s, a capped step marked unsettled. And the
-  long-hold case does not look inside a threshold: at 1733 the predictor reads 14 % over the no-settle hold.
+  long-hold case does not look inside a threshold. **Corrected by C's 5-minute holds (05:19):** the steady
+  state at 1733 rpm on `main` is 272 N m at 41 kPa: a pure ramp with no settle anywhere reaches it from above
+  within 20 s and from below only after about 4 minutes (253 at 95 s, 262.5 at 155 s, 268.4 at 215 s, 271.2
+  from 4 min); the stepped dyno with its settle, C's rounds and both long holds agree within 0.6 %. So the
+  settle does not bias this point, and G's 256 on a 90 s no-settle hold was a climb not yet finished, not a
+  truth the settle missed (the lead's "14 % over" was against that unfinished hold). What stands apart is
+  the predictor's 293, 8 % over: C's to explain.
 
 **Corrected (the steward), already in the section above:** the idle's rate term does not act on the rally
 five's limiter; the runs part at the crank.
@@ -1790,14 +1796,23 @@ engines only where a source shows such an engine drawn split.
      soak and 223f4301).
  12. C (`host/`): on a build with a turbine a held step is measured only when the shaft's drift over the last
      second is under 0.5 %, capped at 40 s, a capped step marked unsettled; a build without one bit-identical.
-     And the long-hold case to read one point inside a threshold (first.json at 1733 rpm: the predictor 293
-     against 256 on a 90 s hold with no settle).
- 13. the steward's idle design, state at 05:05: through the post-start phase neither the look-ahead nor the
-     doubled gain (each alone fails); after it `main`'s. The fixture 287 to 20 rpm sd; all 31 pass the gate
-     within about 0.5 rpm sd of `main`; the dips after the flare shallower on most (big-block 545 to 598) and
-     deeper on the twin six (639 to 564, a slower catch). NOT proposed: the twin six's dip, the switch-on at
-     the phase's end and the combo rows are still to read. The acceptance has a new row: each archetype's
-     lowest speed from 2 to 8 s on p-idle-warm against `main`'s (N1 to make it a test: nothing guards it).
+     Local on C's side branch (99d51cc4): the step held in ROUNDS (the shaft settled, the heat settled again,
+     until a settle moves the shaft's 2 s mean under 3 %; the shaft alone read 320 at 1796 rpm): 383.4 N m
+     after 27 s at 1796 (N1's long hold 384.2; the default 239), 225.9 at 1503; five CSVs without a turbine
+     byte-identical; both cases fail with the rule off. And the long-hold case to read one point inside a
+     threshold: first.json at 1733 rpm, steady state 272 N m (5-minute holds from both sides), where the
+     predictor reads 293: C to explain the predictor's 8 %.
+ 13. CLOSED for this window (the steward, 05:17; its notes at cbbf48e7): `main`'s idle stands and the fixture
+     stays known. Read on all 31, every form that cures the fixture (the look-ahead held off through the
+     post-start phase, with or without the doubled gain) deepens the shipped builds' fall after the flare
+     (four-cam V8 681 to 536, supercharged V8 639 to 544, twin-turbo pickup 622 to 537; a 7-build sample had
+     passed). Left noted: the doubled post-start gain is marginal on `main` itself; the dashpot holds the
+     valve at 0.35 at full throttle on boost. N1 makes the dips' row a test.
+ 14. N2-38 is the rig's configuration only (N2's read): every shipped VGT build states a target and runs the
+     target loop. Beside it, for item 9, sourced before any number: (a) the back-pressure limit (1.4, a
+     judgement, at every speed) holds the 2.0 at 88 kPa of its 140 target at 1750 rpm (1.7: 111 kPa; 2.0:
+     131 kPa and 275 N m, still under 304); (b) on the pickup and the tractor the vanes make more boost than
+     a fixed nozzle and 3 to 5 % less torque: one target number where a maker has a map.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
