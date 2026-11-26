@@ -183,8 +183,12 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
 1. **The null, to the bit,** with the switch off and with exhaust.model 0: ref.null (every preset, the layouts, the
    rates and blocks) and test 2 on every layout (the nightly's 17).
 2. **The rows, by the evidence rule** (X's spread.sh, 17 copies, the two-tree mode, the source against the new code):
-   - **cured, 0 of 17:** X-049 (valve+exhaust+sound, turbo six pull) and X-043, both rows (intake+exhaust+car, the
-     turbo six's tour and pull);
+   - **cured, 0 of 17:** X-043, both rows (intake+exhaust+car, the turbo six's tour and pull), and whatever the
+     turbo six's mild-cam twin (X's, a dial equal to the lab's default cam) shows. X-049 is not evidence: on X's
+     corrected corpus (the turbo six's lab cams stated equal to its dial) it reads 0 of 17 on the tip too (N1, 26
+     Nov). Its valve rows were comparing the lab's default 231 degree cam with the dial's 300. The chatter itself
+     (§1, the relight and the low-gear captures) was measured with valve.model off, the reference valves on the
+     dial's cam, and stands;
    - **rates beside today's, no verdict:** X-030 (small four pull fuel+ecu+car: 13 of 17 today, 9 on the stand-in) and
      X-048 (turbo six pull wallHeat+valve+boost: 14 today, 8 on the stand-in against X's bound, 3 against its own);
    - **expected NOT to move, a move to be explained:** X-044 (11 and 12), X-041's tour lift (3 and 3) and the rally
