@@ -156,8 +156,18 @@ namespace tee::ui
         return build_.get(s.path, s.index);
     }
 
+    bool BuildDoc::accepts(int i, double si, std::string* why) const
+    {
+        const Source& s = sources_[static_cast<std::size_t>(i)];
+        return build_.accepts(s.path, clampTo(infos_[static_cast<std::size_t>(i)], si), why);
+    }
+
     void BuildDoc::set(int i, double si)
     {
+        // A person's input only (the binding's writers are the inspector, the tables and the dials): a stated bore under
+        // its least (C's rule, Build::accepts) is refused here too, so no writer of the interface's sets one.
+        if (!accepts(i, si))
+            return;
         const Source& s = sources_[static_cast<std::size_t>(i)];
         build_.set(s.path, clampTo(infos_[static_cast<std::size_t>(i)], si), s.index);
     }

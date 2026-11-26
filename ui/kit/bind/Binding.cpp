@@ -615,8 +615,12 @@ namespace tee::ui
             const std::string unit = unitName(units, first.quantity, first.unit);
             TableText none{ [](double v) { return formatNumber(v, 0); }, [](std::string_view, double&) { return false; } };
             TableText row{ [](double) { return std::string(); }, [](std::string_view, double&) { return false; } };
+            // A value the document refuses (FieldDoc::accepts: the host's least stated bore, one rule for every element)
+            // is refused as text that is no number: the cell keeps the typing, marked.
             TableText values{ [&units, &first](double v) { return fieldText(first, v, units); },
-                              [&units, &first](std::string_view s, double& v) { return parseField(first, s, units, v); } };
+                              [&units, &first, &doc, e = elements.front()](std::string_view s, double& v) {
+                                  return parseField(first, s, units, v) && doc.accepts(e, v);
+                              } };
             // A unit's name is in the title, not in each cell: the cells show numbers (a choice its name).
             if (first.kind == FieldKind::number && first.quantity != Quantity::none)
                 values.format = [&units, q = first.quantity, d = first.decimals](double v) { return units.number(q, v, d); };
