@@ -130,6 +130,9 @@ namespace tee::ui
         // Choose a block: the anchor at (column0, row0), the selected cell at (column1, row1).
         void selectBlock(int column0, int row0, int column1, int row1) noexcept;
         bool editing() const noexcept { return editing_; }
+        // While typing: the caret (a line high, centred on the text, a caret's width or more clear of the glyph before
+        // it at the end of the text) and the typed text's box; false when not typing.
+        bool caretRect(funkgui::Rect& caret, funkgui::Rect& text) const noexcept;
         // What the last refused typing was told (TableText::refusal), drawn on the title's line; "" when none.
         const std::string& refusal() const noexcept { return refusal_; }
         const Map16& shownMap() const noexcept { return map_; }
