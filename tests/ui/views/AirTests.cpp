@@ -391,15 +391,16 @@ namespace
         rig.demo.engine.set("boost.turbineWants", 6.0e-4);
         rig.demo.engine.set("boost.mismatch", 16.0);
         rig.host->tick(2);
-        const std::string nozzle = has("TURBINE NOZZLE");
-        CHECK_MSG(!nozzle.empty() && nozzle.find('-') == std::string::npos, "bit 16: \"" + nozzle + "\"");
-        CHECK(has("A TURBO with no exhaust").empty());
+        const std::string nozzle = has("TURBINE nozzle");
+        CHECK_MSG(!nozzle.empty() && nozzle.find(" - ") == std::string::npos && nozzle.find("set its A/R to 0") != std::string::npos,
+                  "bit 16: \"" + nozzle + "\"");
+        CHECK(has("TURBO WITHOUT GAS").empty());
         std::printf("  16: %s\n", nozzle.c_str());
         rig.demo.engine.set("boost.mismatch", 128.0);
         rig.host->tick(2);
-        const std::string rest = has("A TURBO with no exhaust");
+        const std::string rest = has("TURBO WITHOUT GAS");
         CHECK_MSG(!rest.empty(), "bit 128: no line");
-        CHECK(has("TURBINE NOZZLE").empty());
+        CHECK(has("TURBINE nozzle").empty());
         std::printf("  128: %s\n", rest.c_str());
         rig.demo.engine.set("boost.mismatch", 144.0);
         rig.host->tick(2);

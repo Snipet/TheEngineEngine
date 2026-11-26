@@ -652,10 +652,11 @@ namespace tee::ui
                                                                                + ", this engine's " + val(N::volumeWants, Quantity::volume) });
             // (U1 for U3, 26 Nov: the bits card N2's flags had without words)
             if ((m & 16) != 0)
-                out.push_back({ Kind::turbo, "TURBINE NOZZLE " + val(N::turbineHas, Quantity::area) + ", this build's design point "
-                                                 + val(N::turbineWants, Quantity::area) });
+                out.push_back({ Kind::turbo, "TURBINE nozzle " + val(N::turbineHas, Quantity::area) + ", this engine's match "
+                                                 + val(N::turbineWants, Quantity::area) + ": set its A/R to 0 to match it" });
+            // N2's short form: whether the build's exhaust lets the owner split its headers is not known here
             if ((m & 128) != 0)
-                out.push_back({ Kind::turbo, "A TURBO with no exhaust feeding it: it stays at rest" });
+                out.push_back({ Kind::turbo, "TURBO WITHOUT GAS: fewer collectors than turbos; choose fewer turbos" });
             return out;
         }
         // An amber outline on each part concerned, and the words a line each under the row, from the row's left (the
