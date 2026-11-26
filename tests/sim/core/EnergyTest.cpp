@@ -1,6 +1,7 @@
 // tests/sim/core/EnergyTest.cpp: one cylinder's energy balance over cycles, from the model's own state sample by
 // sample, with bounds, so it cannot drift unnoticed as packages land; and the port gas's temperature at full load
 // (docs/models/mechanics.md). The engine on the dyno at 4000 rpm, full throttle, warm (oil 100 C).
+#include "Engine.h"
 #include "tee/EnginePlayer.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -27,13 +28,12 @@ namespace
     Balance balance(const std::string& build, double displacement = 0.0, int layout = -1,
                     const std::vector<std::pair<std::string, double>>& over = {})
     {
-        tee::EnginePlayer::Options options;
-        options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
-        options.sampleRate = 96000.0;      // one engine sample a call
+        // (the process's one compiled player (Engine.h's Bench::shared), reset at 96 kHz: one engine sample a call. A
+        // kept player reset is a fresh player to the bit (EngineTest's "a kept player reset"); a player of its own cost
+        // each case a compile, some 7 s of the core package's budget)
         std::string errors;
-        auto p = tee::EnginePlayer::create(options, errors);
-        INFO(errors);
-        REQUIRE(p);
+        tee::EnginePlayer* p = tee::test::core::Bench::shared();
+        p->reset(96000.0);
         tee::EngineBuild b;
         std::string warnings;
         REQUIRE(tee::loadBuild(*p, std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / (build + ".json"), b, errors, warnings));
