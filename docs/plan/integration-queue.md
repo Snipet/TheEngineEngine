@@ -1898,6 +1898,27 @@ engines only where a source shows such an engine drawn split.
   neighbour for a median) with proof it bites on a real click in a shift's window; `sim/` untouched. If not:
   X-030 is the burn's on return, the steward's. The downshift (the overrun cut and the blip) is traced next.
 
+## 26 Nov 07:37 UTC: the probe: no collapse; X-030 is a real sometimes fault; the bound is itself a draw
+
+- **The steward's probe (a copy of sim f23337cc with launch.fm's kReinstateShare 0, through TEE_SIM_DIR,
+  nothing committed; the same 15 nudges, the source tree beside it). The pattern story is REFUTED and so are
+  the lead's predictions** (0 of 15 on the V8's 6.6 s event; at most 2 of 15 at the small four's upshift).
+  Small four pull, fuel+ecu+car: 12 of 15 over on both trees (9 of 15 at the upshifts either way). V8 pull,
+  fuel+ecu: 4 of 15 on the source, 1 of 15 on the probe (the 6.6 s event 2 against 1: marginal both ways,
+  undecided). With the retard at 0 instead (the share kept), the small four reads 6 of 15: the 15 degrees that
+  is there to soften the return doubles the rate.
+- **By the ruling made before the number: X-030 is a real sometimes fault at the upshift's return, the
+  steward's for the next window, its cause not yet named.** The worst step is time-locked 21.1 to 22.7 ms
+  after the cut's end (20 ms on the V8) at every crank phase. Being read: whether that is one engine cycle
+  after the cut's end; the step and the judge's median apart per copy, with the count of neighbours that fall
+  in the cut's silence; the same with the drive off. Then the downshift, beside item 8.
+- **The reference's side (the steward; X's own measurement to follow):** its shift cut is the fuel cut, no
+  ramp and no retard (ecu.fm:246). Its excess in the shift windows: V8 1.26 to 2.52, small four 1.20 to 1.88;
+  its whole-run excess per copy 1.80 to 2.56 and 1.33 to 1.75. **Each row's bound is twice ONE draw of that
+  (4.03 = 2 x 2.015; 2.85 = 2 x 1.425): the bound is a draw from a spread about 20 % wide either way.** X is
+  asked for a proposal, no code: what the bound should be made of so that it is one number on every tree,
+  and, row by row, whether that form loosens any row against today's bound.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
