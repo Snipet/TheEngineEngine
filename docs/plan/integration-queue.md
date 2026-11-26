@@ -1437,6 +1437,48 @@ over several cases.** `eachSwitch` on the default block stays in the default run
 bake (it reads what the init-order cure changed, and "every switch loaded over" is a weaker guard); X proposes a
 field-diff form to the integrator after #337 lands.
 
+## 26 Nov 01:16 UTC: the settle fix and the inspector's refusal are on the branch; what stands before FROZEN
+
+**On the branch since the last section** (tip 15d659dd):
+
+- **G's settle fix, 9e52a186** (`settleHeat` on a cycle's mean; tier 596 of 596, no pinned value moved; the wall
+  and the burn's heat not in it). Read twice, to the decimal, by N1 and by P on the last bake's (now stale)
+  tables: the two-stage's port temperatures 1405 to 1441 K over 5012 to 6572 rpm (were 1128 to 1607); its notch
+  192.3 / 185.4 / 197.0 N m at 5705 / 5879 / 6052 (7 N m under the neighbours' line where it was 17; the sharpest
+  point now under 5 %); its crossing 5992 rpm on the sustained measure and on the old first tie alike (N1's held
+  stages cross at 5938): about 90 to 140 rpm after the cited 5850 switch, a counted, honest miss. Nothing is done
+  to the switch (cited) or the lobes (no fitting to the crossing). The 2.0's 1750 rpm row 248.5 N m (was 244.8;
+  18 % under its floor). first.json: 1800 rpm 383.9 (was 270.3: the hole there was the settle's artefact), peak
+  392.5 against the cited 333 to 368; 1500 rpm 228.3, still a real shortfall.
+- **What remains of the notch at a freshly switched point (N1, C, G):** not the approach (without the settle the
+  predictor and the stepped dyno both read 190.5 after 90 s). The settle lands about 5 % hot on port heat (15912
+  against about 15150 steady), so the predictor reads about 3 N m low within a few cycles of it. G's reading, not
+  yet measured: the settle's mean is mass-weighted, the running path's is time-weighted. **Ruled:** (i) the settle
+  takes the running path's weighting in THIS window, before the wall, measured first, with a test that the
+  settled port heat lands on a long run's (nothing guards that today); (ii) the running path mass-weighted is the
+  next window's, with a prediction across the builds (it moves every steady state and baked table).
+- **U1's 2494dcc6, by the hold** (twelve "holding", the tip named, a pure fast-forward; tier 571 of 571 on that
+  state): a bore under its least is refused in Rows and in a primary's or collector's table cell (the typing
+  stays open and marked, the value does not move; `BuildDoc::set` dropped it silently before), with J2's
+  inspect.type case. The refusal's sentence in a table cell is next (U1 with J2).
+- **N1's cdf58b37:** the intake cam's sweep in a fast form (every check kept) and its full form nightly.
+- The ctest count fell from about 600 to 571 by grouping (several cases in one process), not by cases lost.
+
+**X-044 (the steward):** the small four under `engine.custom` + fuel + ecu without `exhaust.model`, the pull's
+downshift at 11.02 s: the fuel returning whole on the blip's first firings after the overrun cut; 1 phase in 6
+before the idle cure 98d0dc4d, 3 in 6 after (the cure moves which phases meet the return; the valve is not in
+it). Green with every switch on (small four 1.92 against 2.85 at every phase; V8 1.18 to 2.35 against 4.03): a
+Known.h entry for a triple nothing ships. The steward's scratch re-entry ramp (a spark retard over 0.15 s) missed
+its own prediction (1 red in 6, worse than the tip's). A ramp, if proposed, is sized from what production ECUs
+do, sources first, and is the next window's with clips for the owner: it changes how every build sounds coming
+off the overrun. **X-036** (the dual-turbo V8's dc 0.0059 under custom + car): `car.model` brings a sustained
+negative offset at full load (0.0038 alone), the custom engine deepens it; the mix has no DC blocker; the cause
+before any blocker (the steward with the integrator).
+
+**Tests' time at 430ce5d2 on the reference runner:** 2467 against 2400 (cases added since 2427). core 111.5 to
+87.5 s locally by grouping (three compiles needed by design remain: accepted as where grouping ends); host 142
+to 111 with one entry at 104 s for C to split.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
@@ -1463,4 +1505,11 @@ field-diff form to the integrator after #337 lands.
 - **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
   baked tables), docs. **U1** pushes only a pure fast-forward of a tested state: it tells the lead; the lead
   collects a "holding" from every pusher (breaking into running turns), then names the tip.
+- **26 Nov 01:16 UTC: what stands between here and FROZEN, in order** (the list above is otherwise done or
+  ruled out of the window in the sections above): (1) G: the burn's heat as hot gas (in its tier); (2) G: the
+  settle on the running path's weighting, measured, with its test; (3) the integrator: #337's field diff with
+  the wall named, the tests' grouping; (4) G with N1: the wall keyed on the model, ONLY if green before FROZEN,
+  else the next window; (5) N2: the rally five's boost swing re-read on (1); bit 128 if ready. Not in this
+  window: N2's step A (with C's bake stage), the rotary's pair, the running path mass-weighted, the fuel's
+  re-entry ramp, the dyno loop's overshoot, custom headers from the firing order unless ready.
 - **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**

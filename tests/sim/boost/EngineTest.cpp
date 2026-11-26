@@ -136,7 +136,7 @@ namespace
 } // namespace
 
 TEST_CASE("boost engine: a 2 L turbo four spools, holds its spring, and its turbine's numbers are a real one's",
-          "[boost][engine]")
+          "[boost][engine][part-2]")
 {
     // the matched turbo (every size 0) at full load on the dyno, 8 s at each speed (the exhaust's temperature settles
     // in some 4 s: exh.tPort follows the ports' gas over 0.8 s, from cold)
@@ -180,7 +180,7 @@ TEST_CASE("boost engine: a 2 L turbo four spools, holds its spring, and its turb
     CHECK(pipe < 1.1 * 70000.0);
 }
 
-TEST_CASE("boost engine: a supercharger takes torque from the crank, the machine's, in the engine", "[boost][engine]")
+TEST_CASE("boost engine: a supercharger takes torque from the crank, the machine's, in the engine", "[boost][engine][part-1]")
 {
     Engine e;
     e.turboFour(4);
@@ -195,7 +195,7 @@ TEST_CASE("boost engine: a supercharger takes torque from the crank, the machine
     CHECK(power == Catch::Approx(tq * 4500.0 * 0.10471976).epsilon(0.1));
 }
 
-TEST_CASE("boost engine: a throttle chop on boost with no blow-off valve surges, with one it does not", "[boost][engine]")
+TEST_CASE("boost engine: a throttle chop on boost with no blow-off valve surges, with one it does not", "[boost][engine][part-1]")
 {
     // The property is "no surge cycle" (the lead's ruling, restated on the closed exhaust, G's 8bb2c80f): with the valve,
     // no block with reverse flow through the compressor and no run of flagged blocks longer than two (some 21 ms: the
@@ -239,7 +239,7 @@ TEST_CASE("boost engine: a throttle chop on boost with no blow-off valve surges,
     }
 }
 
-TEST_CASE("boost engine: on the dyno, a turbo four's brake mean effective pressure is a turbo engine's", "[boost][engine]")
+TEST_CASE("boost engine: on the dyno, a turbo four's brake mean effective pressure is a turbo engine's", "[boost][engine][part-2]")
 {
     // BMEP = 4 pi T / Vd from the absorber's brake torque (tel.engine.torque) at 5500 rpm, the throttle open: a natural
     // 2 L four against the same engine with its matched turbo. Production 2 L turbo fours make some 15 to 25 bar (300
@@ -269,7 +269,7 @@ TEST_CASE("boost engine: on the dyno, a turbo four's brake mean effective pressu
 
 
 TEST_CASE("boost engine: the intercooler's core settles at a press, and a test cell holds it at the air",
-          "[boost][engine]")
+          "[boost][engine][part-2]")
 {
     // (card N2) spec.boost.heatSettle (card C's dynos): at each press the core is put where the present flow and the
     // air through it hold it. Standing (no absorber, no road: still air) at full throttle the core warms over some
@@ -301,7 +301,7 @@ TEST_CASE("boost engine: the intercooler's core settles at a press, and a test c
     CHECK(std::fabs(later - settled) < 1.5);
 }
 
-TEST_CASE("boost engine: the two corner builds that traded faults run, start and blip in one case", "[boost][engine]")
+TEST_CASE("boost engine: the two corner builds that traded faults run, start and blip in one case", "[boost][engine][part-1]")
 {
     // (card N2; card X's X-022 and X-024, the lead's ask: both in one case so a fix of one cannot break the other)
     // X-022: a supercharger behind individual throttles, the least charge volume and cooler flow (a bypass feeding
