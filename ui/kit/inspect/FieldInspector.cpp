@@ -355,6 +355,35 @@ namespace tee::ui
         keepInView(row);
     }
 
+    bool FieldInspector::moveFocus(int dir)
+    {
+        int i = focus_;
+        for (int k = 0; k < static_cast<int>(rows_.size()); ++k)
+        {
+            i = i < 0 ? (dir > 0 ? 0 : static_cast<int>(rows_.size()) - 1) : i + dir;
+            if (i < 0 || i >= static_cast<int>(rows_.size()))
+                return false;
+            const Row::Kind kind = rows_[static_cast<std::size_t>(i)].kind;
+            if (kind == Row::Kind::field || kind == Row::Kind::table || kind == Row::Kind::heading)
+            {
+                focusRow(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool FieldInspector::focusFirst()
+    {
+        for (std::size_t i = 0; i < rows_.size(); ++i)
+            if (rows_[i].kind == Row::Kind::field || rows_[i].kind == Row::Kind::table)
+            {
+                focusRow(static_cast<int>(i));
+                return true;
+            }
+        return false;
+    }
+
     // ---- values ------------------------------------------------------------------------------------------------------
     std::string FieldInspector::numberText(int field, double si) const
     {
@@ -405,20 +434,36 @@ namespace tee::ui
         setValue(field, clampTo(f, f.def));
     }
 
-    void FieldInspector::nudge(int field, int dir, bool fine)
+    bool FieldInspector::nudge(int field, int dir, bool fine)
     {
         const FieldInfo& f = doc_.info(field);
         const double v = doc_.get(field);
+        double to = v;
         switch (f.kind)
         {
-            case FieldKind::toggle: doc_.set(field, v >= 0.5 ? 0.0 : 1.0); return;
+            case FieldKind::toggle: to = v >= 0.5 ? 0.0 : 1.0; break;
             case FieldKind::choice:
-            case FieldKind::integer: doc_.set(field, clampTo(f, v + dir)); return;
-            case FieldKind::number:
-                doc_.set(field, plainOf01(f, norm01(f, v) + static_cast<float>(dir) * (fine ? 0.001f : 0.01f)));
-                return;
-            default: return;
+            case FieldKind::integer: to = clampTo(f, v + dir); break;
+            case FieldKind::number: to = plainOf01(f, norm01(f, v) + static_cast<float>(dir) * (fine ? 0.001f : 0.01f)); break;
+            default: return false;
         }
+        if (to == v)
+            return false;
+        // The document's own rule (BuildDoc: the host's least stated bore): refused as typing is, its reason said.
+        std::string why;
+        if (!doc_.accepts(field, to, &why))
+        {
+            refusal_ = "Out of range: " + why;
+            refusedField_ = field;
+            return false;
+        }
+        if (refusedField_ == field)
+        {
+            refusal_.clear();
+            refusedField_ = -1;
+        }
+        doc_.set(field, to);
+        return true;
     }
 
     bool FieldInspector::beginTyping(int field)
@@ -797,21 +842,7 @@ namespace tee::ui
             return true;
         }
         const int field = focusedField();
-        const auto move = [&](int dir) {
-            int i = focus_;
-            for (int k = 0; k < static_cast<int>(rows_.size()); ++k)
-            {
-                i = i < 0 ? (dir > 0 ? 0 : static_cast<int>(rows_.size()) - 1) : i + dir;
-                if (i < 0 || i >= static_cast<int>(rows_.size()))
-                    return;
-                const Row::Kind kind = rows_[static_cast<std::size_t>(i)].kind;
-                if (kind == Row::Kind::field || kind == Row::Kind::table || kind == Row::Kind::heading)
-                {
-                    focusRow(i);
-                    return;
-                }
-            }
-        };
+        const auto move = [&](int dir) { moveFocus(dir); };
         // A heading folds (Enter, Space, Left folds, Right opens); a table opens (Enter, Space).
         const Row* at = focus_ >= 0 && focus_ < static_cast<int>(rows_.size()) ? &rows_[static_cast<std::size_t>(focus_)] : nullptr;
         if (at != nullptr && at->kind == Row::Kind::heading)
@@ -891,6 +922,135 @@ namespace tee::ui
                 }
                 return false;
             default: return false;
+        }
+    }
+
+    bool FieldInspector::edit(EditCommand cmd, bool fine)
+    {
+        using C = EditCommand;
+        if (editing_ >= 0)
+        {
+            if (cmd == C::back)
+            {
+                editing_ = -1;               // typing left, as Escape leaves it
+                refusal_.clear();
+                refusedField_ = -1;
+                return true;
+            }
+            commit();                        // a controller's command after typing: the typing kept, or refused (stays)
+            if (editing_ >= 0)
+                return true;
+        }
+        filtering_ = false;
+        const Row* at = focus_ >= 0 && focus_ < static_cast<int>(rows_.size()) ? &rows_[static_cast<std::size_t>(focus_)] : nullptr;
+        const int field = focusedField();
+        switch (cmd)
+        {
+            case C::rowUp: return moveFocus(-1);
+            case C::rowDown: return moveFocus(1);
+            case C::valueDown:
+            case C::valueUp:
+            case C::valueDownCoarse:
+            case C::valueUpCoarse:
+            {
+                if (field < 0)
+                    return false;
+                const FieldInfo& f = doc_.info(field);
+                const int dir = cmd == C::valueUp || cmd == C::valueUpCoarse ? 1 : -1;
+                if (f.kind == FieldKind::toggle)   // a switch: up is on, down is off
+                {
+                    const double to = dir > 0 ? 1.0 : 0.0;
+                    if (doc_.get(field) == to)
+                        return false;
+                    setValue(field, to);
+                    return true;
+                }
+                // A burst is one undo step until it rests (step(): 0.5 s), as the mouse wheel's is.
+                if (wheelField_ != field)
+                {
+                    if (wheelField_ >= 0)
+                        doc_.endGesture();
+                    doc_.beginGesture();
+                    wheelField_ = field;
+                }
+                wheelRest_ = 0.0f;
+                const int n = cmd == C::valueDownCoarse || cmd == C::valueUpCoarse ? 10 : 1;
+                bool moved = false;
+                for (int k = 0; k < n; ++k)
+                    if (nudge(field, dir, fine))
+                        moved = true;
+                    else
+                        break;               // at an end, or refused (said under the row)
+                return moved || refusedField_ == field;
+            }
+            case C::activate:
+            {
+                if (at == nullptr)
+                    return false;
+                if (at->kind == Row::Kind::heading)
+                {
+                    fold(filtered_[static_cast<std::size_t>(at->entry)].text, !at->folded);
+                    return true;
+                }
+                if (at->kind == Row::Kind::table)
+                {
+                    if (!onTable_)
+                        return false;
+                    onTable_(filtered_[static_cast<std::size_t>(at->entry)]);
+                    return true;
+                }
+                if (field < 0)
+                    return false;
+                const FieldInfo& f = doc_.info(field);
+                if (f.kind == FieldKind::toggle)
+                {
+                    setValue(field, doc_.get(field) >= 0.5 ? 0.0 : 1.0);
+                    return true;
+                }
+                if (f.kind == FieldKind::choice)   // the next choice, round to the first after the last
+                {
+                    const double v = doc_.get(field), to = v + 1.0 > f.max + 1e-9 ? f.min : v + 1.0;
+                    std::string why;
+                    if (!doc_.accepts(field, to, &why))
+                    {
+                        refusal_ = "Out of range: " + why;
+                        refusedField_ = field;
+                        return true;
+                    }
+                    setValue(field, to);
+                    return true;
+                }
+                return false;                // a number: nudged with value*, not typed from a controller
+            }
+            case C::back:
+                if (focus_ < 0)
+                    return false;
+                focus_ = -1;
+                return true;
+            case C::toDefault:
+            {
+                if (field < 0)
+                    return false;
+                const FieldInfo& f = doc_.info(field);
+                if (doc_.get(field) == clampTo(f, f.def))
+                    return false;
+                toDefault(field);
+                return true;
+            }
+            case C::changedOnly:
+            {
+                setChangedOnly(!changedOnly_);
+                focus_ = -1;
+                if (field >= 0)              // the focus kept on its field where it is still shown
+                    for (std::size_t i = 0; i < rows_.size(); ++i)
+                        if (rows_[i].kind == Row::Kind::field && rows_[i].field == field)
+                        {
+                            focusRow(static_cast<int>(i));
+                            break;
+                        }
+                return true;
+            }
+            default: return false;           // pages, workspaces, undo, redo: the frame's
         }
     }
 

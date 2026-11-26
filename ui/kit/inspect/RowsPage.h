@@ -53,6 +53,11 @@ namespace tee::ui
         // For the frame's needsDraw: changes whenever what it draws does (values, hover help, typing, scroll).
         uint64_t drawKey() const;
 
+        // A controller's command to the rows (FieldInspector::edit); false: the frame's turn.
+        bool edit(EditCommand cmd, bool fine) { return rows_->edit(cmd, fine); }
+        // A page just shown: the board's focus on the rows, the rows' on their first field or table.
+        bool focusFirst();
+
         // Escape is the rows' first (it leaves typing, clears the filter and CHANGED), the board's (the ring) after.
         bool key(const funkgui::KeyEvent& e) override;
 

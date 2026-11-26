@@ -86,6 +86,8 @@ namespace tee::ui
         int shownFields() const noexcept;    // fields the rows hold now (filter and CHANGED applied)
         // Begins typing a field's value (as a click on it does): false when it is not shown.
         bool beginTyping(int field);
+        // The focus on the first field or table (a page just shown); false when there is none.
+        bool focusFirst();
         // The text a field's value shows (its number, or a choice's name, or ON / OFF) and its unit.
         std::string valueText(int field) const;
         std::string unitText(int field) const;
@@ -107,6 +109,13 @@ namespace tee::ui
         bool a11yAction(uint32_t id, funkgui::A11yAction a, double v, funkgui::GestureController& g) override;
         bool help(std::string& title, std::string& body, funkgui::Rect& anchor) const override;
         int helpPart() const override;
+        // A controller's command (EditCommand.h), through what the keys and the wheel already do: rowUp/rowDown move
+        // the focus (headings and tables too, the view following); value* nudge the focused field as the wheel does
+        // (Coarse: ten nudges; fine: a tenth; a burst one undo step until it rests 0.5 s; a value the document refuses
+        // says why under its row); activate flips a switch, folds a group, steps a choice, opens a table (a number:
+        // false); toDefault; changedOnly (the focus kept on its field); back lets the focus go. Pages, workspaces,
+        // undo and redo: false (the frame's).
+        bool edit(EditCommand cmd, bool fine) override;
         uint64_t drawKey() const override;
 
     protected:
@@ -125,13 +134,14 @@ namespace tee::ui
         const Outline& shownOutline() const noexcept { return filtered_; }
         void rebuild();                      // the shown outline from the filter and CHANGED, then the layout
         void commit();
-        void nudge(int field, int dir, bool fine);
+        bool nudge(int field, int dir, bool fine);   // false: nothing moved (at an end, or refused: said)
         void setValue(int field, double si);  // one undo step
         void toDefault(int field);
         void openMenu(int field, const funkgui::Rect& at, funkgui::HostServices& h);
         void keepInView(int row);
         void scrollTo(float s);
         void focusRow(int row);
+        bool moveFocus(int dir);             // to the next field, table or heading; false at the end
         std::string rangeText(int field) const;
         std::string numberText(int field, double si) const;
 

@@ -422,3 +422,143 @@
         CHECK(!card.isOpen());
         return 0;
     }
+
+    // A document that refuses Boost over 100 kPa (its own rule beyond the range, as BuildDoc's least stated bore).
+    struct CappedDoc final : tee::ui::FieldDoc
+    {
+        tee::ui::MemoryDoc& m;
+        explicit CappedDoc(tee::ui::MemoryDoc& d) : m(d) {}
+        int count() const override { return m.count(); }
+        const tee::ui::FieldInfo& info(int i) const override { return m.info(i); }
+        double get(int i) const override { return m.get(i); }
+        void set(int i, double si) override { m.set(i, si); }
+        tee::ui::Curve16 curve(int i) const override { return m.curve(i); }
+        void setCurve(int i, const tee::ui::Curve16& c) override { m.setCurve(i, c); }
+        tee::ui::Map16 map(int i) const override { return m.map(i); }
+        void setMap(int i, const tee::ui::Map16& v) override { m.setMap(i, v); }
+        void beginGesture() override { m.beginGesture(); }
+        void endGesture() override { m.endGesture(); }
+        std::uint64_t revision() const override { return m.revision(); }
+        bool accepts(int i, double si, std::string* why) const override
+        {
+            if (m.info(i).path != "boost.level" || si <= 100e3 + 1.0)
+                return true;
+            if (why != nullptr)
+                *why = "not over 100 kPa, for the test";
+            return false;
+        }
+    };
+
+    // A controller's commands (the G29's buttons; EditCommand.h): rows (the view following), values (a burst one undo
+    // step, Coarse ten nudges, fine a tenth, a refusal said), activate, toDefault, changedOnly, back; false where
+    // nothing takes a command.
+    TEST(testInspectEdit, "inspect.edit")
+    {
+        using C = tee::ui::EditCommand;
+        using Kind = tee::ui::FieldInspector::Row::Kind;
+        tee::ui::MemoryDoc mem{ tee::test::mockFields() };
+        CappedDoc doc(mem);
+        tee::ui::Units units;
+        tee::ui::Board board{ 600, 900 };
+        funkgui::HeadlessHost host{ board, 0, 1.0f };
+        tee::ui::FieldInspector& col = board.make<tee::ui::FieldInspector>(doc, units, tee::ui::FieldInspector::Style::rows);
+        std::vector<int> fields;
+        for (const char* s : { "engine", "boost" })
+            for (const int f : tee::ui::sectionFields(mem, s))
+                fields.push_back(f);
+        col.setOutline(tee::ui::outlineOf(mem, fields));
+        std::vector<std::string> opened;
+        col.setOnTable([&](const tee::ui::OutlineEntry& e) { opened.push_back(e.text); });
+        col.setPlace({ 20, 20, 340, 300 }, true);         // short: the view has to follow
+        host.tick(2);
+        const auto kindAt = [&] { return col.rows()[static_cast<std::size_t>(col.focusedRow())].kind; };
+        const auto onScreen = [&] {
+            funkgui::Rect row, value;
+            if (col.focusedField() >= 0)
+                return col.fieldRect(col.focusedField(), row, value) && row.y >= col.bounds().y + 56.0f - 0.5f
+                    && row.bottom() <= col.bounds().bottom() + 0.5f;
+            return true;
+        };
+        const auto focusOn = [&](const char* path) {
+            for (int k = 0; k < 80 && col.focusedField() != mem.find(path); ++k)
+                if (!col.edit(C::rowDown, false) && !col.edit(C::rowUp, false))
+                    break;
+            if (col.focusedField() != mem.find(path))
+            {
+                while (col.edit(C::rowUp, false)) {}
+                for (int k = 0; k < 80 && col.focusedField() != mem.find(path); ++k)
+                    col.edit(C::rowDown, false);
+            }
+            host.tick(30);                                // the scroll eases to where it was set
+            return col.focusedField() == mem.find(path);
+        };
+        // Rows: down from nothing to the first row (a heading), down to the end (false there), the view following
+        // all the way; up to the top (false there).
+        CHECK(col.focusedRow() < 0 && col.edit(C::rowDown, false) && kindAt() == Kind::heading);
+        int moves = 0;
+        bool table = false;
+        while (col.edit(C::rowDown, false))
+        {
+            ++moves;
+            host.tick(30);
+            CHECK_MSG(onScreen(), "row " + std::to_string(col.focusedRow()) + " off the pane");
+            table = table || kindAt() == Kind::table;
+        }
+        CHECK(moves > 10 && table && col.scroll() > 0.0f);
+        while (col.edit(C::rowUp, false))
+            host.tick(30);
+        CHECK(col.focusedRow() == 0 && !col.edit(C::rowUp, false));
+        // Values: a nudge is the wheel's (a hundredth of 0..200 kPa: 2 kPa), Coarse ten, fine a tenth; the burst is one
+        // undo step once it rests.
+        CHECK(focusOn("boost.level"));
+        const int f = mem.find("boost.level");
+        int steps = mem.steps();
+        CHECK(col.edit(C::valueUp, false));
+        CHECK_NEAR(mem.get(f), 82e3, 1.0);
+        CHECK(col.edit(C::valueUpCoarse, false));
+        CHECK_NEAR(mem.get(f), 102e3 - 2e3, 1.0);         // ten nudges asked; the tenth (102) refused: stops at 100
+        CHECK_MSG(col.refusal() == "Out of range: not over 100 kPa, for the test", col.refusal());
+        CHECK(col.edit(C::valueDown, true));              // fine: 0.2 kPa
+        CHECK_NEAR(mem.get(f), 99.8e3, 1.0);
+        CHECK(col.refusal().empty());                     // a value taken: the sentence goes
+        CHECK(col.edit(C::valueDownCoarse, true));        // fine and coarse: ten tenths, 2 kPa
+        CHECK_NEAR(mem.get(f), 97.8e3, 1.0);
+        host.tick(60);                                    // the burst rests: one step
+        CHECK_MSG(mem.steps() == steps + 1, std::to_string(mem.steps() - steps));
+        // toDefault: back to 80 kPa (one step); again: nothing to do.
+        steps = mem.steps();
+        CHECK(col.edit(C::toDefault, false) && mem.get(f) == 80e3 && mem.steps() == steps + 1);
+        CHECK(!col.edit(C::toDefault, false));
+        // activate: a number takes none; a switch flips; a choice steps (round to the first); a heading folds; a table
+        // opens.
+        CHECK(!col.edit(C::activate, false));
+        CHECK(focusOn("boost.blowOff"));
+        const int sw = mem.find("boost.blowOff");
+        const double on = mem.get(sw);
+        CHECK(col.edit(C::activate, false) && mem.get(sw) != on);
+        CHECK(col.edit(on >= 0.5 ? C::valueUp : C::valueDown, false) && mem.get(sw) == on);
+        CHECK(!col.edit(on >= 0.5 ? C::valueUp : C::valueDown, false));   // already there
+        CHECK(focusOn("engine.layout"));
+        const int lay = mem.find("engine.layout");
+        const tee::ui::FieldInfo& li = mem.info(lay);
+        mem.set(lay, li.max);
+        CHECK(col.edit(C::activate, false) && mem.get(lay) == li.min);
+        CHECK(col.edit(C::activate, false) && mem.get(lay) == li.min + 1.0);
+        while (col.edit(C::rowUp, false)) {}
+        const std::size_t before = col.rows().size();
+        CHECK(kindAt() == Kind::heading && col.edit(C::activate, false) && col.rows().size() < before);
+        CHECK(col.edit(C::activate, false) && col.rows().size() == before);
+        while (col.edit(C::rowDown, false) && kindAt() != Kind::table) {}
+        CHECK(kindAt() == Kind::table && col.edit(C::activate, false) && opened.size() == 1);
+        // changedOnly: the focus stays on its field; back lets it go, then nothing to let go.
+        CHECK(focusOn("engine.compression"));
+        col.edit(C::valueUp, false);
+        CHECK(col.edit(C::changedOnly, false) && col.changedOnly());
+        CHECK(col.focusedField() == mem.find("engine.compression"));
+        CHECK(col.edit(C::changedOnly, false) && !col.changedOnly() && col.focusedField() == mem.find("engine.compression"));
+        CHECK(col.edit(C::back, false) && col.focusedRow() < 0 && !col.edit(C::back, false));
+        // The frame's: pages, workspaces, undo, redo.
+        for (const C c : { C::pagePrev, C::pageNext, C::workspacePrev, C::workspaceNext, C::undo, C::redo })
+            CHECK(!col.edit(c, false));
+        return 0;
+    }
