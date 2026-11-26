@@ -71,6 +71,54 @@
         CHECK(rig.value("engine.layout") == 5.0);
         rig.doc.undo();
         CHECK(rig.value("engine.layout") == 3.0);
+        // A document's own rule beyond the range (FieldDoc::accepts; BuildDoc's: the host's least stated bore): refused as
+        // a value out of range is, its reason said under the row, the typing kept; another value taken.
+        {
+            struct Refusing final : tee::ui::FieldDoc
+            {
+                tee::ui::MemoryDoc& m;
+                explicit Refusing(tee::ui::MemoryDoc& d) : m(d) {}
+                int count() const override { return m.count(); }
+                const tee::ui::FieldInfo& info(int i) const override { return m.info(i); }
+                double get(int i) const override { return m.get(i); }
+                void set(int i, double si) override { m.set(i, si); }
+                tee::ui::Curve16 curve(int i) const override { return m.curve(i); }
+                void setCurve(int i, const tee::ui::Curve16& c) override { m.setCurve(i, c); }
+                tee::ui::Map16 map(int i) const override { return m.map(i); }
+                void setMap(int i, const tee::ui::Map16& v) override { m.setMap(i, v); }
+                void beginGesture() override { m.beginGesture(); }
+                void endGesture() override { m.endGesture(); }
+                std::uint64_t revision() const override { return m.revision(); }
+                bool accepts(int i, double si, std::string* why) const override
+                {
+                    if (m.info(i).path != "boost.level" || std::fabs(si - 150e3) > 1.0)
+                        return true;
+                    if (why != nullptr)
+                        *why = "not 150 kPa, for the test";
+                    return false;
+                }
+            };
+            tee::ui::MemoryDoc mem(tee::test::mockFields());
+            Refusing doc(mem);
+            tee::ui::Board board{ 600, 900 };
+            funkgui::HeadlessHost host{ board, 0, 1.0f };
+            tee::ui::FieldInspector& col = board.make<tee::ui::FieldInspector>(doc, rig.units, tee::ui::FieldInspector::Style::rows);
+            col.setOutline(tee::ui::outlineOf(doc, tee::ui::sectionFields(doc, "boost")));
+            col.setPlace({ 20, 20, 340, 820 }, true);
+            host.tick(2);
+            const int boost = doc.find("boost.level");
+            funkgui::Rect r, v;
+            CHECK(col.fieldRect(boost, r, v));
+            const double was = doc.get(boost);
+            host.click(v.centreX(), v.centreY());
+            typeKeys(host, "backspace backspace backspace backspace backspace 1 5 0 enter");
+            CHECK(col.typing() && col.typed() == "150");
+            CHECK_MSG(col.refusal() == "Out of range: not 150 kPa, for the test", col.refusal());
+            CHECK(doc.get(boost) == was);
+            typeKeys(host, "backspace 1 enter");
+            CHECK(!col.typing() && col.refusal().empty());
+            CHECK_NEAR(doc.get(boost), 151e3, 1e-6);
+        }
         return 0;
     }
 
