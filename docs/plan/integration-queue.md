@@ -2235,6 +2235,32 @@ engines only where a source shows such an engine drawn split.
 - **Next (X):** the corrected combo builds and the twin; three shipped boosted builds on the pull; part C on
   two trees.
 
+## 26 Nov 15:04 UTC: A SHIPPED BUILD CLICKS AT ITS UPSHIFTS, and the cut's length carries it (item 16's evidence)
+
+- **X, three shipped boosted builds as built on the PULL (named before the run; 17 copies, per event, each
+  against twice the lowest of its own reference's five copies):** the three-cylinder 1.0 turbo over at its 1-2
+  upshift in 6 of 17 (1.26/2.62/3.98, bound 2.84) and at its 2-3 in 8 of 17 (2.32/2.83/3.56); the kei 660
+  triple at its 1-2 in 2 of 17 (bound 2.77); the boxer four 0 of 17 everywhere. Nothing over anywhere but at
+  upshifts. The background's "clean" (0 of 6) was the tour's.
+- **The steward's read of the three-cylinder on probes (predictions first; nothing committed).** The cut by
+  the flags: 210 ms at both upshifts on the tip (the spark cut alone), 60 ms on the probe with the cut held
+  only while the vehicle asks. The first firing back over the next four, 15 copies: at the 1-2, 2.65 on the
+  tip (1.35 to 3.98), 1.12 on the cut probe (0.99 to 1.19), 1.12 with both fixes; at the 2-3, 2.82 (2.04 to
+  3.70), 1.07, 1.11. **A cut of real length brings the first firing back level with the next ones**, a
+  larger fall than on the small four (1.66 to 1.30) or the V8 (2.01 to 1.80); boost held through the cut is
+  not needed to explain it (not read). The counts per event on the probe trees follow, in X's form.
+- **So item 16 (X-047) has its evidence on what ships.** Its design is ruled, its change is one file of the
+  steward's (launch.fm), and it waits for one thing: a bake to follow it.
+- **Ruled for the tests:** a small shipped-pull pass in the nightly, exactly these three builds, the
+  three-cylinder's two upshifts and the kei's 1-2 entered under X-048 with the steward named beside N2; the
+  whole corpus on the pull (about 40 minutes) stays a proposal.
+- **Also:** the corrected combo corpus is on the branch (8ec06fd1: lab cams lift-matched to their dials; the
+  twin `turbo-six-mild`; `Known.h` entry by entry; the twin's eight rows entered). G re-read X-052's two rows
+  on it per event: valve+intake+car's 1 to 4 on the dial build was the cam swap (0 per event on both trees);
+  intake+exhaust+voices sits at the limiter's edge (3.03 against 2.97; 2.99 on the secant tree).
+- **Clips with the owner (the steward's session):** `three-cylinder-upshift-as-shipped.wav` and
+  `three-cylinder-upshift-PROBE-both-fixes.wav`, a build the owner drives.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 13:41 UTC: `main` IS AT 3f892823** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
