@@ -315,6 +315,7 @@ module Boost
     void exhaustSides(int n)
     {
         mach.exSides = n < 1 ? 1 : (n > 2 ? 2 : n);
+        mach.houseSeen = 0;
     }
 
     // External gates (card G asked): how many turbos have a gate of their own pipe; gatePipe(t, ...) takes t from 0
@@ -511,6 +512,10 @@ module Boost
             if (mach.sc == 0 && mach.turbNozWants > 0.0f
                 && (mach.turbNozHas < 0.5f * mach.turbNozWants || mach.turbNozHas > 2.0f * mach.turbNozWants))
                 mm |= 16;
+            // (the lead's ruling: a twin turbo whose second wheel the exhaust leaves without gas, a one-bank engine's
+            // one collector: the builder's to cure, this says it)
+            if (mach.unfedTurbo() != 0)
+                mm |= 128;
         }
         t->mismatch = mm;
         t->coolerHas = on != 0 ? mach.icFlowHas : 0.0f;
