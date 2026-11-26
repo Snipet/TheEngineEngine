@@ -852,3 +852,15 @@ TEST_CASE("first.json: the runners' wall in use", "[.runnerwall]")
                     b.field("intk.run[" + std::to_string(k) + "].len"), b.field("intk.run[" + std::to_string(k) + "].diam"),
                     b.field("intk.run[" + std::to_string(k) + "].c"));
 }
+
+TEST_CASE("custom twin turbos arranged in sequence keep one collector", "[.seqturb]")
+{
+    Bench b("archetypes/turbo-four-20-gdi");
+    std::string e;
+    REQUIRE(b.player().setSpec("boost.model", 1, e));
+    REQUIRE(b.player().setSpec("boost.kind", 2, e));
+    REQUIRE(b.player().setSpec("boost.layout", 3, e));
+    REQUIRE(b.player().setSpec("engine.custom", 1, e));
+    b.start();
+    std::printf("custom four, twin turbos in sequence: topo %g\n", b.field("lay.topo"));
+}
