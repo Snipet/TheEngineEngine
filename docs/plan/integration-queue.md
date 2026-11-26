@@ -1834,6 +1834,38 @@ engines only where a source shows such an engine drawn split.
   each cylinder's next event would take the rate to none. It sits beside item 8 and decides whether X-030
   and X-031 are one fault.
 
+## 26 Nov 07:30 UTC: all six click rows are SOMETIMES rows; no copies pass; item 15's design is written
+
+- **X's spreads (17 copies, 293.15 +/- 0.15 K, on fb32d4fc; the second measurement, agreeing with the
+  steward's X-031): no row sits on one side of its bound.** X-031 (V8 pull, fuel+ecu, 4.03) 6 of 17 over, 1.83
+  to 4.78, at three different shift events; X-030 (small four pull, fuel+ecu+car, 2.85) 12 of 17, 2.25 to 7.09,
+  the upshift's cut; X-043 (turbo six tour, intake+exhaust+car, 2.97) 11 of 17, the start's catch; X-041's
+  rally five (3.00) 1 of 17; X-041's turbo six tour (2.97) 3 of 17, the 9.76 s lift; X-044 (small four pull,
+  custom+fuel+ecu, 2.85) 11 of 17, mostly the 11.02 s downshift (its pass at the unmoved temperature was a
+  draw). A row's named event is itself a draw.
+- **RULED (the 07:26 copies pass is WITHDRAWN, not held):** no copies pass in any tier (worst of three is a
+  weighted coin per night; a red fraction would be a number made from the rows' own measurements).
+  `Known.h`'s six entries become SOMETIMES rows with their rates, words only (X). The spread is an on-demand
+  instrument in no tier (X), printing each copy's excess, time, check and the reference's own worst step.
+  **The evidence rule for a sometimes row: the only verdicts are CURED (0 of 17 over on the tree said to cure
+  it, the rate before on record) and NOT CURED; anything between is "n of 17, was m of 17" with no verdict.**
+  The single draw stays as a tripwire in the default tier and the nightly: a row not in `Known.h` that goes
+  red on a draw is neither re-run to green nor waved off; its spread is run, and with any copy over it is
+  entered under a number.
+- **Next, X:** the reference's own worst step per copy on the six; and the same spread on six rows that pass
+  today, chosen blind (every k-th click-judged row, k fixed first). The lead's prediction before it runs: at
+  least two show a copy over, and then the soak's stream of "new" rows has been one population sampled again
+  on each tree. **The steward:** why a cut clicks only sometimes (the phase at which it lands), X-030 first.
+- **Item 15's design is written by the integrator** (`docs/handoffs/d-air-pressure-design.md`, local: its push
+  is refused): the readers by owner; the 101325s that stay references (a compressor map's corrected flow, the
+  knock table's axis, the tables' load axis, a flame-speed correlation); the spring gauge and the ECU's target
+  absolute, sources first, with a migration that keeps the shipped builds bit-identical at the default. Its
+  predictions at 3000 rpm full load and 70 kPa: the default V8's BMEP 10.57 to 6.77 bar (36 % down against 31 %
+  of pressure: friction stays), the economy four's 11.90 to 7.78; a 1 bar spring turbo 1.70 against 2.01 bar
+  absolute. The lead has put its questions to G (the pipe's impedance and steepening: the outside, a
+  reference, or the pipe's mean) and to C (the tables' load axis; what in the bake and the predictor assumes
+  sea level), each to answer in its own handoff.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
