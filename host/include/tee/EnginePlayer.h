@@ -34,6 +34,8 @@
 
 namespace tee
 {
+    class Sim;
+
     class EnginePlayer
     {
     public:
@@ -90,6 +92,10 @@ namespace tee
         // Compiles the simulator in `options.directory` and makes it ready: the instance made, the Spec and Controls at
         // their defaults, init run. nullptr, with `errors` holding FMinus's messages or what the contract misses.
         static std::unique_ptr<EnginePlayer> create(const Options& options, std::string& errors);
+        // The same on a program compiled already (a Sim's: tee::test::compiled's, shared by a test run), not compiled
+        // again: the player holds the Sim, so its program outlives it. A Sim compiled with the checks is refused (a
+        // checked program plays for one host at a time: compile one for the player).
+        static std::unique_ptr<EnginePlayer> create(std::shared_ptr<Sim> sim, double sampleRate, std::string& errors);
         ~EnginePlayer();
         EnginePlayer(const EnginePlayer&) = delete;
         EnginePlayer& operator=(const EnginePlayer&) = delete;
@@ -141,7 +147,9 @@ namespace tee
         void writeControls() noexcept;
         void check(const char* call) noexcept;
 
-        std::unique_ptr<Program> program_;
+        std::shared_ptr<Sim> sim_;          // a Sim's program played (create(sim)): held first, so it is let go last
+        std::unique_ptr<Program> owned_;    // or the player's own
+        Program* program_ = nullptr;        // the one played
         std::unique_ptr<Schema> schema_;
         std::unique_ptr<Instance> instance_;
         void (*init_)(void*, float) = nullptr;
