@@ -24,12 +24,20 @@ namespace tee::calib
 {
     using Row = std::map<std::string, double>;
 
-    // The simulator compiled once for every test in this binary (freed by the caller: never kept in a static with
-    // a destructor, 01-rules.md section 4).
+    // The simulator compiled once for every test in this binary (some 6 CPU-s a compile; the cases compiled it nine
+    // times, the binary 143 test-s against its 80: the steward, 26 Nov). Kept through a pointer that is never
+    // destroyed, as core's Bench keeps its player (01-rules.md section 4: nothing owning a compiled program in a static
+    // with a destructor); each case's SimHost is its own, so no state passes between cases.
     inline std::shared_ptr<Sim> compileSim(std::string& errors)
     {
+        static std::shared_ptr<Sim>* kept = nullptr;
+        if (kept != nullptr && *kept != nullptr)
+            return *kept;
         Sim::Options options;
-        return Sim::compile(std::filesystem::path(TEE_SOURCE_DIR) / "sim", options, errors);
+        std::shared_ptr<Sim> sim = Sim::compile(std::filesystem::path(TEE_SOURCE_DIR) / "sim", options, errors);
+        if (sim != nullptr)
+            kept = new std::shared_ptr<Sim>(sim);
+        return sim;
     }
 
     // Runs `buildFile` (relative to the source tree) with `sets` applied, warm-up `warmup` s at the first speed (the

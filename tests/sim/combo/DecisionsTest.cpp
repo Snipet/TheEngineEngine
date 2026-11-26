@@ -22,6 +22,8 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -74,7 +76,23 @@ namespace
     // should glide the idle at all is the lead's and H's). Over 7 to 9 s, two seconds: a voices route renders from a
     // different instant, so a chaotic idle that is still falling (the turbo six: 148 to 130 rad/s over 20 s) wanders
     // apart by up to 3.7 rad/s over one second (8 to 9 s: 131.8 against 135.5, the first soak) and 1 over two.
+    Reached reachRun(const std::string& build, const Values& late);
+
+    // One run per engine and sequence in a process: the build's text and the late writes name it (the size line's middle
+    // point is each switch's start route; the fast tier's grouping, 26 Nov)
     Reached reach(const std::string& build, const Values& late)
+    {
+        static std::map<std::string, Reached>* seen = new std::map<std::string, Reached>();
+        std::ostringstream key;
+        key << std::ifstream(build).rdbuf();
+        for (const auto& [path, value] : late)
+            key << "\n" << path << "=" << value;
+        if (auto it = seen->find(key.str()); it != seen->end())
+            return it->second;
+        return (*seen)[key.str()] = reachRun(build, late);
+    }
+
+    Reached reachRun(const std::string& build, const Values& late)
     {
         tee::test::Scenario s(build);
         s.at(0.0).control("mode", 0).lever(0).clutch(0).throttle(0).ignition(tee::On);
@@ -211,7 +229,7 @@ namespace
 // -16.7 %, engine.wallHeat -17.0 %; boost.model -0.1 %, so it is the nightly's). The nightly: every switch (the tip:
 // within 1.1 %, voices.model's prime the largest).
 TEST_CASE("decisions: with fuel.model or engine.wallHeat on the default block's torque lies on its size line",
-          "[fast][fast-1][combo][decisions]")
+          "[fast][fast-3][combo][decisions]")
 {
     for (const char* p : {"fuel.model", "engine.wallHeat"})
         smoothInSize(p, 1.0);
