@@ -1954,6 +1954,30 @@ engines only where a source shows such an engine drawn split.
   worst-of-run ones because the edges change the neighbours. X is asked whether the judge can count PER EVENT
   WINDOW (each shift, each cut, the start) from what the ECU and the scenario report, and at what cost.
 
+## 26 Nov 07:49 UTC: the upshift's re-entry: the new models' is the larger; the cut runs its request twice
+
+- **The first firing back against the median of the four after it (the steward; source tree, 15 nudges, found
+  from the cut's end):** the reference 1.16 on the small four (0.97 to 1.37) and 1.51 on the V8 (1.02 to
+  1.73); the case 1.66 (1.19 to 3.36) and 2.01 (1.18 to 3.42), in over and under copies alike. The retard does
+  not change the ratio (probe without it: 1.94 and 2.26); why the row's rate halves without it is
+  UNEXPLAINED. Sourced: a torque step on recovery is real and tuners soften it with 20 to 30 degrees ramped
+  out over 50 to 100 ms (ours 15 over 0.1 s); no source sizes the first firing against the next. So the
+  size is neither a fault nor cleared.
+- **A fault candidate (X to number it; the steward's if it is one):** the new ECU's shift cut is 203 ms on the
+  four where the reference's is 53, and 107 on the V8 against 64, because launch.fm sets its countdown to
+  the vehicle's request again on every step while the vehicle asks (`dogLeft = dog > 0 ? dog : ...`) and
+  car.fm's cutRequest() returns its seconds for as long as the shift lasts: the shift's window plus the
+  request again. Probe copy (sim f23337cc, the countdown set once when the request starts): 149 and 43 ms;
+  the ratio 1.52 and 1.81; the rows' rates halved (X-030 12 to 6 of 15; the V8's 4 to 2). Part of the cause,
+  not all. The integrator is asked, read only, what card I's vehicle meant the number to be (seconds from
+  the request's start, or "while I ask") and for sourced cut lengths by gearbox kind. The lead's guess that
+  an overrun cut joins the shift is struck.
+- **Clips are with the owner in the steward's session** (six 3 s files at one level: each upshift as shipped,
+  on the reference, and on the probe without the retard), with one question: a quick-shifted car's report,
+  or a click. Nothing is shaped on the answer before the window.
+- **Next (the steward):** the per-cylinder residual and wall film at the re-entry, on the source and on the
+  countdown-once probe.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
