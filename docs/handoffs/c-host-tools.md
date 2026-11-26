@@ -142,3 +142,32 @@ the build's own stated air.
   reference air, so `ratedP4` is a sea-level design point, as a maker's is. That is a host change for the bake's
   window, not X-046's. X-046 needs only (a)'s cam reference decided, and `in->ambient` made the stated pressure where
   the design means the outside.
+
+**Addendum, 07:55 UTC: the temperature half (the lead's three reads).**
+- **(a) Today the bake runs at the build's stated air.** Every bake and predictor copy loads the build whole
+  (`build.save()`: Bake.cpp:256, 283, 399, 624, 628, 725, 954, 1736; Predict.cpp:1203). Nothing in host/ sets
+  `spec.env.*`, so a copy runs at the stated `env.temperature` and `env.pressure`. Yet no `env.*` field is in a key,
+  so two builds that differ only in their stated air share the same key while their measured tables differ.
+- **(b) Every shipped build with a baked table states 288.15 K,** not the field's default of 300 K (sim/spec/env.fm:11):
+  - all 31 archetypes and first.json;
+  - of those, 28 have a baked knock table (the three diesels have none) and 15 a baked cam map;
+  - all state the pressure at 101325.
+  The other off-default temperatures are on builds with no baked table: v8.json, v10.json, large-diesel.json and the
+  listeners at 233.15; the combo packs at 293.15; one finding at 322.04.
+  So "bake at the field's default" would re-bake every shipped table 12 K hotter and move them all. "Bake at
+  288.15 K and 101325 Pa" moves none: every shipped table was baked there.
+- **(c) What corrects for a hot day at run time:** knock control, not the table.
+  - The knock model (fuel.model 1, sim/combustion/knock.fm:1-20) is Livengood and Wu's integral over Douaud and
+    Eyzat's delay, the end gas's temperature T0 · (p / p0)^0.25 from the charge's at the valve's closing. Hotter air
+    brings the knock sooner, through the model itself.
+  - The baked table is a fixed retard below best torque by speed and absolute load (combustion.fm:351-352). It holds no
+    temperature, so on a 49 °C day it under-retards against that day.
+  - Knock control (ecu.knock.on, default on: sim/spec/ecu.fm:54; on in all 32 builds) then hears the knocks and
+    retards by its steps, giving back about 2° a second: the sawtooth a knock-limited point shows.
+  - So a hot day is caught, as a real engine's knock sensor catches it: lightly knocking and retarded closed-loop, not
+    pre-retarded by the table. A cold day: the table over-retards a little, which costs a little torque and is safe.
+- **So:** the reference air is 288.15 K and 101325 Pa (the standard day the shipped builds already state), not the
+  field's default. With that, the recommendation changes no shipped table. A build that states another air gets a
+  table baked at the standard day, with knock control covering the difference, as for a person's own build today. If a
+  temperature axis is ever wanted, the evidence for it would be a hot-day knock-limited point whose closed-loop retard
+  costs more than the table's margin. I have no such reading.
