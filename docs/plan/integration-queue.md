@@ -955,9 +955,13 @@ default after the clips; the idle's level; the listening questions.
   cell at 2000.
 - **Research list (the steward): X-030, X-031, X-032, X-036, nothing landed** (measured locally on 87a014f5, the
   pull, six shift phases, the click step and X's excess beside it; the scratch rows in the steward's hand-off).
-  - *A wrong prediction, kept:* with `exhaust.model` on, `exhaust.bang` 1 and 0 read the same, number for number, at
-    the tip and with the cure: the bang account books only the limiter's, the overrun's and a misfire's burns, not a
-    dog box's cut. Under either choice the dog cut sounds the same today.
+  - *A finding withdrawn (the steward, 26 Nov):* "with `exhaust.model` on, `exhaust.bang` 1 and 0 read the same" was the
+    probe's fault: Scenario::spec queues a write at the scenario's current time, and the probe set the choice after the
+    timeline was built, at its end, so both rows ran the default. Re-read with the write at 0 s, on the tip 6c1834f3+,
+    fuel+ecu+exhaust, six shift phases, excess against its bound: the V8 under Burned (bang 1, the default) 1.71 to
+    3.01, all green; under Carved (bang 0) 2.70 to 4.07, one shift-cut red (4.07 against 4.03). The small four under
+    Burned 1.60 to 1.98, all green; under Carved 2.26 to 3.69, three shift-cut reds against 2.85. So under the
+    default, with the exhaust model on, the dog cut's step is gone on both builds; the cut's charge is booked after all.
   - *The cure tried* (a dog box's cut takes the fuel with the spark, `launch.dogLeft` in Ecu1's `fuelCut`; c035fe75's
     ramp reverted): it clears X-030 on the V8 at every phase and not on the small four, so it did not land:
 
