@@ -26,6 +26,8 @@ namespace tee::ui
             std::string id;
         };
         std::vector<AirHit> airHits(const Workspace& w);   // empty for a workspace that is not AIR's
+        // The mismatch lines shown under the row, their words (for tests; U1 for U3, 26 Nov); empty for one not AIR's.
+        std::vector<std::string> airWarnings(const Workspace& w);
     }
 
     namespace air
@@ -81,6 +83,10 @@ namespace tee::ui
             static constexpr const char* volumeWants = "boost.volumeWants";
             static constexpr const char* compressorHas = "boost.compressorHas";
             static constexpr const char* compressorWants = "boost.compressorWants";
+            // (U1 for U3, 26 Nov) 16 the turbines' nozzle area against the build's design point's (m^2); 128 a turbo
+            // the build's exhaust leaves with none of the engine's flow (card N2's flag; the cure is the next window's)
+            static constexpr const char* turbineHas = "boost.turbineHas";
+            static constexpr const char* turbineWants = "boost.turbineWants";
         };
     }
 }

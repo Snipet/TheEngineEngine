@@ -3,6 +3,8 @@
 // the Panel ticks, draws, hit-tests, focuses and feeds input to; and the small text helpers they share.
 #pragma once
 
+#include "kit/gui/EditCommand.h"
+
 #include <funkgui/a11y/A11yItem.h>
 #include <funkgui/canvas/Canvas.h>
 #include <funkgui/core/Geometry.h>
@@ -78,6 +80,9 @@ namespace tee::ui
         // U1: hover help (Tooltip.h): its title and sentence of help and the rect it describes; false: none (the
         // default). A Board shows it after a short rest of the pointer or the keyboard's focus.
         virtual bool help(std::string& /*title*/, std::string& /*body*/, funkgui::Rect& /*anchor*/) const { return false; }
+        // U1: a game controller's command (EditCommand.h) while it has the focus: true when taken; false (the default)
+        // leaves it to the frame.
+        virtual bool edit(EditCommand /*c*/, bool /*fine*/) { return false; }
         // J2: which part of it help() describes now (a row of a list): a change of part is a change of what the pointer
         // rests on, so the help hides and dwells again. 0 for an item that is one thing.
         virtual int helpPart() const { return 0; }

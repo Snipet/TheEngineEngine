@@ -100,3 +100,34 @@ init" and "initialised over it" and the run diverges from it. Next: diff every f
 routes, pair them on what differs; if they then agree to well under 1 % bound the paired difference by its measure; if
 something real differs (a field one route sets and the other does not), it is a finding in the init order: to the lead
 before the bound moves. Changes after this note are docs only; not pushed while the branch is held.
+
+**Done, 26 Nov (the window after the bake; on the branch at d3907e05)**: the item above is closed, and with it these.
+- **first.json's two routes, field by field (#337).** A default case compares every field of the Engine instance between
+  "written after init" (the application's every load) and "initialised over it". Its findings: the runners' wall
+  (Duct::set keyed the wall on length and sound speed, not the bore or rate: G's cure e7088e2b, taken by the runners with
+  N1's intake.fm line), the init order (below), and the start's noise (below). Today the routes differ in no
+  configuration field; 2594 fields that hold still differ, every one of a named inert kind (counts in use, the model-0
+  exhaust's pipes, the passivity cache, revision counts). The torque check, paired from before the key, is exact at
+  1500 rpm full load (231.750646 N m on both). At 3000 rpm the knock loop's walk (a 1e-6 nudge moved the mean 1.44 %) made
+  any bound there a test of the knock loop.
+- **The init order** (393519ea): a stopped engine configures the engine the Spec describes at once, not at the next key.
+  Before, the application's load of first.json reported the default V8's redline, cylinders and size until the key.
+  It carries G's exitTemperature() guard, with G's agreement.
+- **The start's noise**: the key's first block drew each route's own noise before the shared streams were set (the
+  valves' hiss); that alone parted ecu.target in its last digits. The cases set both streams before the key.
+- **Custom engines**: the straight six's split headers kept under custom (823e45cd: twin turbos had fed one wheel); the
+  general split by firing order for a one-bank engine whose table splits its headers or whose twin turbos sit a bank
+  each (9c107de6, e0bdc69f); a null test that a custom engine written from its table configures as the table does.
+  The 129 custom builds in content/ (probe [.customtopo], TEE_CUSTOM_LIST a list of their paths): 57 two banks (topo 2),
+  18 split (topo 1), 54 one collector (topo 0), the same before and after. Of the 54, twin turbos only on the two
+  rotary-twin-13 builds, a sequential pair whose second turbine takes its gas through the transfer valve: one collector
+  by design (N2's; its weakness after the join is N2's next window).
+- **The custom friction** read 1 bar over the reference's on the large diesel: the physical friction's cold oil (oilK
+  1.505, 6 s from a cold Bench start); warm it is the reference's within 2 %. The predictor and the dyno read warm oil
+  (oilK 0.985 at a warm-held point; coolant 368 K at P's rows).
+- **The core package's budget**: 111.5 to 87.5 s here (the fan's cycle over 10 s, the energy cases on the shared
+  player); the rest is three compiles each case needs by design (the lead accepted it).
+
+**Open for the next window (26 Nov)**: heat.fm's oil viscosity (viscK 15 at 20 C oil, 5.9 at 40 C, against some 7 to 9
+for a 15W-40) against a sourced viscosity table; the engine dyno's overshoot (above, after C's ramp); a V custom engine's
+bank angles in the custom null (one-bank builds only today).

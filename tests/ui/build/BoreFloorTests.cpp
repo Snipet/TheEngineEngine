@@ -73,7 +73,8 @@ namespace
             CHECK_MSG(std::fabs(doc.get(field) - 0.020) < 1e-9, path + ": BuildDoc::set refused 20 mm");
         }
         // An array's table (the primaries' bores: too many for rows): 3 mm typed into a cell is refused as text that is
-        // no number is (the typing kept, marked); 0 and 20 mm taken.
+        // no number is (the typing kept, marked), its sentence said (J2's TableText::refusal); 0 and 20 mm taken, the
+        // sentence gone.
         {
             const int first = doc.find("exhaust.primD[0]");
             CHECK(first >= 0);
@@ -98,10 +99,12 @@ namespace
             th.keys("3,return");
             th.tick(2);
             CHECK_MSG(table->editing(), "3 mm typed into a primary's cell was taken or dropped");
+            CHECK_MSG(table->refusal().rfind("Out of range: under the least stated bore", 0) == 0, table->refusal());
             CHECK_MSG(std::fabs(doc.get(first) - 0.040) < 1e-9, "the primary's bore moved");
             th.keys("escape,0,return");
             th.tick(2);
             CHECK_MSG(!table->editing() && doc.get(first) == 0.0, "0 typed into a primary's cell was not taken");
+            CHECK_MSG(table->refusal().empty(), "the refusal still said once 0 was taken: " + table->refusal());
             th.click(cell.centreX(), cell.centreY());
             th.keys("2,0,return");
             th.tick(2);

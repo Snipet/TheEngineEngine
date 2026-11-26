@@ -37,3 +37,12 @@ entries (absolute), tsPipeTemperature 614 K at 12 500 rpm: each read as the stag
 the frame-rate copies at an eighth of their pace.
 
 **Not run**: macOS and Windows builds (CI); the GPU path. **Kit**: no change. FunkGui and FMinus: no issues met.
+
+**Added by U1 for U3, 26 Nov 2026** (on the lead's word; U3's session idle since 24 Nov): `warnings()` in
+`ui/views/air/AirWorkspace.cpp` now words two more of card N2's `boost.mismatch` bits, `Kind::turbo` like the others:
+16, the turbines' nozzle far from the build's design point's (`boost.turbineHas` and `turbineWants`, an area; the bit
+existed and printed nothing); and 128, a turbo the build's exhaust leaves with none of the engine's flow (N2's new
+flag, 26 Nov: one click on the Aspiration dial could leave one at rest; the cure is the next window's). The demo holds
+the two new names at 0 (`AirDemo.cpp`). `air::airWarnings(w)` gives the lines' words for tests. Test:
+`air.mismatch.turbo`, which checks each bit's line present when the bit is set and gone when it's clear, and both
+together clear of each other. No golden moved.
