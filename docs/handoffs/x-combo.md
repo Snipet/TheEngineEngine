@@ -107,3 +107,8 @@ dial build -> lift-matched -> the twin: valve 0 -> 0 -> 0; valve+sound 0 -> 0 ->
 the tour's valve+boost+ecu (X-041's lift) 3 -> 0 -> 0. So X-049's row and X-041's tour lift left Known.h (they measured
 the cam swap); X-048's valve+boost rows stay on the lift-matched turbo six (2 of 17, the model's); its wallHeat and fuel
 rows moved to the twin (2 and 3 of 17). X-049's part (1), the reference pinned on its limiter, stays a question in part C.
+The twin's own nightly (26 Nov) gave the corpus eight rows a wild cam did not show (X-044's 3-2 downshift on two switch
+sets, X-030's 1-2 upshift on two, X-048's boost rows at the 1-2 and 2-3 upshifts on four; most 1 of 17). A row at 1 of 17
+on one build is the weakest kind of entry there is, kept because the rule is that none is waved off. The twin costs about
+7 minutes of the local nightly (3630 s against 3187 s), all in its triples; if the CI soak's share passes 10 minutes, its
+triples stay in the nightly and come out of the soak (the lead's ruling, 14:25).

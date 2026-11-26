@@ -132,5 +132,24 @@ const Known kKnown[] = {
      "a model switched while running, the click in the 0.3 s after the switch is thrown (part B's flip window; the lead's ruling, 26 Nov 11:11), the turbo six's pull, flips at 5.0, 6.5, 8.0, 9.5 s: 3 of 17 copies over the nightly bound 2.67; lowest 1.65, median 2.08, highest 3.27", "flip"},
     {"X-053", "2026-11-26", "the integrator (a switch taken while running)", "flip exhaust.model", "turbo-six", "flip", "click",
      "a model switched while running, the click in the 0.3 s after the switch is thrown (part B's flip window; the lead's ruling, 26 Nov 11:11), the turbo six's pull, flips at 5.0, 6.5, 8.0, 9.5 s: 10 of 17 over 2.67; lowest 2.05, median 2.84, highest 3.89", "flip"},
+    // The mild twin's new rows (the corrected corpus's nightly, 26 Nov; the lead's ruling, 14:25): 17 copies at 293.15 +-
+    // 0.15 K per event against the twin's nightly bound 3.04; exact rows with their events. Most are 1 of 17 on one build,
+    // the weakest kind of entry there is, kept because none is waved off
+    {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "engine.wallHeat+fuel.model+ecu.model", "turbo-six-mild", "pull", "click",
+     "the fuel's return after an overrun cut with ecu.model on, on the mild twin's 3-2 downshift: 1 of 17 over 3.04; lowest 1.65, median 2.26, highest 3.47", "shift 3-2"},
+    {"X-044", "2026-11-26", "the steward (the ECU's overrun cut)", "fuel.model+ecu.model+voices.model", "turbo-six-mild", "pull", "click",
+     "the fuel's return after an overrun cut with ecu.model on, on the mild twin's 3-2 downshift: 1 of 17 over 3.04; lowest 1.66, median 2.38, highest 3.70", "shift 3-2"},
+    {"X-030", "2026-11-26", "the steward (the ECU's shift cut)", "engine.wallHeat+fuel.model+ecu.model", "turbo-six-mild", "pull", "click",
+     "the first firing back after the new ECU's shift cut, on the mild twin's 1-2 upshift, a plain click there: 1 of 17 over 3.04; lowest 1.81, median 2.30, highest 3.56; without car.model the cut there is the 110 ms one (X-047), so item 16 is expected to move it", "shift 1-2"},
+    {"X-030", "2026-11-26", "the steward (the ECU's shift cut)", "fuel.model+ecu.model+voices.model", "turbo-six-mild", "pull", "click",
+     "the first firing back after the new ECU's shift cut, on the mild twin's 1-2 upshift, a plain click there: 1 of 17 over 3.04; lowest 1.82, median 2.31, highest 3.59; without car.model the cut there is the 110 ms one (X-047), so item 16 is expected to move it", "shift 1-2"},
+    {"X-048", "2026-11-26", "N2 (boost.model)", "intake.model+boost.model+fuel.model", "turbo-six-mild", "pull", "click",
+     "boost.model at the shifts, on the mild twin's 1-2 upshift: 4 of 17 over 3.04; lowest 1.69, median 2.27, highest 3.94", "shift 1-2"},
+    {"X-048", "2026-11-26", "N2 (boost.model)", "boost.model+sound.model+voices.model", "turbo-six-mild", "pull", "click",
+     "boost.model at the shifts, on the mild twin's 2-3 upshift: 1 of 17 over 3.04; lowest 1.34, median 1.64, highest 3.18", "shift 2-3"},
+    {"X-048", "2026-11-26", "N2 (boost.model)", "boost.model+exhaust.model+sound.model", "turbo-six-mild", "pull", "click",
+     "boost.model at the shifts, on the mild twin's 2-3 upshift: 1 of 17 over 3.04; lowest 1.34, median 1.66, highest 3.14", "shift 2-3"},
+    {"X-048", "2026-11-26", "N2 (boost.model)", "boost.model+exhaust.model+voices.model", "turbo-six-mild", "pull", "click",
+     "boost.model at the shifts, on the mild twin's 2-3 upshift: 3 of 17 over 3.04; lowest 1.86, median 2.42, highest 3.60", "shift 2-3"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
