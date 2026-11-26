@@ -1775,10 +1775,8 @@ engines only where a source shows such an engine drawn split.
   same nudges of three rows believed real (X-031's V8 downshift, X-030's shift cut, one of X's choosing) and
   three suspect ones; its cost to the nightly and the soak on CI's logs; what a `Known.h` entry means under it.
   Until it is ruled, `Known.h` stands as it is and no entry is closed or opened on one draw.
-- **Asked of the integrator, read only:** whether a write to `env.pressure` after t 0 reaches a running engine
-  at all, and when (`dialsMoved()` watches the ambient temperature; the pressure may be read at a configure
-  only). If it does not, the altitude and pressure dials do nothing on a running engine until some later
-  event: a fault for the list, unconfirmed until that read.
+- **Asked of the integrator, read only, and answered at 07:21 (below):** whether a write to `env.pressure`
+  after t 0 reaches a running engine at all.
 - **Item 6 (G) is ready and parked.** Physics note fc30811c: every receiver of the port's gas wants the mass
   mean, so the reference's time weighting is a fault to fix under the new models, not a choice.
   `docs/handoffs/patches/g-port-mass-mean.patch` (7e71f752): a hidden switch `spec.exhaust.portMean` (1 the
@@ -1787,6 +1785,32 @@ engines only where a source shows such an engine drawn split.
   when a bake can follow.
 - **Nothing under `sim/`, `host/` or `tools/` has moved since the bake** (read at 4d121479: sim f23337cc, host
   2e7c1bec, tools 7c3e4d59). The branch past `main` is tests, `ui/` and docs.
+
+## 26 Nov 07:28 UTC: the engine never reads the air's pressure; the combo rows' copies pass and evidence rule
+
+- **THE AIR PRESSURE FIELD ACTS ON THE CAR'S DRAG ONLY (the integrator's read and the lead's, made apart; G's
+  bit-identical runs the measurement).** `readSpec()` takes the temperature alone from `spec.env`
+  (sim/engine.fm:1714). Every outside pressure the engine uses is the literal 101325: the box (:301, :1007),
+  the machine's ambient (:528, :1694), the two-stroke (:540, :1197), the trapped charge's reference (:1389),
+  the scopes, the exhaust's outside. The one reader is sim/vehicle/car.fm:393 (the air's density for drag and
+  downforce, when `spec.env.rev` moves). An owner who sets 70 kPa for altitude gets the same power, boost
+  and sound, against the field's own help ("lower at altitude"). X numbers it. The temperature is read (Heat
+  takes `set.ambF` every 16 samples), which is why it is a nudge and the pressure is not.
+- **Item 15 below, the integrator's, a design first** (its push is refused: the design stays local until the
+  owner decides). Meanwhile, `ui/` only: U1 adds an AIR line when the field is off its default ("moves the
+  car's drag only") and holds the workspace's printed absolutes over 101325, both to leave with item 15.
+- **The combo rows (X reproduced G's spread on fb32d4fc: 3.08, 2.68, 1.97 a thousandth of a kelvin apart).
+  Ruled:** the X-041 row stays; no median as a judge (a step heard one run in seven is still heard); the
+  default tier's judge does not change. The nightly gets a COPIES pass (X): the worst over three temperature
+  copies on the case and on its reference, symmetric, each copy printed, proved to bite on X-014's and
+  X-015's old tree (62a6a7fd) on the source tree before it lands. A row whose copies fall on both sides of
+  its threshold is MARGINAL and `Known.h` says so with its spread; a marginal entry leaves only when all of 15
+  copies read under on the tree said to cure it. The steward runs the 15-copy spreads of three rows believed
+  real and three suspect ones, and gives the pass's cost from CI's logs (over about 10 minutes on the soak:
+  the nightly alone).
+- **THE EVIDENCE RULE, for every session from now:** no single draw of a combo row is evidence for or against a
+  change to a tree. "This change cured row R" or "caused it" needs every copy on one side before and every
+  copy on the other after, or it says "marginal, unchanged".
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
@@ -1852,12 +1876,22 @@ engines only where a source shows such an engine drawn split.
      judgement, at every speed) holds the 2.0 at 88 kPa of its 140 target at 1750 rpm (1.7: 111 kPa; 2.0:
      131 kPa and 275 N m, still under 304); (b) on the pickup and the tractor the vanes make more boost than
      a fixed nozzle and 3 to 5 % less torque: one target number where a maker has a map.
+ 15. the integrator, a design first: the engine breathes the stated air. Every reader of the outside's
+     pressure under the new models by file, line and owner (the box and throttle N1; the machine's ambient
+     N2; the exhaust's outside and the tailpipe's radiation G; the two-stroke; the trapped charge; the knock
+     model; a compressor map's corrected-flow reference stays 101325). The null: model 0 keeps 101325, and at
+     the field's default every archetype is bit-identical to today's, so the bake reproduces its tables. What
+     a boost target means at altitude (gauge or absolute; sources), and each shipped boosted build at 70 kPa
+     under both. Predictions first: a naturally aspirated engine's brake torque at 70 kPa (indicated about in
+     proportion, brake by more: friction does not fall), a wastegated turbo below and above the compressor's
+     limit, the idle, a cold start. U1's AIR line and held absolutes leave with it.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
   `scripts/lint.sh` before pushing; wait on the tier's process; a sha only after the command printed it; a
   check that reads "the shipped builds" reads them as the bake's gate does (warm and cold) or says which state
-  it did not read; a refusal of a session's permission check is never worked around.
+  it did not read; a refusal of a session's permission check is never worked around; no single draw of a combo row is
+  evidence for or against a change (26 Nov 07:28).
 - **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
   baked tables), docs. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead runs.
 - **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**
