@@ -43,6 +43,15 @@
 
 ## Landed
 
+- **26 Nov 16:31 UTC: `main` at d6615852** (from 3f892823, fast-forward; run 45855822711 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). Tests, the combo corpus and docs only: the
+  five combo builds state lab cams lift-matched to their dials (bit-identical with the valvetrain's model off),
+  so a valve row compares model with model; their fair twin `turbo-six-mild` joins the nightly; `Known.h`
+  changed entry by entry (four rows that measured a cam swap left; the twin's eight entered); a nightly case
+  plays three SHIPPED boosted builds on the pull. What that case found, not cured in `main`: the three-cylinder
+  1.0 turbo is over at its 1-2 upshift in 6 of 17 copies and at its 2-3 in 8 of 17, the kei 660 triple at its
+  1-2 in 2 of 17; on a probe with the shift's cut at its real length (60 ms where `main` cuts 210) all three
+  read 0 of 17: item 16 (X-047), designed, waiting for a bake. Nothing an owner sees or hears moved.
 - **26 Nov 13:41 UTC: `main` at 3f892823** (from 389ee865, fast-forward; run 45823175500 on that commit: Linux,
   Windows and macOS green; the same bake, the baked trees unchanged). Tests and docs only: the combo judge reads
   clicks PER EVENT (the start, a flip, each shift, each limiter episode, each cut, each lift, the rest; no window's
