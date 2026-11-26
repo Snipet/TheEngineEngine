@@ -84,6 +84,11 @@ namespace tee::ui
         const std::string& refusal() const noexcept { return refusal_; }
         // The refusal's sentence as drawn: wrapped to the row's width, every word kept.
         std::vector<std::string> refusalShown() const;
+        // The focused row's outline (its stroke's centre line, kFocusStroke wide) and a changed field's dot, on screen;
+        // false when there is none to show.
+        static constexpr float kFocusStroke = 2.0f;
+        bool focusMarkRect(funkgui::Rect& mark) const;
+        bool changedDotRect(int field, funkgui::Rect& dot) const;
         float scroll() const noexcept { return scroll_; }
         float contentHeight() const noexcept { return contentH_; }
         int shownFields() const noexcept;    // fields the rows hold now (filter and CHANGED applied)
@@ -188,5 +193,6 @@ namespace tee::ui
         int refusalLaidField_ = -1;
         std::string refusalLaid_;
         std::vector<std::string> refusalLines(float width) const;
+        funkgui::Rect changedDot(const Row& r, const funkgui::Rect& at) const;
     };
 }
