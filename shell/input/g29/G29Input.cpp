@@ -226,8 +226,12 @@ namespace tee::input::g29
         std::uint32_t pressed = now.buttons & ~was_;
         // SHARE is the modifier while nothing has it: never the answer then
         const bool shareBound = std::any_of(buttons.begin(), buttons.end(), [](const Binding& b) { return b.bit == kBitShare; });
-        if (!shareBound)
+        if (!shareBound && (pressed & (1u << kBitShare)) != 0)
+        {
             pressed &= ~(1u << kBitShare);
+            was_ |= 1u << kBitShare;                        // said once a press
+            shareRefused_ = true;
+        }
         if (pressed == 0)
         {
             if (left_ <= 0.0)
@@ -251,7 +255,8 @@ namespace tee::input::g29
 
     bool repeats(EditCommand c) noexcept
     {
-        return c == EditCommand::rowUp || c == EditCommand::rowDown;
+        return c == EditCommand::rowUp || c == EditCommand::rowDown || c == EditCommand::valueDownCoarse
+               || c == EditCommand::valueUpCoarse;
     }
 
     void Input::setButtons(Buttons buttons)
@@ -267,7 +272,8 @@ namespace tee::input::g29
         return std::none_of(buttons_.begin(), buttons_.end(), [](const Binding& b) { return b.bit == kBitShare; });
     }
 
-    void Input::apply(const State& now, bool reading, tee::input::Driver& driver, bool buttonsLive, double dt)
+    void Input::apply(const State& now, bool reading, tee::input::Driver& driver, bool buttonsLive, double dt,
+                      const Presses* presses)
     {
         edits_.clear();
         if (!reading)
@@ -306,9 +312,13 @@ namespace tee::input::g29
                         driver.set(Source::wheel, b.action, down);
                     continue;
                 }
-                if (down && !was)
+                // every press since the last frame (the transport's count), or the sample's edge where none is counted
+                const int counted = presses != nullptr ? (*presses)[static_cast<std::size_t>(b.bit)] : 0;
+                const int n = std::min(std::max(counted, down && !was ? 1 : 0), kMostPerFrame);
+                if (n > 0)
                 {
-                    edits_.push_back({ *b.edit, fine });
+                    for (int k = 0; k < n; ++k)
+                        edits_.push_back({ *b.edit, fine });
                     held_[static_cast<std::size_t>(b.bit)] = 0.0;
                     next_[static_cast<std::size_t>(b.bit)] = kRepeatAfter;
                 }
@@ -316,12 +326,12 @@ namespace tee::input::g29
                 {
                     // held: the first repeat after kRepeatAfter, then kRepeatRate a second, at most one a frame
                     double& h = held_[static_cast<std::size_t>(b.bit)];
-                    double& n = next_[static_cast<std::size_t>(b.bit)];
+                    double& at = next_[static_cast<std::size_t>(b.bit)];
                     h += dt;
-                    if (h >= n)
+                    if (h >= at)
                     {
                         edits_.push_back({ *b.edit, fine });
-                        n = std::max(n + 1.0 / kRepeatRate, h);
+                        at = std::max(at + 1.0 / kRepeatRate, h);
                     }
                 }
             }

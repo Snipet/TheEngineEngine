@@ -761,3 +761,84 @@ TEST_CASE("g29: a button the owner bound to driving stays driving: its press dri
     REQUIRE(input.edits().size() == 1);
     CHECK(input.edits()[0].command == wh::EditCommand::activate);
 }
+
+TEST_CASE("g29: a dial's detents between two frames are each a nudge (counted as the transport hands them, capped)",
+          "[shell][input][g29]")
+{
+    // the dial right is button 22 on kButtonPage: three detents (press, let go) between two frames
+    wh::Map map;
+    int dialRight = -1;
+    for (int b = 0; b < static_cast<int>(std::size(wh::kBits)); ++b)
+        if (std::string(wh::kBits[b].name) == "dial right")
+            dialRight = b;
+    REQUIRE(dialRight >= 0);
+    const int usage = wh::kBits[dialRight].button;
+    for (int k = 0; k < 3; ++k)
+    {
+        map.input(wh::kButtonPage, usage, 1, 0, 1);
+        map.input(wh::kButtonPage, usage, 0, 0, 1);
+    }
+    CHECK(map.state().buttons == 0u);                                 // the frame's sample sees none of them
+    wh::Presses p = map.takePresses();
+    CHECK(p[static_cast<std::size_t>(dialRight)] == 3);
+    CHECK(map.takePresses()[static_cast<std::size_t>(dialRight)] == 0); // taken: counted from zero again
+
+    // Input: three nudges this frame; a hundred detents in one frame: kMostPerFrame
+    tee::input::Driver driver{ DriverSettings{} };
+    wh::Input input;
+    wh::State s;
+    input.apply(s, true, driver, true, 0.016);
+    input.apply(s, true, driver, true, 0.016, &p);
+    REQUIRE(input.edits().size() == 3);
+    for (const wh::Edit& e : input.edits())
+        CHECK(e == wh::Edit{ wh::EditCommand::valueUp, false });
+    wh::Presses many{};
+    many[static_cast<std::size_t>(dialRight)] = 100;
+    input.apply(s, true, driver, true, 0.016, &many);
+    CHECK(static_cast<int>(input.edits().size()) == wh::kMostPerFrame);
+    // where nothing is counted (Windows's sample): a press seen in the sample is one
+    s.buttons = 1u << dialRight;
+    wh::Presses none{};
+    input.apply(s, true, driver, true, 0.016, &none);
+    CHECK(input.edits().size() == 1);
+    // a learn listening: counted presses are the learn's, not edits
+    s.buttons = 0;
+    input.apply(s, true, driver, false, 0.016, &p);
+    CHECK(input.edits().empty());
+}
+
+TEST_CASE("g29: minus and plus repeat as the rows do; SHARE pressed in a learn is refused and said", "[shell][input][g29]")
+{
+    CHECK(wh::repeats(wh::EditCommand::valueUpCoarse));
+    CHECK(wh::repeats(wh::EditCommand::valueDownCoarse));
+    CHECK_FALSE(wh::repeats(wh::EditCommand::valueUp));
+    tee::input::Driver driver{ DriverSettings{} };
+    wh::Input input;
+    wh::State s;
+    input.apply(s, true, driver, true, 0.01);
+    int plus = -1;
+    for (const wh::Binding& b : wh::editDefaults())
+        if (b.edit == wh::EditCommand::valueUpCoarse)
+            plus = b.bit;
+    s.buttons = 1u << plus;
+    int n = 0;
+    for (int f = 0; f <= 50; ++f)                                     // 0.5 s held
+    {
+        input.apply(s, true, driver, true, 0.01);
+        n += static_cast<int>(input.edits().size());
+    }
+    CHECK(n >= 2);                                                    // the press, then repeats after 0.35 s
+    CHECK(n <= 4);
+
+    wh::Buttons buttons = wh::defaultButtons();
+    wh::ButtonLearn learn;
+    wh::State q;
+    learn.begin({ Action::none, wh::EditCommand::undo }, q);
+    q.buttons = 1u << wh::kBitShare;
+    CHECK_FALSE(learn.watch(q, 0.1, buttons));
+    CHECK(learn.takeShareRefused());
+    CHECK_FALSE(learn.takeShareRefused());                            // said once
+    CHECK_FALSE(learn.watch(q, 0.1, buttons));                        // still held: not said again
+    CHECK_FALSE(learn.takeShareRefused());
+    CHECK(learn.active());
+}

@@ -136,7 +136,7 @@ pedals, paddles, shifter and PS drive exactly as above. Each is a binding (moved
 | D-pad left / right | The inspector's page before / after (ENGINE 1, ENGINE 2, VOICES, ...) |
 | L2 / R2 | The workspace before / after (GAR, ENG, VLV, AIR, EXH, TUNE, CAR, DYNO, DRV, LSN, SCP) |
 | The red dial, a detent left / right | The focused value down / up a nudge (as the mouse wheel over it: a hundredth of its travel; a choice or a whole number, one step) |
-| Minus / plus | Ten nudges down / up |
+| Minus / plus | Ten nudges down / up (with SHARE: ten fine ones); held, they repeat as the rows do |
 | SHARE, held | Makes a value's nudge fine (a thousandth, as Shift) |
 | The dial's return, cross | Activate: a switch flips, a group folds or unfolds, a choice steps on, a table opens |
 | Circle | Back: a table closes, else the focus is let go |
@@ -145,8 +145,11 @@ pedals, paddles, shifter and PS drive exactly as above. Each is a binding (moved
 | OPTIONS | The "changed only" filter on and off |
 | R3 | Free |
 
-The buttons are read once a frame: a dial's detent is one nudge, and detents faster than the frames (two between two
-frames) count once; at most one command a button a frame. Editing from the wheel works where its buttons are read:
+A dial's detent is one nudge, each one counted: the application counts every press the wheel's driver hands it, not
+only what a frame's sample sees, so detents faster than the frames are not lost; at most 8 commands a button a frame.
+Linux: tested with made-up kernel events (three detents between two frames, three nudges). macOS: compiled by CI,
+unproven until the owner turns the dial. Windows: only a frame's sample is known there, so a press counts once a frame.
+Minus and plus repeat as the D-pad's up and down do. Editing from the wheel works where its buttons are read:
 macOS and Linux today; on Windows once the owner's probe has given its table (below). Until the frame takes the
 commands (its `edit()`, being built), the console says once "editing from the wheel waits for the frame".
 
@@ -172,7 +175,7 @@ lights stay dark (the status line says so). A rule that gives them to you, in `/
 **The buttons can be moved.** F9, "Wheel buttons": choose a driving action (start, shift up, shift down, neutral,
 handbrake, splitter, range, engine brake) or an edit (the table above), then press the wheel's button for it within
 10 s ("wheel: press the button for ..."; a button already held counts once it is let go and pressed again; SHARE is
-not taken while it is the modifier). The button loses whatever it did before; a driving action is also taken from the
+not taken while it is the modifier: the status line says so). The button loses whatever it did before; a driving action is also taken from the
 button that had it (it lives on one), an edit may stay on others too (activate is on two). The status line says the
 new binding, and while it listens the buttons drive and edit nothing. "The defaults" puts back the map above. The
 bindings are kept in the settings file (`wheelButtons`, as `2:4=shiftup,...,18=e.rowup,...`: a button's bit, the table

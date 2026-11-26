@@ -510,8 +510,14 @@ namespace
                     note = "wheel: no button pressed (nothing changed)";
                     showStatus();
                 }
+                else if (wheelLearn.takeShareRefused())
+                {
+                    note = "wheel: SHARE is the fine modifier (held, a value's edit is fine): press another button";
+                    showStatus();
+                }
             }
-            wheelInput.apply(wheel.state(), wheel.reading(), controls.driver(), !wheelLearn.active(), dt);
+            const input::g29::Presses presses = wheel.takePresses();
+            wheelInput.apply(wheel.state(), wheel.reading(), controls.driver(), !wheelLearn.active(), dt, &presses);
             // its edit commands to the frame (the inspector's hands), on this thread, the frame's; none to take them
             // yet (the frame's edit() not served): said once, dropped
             if (!wheelInput.edits().empty())

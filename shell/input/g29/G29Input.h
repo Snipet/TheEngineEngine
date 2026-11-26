@@ -16,7 +16,9 @@
 //                          paddle shifts up, the left down, PS is the start key.
 //     an edit command      (EditCommand) given to the frame once a press (the inspector's hands: rows, pages,
 //                          workspaces, values, undo): Input::apply collects them, the app hands them to the frame's
-//                          edit(). The D-pad's up and down repeat while held (kRepeatAfter, then kRepeatRate a second).
+//                          edit(). The D-pad's up and down and minus and plus repeat while held (kRepeatAfter, then
+//                          kRepeatRate a second). Every press the transport saw counts (RacingWheel::takePresses: a
+//                          dial's detents between two frames too), at most kMostPerFrame a button a frame.
 //                          SHARE held makes a value's command fine (a thousandth of its travel, as Shift). The
 //                          defaults: editDefaults() below; the engine keeps running while it is edited (no mode).
 //   a learn                (ButtonLearn: "press the button for ...") binds the next button pressed to one of either
@@ -36,6 +38,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace tee::input
@@ -115,8 +118,11 @@ namespace tee::input::g29
         // Each frame while active (`dt` seconds on): true when a button was bound (learning ends); timed out: false,
         // and active() false.
         bool watch(const State& now, double dt, Buttons& buttons);
+        // SHARE was pressed (and not taken, being the modifier) since the last call: the status line says why.
+        bool takeShareRefused() noexcept { return std::exchange(shareRefused_, false); }
 
     private:
+        bool shareRefused_ = false;
         bool active_ = false;
         Target target_;
         std::uint32_t was_ = 0;                             // the buttons down when it began
@@ -133,7 +139,8 @@ namespace tee::input::g29
 
     inline constexpr double kRepeatAfter = 0.35;             // a held repeating button's first repeat (s)
     inline constexpr double kRepeatRate = 12.0;              // then this many a second
-    bool repeats(EditCommand) noexcept;                      // the D-pad's row up and down
+    inline constexpr int kMostPerFrame = 8;                  // a button's commands in one frame, at most
+    bool repeats(EditCommand) noexcept;                      // the rows (the D-pad's up, down) and the coarse nudges
 
     class Input
     {
@@ -144,10 +151,12 @@ namespace tee::input::g29
 
         // Once a frame, `dt` seconds on. `reading`: the wheel is read (RacingWheel::reading()); false: let go, the
         // first time. `buttonsLive` false (a learn is listening): the buttons do nothing this frame (their presses are
-        // the learn's). The edit commands of this frame: edits() until the next apply (at most one a button a frame:
-        // a dial's detents faster than the frames count once each frame).
+        // the learn's). `presses`: each button's presses since the last frame (RacingWheel::takePresses), or null where
+        // only the sample is known (a press then counts once a frame). The edit commands of this frame: edits() until
+        // the next apply.
         // (tee::input::Driver, the keys' and the gamepad's: not g29::Driver, the wheel's own decisions)
-        void apply(const State& now, bool reading, tee::input::Driver& driver, bool buttonsLive = true, double dt = 0.0);
+        void apply(const State& now, bool reading, tee::input::Driver& driver, bool buttonsLive = true, double dt = 0.0,
+                   const Presses* presses = nullptr);
         const std::vector<Edit>& edits() const noexcept { return edits_; }
 
     private:

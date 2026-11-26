@@ -146,10 +146,17 @@ namespace tee::input::g29
         friend bool operator==(const State&, const State&) = default;
     };
 
+    // Each bit's presses (rises of the mask) since they were last taken: the transports hand Map every value as it
+    // comes (IOKit's input values, evdev's events), so a button pressed and let go between two frames, as a dial's
+    // detent may be, is counted, not lost to the frame's sample. Saturates at 255.
+    using Presses = std::array<std::uint8_t, 32>;
+
     // A G29's element values in, its state out. One thread, no locks.
     class Map
     {
     public:
+        // The presses since the last take (each bit's count), and the count restarted.
+        Presses takePresses() noexcept;
         // An element's new value (its usage page and usage, its logical minimum and maximum): false when the table has
         // no row for it (nothing changes).
         bool input(std::uint32_t page, std::uint32_t usage, std::int64_t value, std::int64_t min, std::int64_t max) noexcept;
@@ -167,6 +174,7 @@ namespace tee::input::g29
         void derive() noexcept;
 
         State now_;
+        Presses presses_{};
         std::uint64_t held_ = 0;                             // buttons 1 to 64 down, bit n - 1
         std::uint32_t pad_ = 0;
     };
