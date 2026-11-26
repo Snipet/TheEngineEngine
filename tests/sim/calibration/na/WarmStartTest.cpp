@@ -21,13 +21,19 @@ namespace
 {
     const std::filesystem::path kRoot = TEE_SOURCE_DIR;
 
+    // The process's compiled simulator, one for every case here (never deleted: a compiled program destroyed after the
+    // JIT at exit crashes on macOS; its compile is some 6 s of a case)
+    const std::shared_ptr<Sim>& keptSim(std::string& error)
+    {
+        static const std::shared_ptr<Sim>* const kept = new std::shared_ptr<Sim>(Sim::compile(kRoot / "sim", {}, error));
+        return *kept;
+    }
+
     void warmStart(const std::string& slug, bool steady)
     {
         CAPTURE(slug);
         std::string error;
-        // (never deleted: a compiled program destroyed after the JIT at exit crashes on macOS)
-        static const std::shared_ptr<Sim>* const kept = new std::shared_ptr<Sim>(Sim::compile(kRoot / "sim", {}, error));
-        const std::shared_ptr<Sim>& sim = *kept;
+        const std::shared_ptr<Sim>& sim = keptSim(error);
         INFO(error);
         REQUIRE(sim != nullptr);
         Timeline t;
@@ -81,11 +87,21 @@ TEST_CASE("a warm start on p-idle-warm: the flat six that stopped starting and t
         warmStart(slug, true);
 }
 
-// (marked [!mayfail] until 14890c0 and 3930eadb: its idle loped 640 to 860 rpm, the spark trim's look-ahead short of its
-// manifold's filling time; causes.md L)
-TEST_CASE("a warm start on p-idle-warm: the 7.0 runs steadily at 14 s", "[calibration][na]")
+namespace
 {
+    void turboSixLope();
+}
+
+// (marked [!mayfail] until 14890c0 and 3930eadb: its idle loped 640 to 860 rpm, the spark trim's look-ahead short of its
+// manifold's filling time; causes.md L). With it, on the same compiled simulator, the turbo six's lope on the bench
+// (below): back in the fast tier now that one compile serves both (some 1 s of its own; the steward, 26 Nov)
+TEST_CASE("a warm start on p-idle-warm: the 7.0 runs steadily at 14 s and the turbo six's lope on the bench is not fed "
+          "by the idle valve", "[calibration][na]")
+{
+    SECTION("the 7.0's warm start")
     warmStart("big-bore-70-pushrod-v8", true);
+    SECTION("the turbo six's lope on the bench is not fed by the idle valve under the models")
+    turboSixLope();
 }
 
 TEST_CASE("a warm start on p-idle-warm: every archetype runs at 14 s", "[nightly][calibration][na]")
@@ -99,14 +115,15 @@ TEST_CASE("a warm start on p-idle-warm: every archetype runs at 14 s", "[nightly
 // wildest) lopes, the dilution recursion's period near 0.4 s, sd 113 rpm on the reference alone. The ECU's idle valve read
 // that lope's swing as far off the target and doubled its gain on air that arrives half a lope late: sd 151 rpm, the valve
 // 0.04 to 0.52. With the gain read over 0.5 s (idle.fm), 127. Held under 140: the fix, with a tenth's room, short of the
-// 151 before. The speed every block (512 samples at 48 kHz) over 5 to 9 s (old 155, new 127). Nightly for now: its own
-// process compiles the program (some 6 of its 7 s) and the fast tier is over its budget (the steward, 00:19); it moves to
-// the fast tier when calibration-na's fast cases share one process
-TEST_CASE("the turbo six's lope on the bench is not fed by the idle valve under the models", "[nightly][calibration][na]")
+// 151 before. The speed every block (512 samples at 48 kHz) over 5 to 9 s (old 155, new 127). A section of the 7.0's
+// warm-start case above, on its compiled simulator (it was nightly while its own process compiled the program: some 6 of
+// its 7 s; the steward, 00:19 and 26 Nov)
+namespace
+{
+void turboSixLope()
 {
     std::string error;
-    static const std::shared_ptr<Sim>* const kept = new std::shared_ptr<Sim>(Sim::compile(kRoot / "sim", {}, error));
-    const std::shared_ptr<Sim>& sim = *kept;
+    const std::shared_ptr<Sim>& sim = keptSim(error);
     INFO(error);
     REQUIRE(sim != nullptr);
     Timeline t;
@@ -154,3 +171,4 @@ TEST_CASE("the turbo six's lope on the bench is not fed by the idle valve under 
     CHECK(mean > 1000.0);
     CHECK(sd < 140.0);
 }
+} // namespace
