@@ -303,7 +303,7 @@ namespace
 // The account and the exhaust keep one book: the heat the exhaust is given is the fuel the account hands over times
 // the fuel's lower heating value (premium petrol's 42.2 MJ/kg, fuels.fm), to the float's rounding of the sums; and a
 // spark cut's premixed charges bang where a fuel-cut limiter's rich gas and cut air make none (docs/models/exhaust.md)
-TEST_CASE("the bangs' books: the account's fuel is the exhaust's heat; a spark cut bangs, a fuel cut does not", "[exhaust][engine][bang]")
+TEST_CASE("the bangs' books: the account's fuel is the exhaust's heat; a spark cut bangs, a fuel cut does not", "[exhaust][engine][bang][part-2]")
 {
     const PipeBooks spark = limiterBooks("archetypes/flat-plane-v8-45", 1, 1.5);
     std::printf("spark-cut limiter (the V8), 1.5 s: %.1f g handed, %.0f kJ given (%.4f MJ/kg), %.0f kJ released; the largest "

@@ -40,7 +40,8 @@ namespace
     // started, idled, blipped three times, held at full throttle into the limiter, let go
     Audio renderRoute1(const EngineBuild& build, double seconds)
     {
-        auto p = test::enginePlayer(48000.0);
+        // (a player kept for route 1 alone: reset to the defaults, the build written, then initialised over it)
+        static EnginePlayer* p = test::enginePlayer(48000.0).release();
         p->reset();
         applyBuild(*p, build);
         p->reset(48000.0, true);
@@ -78,7 +79,7 @@ namespace
 // reference's exhaust, is met there.
 static void engineIdentity(bool full);
 
-TEST_CASE("model 1 at its defaults is model 0 in the engine, every layout", "[exhaust][engine]")
+TEST_CASE("model 1 at its defaults is model 0 in the engine, every layout", "[exhaust][engine][part-1]")
 {
     engineIdentity(false);
 }
@@ -160,7 +161,7 @@ namespace
 // stays in the pipes (the means at the collectors and the heads under 50 Pa) and the output is silent.
 static void engineSoak(bool full);
 
-TEST_CASE("random exhaust topologies changed while the engine runs", "[exhaust][engine][soak]")
+TEST_CASE("random exhaust topologies changed while the engine runs", "[exhaust][engine][soak][part-2]")
 {
     engineSoak(false);
 }
@@ -244,7 +245,7 @@ static void engineSoak(bool full)
 // throttle).
 static void turbineHousing(bool full);
 
-TEST_CASE("the turbine's housing: card F's machine on the builder's collectors", "[exhaust][engine][turbine]")
+TEST_CASE("the turbine's housing: card F's machine on the builder's collectors", "[exhaust][engine][turbine][part-1]")
 {
     turbineHousing(false);
 }
@@ -357,7 +358,7 @@ static void turbineHousing(bool full)
 // free revs, every sample finite and within full scale, on the builder (tel.exhaust.model 1)
 static void buildsPlay(bool full);
 
-TEST_CASE("every exhaust build plays", "[exhaust][engine][builds]")
+TEST_CASE("every exhaust build plays", "[exhaust][engine][builds][part-1]")
 {
     buildsPlay(false);
 }
@@ -405,7 +406,7 @@ static void buildsPlay(bool full)
 // them: over the next 20 s they move by under 3 %, where unsettled they move by much more. Both models.
 static void heatSettles(bool full);
 
-TEST_CASE("the exhaust's heat settles on request", "[exhaust][engine][settle]")
+TEST_CASE("the exhaust's heat settles on request", "[exhaust][engine][settle][part-1]")
 {
     heatSettles(false);
 }
@@ -472,7 +473,7 @@ static void heatSettles(bool full)
 // against 16044 W. A held engine here, with only the exhaust settled, differs by the coolant's and the intake's heat
 static void settleLands();
 
-TEST_CASE("the exhaust's heat settles where the long run lands", "[exhaust][engine][settle]")
+TEST_CASE("the exhaust's heat settles where the long run lands", "[exhaust][engine][settle][part-2]")
 {
     settleLands();
 }
@@ -523,7 +524,7 @@ static void settleLands()
 
 // Finding X-013: the exhaust's telemetry is physical from the first block (written at every configure, not only
 // every 16 samples)
-TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust][engine][telemetry]")
+TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust][engine][telemetry][part-1]")
 {
     for (int model : {0, 1})
     {
@@ -549,7 +550,7 @@ TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust]
 // after the key is off the output dies away
 static void dualXSoak(bool full);
 
-TEST_CASE("the dual X with stubs and valves soaks", "[exhaust][engine][soak]")
+TEST_CASE("the dual X with stubs and valves soaks", "[exhaust][engine][soak][part-2]")
 {
     dualXSoak(false);
 }
@@ -628,7 +629,7 @@ static void dualXSoak(bool full)
 // they glide against the second before, and the glide within 0.1 % of its target a second after the last step (0.2 s
 // its time constant). A kind (the
 // mufflers' change) still rebuilds: the fade goes down.
-TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][glide]")
+TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][glide][part-2]")
 {
     EnginePlayer& p = player();
     p.reset();
@@ -704,7 +705,7 @@ TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][g
 // (never warms it), by less than 400 K, and the header reads under the valve.
 static void portCools(bool full);
 
-TEST_CASE("the exhaust port's walls cool the gas", "[exhaust][engine][port]")
+TEST_CASE("the exhaust port's walls cool the gas", "[exhaust][engine][port][part-1]")
 {
     portCools(false);
 }
@@ -809,7 +810,7 @@ static void portCools(bool full)
 // (F's housingOf on one bank: by group), and both turbos' outlets into the one downpipe (Boost::exhaustSides, called
 // at every configure). Before it, the second turbo's outlet had no pipe: its shaft stood. Measured: both shafts' speeds
 // at 4300 rpm full throttle on the dyno, and the boost.
-TEST_CASE("a twin-turbo six into one pipe spins both turbos", "[exhaust][engine][turbine]")
+TEST_CASE("a twin-turbo six into one pipe spins both turbos", "[exhaust][engine][turbine][part-2]")
 {
     EnginePlayer& p = player();
     p.reset();
@@ -906,7 +907,7 @@ TEST_CASE("measure: the exhaust's temperatures at full load, mass means and ther
 // than the cylinders let out over a cycle; Exhaust::stepLet closes the mean (spec.exhaust.flowClose, on under model 1).
 // What the pipes are given against what the valves let out (exh.flowGiven, exh.flowLet: m^3, summed in blocks), over a
 // second: the big block at idle and at 4000 rpm full throttle, the 2.0 turbo four at 3000: within a per cent.
-TEST_CASE("the pipes are given what the exhaust valves let out", "[exhaust][engine][books]")
+TEST_CASE("the pipes are given what the exhaust valves let out", "[exhaust][engine][books][part-2]")
 {
     struct Case
     {
@@ -958,7 +959,7 @@ TEST_CASE("the pipes are given what the exhaust valves let out", "[exhaust][engi
 // content/builds/exhausts: every field of each part build, read back from the player after the build is applied,
 // equal to the file's, element by element, choices by name included (C's 127c350 found an array of choices given by
 // name dropped to its default: exhaust.mufKind, resonator, converter, bypass)
-TEST_CASE("every exhaust preset reads back as its file says", "[exhaust][engine][builds]")
+TEST_CASE("every exhaust preset reads back as its file says", "[exhaust][engine][builds][part-1]")
 {
     EnginePlayer& p = player();
     int fields = 0, elements = 0;
