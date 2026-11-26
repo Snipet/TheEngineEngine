@@ -44,13 +44,10 @@ const Known kKnown[] = {
      "the blow-off valve opening on the lift at 10.588 s (0.006 to 0.93 in 20 ms) against a compressor ratio of 1.94 "
      "(1.81 before 5941904e), the turbo spooled about 10 % harder by the burns' drive (G's measurement): excess 3.69 "
      "against 3.37; nothing burning, the housing's gas unchanged"},
-    // With 98d0dc4d reverted for the bake (the lead's ruling, 26 Nov 03:18), re-read on that tree (sim f23337cc): two of
-    // X-041's rows back, which the idle cure (not G's 5941904e, measured on a tip with both) had ended; the pull row above
-    // is not met there
-    {"X-041", "2026-11-26", "the steward (the idle valve: 98d0dc4d ended it, reverted for the bake)",
-     "valve.model+boost.model+ecu.model", "turbo-six", "tour", "click",
-     "a lift (throttle 0.015 to 0.004) at 9.76 s, nothing burning, the blow-off open: excess 3.23 against 2.97 (2.28 "
-     "with 98d0dc4d); a sometimes row (the lead, 26 Nov 07:30): 3 of 17 copies over at 293.15 +- 0.15 K on fb32d4fc (lowest 1.40, median 1.87, highest 4.10); the over draws all fall at the 9.76 s lift; under the nightly bound (twice the reference's lowest of its 5 copies) 2.96: 3 of 17"},
+    // With 98d0dc4d reverted for the bake (the lead's ruling, 26 Nov 03:18), re-read on that tree (sim f23337cc): the rally
+    // five's row back, which the idle cure had ended; the pull row above is not met there. (The turbo six's tour lift,
+    // valve+boost+ecu, left on 26 Nov: 0 of 17 with the combo builds' lab cams stated equal to their dials; it measured the
+    // lab's default cam against the dial's.)
     {"X-041", "2026-11-26", "the steward (the idle valve) and G (the limiter's bangs)", "as built",
      "inline-five-turbo-rally", "tour", "click",
      "an X-041 row on main (b557c4a1) already: 3.92 at 8.74 s there, and its dpWave -350 kPa on the limiter; on the "
@@ -101,28 +98,15 @@ const Known kKnown[] = {
      "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
      "this scenario 1.34): under the nightly bound 2.67, as boost.model alone, the same figures: 2 of 17; under 3.37, 0 of 17"},
     {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model", "turbo-six", "pull", "click",
-     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
-     "this scenario 1.34): under the nightly bound 2.67, 4 of 17; under 3.37, 0 of 17; lowest 1.59, median 1.84, highest 3.11; at 10.43 s (2), 9.91 s, 8.58 s"},
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet: 2 of 17 copies over the nightly bound 2.68 on the turbo six with its lab cams stated equal to its dial (26 Nov, N1's lift-matched law); lowest 1.56, median 2.23, highest 2.86; under 3.37, 0 of 17; the model's, not the cam's (4 of 17 on the dial build, the lab's default cam)"},
     {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model+voices.model", "turbo-six", "pull", "click",
-     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
-     "this scenario 1.34): under the nightly bound 2.67, as valve.model+boost.model: 4 of 17; under 3.37, 0 of 17; highest 3.09"},
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet: as valve.model+boost.model, on the lift-matched turbo six: 2 of 17 over 2.68; lowest 1.56, median 2.23, highest 2.85"},
     {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model+exhaust.model", "turbo-six", "pull", "click",
-     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
-     "this scenario 1.34): under the nightly bound 2.67, as valve.model+boost.model: 4 of 17; under 3.37, 0 of 17; highest 3.11"},
-    {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "engine.wallHeat+valve.model+boost.model", "turbo-six", "pull", "click",
-     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
-     "this scenario 1.34): under the nightly bound 2.67, 14 of 17, the near-decidable one and the place to start; under 3.37, 1 of 17; lowest 2.20, median 2.85, highest 3.64; at 8.80, 11.30, 6.83 s"},
-    {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model+fuel.model", "turbo-six", "pull", "click",
-     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet (the reference's lowest copy on "
-     "this scenario 1.34): under the nightly bound 2.67, 8 of 17; under 3.37, 0 of 17; lowest 1.65, median 2.64, highest 3.06; at 8.82, 6.56, 9.86, 11.30 s"},
-    {"X-049", "2026-11-26", "X with part C (part 1: the judge measures a case with headroom against a reference pinned on "
-     "its limiter; L's read) and G with N2 (part 2: the first pulse after the cut reaches the port as a front 13 to 16 "
-     "times steeper; N1's read); the lead's ruling, 26 Nov 10:10",
-     "valve.model+exhaust.model+sound.model", "turbo-six", "pull", "click",
-     "valve, exhaust and sound on the turbo six's pull, no boost model: under the nightly bound 2.67, 2 of 17 over, both at "
-     "6.59 s, the upshift's return to power (sound.peak 0.054 to 0.57 in about 10 ms, the gain flat); under 3.37, 0 of 17; "
-     "lowest 1.26, median 2.30, highest 3.28; the event appears with sound.model alone and with no combination "
-     "without it (G's and N1's spreads); the reference sits on its 0.85 limiter through the whole pull (L)"},
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet: as valve.model+boost.model, on the lift-matched turbo six: 2 of 17 over 2.68; lowest 1.56, median 2.23, highest 2.86"},
+    {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "engine.wallHeat+valve.model+boost.model", "turbo-six-mild", "pull", "click",
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet: on the mild twin (a 231 degree cam, its lab cams equal to its dial): 2 of 17 copies over its nightly bound 3.04; lowest 1.47, median 1.86, highest 3.64; on the turbo six's own wild cam, lift-matched, 0 of 17 (14 of 17 on the dial build: the lab's default cam against the dial's)"},
+    {"X-048", "2026-11-26", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model+fuel.model", "turbo-six-mild", "pull", "click",
+     "the turbo six's pull at its shifts with boost.model on, the mechanism not read yet: on the mild twin: 3 of 17 over 3.04; lowest 1.64, median 2.15, highest 4.06; on the turbo six's wild cam, lift-matched, 0 of 17 (8 of 17 on the dial build)"},
     // Part B's newly red rows (the lead's ruling, 26 Nov 11:11): 17 copies at 293.15 +- 0.15 K per EVENT (the worst window
     // of that event in each copy), on the merged tip of 26 Nov 10:15, against the nightly bound; exact combinations, each
     // with its event

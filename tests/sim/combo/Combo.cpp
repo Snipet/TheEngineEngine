@@ -115,6 +115,9 @@ namespace combo
             {"turbo-six", 47.1, 188.5, false},
             {"large-diesel", 36.6, 157.1, true},
             {"turbo-v8-dual", 47.1, 188.5, false},
+            // the turbo six's fair twin, a mild cam (its dial and the lab's cams stated equal; the lead's ruling, 26 Nov
+            // 11:46): the lab's default-length cam judged model against model. Every loop over this list is nightly.
+            {"turbo-six-mild", 47.1, 188.5, false},
         };
         return list;
     }

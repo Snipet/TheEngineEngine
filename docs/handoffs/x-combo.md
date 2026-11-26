@@ -48,7 +48,7 @@ judge at a cut (part C, measured first behind a local variant).
 - `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype|build.json> <scenario> <switches> [--set path=value]`
   (prints the step and the excess against the reference's), `--checks`, `--match`
 
-**Findings** (X-001 to X-049; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
+**Findings** (X-001 to X-053; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
 it so it fails again if it returns). Open: X-016 (the heavy case's cost, Q), X-030 (the new ECU's shift cut under
 fuel.model 1: a firing unlike its neighbours as the spark returns; the steward), X-044 (the small four's downshift
 with engine.custom, fuel and ecu: the fuel returning whole after the overrun cut; the steward's, kept this window), X-045 (boost.model or exhaust.model written while stopped, and the application's load: the
@@ -94,3 +94,16 @@ reads them today (grep of the tip at 15:08):
   `X022Test.cpp:32` (x022, x026-single-big-blower);
 - the integrator: `tests/sim/core/EngineTest.cpp:566` (Bench("combo/findings/x025-two-stroke-rotary-silent"));
 - P: `docs/manual/builds.md:149-161` (the manual's table of content builds lists x001 to x026).
+
+**26 Nov, the combo builds' cams** (the lead's ruling, 11:46 and 13:14). valve.model Lab never reads the reference's cam
+dial (X-050), so on the combo builds (dial 0.9999, a 300 degree event) every valve row compared the lab's default 231 degree
+cam with the dial's, not a model with a model. The five builds now state lab cams equal to their dials by N1's lift-matched
+law (seat 276.8, 1 mm 254.2, centres 106: the reference's 1.5 % and 10 % lift points); with valve.model off each renders
+bit-identical, with it on its events read 104.03 / 615.97 against the reference's 104 / 616. A fair twin,
+turbo-six-mild (dial 0.0921053, a 231 degree event; lab seat 213.1, 1 mm 195.7, centres 111.447), judges the mild cam model
+against model, nightly only. The turbo six's valve rows, 17 copies at 293.15 +- 0.15 K, copies over the nightly bound,
+dial build -> lift-matched -> the twin: valve 0 -> 0 -> 0; valve+sound 0 -> 0 -> 0; valve+exhaust+sound (X-049) 2 -> 0
+-> 0; valve+boost (X-048) 4 -> 2 -> 0; wallHeat+valve+boost (X-048) 14 -> 0 -> 2; valve+boost+fuel (X-048) 8 -> 0 -> 3;
+the tour's valve+boost+ecu (X-041's lift) 3 -> 0 -> 0. So X-049's row and X-041's tour lift left Known.h (they measured
+the cam swap); X-048's valve+boost rows stay on the lift-matched turbo six (2 of 17, the model's); its wallHeat and fuel
+rows moved to the twin (2 and 3 of 17). X-049's part (1), the reference pinned on its limiter, stays a question in part C.
