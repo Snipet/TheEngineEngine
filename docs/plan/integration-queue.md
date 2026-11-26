@@ -2054,6 +2054,38 @@ engines only where a source shows such an engine drawn split.
   twice its setting, cured by the same. Clips for the owner's ears are in the steward's session (each
   upshift as shipped, on the reference, without the retard, and with the cut at 53 ms).
 
+## 26 Nov 10:08 UTC: the nightly bound is in; what it found on the turbo six's pull; a dead cam dial
+
+- **`main` is at 3c42b4d2 (09:16).** Past it on the branch: X's part A (97a7f92e, 24d51259: the nightly's click
+  bound twice the reference's lowest excess over five fixed copies; the default tier's single draw kept) and
+  docs. Tests only; the baked trees unchanged.
+- **Under the nightly bound, combo's nightly reads 117 of 127; every new red is the turbo six's PULL** (its
+  bound 3.37 to 2.67; the control with nothing on 0 of 17, highest 2.06). Entered in three groups by the
+  lead's ruling: **X-043 widened to the pull** as two exact rows (intake+exhaust+car 7 of 17 and
+  custom+intake+exhaust 3 of 17, the start's catch); **X-048**, the pull at its shifts with boost.model on
+  (alone 2, valve+boost 4, wallHeat+valve+boost 14, valve+boost+fuel 8 of 17; N2, N1 on the valve rows);
+  **X-049**, valve+exhaust+sound (2 of 17 at 6.59 s). The six older rows under the nightly bound: X-031 7,
+  X-030 13, X-043 11, the rally five 5, the tour's lift 3, X-044 11 of 17.
+- **X-048 (N1's read): its over copies are the gate loop's limit cycle at steady full load**, item 3, N2's.
+- **X-049, read three ways (N1, G, L).** The event exists only with sound.model on, sound alone included; no
+  exhaust or valve combination without it shows it. L (its note e664691e): sound.model does not starve the
+  cut; both models' cuts are the exhaust's pumping pulses alone, the new one 9.4 dB under its firing. The
+  REFERENCE SITS ON ITS 0.85 LIMITER FOR THE WHOLE PULL at the combo build's view and cannot show a relight
+  standing out. So part (1) is the judge's (X, inside part C, with a measurement of each side's excess with
+  the reference off its limiter). Part (2) is real and N1's: the turbo six's first pulse after the shift's
+  cut is +10 dB over its own firing (0.569 against 0.175) where the small four's is +0.6 dB.
+- **A dead dial (N1's read of sim/, U1's of the interface; X numbers it).** Under valve.model Lab the
+  reference's cam dial moves no event on a piston engine (valvetrain.fm:113-129) and its idle term is
+  bypassed with ecu.model Maps and a stated idle speed. All 31 archetypes and first.json run that way, so on
+  30 of 32 the dial does nothing; it is on screen and editable with no word beside it (ValvesWorkspace.cpp:133,
+  :176-177; the generated pages, Binding.cpp:427). On the two rotaries it is live. **Ruled:** the fault is
+  cured in the interface now (U1: not offered as live on a Lab piston build, a line saying where the cams
+  are; pictures first); N1's "the dial as the lab's seat events" behind an explicit flag is a feature for the
+  owner to want, not in the window; the idle term on a Lab build without Maps is a small item of N1's.
+- **A corpus question (N1):** a combo build that states only the dial (the turbo six) runs the lab's default
+  cam whenever valve.model is on, so its valve rows compare cam against cam. X measures the valve rows with
+  lab cams stated equal to the dial (a scratch copy) before anything in the corpus changes.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 09:16 UTC: `main` IS AT 3c42b4d2** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
