@@ -5,6 +5,10 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 using tee::test::core::Bench;
 
@@ -399,5 +403,273 @@ TEST_CASE("reversion store", "[.rvstore]")
         const double rm = b.field("cyl[0].rvMass"), ri = b.field("cyl[0].rvInert");
         std::printf("t %4.1f s: store %.4f g, its burned share %.3f; cylinder's share now %.3f; %.0f rpm\n", 0.5 * (k + 1), 1e3 * rm,
                     rm > 1e-12 ? ri / rm : 0.0, b.field("cyl[0].mInert") / b.field("cyl[0].m"), b.tel("engine.speed") * 9.5492966);
+    }
+}
+
+// The two routes into first.json ("written after init" and "initialised over it"), every field of the Engine instance
+// compared after configure and after the key (hidden: "[.routediff]"; the lead's ask, 25 Nov 23:27)
+namespace
+{
+    struct Diff
+    {
+        std::string path;
+        double a, b;
+    };
+    double element(const unsigned char* p, tee::Scalar s)
+    {
+        switch (s)
+        {
+        case tee::Scalar::Float: { float v; std::memcpy(&v, p, 4); return v; }
+        case tee::Scalar::Double: { double v; std::memcpy(&v, p, 8); return v; }
+        case tee::Scalar::Int: { std::int32_t v; std::memcpy(&v, p, 4); return v; }
+        case tee::Scalar::Bool: return *p ? 1.0 : 0.0;
+        case tee::Scalar::Char: return *p;
+        default: return 0.0;
+        }
+    }
+    void walk(const std::vector<tee::Schema::Node>& nodes, std::size_t base, const std::string& prefix,
+              const unsigned char* a, const unsigned char* b, std::vector<Diff>& out)
+    {
+        for (const auto& n : nodes)
+        {
+            const std::size_t count = n.count();
+            for (std::size_t i = 0; i < count; ++i)
+            {
+                const std::size_t off = base + n.offset + i * n.stride;
+                const std::string path = prefix + n.name + (n.extents.empty() ? "" : "[" + std::to_string(i) + "]");
+                if (!n.children.empty())
+                    walk(n.children, off, path + ".", a, b, out);
+                else if (n.scalar != tee::Scalar::None && n.scalar != tee::Scalar::Pointer)
+                {
+                    const double x = element(a + off, n.scalar), y = element(b + off, n.scalar);
+                    if (std::memcmp(a + off, b + off, n.stride) != 0 && !(std::isnan(x) && std::isnan(y)))
+                        out.push_back({path, x, y});
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("first.json's two routes, every field", "[.routediff]")
+{
+    // (snapshots after the key (2.5 s) and 0.5 s later on each route: a field that holds still on both routes and
+    // differs between them is configuration, not the run's state; those are printed, then the count of the rest)
+    std::vector<unsigned char> snap[2][2];
+    const tee::Schema* schema = nullptr;
+    for (int route = 0; route < 2; ++route)
+    {
+        Bench b("first");
+        schema = &b.player().schema();
+        if (route == 1)
+            b.player().reset(Bench::kRate, true);
+        const auto* d = static_cast<const unsigned char*>(b.player().instance().data());
+        b.start();
+        snap[route][0].assign(d, d + b.player().instance().size());
+        {
+            const int n = int(b.field("exh.b.net.nUsed"));
+            std::printf("route %d: exh.b.net.nUsed %d:", route, n);
+            for (int k = 0; k < n; ++k)
+                std::printf(" %d", int(b.field("exh.b.net.used[" + std::to_string(k) + "]")));
+            std::printf("\n  jN:");
+            for (int j = 0; j < 24; ++j)
+                std::printf(" %d", int(b.field("exh.b.net.jN[" + std::to_string(j) + "]")));
+            std::printf("\n");
+        }
+        b.play(0.5);
+        snap[route][1].assign(d, d + b.player().instance().size());
+    }
+    std::vector<Diff> across, still0, still1;
+    walk(schema->fields(), 0, "", snap[0][0].data(), snap[1][0].data(), across);
+    walk(schema->fields(), 0, "", snap[0][0].data(), snap[0][1].data(), still0);
+    walk(schema->fields(), 0, "", snap[1][0].data(), snap[1][1].data(), still1);
+    auto moved = [](const std::vector<Diff>& v, const std::string& p) {
+        for (const auto& d : v)
+            if (d.path == p)
+                return true;
+        return false;
+    };
+    std::size_t dynamic = 0;
+    std::printf("after the key: %zu fields differ between the routes; those that hold still on both:\n", across.size());
+    for (const auto& d : across)
+    {
+        const bool m0 = moved(still0, d.path), m1 = moved(still1, d.path);
+        if (!m0 && !m1)
+            std::printf("  %s: %.9g | %.9g\n", d.path.c_str(), d.a, d.b);
+        else if (m0 != m1)
+            std::printf("  (moves on route %d only) %s: %.9g | %.9g\n", m0 ? 0 : 1, d.path.c_str(), d.a, d.b);
+        else
+            ++dynamic;
+    }
+    std::printf("  and %zu that move on both\n", dynamic);
+}
+
+// first.json's two routes paired: the same bias draws and noise streams written on both after the key, then the
+// engine dyno at 3000 rpm full load, 5 to 6 s (hidden: "[.routepair]")
+TEST_CASE("first.json's two routes, paired", "[.routepair]")
+{
+    // (the draws written in the key's first block, after both routes configure at the key)
+    for (int draw = 0; draw < 4; ++draw)
+    {
+        double bias[4];
+        for (int k = 0; k < 4; ++k)
+            bias[k] = 0.025 * std::sin(1.7 * (draw * 4 + k) + 0.3);
+        double tq[2] = {0, 0};
+        for (int route = 0; route < 2; ++route)
+        {
+            Bench b("first");
+            if (route == 1)
+                b.player().reset(Bench::kRate, true);
+            b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+            b.play(double(Bench::kBlock) / Bench::kRate);
+            std::string e;
+            auto& in = b.player().instance();
+            for (int k = 0; k < 4; ++k)
+                REQUIRE(in.write(b.player().schema(), "cyl[" + std::to_string(k) + "].bias", bias[k], e));
+            REQUIRE(in.write(b.player().schema(), "noise.rs", 12345.0 + draw, e));
+            REQUIRE(in.write(b.player().schema(), "ex.noise.rs", 67890.0 + draw, e));
+            b.play(1.0 - double(Bench::kBlock) / Bench::kRate);
+            b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+            b.play(1.5);
+            b.ctl().mode = 2;
+            b.ctl().throttle = 1.0f;
+            b.ctl().dynoSpeed = float(3000.0 / 9.5492966);
+            b.play(5.0);
+            double s = 0.0, n = 0.0;
+            b.play(1.0, [&] { s += b.tel("engine.torque"); n += 1.0; });
+            tq[route] = s / n;
+        }
+        std::printf("draw %d paired: written after init %.2f N m, initialised over it %.2f N m (%+.3f %%)\n", draw, tq[0], tq[1], (tq[0] / tq[1] - 1.0) * 100.0);
+    }
+}
+
+TEST_CASE("first.json: when each route configures", "[.routewhen]")
+{
+    for (int route = 0; route < 2; ++route)
+    {
+        Bench b("first");
+        if (route == 1)
+            b.player().reset(Bench::kRate, true);
+        std::printf("route %d at 0: lay.n %g geo.n %g\n", route, b.field("lay.n"), b.field("geo.n"));
+        double t = 0.0;
+        for (int i = 0; i < 40; ++i)
+        {
+            b.play(0.05);
+            t += 0.05;
+            std::printf("  %.2f s key off: lay.n %g geo.n %g bias0 %.5f noise %g speed %.1f\n", t, b.field("lay.n"), b.field("geo.n"), b.field("cyl[0].bias"), b.field("noise.rs"), b.tel("engine.speed"));
+            if (i == 5)
+                break;
+        }
+        b.start();
+        std::printf("  after start: lay.n %g bias0 %.5f\n", b.field("lay.n"), b.field("cyl[0].bias"));
+    }
+}
+
+TEST_CASE("first.json's two routes, every field at the key", "[.routekey]")
+{
+    std::vector<unsigned char> snap[2];
+    const tee::Schema* schema = nullptr;
+    for (int route = 0; route < 2; ++route)
+    {
+        Bench b("first");
+        schema = &b.player().schema();
+        if (route == 1)
+            b.player().reset(Bench::kRate, true);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(double(Bench::kBlock) / Bench::kRate);
+        std::string e;
+        auto& in = b.player().instance();
+        for (int k = 0; k < 4; ++k)
+            REQUIRE(in.write(*schema, "cyl[" + std::to_string(k) + "].bias", 0.01 * k, e));
+        REQUIRE(in.write(*schema, "noise.rs", 12345.0, e));
+        REQUIRE(in.write(*schema, "ex.noise.rs", 67890.0, e));
+        const auto* d = static_cast<const unsigned char*>(in.data());
+        snap[route].assign(d, d + in.size());
+    }
+    std::vector<Diff> out;
+    walk(schema->fields(), 0, "", snap[0].data(), snap[1].data(), out);
+    std::printf("the key's first block: %zu fields differ\n", out.size());
+    for (const auto& d : out)
+        std::printf("  %s: %.9g | %.9g\n", d.path.c_str(), d.a, d.b);
+}
+
+// How far a 1e-6 nudge in one cylinder's gas at the key carries by 5 to 6 s at 3000 rpm full load (first.json,
+// initialised over it, the same draws written on each run; hidden: "[.routenudge]")
+TEST_CASE("first.json: a nudge at the key, carried to load", "[.routenudge]")
+{
+    for (int draw = 0; draw < 4; ++draw)
+    {
+        double bias[4];
+        for (int k = 0; k < 4; ++k)
+            bias[k] = 0.025 * std::sin(1.7 * (draw * 4 + k) + 0.3);
+        double tq[2] = {0, 0};
+        for (int run = 0; run < 2; ++run)
+        {
+            Bench b("first");
+            b.player().reset(Bench::kRate, true);
+            b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+            b.play(double(Bench::kBlock) / Bench::kRate);
+            std::string e;
+            auto& in = b.player().instance();
+            for (int k = 0; k < 4; ++k)
+                REQUIRE(in.write(b.player().schema(), "cyl[" + std::to_string(k) + "].bias", bias[k], e));
+            REQUIRE(in.write(b.player().schema(), "noise.rs", 12345.0 + draw, e));
+            REQUIRE(in.write(b.player().schema(), "ex.noise.rs", 67890.0 + draw, e));
+            if (run == 1)
+                REQUIRE(in.write(b.player().schema(), "cyl[0].m", b.field("cyl[0].m") * (1.0 + 1e-6), e));
+            b.play(1.0 - double(Bench::kBlock) / Bench::kRate);
+            b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+            b.play(1.5);
+            b.ctl().mode = 2;
+            b.ctl().throttle = 1.0f;
+            b.ctl().dynoSpeed = float(3000.0 / 9.5492966);
+            b.play(5.0);
+            double s = 0.0, n = 0.0;
+            b.play(1.0, [&] { s += b.tel("engine.torque"); n += 1.0; });
+            tq[run] = s / n;
+            std::printf("  run %d: knock retard %.2f, advance %.2f, boost %.4f bar, speed %.1f rpm\n", run, b.tel("ecu.knockRetard"),
+                        b.tel("ecu.advance"), b.tel("boost.pressure") / 1e5, b.tel("engine.speed") * 9.5492966);
+        }
+        std::printf("draw %d: as run %.2f N m, nudged 1e-6 %.2f N m (%+.3f %%)\n", draw, tq[0], tq[1], (tq[1] / tq[0] - 1.0) * 100.0);
+    }
+}
+
+// The large diesel's turbines with valve.model and boost.model on, engine.custom off and on: what each housing takes at
+// full load on the engine dyno at 260 rad/s (the lead's item 2, with N2; hidden: "[.customturb]")
+TEST_CASE("the large diesel's turbines under engine.custom", "[.customturb]")
+{
+    for (int custom = 0; custom < 2; ++custom)
+    {
+        Bench b("combo/large-diesel");
+        std::string e;
+        REQUIRE(b.player().setSpec("valve.model", 1, e));
+        REQUIRE(b.player().setSpec("boost.model", 1, e));
+        REQUIRE(b.player().setSpec("engine.custom", custom, e));
+        b.start();
+        b.ctl().mode = 2;
+        b.ctl().throttle = 1.0f;
+        b.ctl().dynoSpeed = 260.0f;
+        b.play(4.0);
+        double q[4] = {0, 0, 0, 0}, p[4] = {0, 0, 0, 0}, n = 0;
+        b.play(1.0, [&] {
+            for (int h = 0; h < 4; ++h)
+            {
+                q[h] += b.field("boost.mach.house[" + std::to_string(h) + "].qPipes");
+                p[h] += b.field("boost.mach.house[" + std::to_string(h) + "].p");
+            }
+            n += 1; });
+        std::printf("engine.custom %d: vTotal %.4f m3, redRpm %.0f, lay.n %g topo %g ports %g, nUsed %g, turbos %g, speed %.1f rad/s, torque %.0f N m, dpWave %.0f kPa\n",
+                    custom, b.field("vTotal"), b.field("ecu.redRpm"), b.field("lay.n"), b.field("lay.topo"), b.field("lay.ports"),
+                    b.field("exh.b.net.nUsed"), b.field("boost.mach.turbos"), b.tel("engine.speed"), b.tel("engine.torque"), b.tel("valve.dpWave") / 1000.0);
+        std::printf("  IMEP %.2f bar, PMEP %.2f, FMEP %.2f, BMEP %.2f, boost %.3f bar\n", b.tel("engine.imep") / 1e5, b.tel("engine.pmep") / 1e5,
+                    b.tel("engine.fmep") / 1e5, b.tel("engine.bmep") / 1e5, b.tel("boost.pressure") / 1e5);
+        if (custom == 1)
+            std::printf("  custom friction: rings %.3f bearings %.3f valves %.3f constant %.3f accessories %.3f bar; piston %.1f m/s, stroke %.4f m, peak %.0f bar\n",
+                        b.field("fric.rings") / 1e5, b.field("fric.bearings") / 1e5, b.field("fric.valves") / 1e5, b.field("fric.constant") / 1e5,
+                        b.field("fric.accessories") / 1e5, b.field("fric.pistonSpeed"), b.field("fric.stroke"), b.tel("engine.peakPressure") / 1e5);
+        for (int h = 0; h < 4; ++h)
+            std::printf("  housing %d: pipes' flow %.5f m3/s, pressure %.3f bar\n", h, q[h] / n, p[h] / n / 1e5);
+        for (int c = 0; c < 8; ++c)
+            std::printf("  slot housing[%d] %g", c, b.field("exh.b.eng.housing[" + std::to_string(c) + "]"));
+        std::printf("\n  hmap %g %g %g %g\n", b.field("exh.b.eng.hmap[0]"), b.field("exh.b.eng.hmap[1]"), b.field("exh.b.eng.hmap[2]"), b.field("exh.b.eng.hmap[3]"));
     }
 }

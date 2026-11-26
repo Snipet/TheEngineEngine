@@ -100,7 +100,8 @@ in hand: the code was written against SDL's documentation and compiled.
 ## A wheel and pedals
 
 **A Logitech G29** (the wheel, its pedals and the Driving Force Shifter on one USB cable) is read on **macOS** (IOKit)
-and **Linux** (the kernel's own driver, hid-lg4ff) with no software of Logitech's installed. Never yet run with a real wheel in this repository: the owner's run is the first
+and **Linux** (the kernel's own driver, hid-lg4ff) with no software of Logitech's installed, and on **Windows** read
+only, as a plain joystick (below). Never yet run with a real wheel in this repository: the owner's run is the first
 (the code is TestingPlayground's, where it drove the owner's G29: `shell/input/g29/SEED.tsv`).
 
 - **The switch on the wheel at PS3.** At PS4 it is not read (the status line says to set it to PS3). At PS3, without
@@ -122,7 +123,7 @@ and **Linux** (the kernel's own driver, hid-lg4ff) with no software of Logitech'
 | Its five shift lights | The DRIVE view's own count (the same five steps below the redline), all five flashing on the limiter. |
 | Other buttons | Nothing until one is bound (below). |
 
-**On and off:** the settings page's WHEEL row (on macOS and Linux; its status line under it), or F9, "Read the racing wheel
+**On and off:** the settings page's WHEEL row (on macOS, Linux and Windows; its status line under it), or F9, "Read the racing wheel
 (Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
 the device is left open (shared: another program may read it too) but nothing is read from it or sent to it. The
 status line says what the wheel is doing ("wheel: G29 read", "wheel: set the switch on the wheel to PS3", ...), and the
@@ -150,8 +151,24 @@ nothing. "The defaults" puts back the paddles and PS. The bindings are kept in t
 cannot read is left out with a line on the console. The pedals, the steering and the shifter are fixed by the wheel's
 table, not bound.
 
-**Not yet:** Windows (no wheel read; SDL 3.4's own HIDAPI Logitech driver, `SDL_hidapi_lg4ff`, is the likely route, off
-by default there), force effects beyond the spring. A G29 is never opened as a gamepad (SDL's Logitech driver is turned off, so it
+**On Windows** the wheel is only read, never written to: Windows sends a device's output reports at the length its
+descriptor gives (17 bytes), and the G29 takes its commands (the switch to its full mode, the range, the spring, the
+lights) as 7-byte reports, so without Logitech's software nothing can reach it (SDL 3.4 turns its own Logitech driver
+off there for the same reason). The application reads it as a plain joystick through SDL and sends it nothing:
+
+- Without Logitech G HUB the wheel stays in its compatibility mode (its switch at PS3): the steering, the throttle
+  and brake, the buttons and the paddles are expected; the clutch and the shifter are not expected (a Driving Force
+  EX has neither). The status line: "G29 read as a joystick: pedals and buttons; the clutch, the shifter, the range,
+  the spring and the lights need Logitech G HUB".
+- With Logitech G HUB, G HUB puts it in its full mode and sets the range, the spring and the lights itself; every
+  control is expected to read ("G29 read (Logitech G HUB): range, spring and lights are G HUB's"). The application
+  never needs G HUB: it says what G HUB would add.
+- **Not mapped yet.** Which axis and button is which on Windows has not been seen on a real wheel, so no mode has a
+  table yet (`shell/input/g29/G29Joystick.h`): the wheel is seen and its mode said ("G29 seen (compatibility mode):
+  its controls are not yet mapped on this system: run TheEngineEngine --probe-input and paste what it prints"), and
+  nothing drives from it. `TheEngineEngine --probe-input`, run once in each mode, gives the table.
+
+**Not yet:** force effects beyond the spring (and on Windows, any). A G29 is never opened as a gamepad (SDL's Logitech driver is turned off, so it
 cannot reset the spring).
 
 **To see what the wheel sends** (macOS): `tee-wheel-dump` beside the application (`build-release/bin/tee-wheel-dump`)

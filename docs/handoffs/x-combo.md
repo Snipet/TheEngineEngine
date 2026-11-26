@@ -1,4 +1,4 @@
-# X: the whole program under test (handoff, 2026-11-25 20:45 UTC)
+# X: the whole program under test (handoff, 2026-11-25 23:50 UTC)
 
 Package X, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `tests/sim/combo/**`, `content/builds/combo/**`,
 `content/scenarios/combo/**`, `tools/tee-fuzz*`, `scripts/listening-pack.*`, `docs/checkpoints/M2.md`, this file.
@@ -36,16 +36,19 @@ fuel.model 0 is bounded at a step of 42 (the lead's ruling, 24 Nov 23:15; "click
 - `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype|build.json> <scenario> <switches> [--set path=value]`
   (prints the step and the excess against the reference's), `--checks`, `--match`
 
-**Findings** (X-001 to X-040; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
+**Findings** (X-001 to X-043; `tests/sim/combo/Known.h` holds the open ones with owner and reason; a closed one leaves
 it so it fails again if it returns). Open: X-016 (the heavy case's cost, Q), X-030 and X-031 (the new ECU's shift cut
-and downshift under fuel.model 1: a firing unlike its neighbours as the spark returns; the steward), X-032 (the turbo
-six's lift, N1), X-036 (a DC with car.model and a turbo: the turbo V8 dual, random 103; D and the steward), X-037
-(the pickup diesel's valve.dpOverlap, N1), X-038 (near-zero exhaust pipes, G), X-039 (a supercharged 50 cc single
-with a recirculating blow-off, N2: cured in its held package), X-040 (a near-zero intake runner, N1). X-029, X-038 and
-X-040 run finite at G's and N1's bore floors (5ff6b27d, 28d4df13): they retire on the soak of P's baked push. Closed
-on 25 Nov: X-027 (a bang, under the ruled 42), X-028 (D's 1842d7cd: voices leave the engine bit-equal), X-033, X-034,
-X-035 (the large diesel's firing train, not a click, under the restated check). The reduced builds:
-`content/builds/combo/findings/`.
+and downshift under fuel.model 1: a firing unlike its neighbours as the spark returns; the steward), X-036 (a DC with
+car.model and a turbo: the turbo V8 dual, random 103, and the large diesel on the dyno with everything on; D, the
+steward and the integrator), X-039 (a supercharged 50 cc single with a recirculating blow-off, N2: cured in its held
+package), X-041 (Burned in the pipe meeting the new boost: lift clicks on the turbo six and the rally five, and the
+rally five's dpWave on its limiter; G, then N2; G's fix 301ba06c local), X-042 (the large diesel's dpWave under
+engine.custom, valve and boost: one collector feeds one of its two turbos; N2 with the integrator), X-043 (the turbo
+six's start with intake, exhaust and car on, from N1's c40f0411, unseen until every triple shard ran). Closed on the
+bake's soak (223f4301, 213 of 221): X-029, X-038, X-040 (G's and N1's bore floors), X-032 (excess 1.84), X-037 (N1's
+b07522fc). Closed on 25 Nov before it: X-027 (a bang, under the ruled 42), X-028 (D's 1842d7cd: voices leave the engine
+bit-equal), X-033, X-034, X-035 (the large diesel's firing train, not a click, under the restated check). The reduced
+builds: `content/builds/combo/findings/`.
 
 **Measured** (this container, shared 4 cores; R from the same process; docs/measurements/combo/2026-11-24.md): tour,
 off / every switch on: small four 0.52 / 0.98 R; V8 1.00 / 1.57; turbo six 0.80 / 1.32; large diesel 0.77 / 1.19; the

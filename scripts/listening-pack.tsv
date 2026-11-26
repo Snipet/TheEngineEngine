@@ -97,3 +97,11 @@
 39-diesel-pilot	a-pilot-and-timing	0	truck-15l-six.json	tests/sim/diesel/listen/d2-pilot.json
 40-diesel-turbo-whistle	a-single-vs-vanes	0	truck-15l-six.json	tests/sim/diesel/listen/d2-turbo-whistle.json
 41-diesel-pull-away	a-36t-up-a-grade	0	truck-15l-six.json	tests/sim/diesel/listen/d2-pull-away.json
+42-pops-limiter	a-carved	0	first.json	content/scenarios/pops/pops-limiter-carved.json
+42-pops-limiter	b-burned	0	first.json	content/scenarios/pops/pops-limiter-burned.json
+43-pops-spark-cut	a-carved	0	archetypes/flat-plane-v8-45.json	content/scenarios/pops/pops-spark-cut-carved.json
+43-pops-spark-cut	b-burned	0	archetypes/flat-plane-v8-45.json	content/scenarios/pops/pops-spark-cut-burned.json
+44-pops-overrun	a-carved	0	first.json	content/scenarios/pops/pops-overrun-fuelled-carved.json
+44-pops-overrun	b-burned	0	first.json	content/scenarios/pops/pops-overrun-fuelled-burned.json
+45-pops-rally	a-carved	0	archetypes/inline-five-turbo-rally.json	content/scenarios/pops/pops-limiter-carved.json
+45-pops-rally	b-burned	0	archetypes/inline-five-turbo-rally.json	content/scenarios/pops/pops-limiter-burned.json

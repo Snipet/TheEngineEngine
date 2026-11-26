@@ -262,8 +262,9 @@ namespace tee::app
                     if (hooks->tryFirstDone)
                         hooks->tryFirstDone();
                 };
-#if defined(__APPLE__) || defined(__linux__)
-                // the settings' WHEEL row: only where a wheel is read (macOS's IOKit, Linux's evdev: input/g29/)
+#if defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
+                // the settings' WHEEL row: only where a wheel is read (macOS's IOKit, Linux's evdev, Windows's SDL
+                // joystick, read only: input/g29/)
                 frameServices.wheelOn = [hooks] { return hooks->wheelOn && hooks->wheelOn(); };
                 frameServices.setWheelOn = [hooks](bool on) {
                     if (hooks->setWheelOn)
