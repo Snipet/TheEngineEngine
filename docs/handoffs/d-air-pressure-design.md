@@ -137,14 +137,26 @@ outside's density or pressure:
 | the intake's mouth (model 1's air box) | intake/airbox.fm:58 (`rho = 1.204`, the Helmholtz neck's mass and the box's compliance), :127 (`sound = dq/dt x 0.02`) | a fixed 1.204 kg/m^3 | the box's rho from pAmb and tAmb (its resonance goes with c, not rho: unchanged to first order); the radiated level x rho0 / rho0,ref |
 | the mechanical voices (sim/sound/*: valve gear, gears, fuel, starter, fan, chain) and the listener's bay and cabin (sim/listen/) | listen.fm:1001 (`sc.in[LS_BAY]`), the voices' own gains | no density | a surface's radiation x rho0 c / (rho0 c)ref: at 70 kPa, the same temperature, 0.69; the cabin's own path unchanged |
 
-So the change for the sound is one factor, `rho0 / rho0,ref` = (pAmb / 101325) x (tRef / tAmb), on what radiates into
-the outside air (the tailpipes, the mouth, the bay's surfaces), applied where the listener sums them (listen.fm), and
-only under the models (model 0's sound the null). One question with it: the outside air's TEMPERATURE moves the same
-density today and is read by nothing in the sound either. The factor should take both, but then the temperature's
-share changes today's sound at any temperature but 300 K, which breaks the "bit-identical at the default" rule for
-every build stated at another temperature. Either the factor is keyed on pressure alone (bit-identical, and
-temperature's share stays a known gap), or on density and every such build moves. That's the lead's to rule; I'd key it on
-pressure alone in this item, and the temperature's share as its own item.
+**Ruled (the lead, 26 Nov): the radiated level takes the PRESSURE's share alone.** One factor, `pAmb / 101325`, on
+what radiates into the outside (the tailpipes, the mouth, the bay's surfaces), applied where the listener sums them
+(listen.fm: L's file, by L's hand or leave), under the new models only, and exactly 1.0 at the default, so the default
+stays to the bit.
+
+**The temperature's share of the density is NOT in this item, and is not to be added to it by tidiness.** It is its
+own item after this one: it changes what every build stated at a temperature other than 300 K sounds like today (some
+1 dB at the range's ends), which is a change for the owner's ears and a bake of its own. Do not key the factor on
+density (pAmb / (R tAmb)) in this item.
+
+**The prediction to test (the default V8, full load, 3000 rpm, at 70 kPa against 101.3 kPa, the same temperature):**
+- The radiation factor alone: -3.2 dB (20 log 0.691) for the same flow at the tailpipe.
+- The engine's own flow: the mass through it falls about as the pressure (0.69), but the gas at the tailpipe is also
+  0.69 as dense, so its volume flow and its pulses' volume velocity (the wave's pressure over the pipe's impedance)
+  stay about the same, IF the pipes' impedance takes `pAmb` (G's question, duct.fm:347). Then the expected level is
+  some -3.2 dB in all.
+- If the impedance stays at 101325 (G answers "a reference"), the volume velocity falls with the pulses' pressure
+  (0.69), and the expected level is some -6.4 dB.
+- So the measured level settles G's question as well as the factor: a result near -3 dB, or near -6, says which the
+  pipes are doing. Anything far from both is a fault to chase before the bake.
 
 The listener (sim/listen/) is L's; the voices are M's; the air box is N1's. Each takes the factor from Engine, as
 `pAmb` is handed in section 1.
