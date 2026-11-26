@@ -161,6 +161,21 @@ consistent with that: a narrower nudge. On G's valve stand-in, the reference is 
 and the same row reads 11, 11 and 6 of 17. So item 16's V8 acceptance is read on the real code after item 17,
 against that tree's own bound, and is not assumed from these figures.
 
+**Across everything that ships (X's survey, 26 Nov ~18:10: all 31 archetypes as built on the pull, 17 copies per
+event, the tip against the cut probe; `docs/measurements/combo/2026-11-26-shipped-pull.md`).**
+
+| | tip | the cut probe |
+|---|---|---|
+| the three-cylinder 1.0 turbo, the 1-2 and the 2-3 | 6 and 8 of 17 | 0 and 0 of 17 |
+| the kei 660, the 1-2 | 2 of 17 | 0 of 17 |
+| every other shifting build, every event | 0 of 17 | 0 of 17 |
+| any build gaining a copy over anywhere | none | none |
+
+Not this item's:
+
+- the flat-plane 3.9 twin turbo's 1-2 (a dual clutch: no cut; the gearbox's and the integrator's);
+- its limiter (X-052's kind, the steward's to read).
+
 ## 5. What it does not cure
 
 *Struck, 26 Nov 17:38:* a read of the V8 "after item 17" (8, 7 and 12 of 17 against a bound of 2.58) was taken on
