@@ -1656,6 +1656,11 @@ stays and the fixture's hunt stays known** (X-032's kind; X-031 and X-041's two 
 was tier-green (581) and gate-green; it failed only the dips row, which a sample of 7 builds had passed: the dips row
 is read on all 31 or it is not read.
 
+The combo rows quoted in this section and in the steward's notes above (X-031, X-041's, the rally five) are single
+draws: G has since measured the rally five's row at 1.55 to 3.08 over 15 nudges of the air by a thousandth of a
+kelvin (the lead, 07:20), so none of them tells one tree from another. The conclusion rests on the gate and the dips
+row, which read continuous idles, not one step.
+
 Open, not this window's: the doubled post-start gain is marginal on `main` itself (the 7.4 V8's 0.6 s swing; the
 look-ahead hides it); the dashpot holds the idle valve at 0.35 at full throttle and on boost (ecu.fm:230's form in
 idle.fm), which no measurement here judged.
@@ -1756,6 +1761,111 @@ engines only where a source shows such an engine drawn split.
   Note for a second time: in build.yml the application's upload (line 511) comes before Build (617) and Test (646),
   so an upload's failure stops the tests; if it recurs, the order (or `continue-on-error` on the uploads) is the look.
 
+## 26 Nov 07:23 UTC: a combo row's "excess" is a draw; item 6 is a patch that waits; what is asked of whom
+
+- **X-041's rally five tour row is chaotic (G's measurement, 15 runs on `main`'s tree).** The same run with
+  `env.temperature` moved by a thousandth of a kelvin reads an excess from 1.55 to 3.08, median about 2.2, 2 of
+  15 at or over the row's 3.00; on item 6's patch tree 1.93 to 3.00. One draw of such a row cannot tell two
+  trees apart, so every "the row came back" and "the row went" read tonight on a single run is withdrawn as
+  evidence for or against a change (the steward's line at 4d121479 says so of its idle section; the idle
+  design's conclusion rests on the gate and the dips row, which are continuous idles, and stands). `--set
+  env.pressure` nudges left the run bit-identical: not a nudge, and a question of its own (below).
+- **Asked of X with the steward, tests only, a proposal to the lead before code:** a measure for such rows that
+  a tree cannot pass or fail by luck (the median over nudged runs is the first candidate); the spread under the
+  same nudges of three rows believed real (X-031's V8 downshift, X-030's shift cut, one of X's choosing) and
+  three suspect ones; its cost to the nightly and the soak on CI's logs; what a `Known.h` entry means under it.
+  Until it is ruled, `Known.h` stands as it is and no entry is closed or opened on one draw.
+- **Asked of the integrator, read only, and answered at 07:21 (below):** whether a write to `env.pressure`
+  after t 0 reaches a running engine at all.
+- **Item 6 (G) is ready and parked.** Physics note fc30811c: every receiver of the port's gas wants the mass
+  mean, so the reference's time weighting is a fault to fix under the new models, not a choice.
+  `docs/handoffs/patches/g-port-mass-mean.patch` (7e71f752): a hidden switch `spec.exhaust.portMean` (1 the
+  mass mean, the default; 0 the time mean, the reference's), the nulls 23 of 23 to the bit, the exhaust's
+  test 2 pinned to 0. It moves every table, so it lands with N2's item 9 and before it, never alone, and only
+  when a bake can follow.
+- **Nothing under `sim/`, `host/` or `tools/` has moved since the bake** (read at 4d121479: sim f23337cc, host
+  2e7c1bec, tools 7c3e4d59). The branch past `main` is tests, `ui/` and docs.
+
+## 26 Nov 07:26 UTC: the engine never reads the air's pressure; the combo rows' copies pass and evidence rule
+
+- **THE AIR PRESSURE FIELD ACTS ON THE CAR'S DRAG ONLY (the integrator's read and the lead's, made apart; G's
+  bit-identical runs the measurement).** `readSpec()` takes the temperature alone from `spec.env`
+  (sim/engine.fm:1714). Every outside pressure the engine uses is the literal 101325: the box (:301, :1007),
+  the machine's ambient (:528, :1694), the two-stroke (:540, :1197), the trapped charge's reference (:1389),
+  the scopes, the exhaust's outside. The one reader is sim/vehicle/car.fm:393 (the air's density for drag and
+  downforce, when `spec.env.rev` moves). An owner who sets 70 kPa for altitude gets the same power, boost
+  and sound, against the field's own help ("lower at altitude"). X numbers it. The temperature is read (Heat
+  takes `set.ambF` every 16 samples), which is why it is a nudge and the pressure is not.
+- **Item 15 below, the integrator's, a design first** (its push is refused: the design stays local until the
+  owner decides). Meanwhile, `ui/` only: U1 adds an AIR line when the field is off its default ("moves the
+  car's drag only") and holds the workspace's printed absolutes over 101325, both to leave with item 15.
+- **The combo rows (X reproduced G's spread on fb32d4fc: 3.08, 2.68, 1.97 a thousandth of a kelvin apart).
+  Ruled:** the X-041 row stays; no median as a judge (a step heard one run in seven is still heard); the
+  default tier's judge does not change. The nightly gets a COPIES pass (X): the worst over three temperature
+  copies on the case and on its reference, symmetric, each copy printed, proved to bite on X-014's and
+  X-015's old tree (62a6a7fd) on the source tree before it lands. A row whose copies fall on both sides of
+  its threshold is MARGINAL and `Known.h` says so with its spread; a marginal entry leaves only when all of 15
+  copies read under on the tree said to cure it. The steward runs the 15-copy spreads of three rows believed
+  real and three suspect ones, and gives the pass's cost from CI's logs (over about 10 minutes on the soak:
+  the nightly alone).
+- **THE EVIDENCE RULE, for every session from now:** no single draw of a combo row is evidence for or against a
+  change to a tree. "This change cured row R" or "caused it" needs every copy on one side before and every
+  copy on the other after, or it says "marginal, unchanged".
+
+## 26 Nov 07:28 UTC: a row believed real straddles too; the copies pass is held
+
+- **X-031 (the V8 pull, fuel and ECU models; the steward's 15 copies a thousandth of a kelvin apart, bound
+  4.03): excess 1.76 to 5.11, median 3.39; 4 of 15 over** (the 11.02 s downshift twice, the upshift's cut at
+  6.63 to 6.71 s twice), 11 under. `Known.h`'s 4.73 to 5.17 for it are draws from the top of that spread.
+  X's 17-nudge run of the same row is the second measurement, with five more rows (X-030, X-043, the X-041
+  rally five, X-041's turbo-six tour lift, X-044); one writer, X.
+- **So the split "real against suspect" is withdrawn until those are in.** On this evidence a click row is a
+  SOMETIMES click with a rate (X-031 about one run in four, the rally five one in seven), and three copies
+  cannot sort them. **The copies pass ruled at 07:26 is HELD**; X reports each row's count over, its lowest,
+  median and highest, each over-copy's event, and the reference's own worst step across the copies (the
+  excess is a ratio: how much of the spread is the denominator's).
+- **What the lead expects to rule, open to refutation:** a click row is measured as a rate (n of N copies over,
+  and the worst) in the nightly alone; `Known.h` carries the rate; the default tier keeps its single draw as
+  a tripwire, and a default-tier row that goes red on a draw is neither re-run to green nor waved off: its
+  copies are run, and a row with any copy over is entered as marginal under a number.
+- **The steward reads, with no code, why a cut clicks one run in four:** the crank angle at which the cut and
+  the re-entry take effect against the nearest firing, on the four over and eleven under copies. The lead's
+  guess, to be refuted: the cut acts at the sample it is decided on, in mid-cycle; a cut that takes effect at
+  each cylinder's next event would take the rate to none. It sits beside item 8 and decides whether X-030
+  and X-031 are one fault.
+
+## 26 Nov 07:30 UTC: all six click rows are SOMETIMES rows; no copies pass; item 15's design is written
+
+- **X's spreads (17 copies, 293.15 +/- 0.15 K, on fb32d4fc; the second measurement, agreeing with the
+  steward's X-031): no row sits on one side of its bound.** X-031 (V8 pull, fuel+ecu, 4.03) 6 of 17 over, 1.83
+  to 4.78, at three different shift events; X-030 (small four pull, fuel+ecu+car, 2.85) 12 of 17, 2.25 to 7.09,
+  the upshift's cut; X-043 (turbo six tour, intake+exhaust+car, 2.97) 11 of 17, the start's catch; X-041's
+  rally five (3.00) 1 of 17; X-041's turbo six tour (2.97) 3 of 17, the 9.76 s lift; X-044 (small four pull,
+  custom+fuel+ecu, 2.85) 11 of 17, mostly the 11.02 s downshift (its pass at the unmoved temperature was a
+  draw). A row's named event is itself a draw.
+- **RULED (the 07:26 copies pass is WITHDRAWN, not held):** no copies pass in any tier (worst of three is a
+  weighted coin per night; a red fraction would be a number made from the rows' own measurements).
+  `Known.h`'s six entries become SOMETIMES rows with their rates, words only (X). The spread is an on-demand
+  instrument in no tier (X), printing each copy's excess, time, check and the reference's own worst step.
+  **The evidence rule for a sometimes row: the only verdicts are CURED (0 of 17 over on the tree said to cure
+  it, the rate before on record) and NOT CURED; anything between is "n of 17, was m of 17" with no verdict.**
+  The single draw stays as a tripwire in the default tier and the nightly: a row not in `Known.h` that goes
+  red on a draw is neither re-run to green nor waved off; its spread is run, and with any copy over it is
+  entered under a number.
+- **Next, X:** the reference's own worst step per copy on the six; and the same spread on six rows that pass
+  today, chosen blind (every k-th click-judged row, k fixed first). The lead's prediction before it runs: at
+  least two show a copy over, and then the soak's stream of "new" rows has been one population sampled again
+  on each tree. **The steward:** why a cut clicks only sometimes (the phase at which it lands), X-030 first.
+- **Item 15's design is written by the integrator** (`docs/handoffs/d-air-pressure-design.md`, local: its push
+  is refused): the readers by owner; the 101325s that stay references (a compressor map's corrected flow, the
+  knock table's axis, the tables' load axis, a flame-speed correlation); the spring gauge and the ECU's target
+  absolute, sources first, with a migration that keeps the shipped builds bit-identical at the default. Its
+  predictions at 3000 rpm full load and 70 kPa: the default V8's BMEP 10.57 to 6.77 bar (36 % down against 31 %
+  of pressure: friction stays), the economy four's 11.90 to 7.78; a 1 bar spring turbo 1.70 against 2.01 bar
+  absolute. The lead has put its questions to G (the pipe's impedance and steepening: the outside, a
+  reference, or the pipe's mean) and to C (the tables' load axis; what in the bake and the predictor assumes
+  sea level), each to answer in its own handoff.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 04:36 UTC: `main` IS AT d586682c** (the bake b43ea339 on sim f23337cc, host 2e7c1bec, tools 7c3e4d59;
@@ -1770,13 +1880,12 @@ engines only where a source shows such an engine drawn split.
      archetype and the null to the bit, then N2's predictions, then the gate's idle measure warm and cold on
      every boosted archetype); (i) the split only where a source shows such an engine drawn split. BOTH OWNERS'
      PUSHES ARE REFUSED: the item waits on the owner.
-  2. the steward: the idle's real cure, a design first (the fixture's lope; the 3.0 twin turbo's warm idle; the
-     rate term during the crank and the start's flare, which moves everything after it). Acceptance: the gate's own measure, WARM and
-     cold, on all 31 archetypes and the fixture, before any tier.
+  2. CLOSED (see 13): the idle's cure. `main`'s idle stands; the fixture stays known.
   3. N2: the gate loop's limit cycle; X-041's pull row (the blow-off on a lift).
   4. N2: the sequential rotary's pair after its join (#17).
   5. N2 with C: step A of the turbine's match with the bake's stage (C's task #39).
-  6. G: the running path's port heat mass-weighted, a prediction across the builds first.
+  6. G: the running path's port heat mass-weighted. READY AS A PATCH (7e71f752, `spec.exhaust.portMean`; the
+     nulls read); lands with item 9 and before it, never alone.
   7. the integrator: X-045 (the cure local); the dyno loop's overshoot; a custom engine's friction.
   8. the steward: the fuel's re-entry after an overrun cut, sources first, clips for the owner; X-036's cause.
   9. N2 (with item 5): first.json's boost threshold. N1's held points (--settle 40): 1503 rpm 225 N m with the
@@ -1821,12 +1930,22 @@ engines only where a source shows such an engine drawn split.
      judgement, at every speed) holds the 2.0 at 88 kPa of its 140 target at 1750 rpm (1.7: 111 kPa; 2.0:
      131 kPa and 275 N m, still under 304); (b) on the pickup and the tractor the vanes make more boost than
      a fixed nozzle and 3 to 5 % less torque: one target number where a maker has a map.
+ 15. the integrator, a design first: the engine breathes the stated air. Every reader of the outside's
+     pressure under the new models by file, line and owner (the box and throttle N1; the machine's ambient
+     N2; the exhaust's outside and the tailpipe's radiation G; the two-stroke; the trapped charge; the knock
+     model; a compressor map's corrected-flow reference stays 101325). The null: model 0 keeps 101325, and at
+     the field's default every archetype is bit-identical to today's, so the bake reproduces its tables. What
+     a boost target means at altitude (gauge or absolute; sources), and each shipped boosted build at 70 kPa
+     under both. Predictions first: a naturally aspirated engine's brake torque at 70 kPa (indicated about in
+     proportion, brake by more: friction does not fall), a wastegated turbo below and above the compressor's
+     limit, the idle, a cold start. U1's AIR line and held absolutes leave with it.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
   `scripts/lint.sh` before pushing; wait on the tier's process; a sha only after the command printed it; a
   check that reads "the shipped builds" reads them as the bake's gate does (warm and cold) or says which state
-  it did not read; a refusal of a session's permission check is never worked around.
+  it did not read; a refusal of a session's permission check is never worked around; no single draw of a combo row is
+  evidence for or against a change (26 Nov 07:26).
 - **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
   baked tables), docs. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead runs.
 - **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**
