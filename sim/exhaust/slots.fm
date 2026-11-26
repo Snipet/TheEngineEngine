@@ -212,6 +212,11 @@ module XBuild
     float bangSwept;
     float bangRate;             // W: the heat being released now, all banks
     float bangPeak;             // W: the largest bangRate since the reset (a test's)
+    // The burns' gas is hot: each bank's burns' volume source (m^3/s) and its ports' flow into the collector (m^3/s),
+    // their means over some 20 ms, so a housing books what its pipes bring at the hot gas's temperature (houseT)
+    float hotQ[2];
+    float hotPorts[2];
+    float kHot;
 
     void setup(float rateIn)
     {
@@ -256,6 +261,7 @@ module XBuild
         kUse = 1.0f - expf(-16.0f / (0.3f * rate));
         kMean = 1.0f - expf(-4.0f / (0.2f * rate));
         kHold = expf(-4.0f / (0.01f * rate));
+        kHot = 1.0f - expf(-4.0f / (0.02f * rate));
         bangReset();
         tick4 = 0;
         tickPass = 0;
@@ -2037,6 +2043,8 @@ module XBuild
                     const float cS = sqrtf(1.33f * 287.0f * fmaxf(heat.tGas[sct], 300.0f));
                     const float u = fminf(qs / (0.7853982f * dia * dia * fmaxf(heat.br[sct], 1.0f)) + mach[sct] * cS, cS);
                     uHold[k] = fmaxf(u, uHold[k] * kHold);
+                    hotQ[k] += kHot * (net.popQ[bankCol[k]] - hotQ[k]);
+                    hotPorts[k] += kHot * (qs - hotPorts[k]);
                 }
         float qi = 0.0f;
         for (int i = 0; i < net.np; ++i)
@@ -2080,9 +2088,30 @@ module XBuild
         return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jAdmit[jHouse[h]] : 0.0f;
     }
 
+    // The gas a housing's pipes bring it (K): the collector's, and with exhaust.bang 1 the burns' heat in it. A burn's
+    // volume source is the expansion its heat makes (bangStep), so the gas arriving is that much hotter at the same
+    // pressure: T (1 + q_burns / q_ports) over the banks that feed it, which is T + Qdot / (mdot cp) in the mean. Booked
+    // at the collector's own T, the burns' volume became mass the valves never let out (G's finding, 25 Nov: the rally
+    // five on its spark-cut limiter booked 3.1 to 3.5 times the valves' mass and held its turbine inlet near 7 bar).
+    // At most 2600 K, about a stoichiometric charge's adiabatic flame from a hot start (judgement).
     float houseT(int h)
     {
-        return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jT[jHouse[h]] : 300.0f;
+        if (h < 0 || h >= 8 || jHouse[h] < 0)
+            return 300.0f;
+        const float t = net.jT[jHouse[h]];
+        if (bangOn == 0)
+            return t;
+        float qb = 0.0f;
+        float qp = 0.0f;
+        for (int k = 0; k < 2; ++k)
+            if (bankCol[k] >= 0 && (eng.housing[bankCol[k]] >= 0 && eng.housing[bankCol[k]] < 8 ? eng.housing[bankCol[k]] : 0) == h)
+            {
+                qb += fmaxf(hotQ[k], 0.0f);
+                qp += hotPorts[k];
+            }
+        if (qb <= 0.0f)
+            return t;
+        return fminf(t * (1.0f + qb / fmaxf(qp, 1.0e-6f)), fmaxf(t, 2600.0f));
     }
 
     void setHouse(int h, float p)
@@ -2228,6 +2257,8 @@ module XBuild
             burn[k].reset();
             pVar[k] = 0.0f;
             uHold[k] = 0.0f;
+            hotQ[k] = 0.0f;
+            hotPorts[k] = 0.0f;
         }
         net.popQOn = bangOn;
         for (int i = 0; i < XN_POPS; ++i)

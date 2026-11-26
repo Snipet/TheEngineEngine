@@ -139,6 +139,11 @@ let out, never sees that heat, and the housing's gas temperature doesn't either.
   increase, alongside the valves' `mE`.
 - The housing's inlet temperature would need to rise by that heat over the block's mass flow and cp.
 - Not built (anti-lag's turbine drive waits: the lead's ruling).
+- **Built on 26 Nov (the next window's item 1, G's half):** `Slots::houseT` gives the housing the hot gas's temperature,
+  T (1 + q_burns / q_ports), so the housing books the valves' mass and holds the heat as its own `t`. `bookLet`'s ratio
+  now averages about 1 on the rally five's limiter, against 3.1 to 3.5 before (docs/models/exhaust.md, "The burns' gas
+  is hot"). **N2's half:** whether Boost's turbine, given that housing state, needs anything more, and what its own
+  books should show. No change was made in boost/.
 
 **Stated bores' floor (X-038, 25 Nov; the lead's option 2).** A stated exhaust pipe bore in (0, 10 mm) is raised to
 10 mm by the builder, and `tel.exhaust.boreRaised` / `boresRaised` say which (docs/models/exhaust.md, "Stated

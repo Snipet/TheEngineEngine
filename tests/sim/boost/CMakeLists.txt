@@ -29,5 +29,11 @@ set_tests_properties("boost.rig.rest" PROPERTIES TIMEOUT 900 LABELS "boost;surge
 include(Catch)
 catch_discover_tests(tee-tests-boost DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_SPEC "[nightly]~[engine]" TEST_PREFIX "boost."
                      PROPERTIES TIMEOUT 3600)
-add_test(NAME "boost.engine" COMMAND tee-tests-boost "[engine]~[nightly]" --durations yes)
-set_tests_properties("boost.engine" PROPERTIES TIMEOUT 900 LABELS "boost;engine")
+# (two entries, each one compile and its kept player: one held 37.8 s on CI's reference runner, over the 30 s a test of
+# 01-rules.md section 3; part-1 the corner builds, the supercharger and the throttle chop, part-2 the 2 L spool, the
+# BMEP and the intercooler; boost.engine-all fails if an [engine] case carries neither part's tag)
+add_test(NAME "boost.engine-1" COMMAND tee-tests-boost "[engine][part-1]~[nightly]" --durations yes)
+add_test(NAME "boost.engine-2" COMMAND tee-tests-boost "[engine][part-2]~[nightly]" --durations yes)
+add_test(NAME "boost.engine-all" COMMAND tee-tests-boost "[engine]~[part-1]~[part-2]~[nightly]" --list-tests --verbosity quiet)
+set_tests_properties("boost.engine-all" PROPERTIES FAIL_REGULAR_EXPRESSION "." LABELS "boost;engine")
+set_tests_properties("boost.engine-1" "boost.engine-2" PROPERTIES TIMEOUT 900 LABELS "boost;engine")
