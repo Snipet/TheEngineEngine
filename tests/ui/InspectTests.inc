@@ -476,12 +476,16 @@
         col.setPlace({ 20, 20, 340, 300 }, true);         // short: the view has to follow
         host.tick(2);
         const auto kindAt = [&] { return col.rows()[static_cast<std::size_t>(col.focusedRow())].kind; };
+        // On the pane, with half a row of it beyond the row at the bottom (unless the content ends there).
         const auto onScreen = [&] {
             funkgui::Rect row, value;
-            if (col.focusedField() >= 0)
-                return col.fieldRect(col.focusedField(), row, value) && row.y >= col.bounds().y + 56.0f - 0.5f
-                    && row.bottom() <= col.bounds().bottom() + 0.5f;
-            return true;
+            if (col.focusedField() < 0)
+                return true;
+            if (!col.fieldRect(col.focusedField(), row, value) || row.y < col.bounds().y + 56.0f - 0.5f)
+                return false;
+            const float pane = col.bounds().h - 56.0f, end = col.contentHeight() - pane;
+            const float room = tee::ui::FieldInspector::kWheelRowH * 0.5f;
+            return row.bottom() <= col.bounds().bottom() - room + 0.5f || col.scroll() >= end - 0.5f;
         };
         const auto focusOn = [&](const char* path) {
             for (int k = 0; k < 80 && col.focusedField() != mem.find(path); ++k)
@@ -573,5 +577,55 @@
         // The frame's: pages, workspaces, undo, redo.
         for (const C c : { C::pagePrev, C::pageNext, C::workspacePrev, C::workspaceNext, C::undo, C::redo })
             CHECK(!col.edit(c, false));
+        return 0;
+    }
+
+    // A refusal's sentence wraps in a narrow column, never cut: every word drawn, the row grown by its lines, the rows
+    // under it moved down; gone with the refusal, the row as it was.
+    TEST(testInspectRefusalWraps, "inspect.refusal.wraps")
+    {
+        using C = tee::ui::EditCommand;
+        tee::ui::MemoryDoc mem{ tee::test::mockFields() };
+        CappedDoc doc(mem);
+        tee::ui::Units units;
+        tee::ui::Board board{ 400, 900 };
+        funkgui::HeadlessHost host{ board, 0, 1.0f };
+        tee::ui::FieldInspector& col = board.make<tee::ui::FieldInspector>(doc, units, tee::ui::FieldInspector::Style::rows);
+        col.setOutline(tee::ui::outlineOf(mem, tee::ui::sectionFields(mem, "boost")));
+        col.setPlace({ 10, 10, 220, 800 }, true);         // narrower than the inspector's column
+        host.tick(2);
+        const int f = mem.find("boost.level");
+        const auto rowOf = [&](int field) {
+            for (const auto& r : col.rows())
+                if (r.kind == tee::ui::FieldInspector::Row::Kind::field && r.field == field)
+                    return r.rect;
+            return funkgui::Rect{};
+        };
+        const funkgui::Rect before = rowOf(f);
+        int next = -1;
+        for (const auto& r : col.rows())
+            if (r.kind == tee::ui::FieldInspector::Row::Kind::field && r.rect.y > before.y && next < 0)
+                next = r.field;
+        CHECK(next >= 0);
+        const float nextY = rowOf(next).y;
+        mem.set(f, 98e3);
+        funkgui::Rect row, value;
+        CHECK(col.fieldRect(f, row, value));
+        host.click(value.centreX(), value.centreY());   // a click types it (and gives the column the keys)
+        typeKeys(host, "backspace backspace backspace backspace backspace backspace 1 5 0 return");
+        host.tick(2);
+        CHECK(col.typing() && col.refusal() == "Out of range: not over 100 kPa, for the test");
+        const std::vector<std::string> lines = col.refusalShown();
+        std::string joined;
+        for (const std::string& l : lines)
+            joined += (joined.empty() ? "" : " ") + l;
+        CHECK_MSG(lines.size() >= 2 && joined == col.refusal(), std::to_string(lines.size()) + ": " + joined);
+        const funkgui::Rect grown = rowOf(f);
+        CHECK_NEAR(grown.h - before.h, 12.0f * static_cast<float>(lines.size() - 1), 0.01f);
+        CHECK_NEAR(rowOf(next).y - nextY, grown.h - before.h, 0.01f);
+        typeKeys(host, "escape");
+        host.tick(2);
+        CHECK(col.refusal().empty() && rowOf(f).h == before.h && rowOf(next).y == nextY);
+        (void)C::back;
         return 0;
     }

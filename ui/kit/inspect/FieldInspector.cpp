@@ -1,6 +1,8 @@
 // ui/kit/inspect/FieldInspector.cpp: see FieldInspector.h.
 #include "kit/inspect/FieldInspector.h"
 
+#include <funkgui/text/FontService.h>
+#include <funkgui/text/TextFit.h>
 #include <funkgui/widgets/Scroll.h>
 
 #include "kit/bind/Binding.h"
@@ -26,6 +28,7 @@ namespace tee::ui
         constexpr funkgui::TextStyle kLabelText{ 12.0f, 0.3f, 0.03f, false };   // a field's name
         constexpr funkgui::TextStyle kValueText{ 12.0f, 0.0f, 0.0f, false };    // its value
         constexpr funkgui::TextStyle kHeadText{ 10.0f, 2.0f, 0.08f, false };    // a heading
+        constexpr float kRefusalLineH = 12.0f;                                   // a refusal's lines, apart
         constexpr float kWrap = 0.62f;                                           // the face's advance, of its px
 
         std::string lower(std::string s)
@@ -273,16 +276,24 @@ namespace tee::ui
             r.field = e.field;
             const FieldInfo& f = doc_.info(e.field);
             const float h = compact ? 30.0f : (numberKind(f) ? 42.0f : 36.0f);
-            r.rect = { x0, y, w, h };
+            if (refusedField_ == e.field && !refusal_.empty())
+            {
+                // The sentence wraps, never cut: a number's first line stands where its bar was, the rest below.
+                const float n = static_cast<float>(refusalLines(w - 28.0f).size());
+                r.said = !compact && numberKind(f) ? (n - 1.0f) * kRefusalLineH : n * kRefusalLineH + 4.0f;
+            }
+            r.rect = { x0, y, w, h + r.said };
             const float bw = compact ? 112.0f : 122.0f, bh = compact ? 22.0f : 24.0f;
             if (f.kind == FieldKind::toggle)
                 r.value = { x0 + w - kPad - 40.0f, y + (h - 20.0f) * 0.5f, 40.0f, 20.0f };
             else
                 r.value = { x0 + w - kPad - bw, y + (compact ? (h - bh) * 0.5f : 5.0f), bw, bh };
-            y += h;
+            y += h + r.said;
             rows_.push_back(r);
         }
         contentH_ = y + 8.0f;
+        refusalLaidField_ = refusedField_;
+        refusalLaid_ = refusal_;
         scrollTo(scroll_);
         if (focus_ >= static_cast<int>(rows_.size()))
             focus_ = -1;
@@ -304,12 +315,14 @@ namespace tee::ui
     {
         if (row < 0 || row >= static_cast<int>(rows_.size()))
             return;
+        // Half a row of the pane kept beyond the focused row at either end (the owner's seat: a row flush on the pane's
+        // edge reads as cut); scrollTo clamps at the content's ends.
         const Rect& r = rows_[static_cast<std::size_t>(row)].rect;
-        const float h = contentRect().h, sticky = 30.0f;
-        if (r.y - sticky < scroll_)
-            scrollTo(r.y - sticky);
-        else if (r.bottom() > scroll_ + h)
-            scrollTo(r.bottom() - h);
+        const float h = contentRect().h, sticky = 30.0f, margin = kWheelRowH * 0.5f;
+        if (r.y - sticky - margin < scroll_)
+            scrollTo(r.y - sticky - margin);
+        else if (r.bottom() + margin > scroll_ + h)
+            scrollTo(r.bottom() + margin - h);
     }
 
     int FieldInspector::rowAt(funkgui::Point p) const
@@ -347,6 +360,40 @@ namespace tee::ui
         for (const OutlineEntry& e : filtered_)
             n += e.kind == OutlineEntry::Kind::field ? 1 : static_cast<int>(e.fields.size());
         return n;
+    }
+
+    std::vector<std::string> FieldInspector::refusalLines(float width) const
+    {
+        const funkgui::FontAtlasSdf& atlas = funkgui::FontService::get().atlas();
+        std::vector<std::string> out;
+        std::string line;
+        std::size_t i = 0;
+        const std::string& s = refusal_;
+        while (i < s.size())
+        {
+            const std::size_t sp = std::min(s.find(' ', i), s.size());
+            const std::string word = s.substr(i, sp - i);
+            const std::string tried = line.empty() ? word : line + " " + word;
+            if (!line.empty() && funkgui::text::width(atlas, tried.c_str(), kWidgetSmall) > width)
+            {
+                out.push_back(line);
+                line = word;
+            }
+            else
+                line = tried;
+            i = sp + 1;
+        }
+        if (!line.empty())
+            out.push_back(line);
+        return out;
+    }
+
+    std::vector<std::string> FieldInspector::refusalShown() const
+    {
+        for (const Row& r : rows_)
+            if (r.kind == Row::Kind::field && r.field == refusedField_)
+                return refusalLines(r.rect.w - 28.0f);
+        return {};
     }
 
     void FieldInspector::focusRow(int row)
@@ -612,6 +659,8 @@ namespace tee::ui
         if (doc_.revision() != docSeen_ && changedOnly_ && editing_ < 0 && !scrubbing_ && wheelField_ < 0)
             rebuild();                       // CHANGED holds what is changed now
         docSeen_ = doc_.revision();
+        if (refusedField_ != refusalLaidField_ || refusal_ != refusalLaid_)
+            layout();                        // a refused row grows to hold its sentence, and shrinks after
         shownScroll_ = funkgui::ease::toward(shownScroll_, scroll_, dt, 0.06f, 0.25f);
         if (wheelField_ >= 0 && (wheelRest_ += std::max(dt, 0.0f)) >= 0.5f)
         {
@@ -1272,9 +1321,9 @@ namespace tee::ui
                         c.rrect(at.x + 4.0f, at.y + 1.0f, at.w - 8.0f, at.h - 2.0f, 4.0f,
                                 focused ? l.over(l.edge, 0.55f) : l.over(l.edge, 0.3f));
                     if (changed(r.field))
-                        c.disc(at.x + 8.0f, compact || !numberKind(f) ? at.centreY() : at.y + 16.0f, 2.6f, l.accent);
+                        c.disc(at.x + 8.0f, compact || !numberKind(f) ? at.y + (at.h - r.said) * 0.5f : at.y + 16.0f, 2.6f, l.accent);
                     const Rect v = onScreen(r.value);
-                    const float labelY = compact || !numberKind(f) ? at.centreY() : at.y + 16.0f;
+                    const float labelY = compact || !numberKind(f) ? at.y + (at.h - r.said) * 0.5f : at.y + 16.0f;
                     const std::string label = f.label.empty() ? f.path : f.label;
                     textAt(c, fitText(c, label, kLabelText, v.x - at.x - 26.0f), at.x + 14.0f, labelY, kLabelText,
                            changed(r.field) ? l.value : l.text);
@@ -1284,7 +1333,14 @@ namespace tee::ui
                         // where it sits in its range, a tick at its default; or what a refusal said
                         const float x0 = at.x + 14.0f, x1 = v.x - 16.0f, y = at.y + 32.0f;
                         if (refusedField_ == r.field && !refusal_.empty())
-                            textAt(c, fitText(c, refusal_, kWidgetSmall, at.w - 28.0f), x0, y, kWidgetSmall, l.error);
+                        {
+                            float ly = y;
+                            for (const std::string& line : refusalLines(at.w - 28.0f))
+                            {
+                                textAt(c, line, x0, ly, kWidgetSmall, l.error);
+                                ly += kRefusalLineH;
+                            }
+                        }
                         else if (x1 > x0 + 20.0f)
                         {
                             const float t = norm01(f, doc_.get(r.field)), td = norm01(f, clampTo(f, f.def));
@@ -1296,8 +1352,14 @@ namespace tee::ui
                         }
                     }
                     else if (refusedField_ == r.field && !refusal_.empty())
-                        textAt(c, fitText(c, refusal_, kWidgetSmall, v.x - at.x - 26.0f), at.x + 14.0f, at.bottom() - 6.0f,
-                               kWidgetSmall, l.error);
+                    {
+                        float ly = at.bottom() - r.said + 2.0f + kRefusalLineH * 0.5f;
+                        for (const std::string& line : refusalLines(at.w - 28.0f))
+                        {
+                            textAt(c, line, at.x + 14.0f, ly, kWidgetSmall, l.error);
+                            ly += kRefusalLineH;
+                        }
+                    }
                     break;
                 }
                 case Row::Kind::empty: break;

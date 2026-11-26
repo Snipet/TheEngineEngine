@@ -70,6 +70,7 @@ namespace tee::ui
             int field = -1;
             funkgui::Rect rect{}, value{};   // the row; its value's box (an OPEN chip for a table)
             bool folded = false;
+            float said = 0.0f;               // the height its refusal's sentence adds (wrapped, never cut)
         };
         const std::vector<Row>& rows() const noexcept { return rows_; }
         // A field's row on screen (scrolled), its value's box, and whether it is shown now.
@@ -81,6 +82,8 @@ namespace tee::ui
         bool typing() const noexcept { return editing_ >= 0; }
         const std::string& typed() const noexcept { return edit_.buffer; }
         const std::string& refusal() const noexcept { return refusal_; }
+        // The refusal's sentence as drawn: wrapped to the row's width, every word kept.
+        std::vector<std::string> refusalShown() const;
         float scroll() const noexcept { return scroll_; }
         float contentHeight() const noexcept { return contentH_; }
         int shownFields() const noexcept;    // fields the rows hold now (filter and CHANGED applied)
@@ -181,5 +184,9 @@ namespace tee::ui
         int wheelField_ = -1;
         float wheelRest_ = 0.0f;
         std::uint64_t docSeen_ = 0;
+        // the refusal the rows were laid out for (a refused row grows to hold its sentence)
+        int refusalLaidField_ = -1;
+        std::string refusalLaid_;
+        std::vector<std::string> refusalLines(float width) const;
     };
 }
