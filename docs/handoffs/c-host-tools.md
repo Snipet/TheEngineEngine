@@ -84,3 +84,61 @@ attribute check on G's new `spec.exhaust.*` fields (not mine).
 4. Still open from the first slice: `libclang-rt-18-dev` in the bootstrap.
 
 **Look at.** `tee-dyno --predict --build content/builds/v8.json [--ramp 10 | --hold 300]`; `tee-validate`.
+
+## Note, 26 Nov 07:40 UTC: the bake and the predictor against a stated outside pressure (X-046, the lead's question)
+
+Read-only, on the tip f4b03d97+ (sim as d586682c's). The engine is to breathe `spec.env.pressure` (sim/spec/env.fm:16,
+default 101325) where today it uses the literal.
+
+**(a) The two baked tables' load axes.**
+- **The knock-limit table** (`ecu.maps.knockLimit`) is read by absolute plenum pressure over a fixed 1 atm:
+  `knockLimit.at(rpm, pPlenum / 101325)` at sim/combustion/combustion.fm:352. The bake fills that axis the same way:
+  cell.load = the predicted point's `tel.engine.manifold` / 101325 (host/src/Bake.cpp:1006), from 0.2 atm up to the
+  most a pedal or boost step gave (Bake.cpp:1027-1029). The bake's own reading of the table, its check and report,
+  mirrors the simulator's: Bake.cpp:118. Confirmed: absolute pressure over a reference. At 70 kPa outside, the same
+  table is read lower down its axis. This 101325 is a reference, not the outside, and must stay a literal on both sides,
+  sim and host, together.
+- **The intake cam map** (`ecu.maps.camIn`) is not the same kind of axis. It is read at `load` = manifold /
+  in->ambient (sim/ecu/ecu1.fm:194, the non-auto branch at :204), and in->ambient is the literal 101325
+  (sim/ecu/ecu.fm:317). The bake writes the map's y as "the manifold over the air's" (Bake.cpp:673-678: rows 0, 0.75,
+  0.95, 3.0, with the advance only from 0.95 up). So if X-046 makes in->ambient the stated pressure, this axis becomes
+  relative to the outside: an engine at full pedal at altitude still reads about 0.95-1.0 and gets the full-load
+  advance. That is right for a cam (load relative to what the engine can breathe), but it is a different reference from
+  the knock table's. The design should say which it means, and keep the two as they are: knock absolute, cam relative.
+  If in->ambient stays 101325, a full-pedal engine at 70 kPa reads about 0.69 and the cam stays parked at full load:
+  wrong.
+- `maps.spark` under sparkAuto reads `loadRef` = manifold / 101325 (ecu1.fm:195, "the reference's formulas go by
+  1 atm"), and the other maps read `load` (ecu1.fm:194). Neither is the bake's, but they have the same split.
+
+**(b) What in host/ and tools/ assumes sea level.**
+- **No dyno correction.** Neither the predictor nor the stepped dyno applies SAE J1349 or any density correction. Both
+  report the absorbed torque raw (host/src/Predict.cpp reads `tel.engine.torque` and `dyno.tqAbs`; host/src/Dyno.cpp
+  DynoPlan::torque "engine.torque"). At a stated 70 kPa, the predicted curve and DYNO read the altitude's uncorrected
+  torque, which is right for "what this engine makes here". Nothing in host/ compares it with a sea-level figure, but
+  a person reading a brochure number may: that is U1's caption to decide ("uncorrected, at the stated air").
+- **No density** anywhere in Predict.cpp or Dyno.cpp; the one boost read is `tel.boost.pressure` (Predict.cpp:71).
+- **The idle gate** (Bake.cpp:692-702, checkIdle) compares with `ecu.idle.speed` in rpm (±100 rpm, sd under 25): no
+  pressure in it.
+- **The boost steps** (Bake.cpp:896-939) set `spec.boost.target` in Pa over the air (gauge), so they follow the
+  outside as the ECU's target does.
+- **The keys.** No `spec.env.*` field is in the knock, cam or match keys (Bake.cpp:786-793 kKnockFields and
+  :802-811; :39-47 movesCam). So a change of the stated pressure leaves every baked table current. That is right only
+  if the tables stay valid across pressures; (c) says when they don't.
+
+**(c) Do the baked tables stay valid at another pressure?** It depends on the direction, because the bake measures at
+the build's own stated air.
+- **Baked at sea level, used at altitude:** valid. The knock table spans 0.2 atm to the most measured. At altitude
+  every point reads lower down the same axis, inside what was measured, and knock there depends on the absolute charge
+  (pressure and temperature), which the axis already is. The cam map, relative, reads its full-load row at full pedal,
+  as it should. No pressure axis is needed.
+- **Baked at altitude, used at sea level:** not valid at the top. A build stated at 70 kPa bakes a naturally aspirated
+  knock table only up to about 0.7 atm. At sea level its full-load row reads above the measured range and is taken flat
+  from the top cell (tee-dyno's "* extrapolated flat"). That under-retards exactly where knock is worst; knock control
+  catches it, but the table no longer does its job. And the key does not go stale, because env is not in it.
+- **What I recommend instead of a pressure axis:** the bake measures at the reference air. It runs its copies with
+  `env.pressure` at 101325 (and `env.temperature` at its default) whatever the build states, and env stays out of the
+  keys. One table then serves every stated air, sea level down, read by absolute pressure as the simulator reads it.
+  The same holds for the turbine match's rated state (my stage, turbine-match-bake-stage.md): measure it at the
+  reference air, so `ratedP4` is a sea-level design point, as a maker's is. That is a host change for the bake's
+  window, not X-046's. X-046 needs only (a)'s cam reference decided, and `in->ambient` made the stated pressure where
+  the design means the outside.
