@@ -1,7 +1,7 @@
 From 6115fbf7f0b3c9da56f835e0e66aea23d60d4035 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 23:53:14 +0000
-Subject: [PATCH 1/4] boost: the turbine matched on the build's own rated state
+Subject: [PATCH 1/5] boost: the turbine matched on the build's own rated state
  when baked (spec.boost.ratedP4, ratedT3: the rated balance in place of 1.247
  and 900/1150 K); tel.boost.mismatch 32 (not baked) and 64 (a governed
  diesel's compressor failing rule (c)'s rated check at 0.96); local, step A of
@@ -185,7 +185,7 @@ index 148295e7..7d59eba8 100644
 From 5b6409fb5be156a9a95a42eecf3a5fa2a54a74a9 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 26 Nov 2026 00:04:02 +0000
-Subject: [PATCH 2/4] calib-boost: the mismatch case restated on the charge
+Subject: [PATCH 2/5] calib-boost: the mismatch case restated on the charge
  system's own bits (1-16); bit 32 (turbine on stand-ins) checked where nothing
  is baked; local, with step A
 
@@ -221,7 +221,7 @@ index a66af757..ee2eda33 100644
 From fd427a4b2b76191e5240c1c94e600332fa7fa9e4 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 26 Nov 2026 00:31:17 +0000
-Subject: [PATCH 3/4] boost: step A's two further baked inputs, the
+Subject: [PATCH 3/5] boost: step A's two further baked inputs, the
  compressor's efficiency and the engine's air at the design point
  (spec.boost.ratedEtaC, ratedAir), and the bake's key (matchKey, hidden, unit
  hash), for C's stage; local, lands with the bake
@@ -289,7 +289,7 @@ index 46b4bc59..50c61be6 100644
 From bab1de9d9e9992b79af60b40f54e41fa95c7b694 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 26 Nov 2026 00:32:00 +0000
-Subject: [PATCH 4/4] boost: the baked air sets the turbine's flow only; the
+Subject: [PATCH 4/5] boost: the baked air sets the turbine's flow only; the
  compressor's wheel stays on the design flow (it moved the wheel and hid bit
  64)
 
@@ -326,6 +326,87 @@ index 88bee0fb..b7e7f83f 100644
              if (s->turbAR > 0.0f)
                  aNoz = s->turbAR * 0.0254f * rc;
              else
+-- 
+2.43.0
+
+
+From c5ef44325b0f5b85ad68b457a9e711c99f8ce429 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 00:33:59 +0000
+Subject: [PATCH 5/5] boost telemetry for the match's bake:
+ tel.boost.turbineOut[] (the turbine's outlet, absolute, a 1 s mean) and
+ tel.boost.engineAir (the engine's draw from the charge, kg/s); local, with
+ step A
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+---
+ sim/boost/boost.fm    | 2 ++
+ sim/boost/machine.fm  | 5 +++++
+ sim/spec/telemetry.fm | 4 ++++
+ 3 files changed, 11 insertions(+)
+
+diff --git a/sim/boost/boost.fm b/sim/boost/boost.fm
+index 7c8d5165..1d994cec 100644
+--- a/sim/boost/boost.fm
++++ b/sim/boost/boost.fm
+@@ -470,9 +470,11 @@ module Boost
+             t->vanes[i] = on != 0 ? mach.telVanes[i] : 0.0f;
+             t->turbineIn[i] = on != 0 ? mach.telPTurb[i] : 0.0f;
+             t->turbineInTemp[i] = on != 0 ? mach.telTTurb[i] : 0.0f;
++            t->turbineOut[i] = on != 0 ? mach.telP4[i] : 0.0f;
+             t->drive[i] = on != 0 ? mach.telDrive[i] : 0.0f;
+         }
+         t->chargePipe = on != 0 ? mach.v1.p - mach.pOut : 0.0f;
++        t->engineAir = on != 0 ? mach.drawMean : 0.0f;
+         t->intercoolerOut = on != 0 ? mach.telIcOut : tCharge;
+         t->throttleIn = on != 0 ? mach.v2.t : tCharge;
+         t->blowOffValve = on != 0 ? mach.bovLift : 0.0f;
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index b7e7f83f..94057ff2 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -244,6 +244,7 @@ module BoostMachine
+     float telVanes[BOOST_TURBOS];
+     float telPTurb[BOOST_TURBOS];   // before the turbine, Pa absolute (a twin scroll's mean)
+     float telTTurb[BOOST_TURBOS];
++    float telP4[BOOST_TURBOS];      // the turbine's outlet, absolute, a 1 s mean (the match's bake reads it)
+     float telDrive[BOOST_TURBOS];   // that over the boost's absolute pressure
+     float telBoost;                 // before the throttle, Pa above the outside
+     float telIcOut;                 // K
+@@ -381,6 +382,8 @@ module BoostMachine
+         seqDwell = 0.0f;
+         seqAbove = 0.0f;
+         drawMean = 0.0f;
++        for (int t = 0; t < BOOST_TURBOS; ++t)
++            telP4[t] = 0.0f;
+         bypassOpen = 1.0f;
+         scDrive = 0.0f;
+         crankTorque = 0.0f;
+@@ -988,6 +991,8 @@ module BoostMachine
+         bovAt += (bovMid - bovAt) * kAt;
+         exhaustSide();
+         chargeSide();
++        for (int t = 0; t < turbos; ++t)
++            telP4[t] += (turb[t].ratio * house[2 * t].p - telP4[t]) * fminf(dt, 1.0f);
+         // the shafts
+         for (int t = 0; t < turbos; ++t)
+         {
+diff --git a/sim/spec/telemetry.fm b/sim/spec/telemetry.fm
+index 7d59eba8..beb09734 100644
+--- a/sim/spec/telemetry.fm
++++ b/sim/spec/telemetry.fm
+@@ -103,6 +103,10 @@ module BoostTel
+     float vanes [[ui::label("Vanes")]] [[ui::quantity("fraction")]] [[ui::help("A variable nozzle's opening; 1 fixed")]] [4];
+     float turbineIn [[ui::label("Before the turbine")]] [[ui::quantity("pressure")]] [[ui::help("Absolute")]] [4];
+     float turbineInTemp [[ui::label("Turbine inlet")]] [[ui::quantity("temperature")]] [4];
++    // (card N2, for the turbine match's bake: the turbine's outlet, absolute, a 1 s mean; and the engine's air, the draw
++    // from the charge, a 0.1 s mean: turbine-match-design.md)
++    float turbineOut [[ui::label("Turbine outlet")]] [[ui::quantity("pressure")]] [4];
++    float engineAir [[ui::label("Engine air")]] [[ui::quantity("flow")]];
+     float drive [[ui::label("Drive ratio")]] [[ui::quantity("ratio")]]
+         [[ui::help("The pressure before the turbine over the charge pipe's, both absolute")]] [4];
+     float chargePipe [[ui::label("Charge pipe")]] [[ui::quantity("pressure")]]
 -- 
 2.43.0
 
