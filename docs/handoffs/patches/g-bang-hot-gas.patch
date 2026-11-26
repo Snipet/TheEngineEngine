@@ -1,0 +1,216 @@
+commit 301ba06c93dbf4e9db3ce9de9b3f15a2fe63d532
+Author: Claude <noreply@anthropic.com>
+Date:   Wed Nov 25 23:39:01 2026 +0000
+
+    exhaust: a housing books the burns' gas at its hot temperature, not the collector's
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+    Claude-Session: https://claude.ai/code/session_01LFAGgSkq1paVPmFHkoNNei
+
+diff --git a/docs/handoffs/g-exhaust.md b/docs/handoffs/g-exhaust.md
+index aa8ef940..8f5322bc 100644
+--- a/docs/handoffs/g-exhaust.md
++++ b/docs/handoffs/g-exhaust.md
+@@ -139,6 +139,11 @@ let out, never sees that heat, and the housing's gas temperature doesn't either.
+   increase, alongside the valves' `mE`.
+ - The housing's inlet temperature would need to rise by that heat over the block's mass flow and cp.
+ - Not built (anti-lag's turbine drive waits: the lead's ruling).
++- **Built on 26 Nov (the next window's item 1, G's half):** `Slots::houseT` gives the housing the hot gas's temperature,
++  T (1 + q_burns / q_ports), so the housing books the valves' mass and holds the heat as its own `t`. `bookLet`'s ratio
++  now averages about 1 on the rally five's limiter, against 3.1 to 3.5 before (docs/models/exhaust.md, "The burns' gas
++  is hot"). **N2's half:** whether Boost's turbine, given that housing state, needs anything more, and what its own
++  books should show. No change was made in boost/.
+ 
+ **Stated bores' floor (X-038, 25 Nov; the lead's option 2).** A stated exhaust pipe bore in (0, 10 mm) is raised to
+ 10 mm by the builder, and `tel.exhaust.boreRaised` / `boresRaised` say which (docs/models/exhaust.md, "Stated
+diff --git a/docs/models/exhaust.md b/docs/models/exhaust.md
+index 9ac510e4..1d0369da 100644
+--- a/docs/models/exhaust.md
++++ b/docs/models/exhaust.md
+@@ -558,6 +558,47 @@ second, nearly all at its 30 kPa ceiling, each with the same click tail.
+ - Cost: one Wiebe step per burn alight, about 8 ns while one burns; nothing otherwise. `exhaust.model` 0 never reads
+   it (the engine identity test passes with `bang` at its default).
+ 
++### The burns' gas is hot: what a housing books (26 Nov; the next window's item 1)
++
++A burn's volume source (`bangStep`: (γ−1)/(γp) of its heat's rate) is the expansion its heat makes, so the gas
++that reaches a turbine housing is that much hotter at the same pressure. Before this the housing booked the pipes'
++volume at the collector's own temperature (`heat.tUse[XH_COLL]`, which never saw the heat), so the burns' volume
++became mass the valves never let out.
++- **Measured before** (bench, the rally five held on its spark-cut limiter, BangTest's `measure` case, every 0.1 s):
++  - the housing booked 3.1 to 3.5 times the valves' mass;
++  - `bookLet`'s `tLet` was pinned at its 0.3 floor;
++  - the housing was at 6.5 to 7.0 bar abs and 750 K.
++  - On the tour (the soak's red, 223f4301): port 7.54 bar, turbine inlet 8.94, `valve.dpWave` −350 kPa against the
++    ±300 kPa bound.
++- **Now** (`Slots::houseT`): the housing receives T (1 + q_burns / q_ports) over the banks that feed it. That is
++  T + Q̇/(ṁ cp) in the mean.
++  - Both flows are means over some 20 ms, a bank each: the burns' source `net.popQ`, and the flow its ports let into
++    the collector, the valves' alone.
++  - At most 2600 K, about a stoichiometric charge's adiabatic flame from a hot start (judgement).
++  - The volume source is unchanged. The housing holds that enthalpy as its own `t`, and Boost's turbine expands it.
++- **Measured after:**
++  - **Bench:** the books average 0.99 (0.46 to 1.49 per window); `tLet` 0.36 to 0.51; the housing 2.0 to 5.2 bar abs
++    at 1700 to 2300 K; the port about 2.7 bar; `dpWave` −60 to −133 kPa.
++  - **Tour, 7.5 to 8.9 s:** port mean 3.33 bar (max 4.98); turbine inlet mean 3.16 bar (max 6.84) at 1750 K; boost
++    mean 1.27 bar (max 1.98); `dpWave` mean −100 kPa (min −155; −174 over the whole tour).
++  - **Tour, Carved, for comparison:** port 2.78 (max 3.84), turbine inlet 2.66 (max 4.72) at 633 K, `dpWave` −62
++    (min −92).
++- **The click at 8.74 s** (0.527 against Carved's 0.098 in 8.6 to 8.9 s) is gone: 0.088 there.
++  - The tour's largest steps are now the limiter's bangs, rising over 3 to 4 samples: 0.275 at 7.92 s, 50 ms after
++    9.8 MW of heat.
++  - X's corpus case (every archetype through the tour, as built): the rally five reads step 12.7 (33.7 at 223f4301),
++    and all thirty pass.
++- **Sound:**
++  - Only builds with a turbine and burns change. Of the five clip pairs the owner chose by, the rally five's is the
++    only one that changes: first.json's two burn nothing; the V8s have no turbine.
++  - The rally five's limiter, at the Tailpipe camera: the loudest 10 ms windows (99th percentile) are 2.0 dB lower,
++    the whole stretch's rms 2.2 dB higher, the peak the same.
++- **Not in this change:** builds without a turbine still meet their losses downstream at the cold gas's density. The
++  flat-plane V8 on its spark cut reads a port mean of 1.37 bar abs Burned against 1.13 Carved, and `dpWave` −20
++  against −11 kPa (min −37): small beside the bound.
++- **Whose:** the pipes' and the housing's inlet are G's. What Boost's turbine does with the hot gas, and its books,
++  are N2's.
++
+ ## Stated bores: the least, 10 mm (X-038, X-029)
+ 
+ Every pipe bore a person or a build can state (`primD`, `colD`, `mainD`, `crossD`, `resD`, `bypassD`, `tailD`) takes
+diff --git a/sim/exhaust/slots.fm b/sim/exhaust/slots.fm
+index 6eca910c..83ddfc39 100644
+--- a/sim/exhaust/slots.fm
++++ b/sim/exhaust/slots.fm
+@@ -212,6 +212,11 @@ module XBuild
+     float bangSwept;
+     float bangRate;             // W: the heat being released now, all banks
+     float bangPeak;             // W: the largest bangRate since the reset (a test's)
++    // The burns' gas is hot: each bank's burns' volume source (m^3/s) and its ports' flow into the collector (m^3/s),
++    // their means over some 20 ms, so a housing books what its pipes bring at the hot gas's temperature (houseT)
++    float hotQ[2];
++    float hotPorts[2];
++    float kHot;
+ 
+     void setup(float rateIn)
+     {
+@@ -256,6 +261,7 @@ module XBuild
+         kUse = 1.0f - expf(-16.0f / (0.3f * rate));
+         kMean = 1.0f - expf(-4.0f / (0.2f * rate));
+         kHold = expf(-4.0f / (0.01f * rate));
++        kHot = 1.0f - expf(-4.0f / (0.02f * rate));
+         bangReset();
+         tick4 = 0;
+         tickPass = 0;
+@@ -2037,6 +2043,8 @@ module XBuild
+                     const float cS = sqrtf(1.33f * 287.0f * fmaxf(heat.tGas[sct], 300.0f));
+                     const float u = fminf(qs / (0.7853982f * dia * dia * fmaxf(heat.br[sct], 1.0f)) + mach[sct] * cS, cS);
+                     uHold[k] = fmaxf(u, uHold[k] * kHold);
++                    hotQ[k] += kHot * (net.popQ[bankCol[k]] - hotQ[k]);
++                    hotPorts[k] += kHot * (qs - hotPorts[k]);
+                 }
+         float qi = 0.0f;
+         for (int i = 0; i < net.np; ++i)
+@@ -2080,9 +2088,30 @@ module XBuild
+         return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jAdmit[jHouse[h]] : 0.0f;
+     }
+ 
++    // The gas a housing's pipes bring it (K): the collector's, and with exhaust.bang 1 the burns' heat in it. A burn's
++    // volume source is the expansion its heat makes (bangStep), so the gas arriving is that much hotter at the same
++    // pressure: T (1 + q_burns / q_ports) over the banks that feed it, which is T + Qdot / (mdot cp) in the mean. Booked
++    // at the collector's own T, the burns' volume became mass the valves never let out (G's finding, 25 Nov: the rally
++    // five on its spark-cut limiter booked 3.1 to 3.5 times the valves' mass and held its turbine inlet near 7 bar).
++    // At most 2600 K, about a stoichiometric charge's adiabatic flame from a hot start (judgement).
+     float houseT(int h)
+     {
+-        return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jT[jHouse[h]] : 300.0f;
++        if (h < 0 || h >= 8 || jHouse[h] < 0)
++            return 300.0f;
++        const float t = net.jT[jHouse[h]];
++        if (bangOn == 0)
++            return t;
++        float qb = 0.0f;
++        float qp = 0.0f;
++        for (int k = 0; k < 2; ++k)
++            if (bankCol[k] >= 0 && (eng.housing[bankCol[k]] >= 0 && eng.housing[bankCol[k]] < 8 ? eng.housing[bankCol[k]] : 0) == h)
++            {
++                qb += fmaxf(hotQ[k], 0.0f);
++                qp += hotPorts[k];
++            }
++        if (qb <= 0.0f)
++            return t;
++        return fminf(t * (1.0f + qb / fmaxf(qp, 1.0e-6f)), fmaxf(t, 2600.0f));
+     }
+ 
+     void setHouse(int h, float p)
+@@ -2228,6 +2257,8 @@ module XBuild
+             burn[k].reset();
+             pVar[k] = 0.0f;
+             uHold[k] = 0.0f;
++            hotQ[k] = 0.0f;
++            hotPorts[k] = 0.0f;
+         }
+         net.popQOn = bangOn;
+         for (int i = 0; i < XN_POPS; ++i)
+diff --git a/tests/sim/exhaust/BangTest.cpp b/tests/sim/exhaust/BangTest.cpp
+index 3cabdae7..d2fb9115 100644
+--- a/tests/sim/exhaust/BangTest.cpp
++++ b/tests/sim/exhaust/BangTest.cpp
+@@ -458,3 +458,60 @@ TEST_CASE("measure: the rally five's largest output steps against the burns, sam
+     typical = all[all.size() * 99 / 100];
+     std::printf("99th percentile step %.4f\n", typical);
+ }
++
++// The rally five held on its limiter (spark cut, Burned in the pipe): the bangs' mean pressures against the housing's
++// books, every 0.1 s; PROBE_BANG sets exhaust.bang
++TEST_CASE("measure: the rally five on its limiter, the bangs' pressures and the housing's books", "[.][measure]")
++{
++    auto player = tee::test::enginePlayer(48000.0);
++    tee::applyBuild(*player, tee::test::engineBuild(*player, "archetypes/inline-five-turbo-rally"));
++    if (const char* b = std::getenv("PROBE_BANG"))
++    {
++        const int i = player->specIndex("exhaust.bang");
++        REQUIRE(i >= 0);
++        player->setSpec(static_cast<std::size_t>(i), std::atof(b), 0);
++    }
++    auto rd = [&](const std::string& path) {
++        double v = 0.0;
++        std::string error;
++        if (!player->read(path, v, error))
++        {
++            std::printf("(%s: %s)\n", path.c_str(), error.c_str());
++            return -1.0;
++        }
++        return v;
++    };
++    std::vector<float> l(512), r(512);
++    auto run = [&](double s) {
++        for (int b = 0; b < static_cast<int>(s * 48000.0 / 512.0 + 0.5); ++b)
++            player->process(l.data(), r.data(), 512);
++    };
++    player->controls().mode = tee::EnginePlayer::kModeBench;
++    player->controls().ignition = tee::EnginePlayer::kIgnitionStart;
++    run(1.5);
++    player->controls().ignition = tee::EnginePlayer::kIgnitionOn;
++    run(0.5);
++    player->controls().throttle = 1.0f;
++    run(3.0);
++    for (int k = 0; k < 20; ++k)
++    {
++        double rate = 0.0, port = 0.0, coll = 0.0, hp = 0.0, ht = 0.0, tc = 0.0;
++        int n = 0;
++        for (int b = 0; b < 9; ++b)
++        {
++            player->process(l.data(), r.data(), 512);
++            rate += rd("exh.b.bangRate");
++            port += rd("exh.pPortMean");
++            coll += rd("exh.b.pTurb");
++            hp += rd("boost.mach.house[0].p");
++            ht += rd("boost.mach.house[0].t");
++            tc += rd("exh.b.heat.tUse[1]");
++            ++n;
++        }
++        std::printf("%.1f s rpm %.0f flags %.0f | heat %.0f kW | port %.2f bar coll %.2f housing %.2f bar %.0f K | collector gas %.0f K | "
++                    "boost %.2f bar dpWave %.0f kPa | tLet %.3f books %.3f\n",
++                    5.0 + 0.096 * (k + 1), rd("crank.rpm"), rd("tel.engine.flags"), rate / n / 1e3, port / n / 1e5,
++                    coll / n / 1e5, hp / n / 1e5, ht / n, tc / n, rd("tel.boost.pressure") / 1e5, rd("tel.valve.dpWave") / 1e3,
++                    rd("exh.tLet"), rd("exh.bookRatio"));
++    }
++}
