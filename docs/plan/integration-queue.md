@@ -2318,6 +2318,27 @@ engines only where a source shows such an engine drawn split.
   builds stood out (the three-cylinder red at its 2-3; the kei 660 and the flat-plane twin-turbo V8 within
   15 % of a bound); a draw selects too few (the kei's 1-2 is 2 of 17 with a clear draw), so all 31 are spread.
 
+## 26 Nov 18:12 UTC: ITEM 16's BEFORE AND AFTER ACROSS ALL 31 SHIPPED BUILDS (X's survey); the one it does not cure
+
+- **X, every shipped build as built on the pull, 17 copies per event, the tip against the steward's cut probe
+  (the cut held only while the vehicle asks; each build's bound the same on both), in
+  docs/measurements/combo/2026-11-26-shipped-pull.md:** upshifts over on the tip: the three-cylinder 1.0 turbo
+  1-2 6 of 17 and 2-3 8 of 17; the kei 660 triple 1-2 2 of 17; the flat-plane 3.9 twin-turbo V8 1-2 1 of 17.
+  **On the probe: 0, 0, 0, and the flat-plane's 1 of 17 unchanged.** No build gains a copy over on the probe
+  at any event. Eight builds have no shift event on the pull (five automatics, the CVT, the tractor: one
+  gear against the limiter; none over). Every other build 0 of 17 at every event on both trees.
+- **What item 16 does not cure: the flat-plane twin-turbo V8,** a dual-clutch box with no cut to shorten: its
+  1-2 at 1 of 17 on both trees (2.66 over 2.33); **at the LIMITER 7 of 17** (top 2.63) and the rest 1 of 17
+  (2.76), neither moved by the probe. Ruled: it joins the nightly's shipped-pull case as a fourth build, its
+  rows under one new number (the limiter the steward's; the dual clutch's 1-2 the integrator's with N2; the
+  rest's owner not known). The steward reads its limiter from the ECU's side; G runs the chatter counter and
+  the secant tree with the real gate on it (as built the new exhaust is on, so item 17 applies there).
+- **X-054, first figures (X; a local measurement branch):** on a steady full-throttle stretch a single-sample
+  click about 11 dB over the firing's sharpest edge passes today's judge in 7 of 17 copies; 1.5 dB over, in
+  10 of 17; 9 dB under, in every copy. A guard of 2 to 4 samples takes the 3.0 plant from 2.65 (passing) to
+  3.20 against 2.81; the level taken from the neighbouring periods to 3.59. The guard is near-monotone, not
+  strictly (a measure can fall by a hundredth): every fall is to be named in its list.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 16:31 UTC: `main` IS AT d6615852** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
