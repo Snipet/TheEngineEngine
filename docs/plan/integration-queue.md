@@ -1342,6 +1342,41 @@ test-s before and after on the steward's measure (CI's Linux log through scripts
 the owners have reported what grouping alone recovers. D2 is woken for diesel's only after the window's sim work is
 in, unless its 217 keeps growing.
 
+## 26 Nov 00:25 UTC: the window an hour in: what is on the branch, what is held and for what
+
+**On the branch under `sim/`, `host/`, `tools/` (tip cba0ac43; the baked tables are stale from here):**
+
+- the integrator, 823e45cd (`sim/engine.fm`): a custom one-bank engine of its table's count keeps the table's
+  split exhaust; d5edd109 its default-run null (a custom engine written from its table configures as the table);
+- C, f600af2e (`host/src/Dyno.cpp`): a held step is reached as an upward sweep reaches it where the program says a
+  part has hysteresis; 1507cc1d (`host/src/Build.cpp`, `Fields.cpp`): a stated bore under its least is refused at a
+  person's input (the loader; the inspector through `Build::accepts`);
+- the steward, 98d0dc4d (`sim/ecu/idle.fm`): the idle valve's proportional part reads the speed alone, not its
+  rate (X-032, the turbo six's idle hunt).
+
+Item 4 of the last section (a custom engine's friction) is closed without a fault: custom turns on the physical
+friction model, which reads the oil's temperature; warm it equals the reference within 2 %, and the dyno and the
+predictor run warm.
+
+**Held locally, with what each waits for:**
+
+| who | what | waits for |
+|---|---|---|
+| G | `settleHeat` on a cycle's mean (two cascaded first-order means, one four-stroke cycle each) and the duct's wall key (bore and sample rate), ONE push; the identity test loading each model fresh; a load-order check | its own tier |
+| G | the burn's heat as hot gas (301ba06c); as a patch under docs/handoffs/patches/ for L meanwhile | L's dense-burn rule |
+| L | the dense-burn rule (a part over twice the running median while a burn is alight is a burst; `bangHeat` passed to `listen.block`, agreed by the integrator). The V8's spark-cut limiter with it: the limiter acts in 74 % of reads at a median 1.7 dB, the 50 ms envelope's spread 2.3 to 2.5 dB: no pumping | its tier (restarted 00:20); then measured with and without G's patch |
+| the integrator | the init order (b74a041b): after `readSpec()` a stopped, silent engine whose dials moved is configured there, not at the key (first.json before the key read 6500 rpm, 8 cylinders, 5.76 L; now 6800, 4, 1.98 L) | its tier; pushed alone |
+| the integrator | #337's new form (6c7b6add: the field diff as a default-run case; the paired torque at 1500 rpm, bound 1 %) | G's wall cure, so it lands unmarked |
+| U1 | three commits: the bore's refusal in Rows (c16fb7e5), J2's inspect.type case (34ae7bd8), a table cell refusing 3 mm as it refuses text that is no number | G's settle push, then the lead's hold |
+| N2 | step A of the turbine's match (6115fbf7, 5b6409fb) | NOT this window: lands with the bake's step B |
+| N1 | the cam bake's :1038 restated with C (89b53a35, to amend) | C's reading |
+
+**Tests' time, by grouping alone (the rule of the section above):** calibration (boost) 133 to 75 test-s (N2);
+calibration-na 85 to 44 (N1). Both local, both to be pushed and read again on CI's reference runner.
+
+**Next in the lead's hands:** the hold for U1 straight after G's sha; then the integrator lands #337 on it, N1
+measures the two-stage on it, P re-reads the crossing and the notch.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
