@@ -11,7 +11,7 @@ and 3, and both read bit 128. Both right; the four with Quad was worse than pred
 
 | build, Aspiration | N m | shaft rad/s, turbos 0 / 1 / 2 / 3 | turbine 0 inlet | bit 128 |
 |---|---|---|---|---|
-| first.json (the table's inline four, one collector), Twin turbos | 231 | 14,381 / 0 | 2.72 bar abs | set |
+| first.json (a custom inline four, one collector before the split), Twin turbos | 231 | 14,381 / 0 | 2.72 bar abs | set |
 | first.json, Quad turbos | **6** | 17,327 / 0 / 0 / 0 | 5.40 bar abs | set |
 | the default V8, Twin turbos | 700 | 8,523 / 8,535 | 2.01 bar abs | clear |
 | the default V8, Quad turbos | 598 | 19,585 / 0 / 19,639 / 0 | 3.33 bar abs | set |
@@ -28,8 +28,8 @@ So Quad still reaches a dead housing on both. The test holds the V8: Quad reads 
 Twin reads 0.
 
 **Why:** `Boost::housingOf(bank, group, banks)` gives a twin on one bank the front group's collector to turbo 0 and the
-rear group's to turbo 1, and a quad the same on each bank. A layout whose exhaust builds one collector a bank (the
-table's inline four; the V8's one 4-into-1 a bank) builds no group 1, so that housing takes no pipe. With Quad on the
+rear group's to turbo 1, and a quad the same on each bank. A layout whose exhaust builds one collector a bank (first.json's
+inline four before the split; the V8's one 4-into-1 a bank) builds no group 1, so that housing takes no pipe. With Quad on the
 four, all the engine's gas goes to turbine 0, sized for a quarter of it: 5.4 bar ahead of it and the engine choked.
 
 ## Ruled (the lead, 26 Nov)
