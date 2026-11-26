@@ -43,6 +43,13 @@
 
 ## Landed
 
+- **26 Nov 18:30 UTC: `main` at 6e67ac62** (from d6615852, fast-forward; run 45858950535 on that commit: Linux,
+  Windows and macOS green; the baked trees unchanged). Tests and docs only (a hidden proof case's mode; the
+  queue's corrections of record; the designs' pages). Nothing an owner sees or hears moved. Measured since and
+  NOT in `main` as code (each waits for a bake): with the shift's cut at its real length every shipped build
+  that clicks at a full-throttle upshift reads 0 of 17 (the three-cylinder 1.0 turbo from 6 and 8, the kei 660
+  from 2), X's survey of all 31 on the pull; the flat-plane twin-turbo V8's limiter (7 of 17) is a hard
+  fuel-cut bounce read as the worst of some forty episodes, and is not the valve solve's.
 - **26 Nov 16:31 UTC: `main` at d6615852** (from 3f892823, fast-forward; run 45855822711 on that commit: Linux,
   Windows and macOS green; the same bake, the baked trees unchanged). Tests, the combo corpus and docs only: the
   five combo builds state lab cams lift-matched to their dials (bit-identical with the valvetrain's model off),
