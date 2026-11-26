@@ -58,3 +58,65 @@ namespace
         return 0;
     }
 }
+
+#include "Png.h"
+#include "views/dyno/Dyno.h"
+
+#include <funkgui/canvas/SoftRaster.h>
+#include <funkgui/text/FontService.h>
+
+#include <chrono>
+#include <thread>
+
+namespace
+{
+    // The picture for the lead (nightly): first.json's predicted curve on DYNO as the program predicts it, its distrusted
+    // points marked (not settled, forced), the cursor at 1733 rpm (the point C found: 293 N m against a steady 272). out/ui/dyno/.
+    BUILD_TEST(dynoUnsteadyPictures, "build.dyno.unsteady.pictures")
+    {
+        std::vector<std::string> warnings;
+        std::string error;
+        CHECK_MSG(rig.build->loadFile(std::filesystem::path(TEE_UI_BUILDS_DIR) / "first.json", tee::BuildPart::Whole, warnings, error), error);
+        tee::ui::ServiceDyno dyno(rig.sim, *rig.build);
+        tee::ui::FrameServices services = tee::ui::buildServices(*rig.build, TEE_UI_BUILDS_DIR, rig.user, {});
+        tee::ui::AppFrame frame(*rig.doc, rig.units, rig.telemetry, services, &dyno, nullptr, tee::ui::defaultSlots(), 1280, 800);
+        funkgui::HeadlessHost host(frame, 0, 2.0f);
+        host.tick(5);
+        frame.show(frame.find("dyno"));
+        const auto t0 = std::chrono::steady_clock::now();
+        while (!dyno.refined() && std::chrono::steady_clock::now() - t0 < std::chrono::seconds(120))
+        {
+            host.tick(1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+        CHECK_MSG(dyno.refined(), "no refined curve in two minutes");
+        host.tick(30);
+        const tee::ui::DynoTrace& t = dyno.predicted();
+        int flagged = 0;
+        for (std::size_t i = 0; i < t.speed.size(); ++i)
+        {
+            if (t.distrustAt(i))
+                ++flagged;
+            if (t.distrustAt(i) || !t.rippleText(i).empty())
+                std::printf("  %5.0f rpm  %6.1f N m  %s%s%s\n", t.speed[i] * 30.0 / 3.14159265358979, t.torque[i],
+                            t.distrustAt(i) ? "RING " : "", t.distrustText(i).c_str(),
+                            t.rippleText(i).empty() ? "" : (" | " + t.rippleText(i)).c_str());
+        }
+        std::printf("  %d of %zu points distrusted\n", flagged, t.speed.size());
+        const std::filesystem::path dir = std::filesystem::path(TEE_UI_OUT_DIR) / "dyno";
+        std::error_code ec;
+        std::filesystem::create_directories(dir, ec);
+        const auto shot = [&](const char* name) {
+            const std::string path = (dir / name).string();
+            tee::test::writePng(funkgui::rasterise(host.draw(), funkgui::FontService::get().atlas(), 2), path);
+            std::printf("  %s\n", path.c_str());
+        };
+        shot("first.unsteady.png");
+        const funkgui::Rect st = frame.stageRect();
+        const float x = tee::ui::dynoPlotX(frame.current(), 1733.0 * 3.14159265358979 / 30.0);
+        host.move(x, st.y + st.h * 0.35f);
+        host.tick(10);
+        shot("first.unsteady.cursor.png");
+        return 0;
+    }
+}

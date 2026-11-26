@@ -494,6 +494,40 @@ namespace
 
 namespace
 {
+    // (U1 for U4, 26 Nov; the lead's ruling on C's numbers) What the predictor says beyond the numbers: from 185 kPa the
+    // demo's 6500 rpm point does not settle (distrusted: the dashed ring, its words) and its 2000 rpm one settles with its
+    // boost rippling (no ring: the cursor's words only). An ordinary point is neither; at 80 kPa nothing is drawn.
+    VIEW_TEST(testDynoUnsteady, "dyno.unsteady")
+    {
+        const int w = tee::test::u4::stageW(1100), h = tee::test::u4::stageH(1100);
+        constexpr double kRpm = 3.14159265358979 / 30.0;
+        StageRig rig(tee::ui::makeDynoWorkspace, w, h, 2.0f);
+        rig.settle();
+        (void)rig.host->draw();
+        CHECK_MSG(tee::ui::dynoUnsteadyDrawn(*rig.ws) == 0, std::to_string(tee::ui::dynoUnsteadyDrawn(*rig.ws)));
+        CHECK(tee::ui::dynoWordsAt(*rig.ws, -2, 2000.0 * kRpm).empty());
+        editBoost(rig, 190e3);
+        rig.settle();
+        const tee::ui::DynoTrace& t = rig.demo.engine.predicted();
+        int distrusted = 0;
+        for (std::size_t i = 0; i < t.speed.size(); ++i)
+            distrusted += t.distrustAt(i) ? 1 : 0;
+        CHECK_MSG(distrusted == 1, std::to_string(distrusted));
+        // Drawn: one dashed ring, the unsettled point's (the rippling one has none; "before" is the 80 kPa curve).
+        (void)rig.host->draw();
+        CHECK_MSG(tee::ui::dynoUnsteadyDrawn(*rig.ws) == 1, std::to_string(tee::ui::dynoUnsteadyDrawn(*rig.ws)));
+        // Named by the cursor: the settled rippling point says its ripple only; the unsettled one its doubt.
+        const std::string ripple = tee::ui::dynoWordsAt(*rig.ws, -2, 2000.0 * kRpm);
+        CHECK_MSG(ripple == "boost ripples: torque a mean over whole windows", ripple);
+        const std::string late = tee::ui::dynoWordsAt(*rig.ws, -2, 6500.0 * kRpm);
+        CHECK_MSG(late.find("not settled within its cycles") != std::string::npos, late);
+        CHECK(tee::ui::dynoWordsAt(*rig.ws, -2, 3000.0 * kRpm).empty());
+        CHECK(tee::ui::dynoWordsAt(*rig.ws, -1, 2000.0 * kRpm).empty());
+        for (const std::string& clash : textClashes(rig.host->draw(), static_cast<float>(w), static_cast<float>(h)))
+            CHECK_MSG(false, clash);
+        return 0;
+    }
+
     // Knock-limited points (card C's, through DynoTrace::knock): rings on the torque curve, ticks under the plot, the
     // legend's word, the cursor's words, and three more CSV columns. The demo knocks past 160 kPa of boost from 4500 rpm.
     VIEW_TEST(testDynoKnock, "dyno.knock")

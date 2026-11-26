@@ -89,6 +89,16 @@ namespace tee::ui
             Dash dash;
         };
         constexpr float kTorqueW = 2.25f, kPowerW = 1.4f;
+        // A point the program itself distrusts (DynoTrace::distrustAt; U1 for U4, 26 Nov): a hollow dashed ring, wider
+        // than the knock's solid amber one (4.5 px), so both read on one point and the curve's line runs on through.
+        constexpr float kUnsteadyR = 7.5f;
+        void dashedRing(funkgui::Canvas& c, float x, float y, float r, funkgui::Col col)
+        {
+            constexpr int kDashes = 8;
+            constexpr float kStep = 6.28318531f / static_cast<float>(kDashes);
+            for (int k = 0; k < kDashes; ++k)
+                c.arc({ x, y }, r, k * kStep, k * kStep + kStep * 0.55f, 1.5f, col);
+        }
     }
 
     class DynoWorkspace final : public Workspace
@@ -241,6 +251,38 @@ namespace tee::ui
         // For tests: the rows (-2 predicted, -1 before, 0.. runs), and the cursor's speed (rad/s; NaN: none).
         int selectedRow() const noexcept { return selected_; }
         std::string nameOfRow(int row) const { return rowName(row); }
+        // The words the cursor says of a curve at a speed (SI): its knock's and the program's doubt, at the point nearest
+        // it when within six tenths of a step (else none).
+        static void wordsNear(const DynoTrace& t, double si, std::string& knock, std::string& unsteady, std::string& ripple)
+        {
+            knock.clear();
+            unsteady.clear();
+            ripple.clear();
+            if ((t.knockCount() == 0 && t.pointFlags.empty()) || t.speed.size() < 2)
+                return;
+            std::size_t near = 0;
+            for (std::size_t i = 1; i < t.speed.size(); ++i)
+                if (std::fabs(t.speed[i] - si) < std::fabs(t.speed[near] - si))
+                    near = i;
+            const double gap = std::fabs(t.speed[1] - t.speed[0]);
+            if (std::fabs(t.speed[near] - si) <= gap * 0.6)
+            {
+                knock = t.knockText(near);
+                unsteady = t.distrustText(near);
+                ripple = t.rippleText(near);
+            }
+        }
+        std::string wordsAt(int row, double si) const
+        {
+            std::string knock, unsteady, ripple, out;
+            wordsNear(trace(row), si, knock, unsteady, ripple);
+            for (const std::string* w : { &knock, &unsteady, &ripple })
+                if (!w->empty())
+                    out += (out.empty() ? "" : "\n") + *w;
+            return out;
+        }
+        int unsteadyDrawn() const noexcept { return unsteadyDrawn_; }
+        float plotX(double si) const { return xScale_.px(ctx_.units.toUser(Quantity::rotation, si)); }
         double cursorSpeed() const noexcept
         {
             computeScales();
@@ -345,6 +387,7 @@ namespace tee::ui
         }
 
     private:
+        mutable int unsteadyDrawn_ = 0;   // the dashed rings the last draw made (for tests)
         struct RowView
         {
             std::string name;
@@ -714,6 +757,18 @@ namespace tee::ui
                     c.text("KNOCK-LIMITED", lx + 14.0f, ly - 5.0f, look::kCaps, p.warning);
                     lx += 14.0f + c.textWidth("KNOCK-LIMITED", look::kCaps) + 18.0f;
                 }
+                // What the dashed rings are (U1 for U4, 26 Nov): points the program itself distrusts.
+                bool unsteady = false;
+                for (int row : allRows())
+                    if (isShown(row))
+                        for (std::size_t i = 0; i < trace(row).speed.size(); ++i)
+                            unsteady = unsteady || trace(row).distrustAt(i);
+                if (unsteady && lx + 22.0f + c.textWidth("NOT STEADY", look::kCaps) < plotBox_.right() - look::kPad)
+                {
+                    dashedRing(c, lx + kUnsteadyR, ly, kUnsteadyR, p.text);
+                    c.text("NOT STEADY", lx + 2.0f * kUnsteadyR + 6.0f, ly - 5.0f, look::kCaps, p.text);
+                    lx += 2.0f * kUnsteadyR + 6.0f + c.textWidth("NOT STEADY", look::kCaps) + 18.0f;
+                }
                 // The dim rings: points the rev limiter cut (no measure of the engine).
                 bool cut = false;
                 for (int row : allRows())
@@ -775,6 +830,7 @@ namespace tee::ui
             }
 
             // The traces: the selected row last, so it is on top.
+            unsteadyDrawn_ = 0;
             bool any = false;
             std::vector<int> order;
             for (int row : allRows())
@@ -827,6 +883,15 @@ namespace tee::ui
                     {
                         c.disc(xs[i], yt[i], 4.5f, kClear, 1.75f, p.warning);
                         c.segment(xs[i], a.bottom() - 7.0f, xs[i], a.bottom() - 1.0f, 2.0f, p.warning);
+                    }
+                // Points the program itself distrusts (not settled, forced, spooling: DynoTrace::distrustAt; U1 for U4,
+                // 26 Nov): a dashed ring wider than the knock's, hollow, round the torque curve's point, so the line runs
+                // on through it; the words are the cursor's (distrustText). A settled point whose boost ripples has none.
+                for (std::size_t i = 0; i < xs.size(); ++i)
+                    if (t.distrustAt(i) && std::isfinite(yt[i]))
+                    {
+                        dashedRing(c, xs[i], yt[i], kUnsteadyR, p.text);
+                        ++unsteadyDrawn_;
                     }
                 // The peaks: a disc on each; the lead's with its number.
                 const auto tq = t.peakTorque(), pw = t.peakPower();
@@ -991,6 +1056,8 @@ namespace tee::ui
                 int row;
                 double tq, pw, ex;
                 std::string knock;   // knockText at the point nearest the cursor, if it is knock-limited
+                std::string unsteady;   // distrustText there, if the program distrusts it (U1 for U4, 26 Nov)
+                std::string ripple;     // rippleText there: said, not distrusted
             };
             std::vector<Line> lines;
             const Extra* ex = extra_ >= 0 ? &kExtras[static_cast<std::size_t>(extra_)] : nullptr;
@@ -999,17 +1066,8 @@ namespace tee::ui
                 const DynoTrace& t = trace(row);
                 if (!isShown(row) || t.empty())
                     continue;
-                Line l{ row, chart::at(t.speed, t.torque, si), chart::at(t.speed, t.power, si), std::nan(""), {} };
-                if (t.knockCount() > 0 && t.speed.size() > 1)
-                {
-                    std::size_t near = 0;
-                    for (std::size_t i = 1; i < t.speed.size(); ++i)
-                        if (std::fabs(t.speed[i] - si) < std::fabs(t.speed[near] - si))
-                            near = i;
-                    const double gap = std::fabs(t.speed[1] - t.speed[0]);
-                    if (std::fabs(t.speed[near] - si) <= gap * 0.6)
-                        l.knock = t.knockText(near);
-                }
+                Line l{ row, chart::at(t.speed, t.torque, si), chart::at(t.speed, t.power, si), std::nan(""), {}, {}, {} };
+                wordsNear(t, si, l.knock, l.unsteady, l.ripple);
                 if (ex != nullptr)
                 {
                     const int f = fieldIndex(t, ex->field);
@@ -1031,9 +1089,33 @@ namespace tee::ui
                 ex = nullptr;
             const float nameW = std::clamp(plotArea_.w - 176.0f - (ex != nullptr ? 64.0f : 0.0f), 64.0f, 110.0f);
             const float w = nameW + 166.0f + (ex != nullptr ? 64.0f : 0.0f), rowH = 18.0f;
+            // The program's doubt in whole words, wrapped to the card (never cut: its words are the point).
+            const auto wrap = [&c](const std::string& text, float width) {
+                std::vector<std::string> out;
+                std::string line;
+                std::size_t i = 0;
+                while (i < text.size())
+                {
+                    const std::size_t sp = text.find(' ', i);
+                    const std::string word = text.substr(i, sp == std::string::npos ? std::string::npos : sp - i);
+                    const std::string tried = line.empty() ? word : line + " " + word;
+                    if (!line.empty() && c.textWidth(tried.c_str(), look::kUnit) > width)
+                    {
+                        out.push_back(line);
+                        line = word;
+                    }
+                    else
+                        line = tried;
+                    i = sp == std::string::npos ? text.size() : sp + 1;
+                }
+                if (!line.empty())
+                    out.push_back(line);
+                return out;
+            };
             int knocks = 0;
             for (const Line& l : lines)
-                knocks += l.knock.empty() ? 0 : 1;
+                knocks += (l.knock.empty() ? 0 : 1) + static_cast<int>(wrap(l.unsteady, w - 46.0f).size())
+                          + static_cast<int>(wrap(l.ripple, w - 46.0f).size());
             const float h = 30.0f + rowH * static_cast<float>(lines.size() + static_cast<std::size_t>(knocks));
             float cx = x + 14.0f;
             if (cx + w > plotArea_.right())
@@ -1074,6 +1156,21 @@ namespace tee::ui
                     c.disc(cx + 29.0f, y + 5.0f, 3.5f, kClear, 1.5f, p.warning);
                     const Canvas::ClipScope clip(c, { cx, y - 2.0f, w - 8.0f, rowH });
                     c.text(l.knock.c_str(), cx + 38.0f, y, look::kUnit, p.warning);
+                    y += rowH;
+                }
+                if (!l.unsteady.empty())   // and the program's own doubt, with its dashed ring
+                {
+                    dashedRing(c, cx + 29.0f, y + 5.0f, 4.5f, p.text);
+                    for (const std::string& part : wrap(l.unsteady, w - 46.0f))
+                    {
+                        c.text(part.c_str(), cx + 38.0f, y, look::kUnit, p.text);
+                        y += rowH;
+                    }
+                }
+                // A ripple on its boost: said, as the knock's retard range is, without a mark (a fact, not a doubt).
+                for (const std::string& part : wrap(l.ripple, w - 46.0f))
+                {
+                    c.text(part.c_str(), cx + 38.0f, y, look::kUnit, p.label);
                     y += rowH;
                 }
             }
@@ -1240,6 +1337,21 @@ namespace tee::ui
     {
         auto* d = dynamic_cast<DynoWorkspace*>(&w);
         return d != nullptr ? d->control(which) : funkgui::Rect{};
+    }
+    std::string dynoWordsAt(Workspace& w, int row, double si)
+    {
+        auto* d = dynamic_cast<DynoWorkspace*>(&w);
+        return d != nullptr ? d->wordsAt(row, si) : std::string();
+    }
+    float dynoPlotX(Workspace& w, double si)
+    {
+        auto* d = dynamic_cast<DynoWorkspace*>(&w);
+        return d != nullptr ? d->plotX(si) : std::nanf("");
+    }
+    int dynoUnsteadyDrawn(Workspace& w)
+    {
+        auto* d = dynamic_cast<DynoWorkspace*>(&w);
+        return d != nullptr ? d->unsteadyDrawn() : 0;
     }
     std::string dynoRowName(Workspace& w, int row)
     {
