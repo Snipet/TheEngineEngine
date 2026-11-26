@@ -43,6 +43,11 @@
 
 ## Landed
 
+- **26 Nov 11:53 UTC: `main` at 317404d9** (from 5278e3e9, fast-forward; run 45806986323 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). Scripts, tests and docs only: the cloud
+  bootstrap retries its package install once after one more index update (a mirror's 404 had failed a Linux
+  job before Build); `tests/sim/combo/spread.sh` plays every copy on a second sim tree too (a cure's before and
+  after from one invocation). Nothing an owner sees or hears moved.
 - **26 Nov 11:01 UTC: `main` at 5278e3e9** (from 3c42b4d2, fast-forward; run 45796819517 on that commit: Linux,
   Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). Tests and
   docs only: the nightly's click bound is twice the reference's LOWEST excess over five fixed nudged copies (the
