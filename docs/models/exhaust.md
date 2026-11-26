@@ -672,6 +672,15 @@ mdot tPort / 1100. That is the reference's and stays: item 6 belongs to model 1 
 reference (the scratch tree measured below changes `gas()` for both models; the code to propose gates it on
 `model != 0`, and the null test re-reads it).
 
+**The code, proposed (not on the branch):** `docs/handoffs/patches/g-port-mass-mean.patch`. Like the builder's other
+physics (portHeat, flowClose, bang), it is a hidden switch, `spec.exhaust.portMean` (1 = Mass, the default; 0 = Time,
+the reference's). It acts only under model 1, and the settle takes the cycle's mass mean with it. Test 2 ("model 1 at
+its defaults is model 0") sets portMean 0, as it does portHeat and flowClose. Read on the patch, nulls first:
+- `ref.null` (10 cases, every preset and the layouts) passes, and so does `ref.sim`;
+- test 2 is identical to the bit on its 3 layouts and, in full (the nightly case), on all 17;
+- it bites: without portMean 0, test 2 reads -3.3 to -3.9 dB and fails on all 3 layouts;
+- first.json's predicted curve (6 points) on the patch equals the scratch tree's below, point for point.
+
 **What the measurements say** (scratch tree, main against mass-weighted; all 31 archetypes and the top-level files):
 - the port's mean gas rises 1 to 10 % (5 to 88 K by the predictor's curves), the thermocouple rows 1 to 3.5 %;
 - no idle row moves more than 1 %;
