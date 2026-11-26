@@ -2211,13 +2211,37 @@ engines only where a source shows such an engine drawn split.
 - **`main` is at 389ee865 (12:25): X-050's interface form.** The dead cam dial is no longer offered on a Lab
   piston build; the pages follow the valvetrain model the moment it is switched.
 
+## 26 Nov 13:41 UTC: part B in `main`; the valve rows on lift-matched cams; what leaves `Known.h` and what stays
+
+- **N1 corrected its own law:** lab cams "equal to the dial" are matched by LIFT (the lab's seat at 1.5 % and
+  its 1 mm at 10 % of the reference's curve), not by event; the first fields were 9 to 12 degrees wider at
+  each end. The lead's ruling that five rows leave `Known.h` rested on a table made with those and was
+  suspended until the rows were read again.
+- **X's two tables on the lift-matched fields (17 copies; the five combo builds bit-identical on the tour
+  with valve.model off; the lab's events within 0.04 degrees of the reference's).** The turbo six, dial
+  build to lift-matched: valve+exhaust+sound (X-049) 2 to 0; the tour's valve+boost+ecu (X-041's lift) 3 to
+  0; wallHeat+valve+boost 14 to 0; valve+boost+fuel 8 to 0; **valve+boost 4 to 2: stays over.** The mild twin
+  (dial 0.0921, the lab's default 231 degree cam, against its own reference): valve+boost 0;
+  **wallHeat+valve+boost 2 of 17 and valve+boost+fuel 3 of 17: over.**
+- **Ruled, entry by entry:** X-049's row and X-041's tour lift LEAVE (they measured the lab's default cam
+  against the dial's; X-049's limiter question stays inside part C; X-051 stands on X-043). X-048's
+  valve+boost stays, restated on the lift-matched turbo six at 2 of 17. X-048's wallHeat+valve+boost and
+  valve+boost+fuel leave as dial-build rows and are entered on the twin at 2 and 3 of 17: the fault is real
+  on a mild cam. The twin joins the corpus (content/builds/combo/turbo-six-mild.json, the nightly only).
+  One push after a nightly and the tier.
+- **Part B is in `main`** (3f892823): clicks judged per event, the event in `Known.h`, the rows it uncovered
+  entered; it bites on 62a6a7fd per event (X-015's pull at its 1-2 shift 6.58 against 3.19; its tour at the
+  limiter 13.33 against 3.08; X-014 at a cut 7.77 against 3.57).
+- **Next (X):** the corrected combo builds and the twin; three shipped boosted builds on the pull; part C on
+  two trees.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **26 Nov 12:25 UTC: `main` IS AT 389ee865** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
-  7c3e4d59, those trees unchanged; run 45811515179: Linux, macOS and Windows green on that commit; `ui/`,
-  tests, scripts and docs only since d586682c). Before it: 317404d9 (26 Nov 11:53), 5278e3e9 (11:01),
-  3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0 (07:50), d586682c (04:36). Nothing code-bearing is on the
-  branch past it.
+- **26 Nov 13:41 UTC: `main` IS AT 3f892823** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
+  7c3e4d59, those trees unchanged; run 45823175500: Linux, macOS and Windows green on that commit; `ui/`,
+  tests, scripts and docs only since d586682c). Before it: 389ee865 (26 Nov 12:25), 317404d9 (11:53), 5278e3e9
+  (11:01), 3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0 (07:50), d586682c (04:36). Nothing code-bearing is on
+  the branch past it; X's corrected combo builds and the mild twin are next (tests and combo content).
 - **26 Nov 04:36 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items below and nothing
   else. From the first push under those trees the branch's baked tables are stale until the next bake; `main`
   stays the stable build. **A bake needs P, whose push is refused tonight: until the owner decides, land only

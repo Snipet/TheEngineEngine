@@ -43,6 +43,14 @@
 
 ## Landed
 
+- **26 Nov 13:41 UTC: `main` at 3f892823** (from 389ee865, fast-forward; run 45823175500 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). Tests and docs only: the combo judge reads
+  clicks PER EVENT (the start, a flip, each shift, each limiter episode, each cut, each lift, the rest; no window's
+  edge moves a figure), `Known.h` carries the event, and the rows it uncovered are entered (X-044 gains five;
+  X-052 at the limiter; X-053 a model switched while running). The designs for the next window's first sim
+  changes are in `docs/plan/`: `x051-valve-solve.md` (the exhaust valve's flow solved to convergence by a
+  warm-started secant, cheaper than today's three passes) and `x047-shift-cut.md` (the engine cut while the
+  vehicle asks and no longer). Nothing an owner sees or hears moved.
 - **26 Nov 12:25 UTC: `main` at 389ee865** (from 317404d9, fast-forward; run 45811515179 on that commit: Linux,
   Windows and macOS green; the same bake, the baked trees unchanged). New in `main`, `ui/` only: X-050's
   interface form. On a build running the Lab valvetrain with a piston engine the reference's cam dial, which
