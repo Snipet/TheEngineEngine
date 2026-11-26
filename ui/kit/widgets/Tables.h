@@ -64,6 +64,9 @@ namespace tee::ui
     {
         std::function<std::string(double)> format;
         std::function<bool(std::string_view, double&)> parse;
+        // Why a text parse refused, as a sentence ("Out of range: ..."): shown while the typing is kept; none: no
+        // sentence, the typing only marked.
+        std::function<std::string(std::string_view)> refusal{};
     };
 
     class CurveEdit : public Plot
@@ -127,6 +130,8 @@ namespace tee::ui
         // Choose a block: the anchor at (column0, row0), the selected cell at (column1, row1).
         void selectBlock(int column0, int row0, int column1, int row1) noexcept;
         bool editing() const noexcept { return editing_; }
+        // What the last refused typing was told (TableText::refusal), drawn on the title's line; "" when none.
+        const std::string& refusal() const noexcept { return refusal_; }
         const Map16& shownMap() const noexcept { return map_; }
         // Where things are: a cell (column -1: the y header; row -1: the x header), the live cell (-1, -1: none).
         funkgui::Rect cellRect(int column, int row) const noexcept;
@@ -166,6 +171,7 @@ namespace tee::ui
         std::function<bool(double&, double&)> live_;
         int sx_ = 0, sy_ = 0, ax_ = 0, ay_ = 0;   // the selected cell, and the block's anchor
         bool editing_ = false, refused_ = false;
+        std::string refusal_;                     // the sentence for refused_ (TableText::refusal), "" when none
         funkgui::text::LineEdit edit_;
         bool dragging_ = false;
         float dragY0_ = 0.0f;
