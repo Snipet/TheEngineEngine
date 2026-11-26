@@ -59,7 +59,8 @@ namespace tee::calib
             return false;
         Build build(fields);
         std::vector<std::string> warnings;
-        if (!build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / buildFile, BuildPart::Whole, warnings, error))
+        // (an empty build file: the spec's defaults, the application's default V8)
+        if (!buildFile.empty() && !build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / buildFile, BuildPart::Whole, warnings, error))
             return false;
         for (const auto& [p0, v] : sets)
         {

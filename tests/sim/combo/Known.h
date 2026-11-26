@@ -33,19 +33,11 @@ const Known kKnown[] = {
     // The bake's soak (223f4301, job 139542192123), bisected over sim trees with tee-fuzz --play and TEE_SIM_DIR. Retired
     // by it: X-029 (G's bore floor), X-032 (the turbo six's lift: excess 1.84 against 2.97), X-037 (N1's b07522fc),
     // X-038 (random 167 and 298 run clean), X-040 (random 251 runs clean).
-    {"X-041", "2026-11-25", "G (Burned in the pipe; the window's item 1)", "valve.model+boost.model+ecu.model", "turbo-six",
-     "tour", "click",
-     "a lift (throttle 0.015 to 0.004) at 9.76 s, nothing burning within 50 ms (bangHeat and flame 0): excess 3.23 "
-     "against 2.97; Bangs Carved 2.10; from 9b678980 (9e71f6c7's Burned meeting the boost series, each alone passes); "
-     "G: the turbine housing booked the burns' volume at the collector's cold temperature (fix 301ba06c, local)"},
-    {"X-041", "2026-11-25", "G (Burned in the pipe; the window's item 1)", "as built", "inline-five-turbo-rally", "tour",
-     "click",
-     "the lift's blowdown front steepened in the pipes at 8.74 s with anti-lag (G), nothing burning within 50 ms: excess "
-     "3.92 against 3.00; Bangs Carved 2.01, anti-lag off 1.48, pops 0 unchanged; from 9b678980"},
-    {"X-041", "2026-11-25", "G and N2 (the window's item 1)", "as built", "inline-five-turbo-rally", "tour",
-     "tel-range:valve.dpWave",
-     "Burned in the pipe, anti-lag and spark cut: the bangs' mean pressure ahead of the turbine overstated (G's words): "
-     "valve.dpWave -349747 Pa at 8.47 s against +-300000 on the limiter (bangHeat 2 to 3 MW); Bangs Carved stays inside"},
+    // X-041's first three rows (the turbo six's tour lift, the rally five's lift and its dpWave on the limiter) retired on
+    // G's 5941904e (the housing books the burns' gas hot), which moves the turbo six's lift onto the pull:
+    {"X-041", "2026-11-26", "G (Burned in the pipe)", "valve.model+boost.model+ecu.model", "turbo-six", "pull", "click",
+     "a lift (throttle 0.37 to 0.09) at 10.588 s in third, nothing burning within 50 ms (bangHeat and flame 0): excess "
+     "3.69 against 3.37; 2.10 at 8.71 s on 5941904e's parent; Bangs Carved: the worst a ruled shift cut"},
     {"X-042", "2026-11-25", "N2 with the integrator (the turbine's match under engine.custom; the window's item 3)",
      "+engine.custom+valve.model+boost.model", "large-diesel", "tour", "tel-range:valve.dpWave",
      "the exhaust 337 to 350 kPa over the intake at full throttle, 2480 rpm, the charge at 111.7 kPa (every switch on; "

@@ -1,6 +1,8 @@
 // ui/kit/inspect/FieldInspector.cpp: see FieldInspector.h.
 #include "kit/inspect/FieldInspector.h"
 
+#include <funkgui/widgets/Scroll.h>
+
 #include "kit/bind/Binding.h"
 #include "kit/widgets/Gauge.h"
 
@@ -727,7 +729,7 @@ namespace tee::ui
             }
         }
         const float before = scroll_;
-        scrollTo(scroll_ - e.dy * (e.smooth ? 40.0f : 72.0f));
+        scrollTo(scroll_ - funkgui::scroll::wheelPx(e.dy, e.smooth, kWheelRowH));   // as every list scrolls (Scroll.h)
         return scroll_ != before;
     }
 
