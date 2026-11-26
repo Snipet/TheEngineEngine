@@ -153,3 +153,9 @@ raises nothing, since the bound is the reference's LOWEST excess over its copies
 on the tip at dT -0.07 K: the case 3.56 at 4.612 s against the bound 2.67, and the reference's own copy at that nudge
 3.29 at 4.607 s (over its own bound): both sides click at the same moment, the engine's own event on the frozen
 reference. Never red on a draw (the 293.15 K copy reads 1.75); 1 of 17.
+
+**26 Nov, part C NOT TAKEN** (the lead's ruling, 17:22): the cut-aware neighbour variant lowers the shift rows' counts
+and cures none, tightens the limiter rows, and on one reference leaves no excess; the events it concerns change under
+items 16 and 17. The judge stays as parts A and B left it; the tables as measured in
+docs/measurements/combo/2026-11-26-part-c.md; the variant on a local branch, never pushed. Re-opened after the window
+as one question: with the cut at 60 ms and the valve converged, does dropping a shift's silent periods move a verdict.
