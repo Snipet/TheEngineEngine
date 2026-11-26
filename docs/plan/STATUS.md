@@ -43,6 +43,13 @@
 
 ## Landed
 
+- **26 Nov 12:25 UTC: `main` at 389ee865** (from 317404d9, fast-forward; run 45811515179 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). New in `main`, `ui/` only: X-050's
+  interface form. On a build running the Lab valvetrain with a piston engine the reference's cam dial, which
+  nothing reads there, is no longer offered (VALVES' MODEL section and the generated valve page); on a rotary
+  it stays and is named for its ports; on a Reference build the lab's fields say they take effect with the
+  Lab model (the generated page and the head), and ENGINE says there is no lift figure. The inspector's
+  pages now follow the valvetrain model the moment it is switched, not at the next click.
 - **26 Nov 11:53 UTC: `main` at 317404d9** (from 5278e3e9, fast-forward; run 45806986323 on that commit: Linux,
   Windows and macOS green; the same bake, the baked trees unchanged). Scripts, tests and docs only: the cloud
   bootstrap retries its package install once after one more index update (a mirror's 404 had failed a Linux
