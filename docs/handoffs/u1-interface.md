@@ -206,6 +206,11 @@ sheet will include every registered workspace.
   workspace's own page gets a page of its own; the filter reaches every page of the workspace.
   `AppFrame::inspectorRows()` and `inspectorValueRect(path)` (Rows' value box, else the FieldPage's control) for
   tests. Keyboard: Tab focuses the rows as one widget, Down picks a row (its help shows then).
+- A stated bore under its least (C's `Build::accepts`: exhaust pipes 10 mm, the intake's runner 8 mm, its snorkel 10 mm;
+  0 still derived) is refused at input: `FieldDoc::accepts(i, si, why)` (every value by default; BuildDoc asks
+  `Build::accepts`), asked by Rows after the range ("Out of range: under the least stated bore, 10 mm (0: derived)" in
+  the error colour, the typed text kept); `BuildDoc::set` refuses one from any writer of the interface (silently: an
+  array's table, a drag). Test: build.bore.floor.
 - The card on the picture (J2's `PartCard`, wired as docs/ui-kit.md's second hook): a press that selects a part on the
   stage opens it; a press on no part, Escape, another workspace, the chat and the settings close it.
   `AppFrame::partCard()`, `partCardItem()`. Test: frame.card (a picture: ENGINE is U2's stage).
