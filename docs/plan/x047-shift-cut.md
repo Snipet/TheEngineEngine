@@ -1,7 +1,8 @@
-# X-047: the shift's cut, a design (next window's item 16)
+# X-047: the shift's cut, the design (next window's item 16)
 
 The steward writes this page; the integrator's reads appear under the integrator's name, as the lead passes them on.
-Status: a design, nothing in `sim/` until the window can take a bake (the lead's ruling, 26 Nov 07:52).
+Status: THE DESIGN, ruled (the lead, 26 Nov 07:54: the contract (b), plain; §1). Nothing in `sim/` until the
+window can take a bake (26 Nov 07:52).
 
 ## The fault, as measured (26 Nov, the steward; X's spread instrument, 15 copies 293.15 + k x 0.001 K)
 
@@ -51,32 +52,44 @@ asker has ever behaved that way: each asks for its whole window. There are three
 - **(c) The seconds remaining**, counting down to nothing at the window's end. Under (c) `launch.fm:80` is already
   right, and only the askers change.
 
-The steward agrees with the lead's lean, (b) with the number as a floor:
+**Ruled (the lead, 26 Nov 07:54): (b), plain.** Under the new models the engine is cut while the vehicle asks,
+and no longer. The number's size is not read: above zero means "asking".
 
-- The cut exists to unload the dogs for the window the gearbox model runs, so one owner of its length (the vehicle's
-  own flag) cannot disagree with itself.
-- The floor answers (b)'s one weakness, an asker that asks for a single step: such a cut lasts the floor, about one
-  firing interval at least, and no longer.
-- On the probe, (b) gives the reference's 53 ms on both builds.
+- **No floor.** A floor would hold model 1's cut at its 0.15 s, so the fault would stay, and the read below shows no
+  one-step asker for a floor to guard against.
+- **The guard instead:** a test that every asker's window lasts at least two ECU steps, so that a future one-step
+  asker fails a test, not a shift.
+- **The result:** each kind gets what its own flag wants (60 ms, the truck's 150 ms, the bike's `quickshiftCut` as
+  set).
+- **Scope:** the whole change is `launch.fm`, the steward's. The vehicle's numbers (0.05; `shiftTime`) are left as
+  they are, and are no longer lengths. Renaming or removing them is the integrator's, later, and not part of this item.
+- **Model 0** unchanged to the bit.
 
-To be refuted by the integrator's read of the askers (2), not by preference.
+## 2. Every asker through `cutRequest()` (the integrator's read, passed on by the lead, 26 Nov 07:54)
 
-## 2. Every asker (the integrator's read: pending, the lead passes it on)
+Stepped every 16 samples; file:line as the integrator gave them.
 
-To fill, sample by sample, for each asker: what it returns, for how long, and the cut it wants. Seen so far in
-`car.fm` by the steward:
+| asker | when it asks | what it hands | the cut it wants |
+|---|---|---|---|
+| without car.model (the reference's paddle robot; `car.fm:780-801`) | an upshift to gear 2 or above, `shiftCut` while `shiftT < 0.06 x tk` | 0.05 (`car.fm:853`), every step | 60 ms; 150 ms on the truck (drive 2, tk 2.5) |
+| car.model 1, manual in paddle mode | an upshift, while t < 0.06 (`gearbox.fm:232`) | `shiftTime` (default 0.15, range 0.05 to 1), every step (`car.fm:852`) | 60 ms |
+| car.model 1, sequential (the dog box) | an upshift, while t < 0.06 (`:268`); the dogs out at once and the next in at 25 ms | `shiftTime`, every step | 60 ms |
+| the bike | an upshift with the quickshifter, while t < `cutTime` (`bike.fm:231`), `cutTime` = `quickshiftCut` (`bike.fm:468`; `bspec.fm:66`, default 0.05, range 0.02 to 0.12) | `quickshiftCut`, every step (`car.fm:850`) | `quickshiftCut` |
 
-- the bike: `quickshiftCut` while `shiftCut`;
-- model 1: `shiftTime` while `cutWanted()`;
-- otherwise: 0.05 s while `shiftCut`.
+No cut is asked:
 
-Still to be read by the integrator:
+- car.model 1, manual: a downshift (the blip is a speed, while t < 0.21) and the H-pattern lever (`:199`).
+- car.model 1, sequential: a downshift (`:279`; the blip while t < 0.1).
+- The dual clutch (`:294`): the torque is handed over across `shiftTime`, with a blip on a downshift.
+- The automatic and the CVT (`:336`), and the truck's Roadranger and its air shift.
+- The paddle robot's downshift, which raises the pedal to the new gear's speed (`car.fm:792-796`).
+- The bike's downshift (the auto-blipper).
+- A launch or a flat shift (`launch.fm`'s own).
 
-- the reference's paddle robot;
-- model 1's robotised box;
-- the dog box, up and down, and the blip;
-- the truck's automated box (150 ms);
-- a launch or flat shift through the same seam.
+No asker asks for one step only. The shortest window is the bike's floor, 0.02 s: three or more steps at 48 kHz.
+
+**A second user-visible effect.** The bike's field is the cut's own length, and the seam hands it while that same
+length runs, so today the bike gets twice its setting: 50 ms becomes about 100. Under (b) it gets its setting.
 
 ## 3. Sources for a cut's length
 
@@ -92,7 +105,9 @@ Still to be read by the integrator:
 
 ## 4. Acceptance, stated before code
 
-- Each kind's cut equals what that kind wants within one control step, measured on `ecu.flags`.
+- Each kind's cut equals what that kind wants within one control step, measured on `ecu.flags`: 60 ms (the paddle
+  robot; model 1's manual and sequential), 150 ms (the truck), the bike's `quickshiftCut` as set (no longer doubled).
+- The guard test: every asker's window lasts at least two ECU steps.
 - Model 0 unchanged to the bit.
 - Every archetype's tables reproduced by the bake: no table reads a shift.
 - The V8's upshift row 0 of 17, and the four's X-030 stated as a rate against its 12 of 17, on X's spread instrument.
