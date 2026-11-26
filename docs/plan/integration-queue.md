@@ -1247,6 +1247,101 @@ Outside sim/ (open at any time): B: the wheel on Windows (SDL 3.4's HIDAPI Logit
 run on a real G29; U1 / J2: the part card from the keyboard, a raised bore's warning in EXHAUST and AIR, the
 small dials' numbers if the owner asks; card A: nothing owed.
 
+## Card D, for the next window (25 Nov 22:05 UTC; the lead's ruling)
+
+1. **First: a state differs at the start between "written after init" and "initialised over it" (first.json).** The
+   first route is what the application does every time a person loads a build, so a stale field there is a real fault,
+   however small. Measured on the baked tables at 5 to 6 s: with the same cylinder bias draws written on both routes
+   they still part by 0.06 to 1.6 %, and with the same bias and the same states of both engine noise streams
+   (noise.rs, ex.noise.rs) by 1.37 / 0.09 / -1.46 %. Next: the diff of every field right after start between the two
+   routes; pair them on what differs; anything one route sets and the other does not is a finding in the init order,
+   to the lead before any bound moves. Then core :680 bounds the paired difference by its measure (keeping the exact
+   check of every model switch and tq[0] == tq[2]); its bound today (f6c5d1ba: 2.5 % against a measured 2.4 % spread
+   of fourteen inits) is thin.
+2. The engine dyno's absorber loop overshoots a step by some 13 % (a PI's zero at zeta 1): to measure and weigh against
+   C's ramped approach (docs/handoffs/d-mechanics.md).
+3. The clutch's latch (87629688, on `main` after this bake): nothing open; the bike's form is B2's
+   (docs/handoffs/patches/d-bike-synced.patch).
+
+## 25 Nov 23:49 UTC: the window's first half hour: five faults found, none yet on the branch
+
+Nothing under `sim/`, `host/` or `tools/` has been pushed yet (tip a6383652; the trees are still the bake's). Found
+since the window opened, each by its owner's measurement, each with a prediction beside it:
+
+1. **The burned bangs' pressure (G; cure local, in its tier).** The housing booked the burn's volume at the cold
+   collector's temperature: 2.2 times the mass that exists (the housing's books 3.1 to 3.5). Cure: the housing
+   receives the hot gas's temperature, T_coll + Q/(m cp), smoothed and capped at 2600 K. The rally five's tour:
+   port 7.54 to 4.98 bar (Carved 3.84); turbine inlet 8.94 to 6.84; manifold 3.57 to 2.98 abs; `dpWave` on the
+   limiter -350 to -155 kPa; the lift's largest step 0.527 to 0.088 (Carved 0.098): the click was the pressure,
+   and G's prediction that it would stay (3.0 to 3.9) was wrong. Only the rally five's clip changes (its loudest
+   10 ms 2.0 dB lower, its rms 2.2 dB higher); sent to the owner. New for N2: the boost on the bench limiter
+   swings 0.86 to 1.8 bar on about 0.4 s.
+2. **The duct's wall (the integrator found it; G cures it in the same push).** `Duct::set` redesigned the wall's
+   loss shelves only when the length or the sound speed moved; the bore and the sample rate were not in the key.
+   On the application's own load (the default V8, then first.json over it) the intake runners kept the V8's
+   shelves. No torque in it (0.01 N m); a fault in every load all the same. Found by the diff of every field
+   between "written after init" and "initialised over it": that diff becomes a default-run test (#337's new
+   form), with the inert leftovers named; the torque check moves to a point where the knock loop is quiet (a
+   1e-6 nudge parts a route from itself by 1.4 % at 3000 rpm full load, more than the routes part).
+3. **A custom engine loses its header split (N2 diagnosed; the integrator's file and cure, in its tier).**
+   `Engine::customLayout` took the header grouping from the mechanical bank and set topo 0: a custom inline six
+   has one collector where its table has two 3-into-1s, so a twin-turbo six fed one turbine (0.410 kg/s at
+   4.69 bar) and the other ran backwards with its shaft at 0. Not the turbine's match: both of N2's predictions
+   were wrong and said so. Cure 823e45cd: a one-bank custom engine of its table's count keeps the table's split.
+   Still to do: headers from the firing order for other custom engines; a default-run null that a custom engine
+   equal to its table is the table's engine.
+4. **A custom engine's friction (the integrator, open):** FMEP 3.14 bar under custom against 2.13 for the same
+   engine (953 N m against 1123 on the large diesel). Unexplained; next.
+5. **The exhaust's heat settle scatters every predicted point (N1 found it; G's file, after its push).**
+   `settleHeat()` soaks the walls to the port gas of the last 16 samples (0.33 ms of a 20 ms cycle): a blowdown
+   pulse or the cool tail by timing, the pipes up to 300 K too hot. The two-stage at 5879 rpm reads 176.6 N m
+   with it, 188 to 193 without or on the stepped dyno; other builds scatter about ±100 K and under 2 %. **Table
+   P's 17 N m notch is this, not the cam:** the 5850 rpm switch is Honda's cited figure and the held curves
+   cross between 5875 and 5938. The lead's reading (the switch 100 rpm early) was wrong; so are the crossing
+   row's 6539 rpm and "trading the lead": P re-reads both after the cure. Proposed cure: a cycle's mass-weighted
+   port temperature and a cycle-mean flow. It bears on every baked table: the bake at this window's end.
+   For G's judgement, not to be fitted: the two-stage's long primaries (1.63 times the layout) carry 7 to 14 N m
+   drops within 63 rpm and a path memory of 3 to 5 N m through 12 s holds.
+
+**Ruled:** N2's design for what a turbine is matched to (docs/measurements/calibration/boost/
+turbine-match-design.md): (i) p4 and T3 from the engine's own rated point, as a BAKED calibration (with C), not
+at every load; until baked a build runs on today's rule and says so; the pass shown to converge; (ii) a build
+that cannot meet both ends is flagged, not compromised; (iii) the low-end check never moves the vane stop.
+N2's step A (the match on hand-filled p4 and T3) is built and measured locally in this window and NOT pushed:
+A lands with B (the bake, host/) in the next window.
+
+**Outside the trees:** B's G29 on Windows (a6383652): read only as a plain joystick through SDL; its tables are
+EMPTY until the owner has run `--probe-input` on Windows in each mode (switch at PS3, with and without
+Logitech G HUB); nothing is driven from an unprobed axis. Open with the owner: whether G HUB is acceptable on
+Windows for the clutch, the shifter, the range and the spring (Windows pads every output report to 17 bytes and
+the wheel takes 7: without Logitech's driver nothing can be sent to it there).
+
+## 26 Nov: the fast tier over its cap (the steward; the lead's ruling, 23:56)
+
+CI's Linux log at 4354e4cc (job 139579878691, the reference runner, a Xeon 6975P-C, scale 1.0; scripts/test-budget.sh
+on it): the whole fast tier **2492 test-s against 2400**. Shell 68 of 80 (B's chain test in): under, nothing moves.
+Over their share, largest overrun first, with each package's heaviest entries:
+
+| package | test-s | budget | owner | heaviest entries (s) |
+|---|---|---|---|---|
+| diesel | 217 | 135 | D2 | governor-injection 75.9, brakes 48.1, turbo 34.0, truck 33.2 |
+| host | 140 | 70 | C | host.sim.cases 133.9 |
+| listen | 143 | 80 | L | the auto level near and far 18.5, the voices through Places quick 18.2, the level at the defaults quick 13.8 |
+| calibration | 143 | 80 | N2 (boost) | the VGT one state short form 27.6, the matched wastegate 19.0, the stated join speed 17.7 |
+| calibration-na | 115 | 80 | N1 | X-022/024/026 together 27.1, the warm start on p-idle-warm 21.0, the start on the dyno 18.1 |
+| combo | 202 | 165 | X | combo.fast-3 78.7, fast-2 63.1, fast-1 59.9 |
+| core | 120 | 80 | the integrator | core: the engine's cases, one process 114.7 |
+| vehicle, ui, ref, sim, boost | 107, 102, 101, 93, 84 | 100, 80, 100, 80, 80 | I, U, K, the integrator, N2 | (small overruns: after the above) |
+
+null is at 373 of its 580; its unused share is what lets the tier pass today.
+
+**The rule (the lead's):** a tests-only item, behind each owner's window work. First group cases onto a kept player
+or one built engine (the setup is usually the cost, not the property). Move a case to `[nightly]` only where a
+remaining default-run case still guards the same property, and name that case. Never drop one. Report the package's
+test-s before and after on the steward's measure (CI's Linux log through scripts/test-budget.sh). No share moves until
+the owners have reported what grouping alone recovers. D2 is woken for diesel's only after the window's sim work is
+in, unless its 217 keeps growing.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).

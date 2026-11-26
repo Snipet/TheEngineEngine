@@ -1,6 +1,8 @@
 // app/InputProbe.cpp: InputProbe.h.
 #include "InputProbe.h"
 
+#include "input/g29/G29.h"
+
 #include <SDL3/SDL.h>
 
 #include <algorithm>
@@ -65,6 +67,7 @@ namespace tee::app
             std::vector<Axis> axes;
             std::map<int, int> presses;         // button -> times pressed
             std::map<int, int> hats;            // hat -> last value
+            std::map<int, std::string> hatsSeen; // hat -> the directions it went
         };
 
         std::string hatName(Uint8 v)
@@ -100,6 +103,19 @@ namespace tee::app
                         SDL_GetJoystickProductForID(id), guid);
             std::printf("  SDL's type: %s%s\n", typeName(SDL_GetJoystickTypeForID(id)),
                         SDL_IsGamepad(id) ? "; SDL also takes it for a gamepad (it has a mapping)" : "");
+            // a G29: which of its modes (the application's table is by mode: input/g29/G29Joystick.h on Windows)
+            const int vendor = SDL_GetJoystickVendorForID(id), product = SDL_GetJoystickProductForID(id);
+            const int version = SDL_GetJoystickProductVersionForID(id);
+            if (tee::input::g29::isG29(vendor, product))
+            {
+                using tee::input::g29::Kind;
+                const Kind k = tee::input::g29::kindOf(vendor, product, version);
+                std::printf("  a Logitech G29 (version 0x%04x): %s\n", version,
+                            k == Kind::g29      ? "in its own mode (0xC24F; on Windows: as Logitech G HUB sets it)"
+                            : k == Kind::compat ? "in compatibility mode (0xC294: its switch at PS3, no Logitech software)"
+                            : k == Kind::ps4    ? "with its switch at PS4 (0xC260)"
+                                                : "an id of the G29's, but not told apart as one (another Logitech wheel?)");
+            }
             d.joystick = SDL_OpenJoystick(id);
             if (d.joystick == nullptr)
             {
@@ -146,6 +162,9 @@ namespace tee::app
     {
         // events from devices while no window of ours has the focus (there is none)
         SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+        // SDL's own Logitech wheel driver would send a wheel its commands as it opens it (the spring off, a mode
+        // switch): the probe sends nothing, as the application does (input/SdlInput.cpp turns it off the same way)
+        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_LG4FF, "0");
         if (!SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD | SDL_INIT_HAPTIC | SDL_INIT_EVENTS))
         {
             // the haptic system may be what is missing: try without it
@@ -172,6 +191,8 @@ namespace tee::app
             SDL_VirtualJoystickDesc desc;
             SDL_INIT_INTERFACE(&desc);
             desc.type = SDL_JOYSTICK_TYPE_WHEEL;
+            desc.vendor_id = 0x046D;            // a G29's ids, in its own mode: the probe's mode line is checked too
+            desc.product_id = 0xC24F;
             desc.naxes = 4;
             desc.nbuttons = 12;
             desc.nhats = 1;
@@ -301,6 +322,13 @@ namespace tee::app
                         if (auto it = open.find(e.jhat.which); it != open.end())
                         {
                             it->second.hats[e.jhat.hat] = e.jhat.value;
+                            if (e.jhat.value != SDL_HAT_CENTERED)
+                            {
+                                std::string& seen = it->second.hatsSeen[e.jhat.hat];
+                                const std::string dir = hatName(e.jhat.value);
+                                if (("," + seen + ",").find("," + dir + ",") == std::string::npos)
+                                    seen += (seen.empty() ? "" : ",") + dir;
+                            }
                             std::printf("%6.2f s: #%d hat %d %s\n", t, it->second.number, static_cast<int>(e.jhat.hat),
                                         hatName(e.jhat.value).c_str());
                         }
@@ -334,6 +362,8 @@ namespace tee::app
             for (const auto& [b, n] : d.presses)
                 pressed += (pressed.empty() ? "" : ", ") + std::to_string(b) + (n > 1 ? " (x" + std::to_string(n) + ")" : "");
             std::printf("    buttons pressed: %s\n", pressed.empty() ? "none" : pressed.c_str());
+            for (const auto& [h, dirs] : d.hatsSeen)
+                std::printf("    hat %d went: %s\n", h, dirs.c_str());
             if (d.joystick != nullptr)
                 SDL_CloseJoystick(d.joystick);
         }

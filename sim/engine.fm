@@ -620,20 +620,31 @@ module Engine
             geo.fromTable(lay.n, lay.cyc, lay.rotary, &lay.fire[0]);
             return;
         }
+        // (the layout's table, before the custom engine's own: a straight six's exhaust is split front and rear, its
+        // "banks" 0 0 0 1 1 1 with topology 1, two collectors into one pipe, which a twin turbo's two wheels take one
+        // each (Boost::housingOf))
+        const int tableN = lay.n;
+        const int tableTopo = lay.topo;
         lay.n = geo.n;
         lay.cyc = geo.cyc;
         lay.rotary = geo.rotary > 0 ? 1 : 0;
         int twoBanks = 0;
         for (int c = 0; c < geo.n; ++c)
+            twoBanks |= geo.rotary > 0 ? 0 : spec.engine.bank[c] % 2;
+        // a one-bank engine of the table's cylinder count whose table splits its exhaust keeps that split: the custom
+        // engine's bank field says where the cylinders stand, not how the headers are grouped (on the large diesel with
+        // twin turbos, all six into one wheel took 0.21 m^3/s at 5.8 bar and left the other idle: 242 N m for 1123)
+        const int keepSplit = twoBanks == 0 && geo.rotary == 0 && geo.n == tableN && tableTopo == 1 ? 1 : 0;
+        for (int c = 0; c < geo.n; ++c)
         {
             lay.fire[c] = geo.fire[c] > 0.0f ? geo.cyc - geo.fire[c] : 0.0f;
-            lay.bank[c] = geo.rotary > 0 ? 0 : spec.engine.bank[c] % 2;
+            if (keepSplit == 0)
+                lay.bank[c] = geo.rotary > 0 ? 0 : spec.engine.bank[c] % 2;
             lay.port[c] = geo.rotary > 0 ? c / 3 : c;
-            twoBanks |= lay.bank[c];
         }
         lay.ports = geo.rotary > 0 ? geo.rotary : geo.n;
-        // the exhaust: one bank's cylinders into one pipe; two banks, each its own (dual)
-        lay.topo = twoBanks != 0 ? (lay.topo == 0 ? 2 : lay.topo) : 0;
+        // the exhaust: one bank's cylinders into one pipe; two banks, each its own (dual); the table's split kept
+        lay.topo = keepSplit != 0 ? 1 : (twoBanks != 0 ? (lay.topo == 0 ? 2 : lay.topo) : 0);
     }
 
     // What the mechanics need once the engine is configured: the moving masses (a custom engine's own, or the

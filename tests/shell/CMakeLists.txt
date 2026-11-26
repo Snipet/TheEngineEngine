@@ -243,7 +243,7 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       PASS_REGULAR_EXPRESSION "none seen.*summary:.*none seen.*probe: done")
     set_tests_properties(shell.probe.virtual PROPERTIES TIMEOUT 60 LABELS "shell;probe"
       ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_PROBE_VIRTUAL=1;SDL_JOYSTICK_DISABLE_UDEV=1"
-      PASS_REGULAR_EXPRESSION "SDL's type: WHEEL.*axes 4, buttons 12, hats 1.*#1 axis 1 = 32767.*#1 button 4 down.*#1 hat 0 up.*summary:.*axis 0: rest 0, seen 0 to 0 \\(did not move\\).*axis 1: rest 0, seen -32768 to 32767.*buttons pressed: 4.*probe: done")
+      PASS_REGULAR_EXPRESSION "vendor 0x046d, product 0xc24f.*SDL's type: WHEEL.*a Logitech G29 \\(version 0x[0-9a-f]+\\): in its own mode.*axes 4, buttons 12, hats 1.*#1 axis 1 = 32767.*#1 button 4 down.*#1 hat 0 up.*summary:.*axis 0: rest 0, seen 0 to 0 \\(did not move\\).*axis 1: rest 0, seen -32768 to 32767.*buttons pressed: 4.*hat 0 went: up.*probe: done")
     set_tests_properties(shell.window.gpu shell.window.ref shell.window.plain shell.window.info PROPERTIES
       TIMEOUT 600 LABELS "shell;window" ENVIRONMENT "SDL_AUDIODRIVER=dummy" RUN_SERIAL TRUE)
     # (the reference's panel and the plain Panel in a window: the soak tier's; the frame's is the default run's)

@@ -31,6 +31,51 @@ namespace tee
                 h = (h ^ static_cast<unsigned char>(c)) * 1099511628211ull;
             return h;
         }
+        // Whether the program says this build has a part with hysteresis (tel.engine.hysteresis: a two-stage cam's
+        // switch today), read off a second of a host of its own: the key on and the absorber at `from`, as the run starts
+        // (the valvetrain takes its Spec once the engine turns; at rest it says 0). The run's own host is untouched, so a
+        // build without one runs bit for bit as before. False with a program that does not say
+        bool hasHysteresis(const std::shared_ptr<Sim>& sim, const Build& build, const LoadOptions& load, double from,
+                           int mode)
+        {
+            if (sim->fields().find("tel.engine.hysteresis") == nullptr)
+                return false;
+            SimHost probe;
+            std::string error;
+            if (!probe.attach(sim, load, error))
+                return false;
+            Build copy(sim->fields());
+            std::vector<std::string> warnings;
+            if (!copy.load(build.save(), BuildPart::Whole, warnings, error))
+                return false;
+            copy.attach(&probe);
+            Timeline t;
+            t.rate = load.sampleRate;
+            t.block = load.maxBlock;
+            const auto at = [&](double time, const char* name, double value) {
+                t.events.push_back({time, TimelineEvent::Kind::Control, name, value, {}, 0.0});
+            };
+            at(0.0, "mode", mode);
+            at(0.0, "dynoSpeed", from);
+            at(0.0, "dynoRate", 0.0);
+            at(0.0, "ignition", 1);
+            at(0.25, "ignition", 2);
+            t.seconds = 1.0;
+            t.sort();
+            RunOptions options;
+            options.keepAudio = false;
+            options.telemetry = {"engine.hysteresis"};
+            RunResult run;
+            const bool ran = runTimeline(probe, copy, t, options, run, error);
+            copy.attach(nullptr);
+            if (!ran || run.rowCount() == 0)
+                return false;
+            const int c = run.column("engine.hysteresis");
+            for (std::size_t r = 0; c >= 0 && r < run.rowCount(); ++r)
+                if (run.at(r, static_cast<std::size_t>(c)) >= 0.5)
+                    return true;
+            return false;
+        }
     } // namespace
 
     std::uint64_t DynoPlan::hash() const
@@ -149,7 +194,6 @@ namespace tee
             extraAt.push_back(at);
         }
 
-        SimHost host;
         LoadOptions load;
         load.sim = sim->options();
         load.sampleRate = plan.sampleRate;
@@ -157,6 +201,11 @@ namespace tee
         load.worker = false;
         if (plan.warm)
             load.hold = warmEngine();
+        // (asked before the run's host exists: a program compiled with the checks plays for one host at a time)
+        const bool hysteresis = !plan.steps.empty()
+                                && hasHysteresis(sim, build, load, plan.from,
+                                                 plan.chassis ? kModeDynoChassis : kModeDynoEngine);
+        SimHost host;
         if (!host.attach(sim, load, error))
             return false;
         Build copy(fields);
@@ -225,9 +274,30 @@ namespace tee
             std::vector<double> steps = plan.steps;
             if (plan.upward)
                 std::sort(steps.begin(), steps.end());
+            double previous = plan.from;
             for (const double s : steps)
             {
+                if (hysteresis)
+                {
+                    // A part with hysteresis holds its state across a band of speed, so a held step would read the
+                    // state of the way the absorber came to it: from a step above, the state left latched; from below,
+                    // the loop's overshoot of a step in its set speed (a PI's zero: some 13.5 % of the step) carrying
+                    // it over the switch (card N1: the two-stage at 597 rad/s read 191.6 N m from the default `from`,
+                    // 184.7 from 590). So each step is reached as an upward sweep reaches it, as the predictor reaches
+                    // its points (Predict.cpp: approach): let down to a tenth under the lower of it and the step before
+                    // (under the band of any part a dyno meets: the two-stage's is 5 %), held 0.3 s, then the set speed
+                    // ramped up into it at 100 rad/s^2. The timeline is planned ahead, so the let-down is always made
+                    // (the predictor's waits on tel.engine.latched)
+                    const double low = 0.9 * std::min(s, previous);
+                    constexpr double kRate = 100.0;   // rad/s^2, the predictor's
+                    at(time, "dynoRate", 0.0);
+                    at(time, "dynoSpeed", low);
+                    at(time + 0.3, "dynoRate", kRate);
+                    time += 0.3 + (s - low) / kRate;
+                    at(time, "dynoRate", 0.0);
+                }
                 at(time, "dynoSpeed", s);
+                previous = s;
                 // twice: once the speed is there, and again later in the hold, the flow then the speed's own
                 settleAt(time + std::min(0.3, 0.3 * plan.settle));
                 settleAt(time + 0.6 * plan.settle);
