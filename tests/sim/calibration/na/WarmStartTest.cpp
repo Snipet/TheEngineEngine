@@ -123,11 +123,14 @@ namespace
     }
 } // namespace
 
-TEST_CASE("a warm start on p-idle-warm: the flat six that stopped starting and the 5.7 control run steadily at 14 s",
+// With them, on the same compiled simulator, the deepest of the start's dips (the 7.4's, 105 rpm under the 650 asked)
+TEST_CASE("a warm start on p-idle-warm: the flat six that stopped starting and the 5.7 control run steadily at 14 s and "
+          "the 7.4's dip after the key holds against main's",
           "[calibration][na]")
 {
     for (const char* slug : {"air-cooled-flat-six-36", "small-block-57-carb"})
         warmStart(slug, true);
+    warmStart("big-block-74-pushrod-v8", false);
 }
 
 namespace
@@ -145,12 +148,6 @@ TEST_CASE("a warm start on p-idle-warm: the 7.0 runs steadily at 14 s and the tu
     warmStart("big-bore-70-pushrod-v8", true);
     SECTION("the turbo six's lope on the bench is not fed by the idle valve under the models")
     turboSixLope();
-}
-
-// The deepest of the start's dips (the 7.4's, 105 rpm under the 650 asked) in the quick tier, beside the three above
-TEST_CASE("a warm start on p-idle-warm: the 7.4's dip after the key holds against main's", "[calibration][na]")
-{
-    warmStart("big-block-74-pushrod-v8", false);
 }
 
 TEST_CASE("a warm start on p-idle-warm: every archetype runs at 14 s, its dip after the key held against main's",
