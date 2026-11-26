@@ -2281,6 +2281,43 @@ engines only where a source shows such an engine drawn split.
 - **Left `Known.h` with the corrected corpus, each on its own ruling:** X-049's row, X-041's tour lift, X-052's
   valve+intake+car (G's table and X's own 17 copies: 0 of 17 per event).
 
+## 26 Nov 17:39 UTC: A CORRECTION OF RECORD: item 17 moves no reference and no bound; the order is 16 first
+
+- **The lead ruled at 12:34 that item 17 goes first "because it moves every reference and every nightly
+  bound". FALSE of G's design; true only of G's scratch trees.** The stand-in (30 passes) and the secant
+  tree converged the valve for every run, the every-switch-off reference too; that is where "the reference
+  row moved as well" and each tree's "own bound" came from. The design's switch acts only where a side's
+  model is on. G confirms from the code (its page at ef83ad06): every `Valve::flow` call is a cylinder's
+  (core/cylinder.fm vE and vI; the two-stroke's vE), and a cylinder hands its valve the converged solve only
+  under that side's model. So on the real change: (a) no reference and no nightly bound moves; (b) cases with
+  the exhaust and intake models both off are untouched to the bit (X-030, X-031, X-044, X-048's
+  wallHeat+valve+boost, X-041's lift, X-052's wallHeat+ecu+car and the V8's valve+fuel+ecu), and a move there
+  is a fault of the gate; (c) only cases with one of those models on move, against today's bounds: in G's
+  two-column tables the "over X's bound" columns are the ones to read (X-043's tour 11 to 1 of 17, the one
+  at another event; its pull 7 to 0), and for a case with one of the two models on the stand-ins overstate.
+- **So the order is RESTORED: item 16 first, then item 17.** The steward's "V8 after item 17" (8, 7 and 12 of
+  17 against a bound of 2.58) describes a tree that will not exist; on the real change that row's bound
+  stays 3.91 and its reading after item 16 is the cut probe's 1, 0, 0. The lead's line to X that "every
+  nightly bound is recomputed" with item 17 is withdrawn with it.
+- **Ruled, the intake valve:** each valve follows its own side's model: vE under exhaust.model with
+  `spec.exhaust.valveSolve` (G's); vI under intake.model with `spec.intake.valveSolve` (N1's field, G's
+  code); each side's "model 1 at its defaults is model 0" test pins its own switch.
+- **Part C is NOT TAKEN before items 16 and 17 are on the branch** (X's interim tables, recorded in
+  docs/measurements/combo/): at a shift's cut the cut-aware neighbours lower the counts and cure no row; at
+  the limiter they tighten and in one reference leave no excess at all; the cut it would be fitted to is
+  about to go from 210 to 60 ms. Re-opened as one question after the window.
+- **X-054, the judge's own blindness (X; one draw so far, a reading to follow):** a single-sample impulse has
+  two adjacent differences and each one's local level contains the other, so the step measure saturates near
+  sqrt(960), about 31; on a steady full-throttle stretch whose firings read 9 to 12 the excess tops out near
+  2.5 to 2.7 under a bound near 2.8, however large the click, and the step rule that does see it is silenced
+  where the excess is defined. Caught inside a shift's window (about 4), not on a steady stretch. After X's
+  survey: plants at three sizes in four kinds of place on two builds, then the smallest change that can only
+  tighten, every newly red row spread before entry.
+- **X's survey, running:** all 31 shipped builds as built on the pull, 17 copies per event, the tip against the
+  steward's cut probe: item 16's before and after across everything that ships. On single draws three
+  builds stood out (the three-cylinder red at its 2-3; the kei 660 and the flat-plane twin-turbo V8 within
+  15 % of a bound); a draw selects too few (the kei's 1-2 is 2 of 17 with a clear draw), so all 31 are spread.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 16:31 UTC: `main` IS AT d6615852** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
@@ -2288,10 +2325,11 @@ engines only where a source shows such an engine drawn split.
   tests, the combo corpus, scripts and docs only since d586682c). Before it: 3f892823 (26 Nov 13:41), 389ee865
   (12:25), 317404d9 (11:53), 5278e3e9 (11:01), 3c42b4d2 (09:16), 5cd03815 (08:18), 07a08dc0 (07:50), d586682c
   (04:36). Past it on the branch: a hidden proof case's mode (6e67ac62, tests) and docs.
-- **THE WINDOW'S ORDER, as ruled on 26 Nov (each needs a bake to follow, so P):** item 17 (X-051, the valve's
-  flow solve; G; first, since it moves every reading), item 16 (X-047, the shift's cut; the steward; evidence
-  on three shipped builds), item 15 (X-046, the air's pressure; the integrator), then items 1, 6 and the rest
-  of the list below as before.
+- **THE WINDOW'S ORDER, as ruled on 26 Nov and corrected at 17:39 (each needs a bake to follow, so P):** item 16
+  (X-047, the shift's cut; the steward; one file; evidence on three shipped builds), item 17 (X-051, the
+  valve's flow solve; G; it moves only cases with the exhaust or intake model on, no reference and no
+  bound), item 15 (X-046, the air's pressure; the integrator), then items 1, 6 and the rest of the list
+  below as before.
 - **26 Nov 04:36 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items below and nothing
   else. From the first push under those trees the branch's baked tables are stale until the next bake; `main`
   stays the stable build. **A bake needs P, whose push is refused tonight: until the owner decides, land only
@@ -2366,7 +2404,7 @@ engines only where a source shows such an engine drawn split.
  16. the steward with the integrator, a design first: X-047, the shift's cut. One length, asked once: the
      contract of `cutRequest()` (launch.fm:80 against car.fm:852), every asker, sourced lengths, and the
      acceptance in the section of 26 Nov above. The steward's design is a docs commit; `sim/` waits.
- 17. FIRST AMONG THE SIM CHANGES THAT MOVE READINGS (ruled 26 Nov): G, the design written
+ 17. AFTER ITEM 16 (the "first" of 12:34 withdrawn, 26 Nov): G, the design written
      (`docs/plan/x051-valve-solve.md`): the exhaust valve's flow solved to convergence (`Valve::flow`, sim/exhaust/duct.fm),
      behind a hidden switch with the reference's three passes for the null. The line that hands the switch
      to the cylinder's valves is its file's owner's. Acceptance: the null to the bit; the sometimes rows by
