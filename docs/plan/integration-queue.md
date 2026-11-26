@@ -1786,7 +1786,7 @@ engines only where a source shows such an engine drawn split.
 - **Nothing under `sim/`, `host/` or `tools/` has moved since the bake** (read at 4d121479: sim f23337cc, host
   2e7c1bec, tools 7c3e4d59). The branch past `main` is tests, `ui/` and docs.
 
-## 26 Nov 07:28 UTC: the engine never reads the air's pressure; the combo rows' copies pass and evidence rule
+## 26 Nov 07:26 UTC: the engine never reads the air's pressure; the combo rows' copies pass and evidence rule
 
 - **THE AIR PRESSURE FIELD ACTS ON THE CAR'S DRAG ONLY (the integrator's read and the lead's, made apart; G's
   bit-identical runs the measurement).** `readSpec()` takes the temperature alone from `spec.env`
@@ -1891,7 +1891,7 @@ engines only where a source shows such an engine drawn split.
   `scripts/lint.sh` before pushing; wait on the tier's process; a sha only after the command printed it; a
   check that reads "the shipped builds" reads them as the bake's gate does (warm and cold) or says which state
   it did not read; a refusal of a session's permission check is never worked around; no single draw of a combo row is
-  evidence for or against a change (26 Nov 07:28).
+  evidence for or against a change (26 Nov 07:26).
 - **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
   baked tables), docs. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead runs.
 - **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**
