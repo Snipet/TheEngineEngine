@@ -87,6 +87,13 @@ namespace combo
     struct Verdict
     {
         std::vector<Failure> failures;
+        // Each event window's worst step and its excess (-1: no period) and time, judged or not (part B; for spreads)
+        struct Window
+        {
+            std::string event;
+            double excess = -1.0, step = 0.0, at = 0.0;
+        };
+        std::vector<Window> windows;
         double stepMax = 0.0;       // the largest step over the local level while running
         double dcMax = 0.0;         // the running stretch's mean, as a magnitude
         double idle = 0.0;          // rad/s, mean over the idle stretch

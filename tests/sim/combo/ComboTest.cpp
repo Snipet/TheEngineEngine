@@ -368,6 +368,25 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
             if (sw[k].path == one)
                 mask |= 1u << k;
     }
+    // BOUNDPROOF_DT="dT dT ...": a spread, every window's excess at each copy (the reference's copies played once);
+    // each line "window | dT | event | excess | at | over" against the nightly bound
+    if (const char* dts = std::getenv("BOUNDPROOF_DT"); dts != nullptr)
+    {
+        std::istringstream list(dts);
+        double dT = 0.0;
+        while (list >> dT)
+        {
+            Times tm;
+            tee::test::Scenario sc = scenario(kind, build, mask, tm);
+            sc.at(0.0).spec("env.temperature", 293.15 + dT);
+            const tee::test::Run r = sc.run(tm.end);
+            const Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, kind), referenceExcess(build, kind));
+            for (const auto& w : v.windows)
+                std::printf("window | %+.2f | %s | %.2f | %.3f | %s\n", dT, w.event.c_str(), w.excess, w.at,
+                            v.excessBound >= 0.0 && w.excess > v.excessBound ? "over" : "under");
+        }
+        return;
+    }
     Times tm;
     const tee::test::Run r = scenario(kind, build, mask, tm).run(tm.end);
     const Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, kind), referenceExcess(build, kind));

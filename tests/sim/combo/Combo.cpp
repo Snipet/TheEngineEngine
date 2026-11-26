@@ -532,7 +532,7 @@ namespace combo
         // 0.3 s after its fall; named by the gear before and after), each ECU cut outside a shift (ecu.flags 2 fuel, 4 spark, 8 overrun; the reference's
         // engine.flags 2), each limiter episode (ecu.flags 1, engine.flags 1), each lift (the throttle falling
         // through 0.1: 0.05 s before to 0.5 s after); the start (to 2 s after the key is let go) first of all; a
-        // sample in two windows is the first's in that order (start, shift, cut, limiter, lift); the rest of the running stretch is "the rest"
+        // sample in two windows is the first's in that order (start, shift, limiter, cut, lift); the rest of the running stretch is "the rest"
         std::vector<Event> out;
         if (tm.started + 2.0 > from)
             out.push_back({"start", from, std::min(to, tm.started + 2.0)});
@@ -594,8 +594,8 @@ namespace combo
                 }
         }
         episodes("shift", {{"car.flags", 16 | 32}}, 0.3);
-        episodes("cut", {{"ecu.flags", 2 | 4 | 8}, {"engine.flags", 2}}, 0.3);
         episodes("limiter", {{"ecu.flags", 1}, {"engine.flags", 1}}, 0.3);
+        episodes("cut", {{"ecu.flags", 2 | 4 | 8}, {"engine.flags", 2}}, 0.3);
         {
             const auto th = run.tel("engine.throttle");
             const auto& t = th.times();
@@ -809,7 +809,7 @@ namespace combo
         // sample, from the run's own step profile (the step over its local level, stepProfile, computed on the whole
         // running stretch), and that step's excess is taken over neighbouring firing periods anywhere in the running
         // stretch, never clipped to the window (the steward read 2.64 in a window against 2.50 over the run, k = -4,
-        // when edges clipped). A sample in two windows is judged in the first (start, shift, cut, limiter, lift).
+        // when edges clipped). A sample in two windows is judged in the first (start, shift, limiter, cut, lift): a limiter's cuts are the limiter's.
         const auto lch = run.left().during(from, to), rch = run.right().during(from, to);
         const std::vector<float> lp = stepProfile(lch.samples(), lch.rate());
         const std::vector<float> rp = stepProfile(rch.samples(), rch.rate());
@@ -848,6 +848,7 @@ namespace combo
             const double at = from + static_cast<double>(worst[e]) / rate;
             const double step = worstR[e];
             const double excess = excessAt(run, worstLeft[e], at, from, to, nullptr);
+            v.windows.push_back({evs[e].name, excess, step, at});
             const bool byExcess = v.excessBound >= 0.0 && excess >= 0.0;
             if (!(byExcess ? excess > v.excessBound : step > clickBound))
                 continue;
