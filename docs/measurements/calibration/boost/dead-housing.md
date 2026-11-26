@@ -18,6 +18,15 @@ and 3, and both read bit 128. Both right; the four with Quad was worse than pred
 
 Every one of the 31 boosted archetypes, as built, reads bit 128 clear.
 
+**Re-read after the integrator's firing-order split (e0bdc69f) landed:** first.json is a custom engine, and its
+headers now split for twin turbos.
+- first.json as Twin feeds both wheels: 302 N m, shafts 13,369 / 13,329, bit 128 clear.
+- first.json as Quad: 164 N m, shafts 14,528 / 0 / 14,531 / 0, bit 128 set.
+- The default V8 rows are unchanged: Twin 699 N m and clear; Quad 598 N m, turbos 1 and 3 standing, set.
+
+So Quad still reaches a dead housing on both. The test holds the V8: Quad reads 128 with turbos 1 and 3 standing,
+Twin reads 0.
+
 **Why:** `Boost::housingOf(bank, group, banks)` gives a twin on one bank the front group's collector to turbo 0 and the
 rear group's to turbo 1, and a quad the same on each bank. A layout whose exhaust builds one collector a bank (the
 table's inline four; the V8's one 4-into-1 a bank) builds no group 1, so that housing takes no pipe. With Quad on the
@@ -25,8 +34,8 @@ four, all the engine's gas goes to turbine 0, sized for a quarter of it: 5.4 bar
 
 ## Ruled (the lead, 26 Nov)
 
-- **This window:** bit 128 (telemetry only) and its test: first.json as Twin reads it with turbo 1 standing; the
-  default V8 as Twin does not (calibration.boost.warn). The AIR workspace words it for the owner (U1).
+- **This window:** bit 128 (telemetry only) and its test (calibration.boost.warn): the default V8 as Quad reads it
+  with turbos 1 and 3 standing; as Twin it does not. The AIR workspace words it for the owner (U1).
 - **The next window's first item (N2 with the integrator, a design to the lead first):**
   - (ii) as the guarantee: wheels beyond the built collectors share their gas, so no dial can make a dead housing;
   - (i) as the refinement where an even split exists: the integrator's custom split (02388191) extended to table
