@@ -1142,7 +1142,7 @@ TEST_CASE("a warm idle in still air cycles the radiator's fan, and the voices le
         b.write("heat.tCool", 373.5); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0); b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
         double t = 0.0;
         int last = 0;
-        b.play(30.0, [&] {
+        b.play(10.0, [&] {
             t += 512.0 / 48000.0;
             const int on = int(b.field("heat.fanSwitch"));
             if (on != 0 && last == 0 && onAt[vo] < 0)
@@ -1153,7 +1153,7 @@ TEST_CASE("a warm idle in still air cycles the radiator's fan, and the voices le
             low[vo] = std::min(low[vo], b.field("heat.tCool"));
         });
         end[vo] = b.field("heat.tCool");
-        std::printf("fan, voices %d: on at %.1f s, off at %.1f s, the coolant down to %.3f K, %.3f K at 30 s\n", vo, onAt[vo],
+        std::printf("fan, voices %d: on at %.1f s, off at %.1f s, the coolant down to %.3f K, %.3f K at 10 s\n", vo, onAt[vo],
                     offAt[vo], low[vo], end[vo]);
     }
     CHECK(onAt[0] > 0.0);
@@ -1161,7 +1161,9 @@ TEST_CASE("a warm idle in still air cycles the radiator's fan, and the voices le
     // (the property is that it cycles: on, off, then warming again in still air toward its switch. The switch's own
     // points (on at 373 K, off 5 K lower) make the off happen; how far under 368 the coolant overshoots and how fast it
     // warms back are the heat model's and move with other packages' work, so no kelvin is bound: only that it turned
-    // and is warming again by 30 s (measured 25 Nov: low 367.08 K, 369.16 K at 30 s); the steward's near-bound survey)
+    // and is warming again by 10 s (measured 25 Nov over 30 s: low 367.08 K, 369.16 K at 30 s; 26 Nov the low is at
+    // some 6 s and 10 s reads 367.39 K, so 10 s holds the property at a third of the cost: the budget); the steward's
+    // near-bound survey)
     CHECK(end[0] > low[0]);
     CHECK(onAt[1] == onAt[0]);
     CHECK(offAt[1] == offAt[0]);
