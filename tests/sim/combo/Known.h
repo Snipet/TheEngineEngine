@@ -21,9 +21,6 @@ const Known kKnown[] = {
     {"X-031", "2026-11-25", "the steward (the ECU's downshift)", "+fuel.model+ecu.model", "v8", "pull", "click",
      "a firing unlike its neighbours as the spark returns after the V8's downshift at 11.0 s, ecu.model and fuel.model "
      "on: excess 4.73 to 5.17 against 4.03 (13.4 step before c035fe75)"},
-    {"X-032", "2026-11-25", "N1 (the idle valve)", "exhaust.model+fuel.model+ecu.model", "turbo-six", "tour", "click",
-     "a firing unlike its neighbours as the turbo six lifts at 8.5 s (exhaust, fuel and ecu on): excess 3.05 against "
-     "2.97, narrowly; from 576c1c6e, the idle valve's integral"},
     {"X-036", "2026-11-25", "D (engine.custom) and the steward (car.model)", "+engine.custom+car.model", "turbo-v8-dual",
      "pull", "dc", "the turbo V8 dual's pull with a custom engine and car.model: the running mean 0.0057 to 0.0069 of "
      "full scale against 0.005, since the first soak (never green)"},
@@ -31,17 +28,34 @@ const Known kKnown[] = {
      "a free-valve turbo with electric assist, car.model on a 28 % downhill: the running mean 0.0062 against 0.005; "
      "each of its 11 fields is needed; the turbo V8 dual's kind as far as shown (car.model and a turbo), the same "
      "mechanism not shown (findings/x036-random103.json)"},
-    {"X-037", "2026-11-25", "N1 (the valve)", "as built", "pickup-diesel-67-inline-six", "tour", "tel-range:valve.dpOverlap",
-     "valve.dpOverlap -393835 Pa at 9.41 s against +-300000, since 2f86a47a"},
-    // The fuzz under stable draws (1abb05a0): X-029 (a rotary's 0.6 mm primary, from the old draws' random 245) is held
-    // by its build alone, content/builds/combo/findings/x029-rotary-tiny-primary.json
-    {"X-038", "2026-11-25", "G (the builder's exhaust; N2 found it, 16:17)", "random 167", "fuzz", "random", "*",
-     "boost.model 1 with a 0.07 mm tailpipe diverges (findings/x038-boost-tiny-tailpipe.json)"},
-    {"X-038", "2026-11-25", "G (the builder's exhaust; N2 found it, 16:17)", "random 298", "fuzz", "random", "*",
-     "boost.model 1 with a 0.011 mm primary diverges (findings/x038-boost-tiny-primary.json)"},
     {"X-039", "2026-11-25", "N2 (the supercharger)", "corners 205", "fuzz", "corners", "*",
      "a supercharged 50 cc single, blow-off kind 2, diverges at 0.27 s (findings/x039-single-blower-blowoff.json)"},
-    {"X-040", "2026-11-25", "L (intake.model)", "random 251", "fuzz", "random", "*",
-     "intake.model 1 with a 0.025 mm runner bore: intake.box non-finite at 0.26 s (findings/x040-intake-tiny-runner.json)"},
+    {"X-036", "2026-11-25", "the steward and the integrator (the steward's word, 25 Nov)", "all", "large-diesel", "dyno",
+     "dc", "the large diesel on the engine dyno with every switch on: the running mean 0.0051 against 0.005 (the bake's "
+     "soak, 223f4301); X-036's kind by the steward"},
+    // The bake's soak (223f4301, job 139542192123), bisected over sim trees with tee-fuzz --play and TEE_SIM_DIR. Retired
+    // by it: X-029 (G's bore floor), X-032 (the turbo six's lift: excess 1.84 against 2.97), X-037 (N1's b07522fc),
+    // X-038 (random 167 and 298 run clean), X-040 (random 251 runs clean).
+    {"X-041", "2026-11-25", "G (Burned in the pipe; the window's item 1)", "valve.model+boost.model+ecu.model", "turbo-six",
+     "tour", "click",
+     "a lift (throttle 0.015 to 0.004) at 9.76 s, nothing burning within 50 ms (bangHeat and flame 0): excess 3.23 "
+     "against 2.97; Bangs Carved 2.10; from 9b678980 (9e71f6c7's Burned meeting the boost series, each alone passes); "
+     "G: the turbine housing booked the burns' volume at the collector's cold temperature (fix 301ba06c, local)"},
+    {"X-041", "2026-11-25", "G (Burned in the pipe; the window's item 1)", "as built", "inline-five-turbo-rally", "tour",
+     "click",
+     "the lift's blowdown front steepened in the pipes at 8.74 s with anti-lag (G), nothing burning within 50 ms: excess "
+     "3.92 against 3.00; Bangs Carved 2.01, anti-lag off 1.48, pops 0 unchanged; from 9b678980"},
+    {"X-041", "2026-11-25", "G and N2 (the window's item 1)", "as built", "inline-five-turbo-rally", "tour",
+     "tel-range:valve.dpWave",
+     "Burned in the pipe, anti-lag and spark cut: the bangs' mean pressure ahead of the turbine overstated (G's words): "
+     "valve.dpWave -349747 Pa at 8.47 s against +-300000 on the limiter (bangHeat 2 to 3 MW); Bangs Carved stays inside"},
+    {"X-042", "2026-11-25", "N2 with the integrator (the turbine's match under engine.custom; the window's item 3)",
+     "+engine.custom+valve.model+boost.model", "large-diesel", "tour", "tel-range:valve.dpWave",
+     "the exhaust 337 to 350 kPa over the intake at full throttle, 2480 rpm, the charge at 111.7 kPa (every switch on; "
+     "engine.custom+valve.model+boost.model): N2, engine.custom's one collector leaves the rear turbo unfed and the "
+     "front's compressor chokes; shown from 9aa2acac (the map's lower choke flow), valve+boost or custom+boost pass"},
+    {"X-043", "2026-11-25", "N1 (the intake's plenum)", "intake.model+exhaust.model+car.model", "turbo-six", "tour", "click",
+     "the start's catch at 3.39 s (121 to 237 rad/s in 40 ms): excess 3.27 against 2.97; from c40f0411 (the plenum "
+     "gives up what the valves took: 3.02), unseen until every triple shard ran"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

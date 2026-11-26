@@ -7,6 +7,7 @@
 
 #include "Support.h"
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <filesystem>
@@ -109,4 +110,53 @@ TEST_CASE("the rigs' loader reads a build's nested sections as tee::Build does, 
     REQUIRE(parseBuild(*p, out, "again", back, error, warnings, false));
     CHECK(back.unknown == build.unknown);
     CHECK(back.values == build.values);
+}
+
+TEST_CASE("a stated bore under its least is refused at a person's input: the inspector's accepts and the loader; 0 "
+          "(derived) and the least itself are taken",
+          "[build][loader][sim]")
+{
+    if (!std::filesystem::exists(kRoot / "sim" / "engine.fm"))
+        SKIP("sim/engine.fm is not there yet");
+    std::string e;
+    const auto sim = test::compiled(kRoot / "sim", {}, e);
+    REQUIRE(sim != nullptr);
+    CHECK(lint(sim->fields()).empty());   // (the least's fields start their ranges at 0)
+    Build build(sim->fields());
+    if (build.fieldOf("exhaust.primD") < 0 || build.fieldOf("intake.runnerBore") < 0)
+        SKIP("the program has no stated bores");
+    CHECK(statedLeast("spec.exhaust.primD") == 0.010);
+    CHECK(statedLeast("spec.intake.runnerBore") == 0.008);
+    CHECK(statedLeast("spec.engine.bore") == 0.0);
+
+    // the inspector's way: it asks before it sets
+    std::string why;
+    CHECK_FALSE(build.accepts("exhaust.primD", 0.005, &why));
+    CHECK(why.find("10 mm") != std::string::npos);
+    CHECK(build.accepts("exhaust.primD", 0.010));   // the least itself
+    CHECK(build.accepts("exhaust.primD", 0.0));     // derived
+    CHECK_FALSE(build.accepts("intake.runnerBore", 0.007));
+    CHECK(build.accepts("intake.runnerBore", 0.009));
+    CHECK_FALSE(build.accepts("exhaust.tailD", 0.001));
+    CHECK(build.accepts("engine.bore", 0.001));      // no least: whatever its range says
+    // a timeline's or a fuzzer's way (Build::set) takes any value: the program raises it (tel.exhaust.boreRaised)
+    CHECK(build.set("exhaust.primD", 0.005));
+    CHECK(build.get("exhaust.primD") == Catch::Approx(0.005));
+
+    // a file's: refused, at its default (0, derived), and said
+    const char* const json = R"({"format": "tee-build", "version": 1, "name": "x", "notes": "",
+        "spec": {"exhaust": {"primD": [0.0005], "colD": [0.045]}, "intake": {"runnerBore": 0.004}}})";
+    Build loaded(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(loaded.load(json, BuildPart::Whole, warnings, e));
+    CHECK(loaded.get("exhaust.primD") == 0.0);
+    CHECK(loaded.get("intake.runnerBore") == 0.0);
+    CHECK(loaded.get("exhaust.colD") == Catch::Approx(0.045));   // a bore over its least: taken
+    std::string all;
+    for (const std::string& w : warnings)
+        all += w + "\n";
+    INFO(all);
+    CHECK(all.find("spec.exhaust.primD") != std::string::npos);
+    CHECK(all.find("spec.intake.runnerBore") != std::string::npos);
+    CHECK(all.find("refused") != std::string::npos);
 }
