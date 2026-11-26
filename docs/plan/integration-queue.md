@@ -2117,6 +2117,14 @@ engines only where a source shows such an engine drawn split.
   line (a healthy build carries no warning words); on a rotary it stays with a neutral line; on a Reference
   build the lab-off warning.
 
+- **aa8d6c4c, Linux, run 45806403099 (job 139862779783): infrastructure.** The bootstrap's apt install got 404s from
+  security.ubuntu.com for libasound2t64 and libasound2-data 1.2.11-1ubuntu0.5 right after a clean `apt-get update`
+  (the mirror's race: a fresh index naming a version the pool had just replaced). Build and Test were not reached.
+  Fixed by the lead's approval (11:01): one more update and one retry of the install, both logged; a second failure
+  fails the job as before. If the step fails again after that, the package set is pinned or cached (the lead's word).
+- **`main` at 5278e3e9** (11:01, the lead; run 45796819517 green on Linux 584, macOS 583, Windows 576; tests only
+  since 3c42b4d2).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 09:16 UTC: `main` IS AT 3c42b4d2** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
