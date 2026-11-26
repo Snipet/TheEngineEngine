@@ -45,7 +45,7 @@ drawn as an ordinary point). `DynoTrace::pointFlags` (ui/app, U1's) keeps card C
 spooling (a stepped run's, once C's has it) are distrusted (`distrustAt`, `distrustText`); a boost ripple on a settled
 point (`boostHunting`) is known to its standard error and only said (`rippleText`), the lead's ruling on C's numbers. In
 `DynoWorkspace.cpp`: a hollow dashed ring (`kUnsteadyR` 7.5 px, the text colour) round a distrusted point on the torque
-curve, wider than the knock's solid amber ring so both read on one point and the line runs on through; NOT STEADY in
+curve, wider than the knock's solid amber ring so both read on one point and the line runs on through; NOT SETTLED in
 the legend; the cursor's card says the doubt in full (wrapped, never cut) and a ripple in the label colour without a
 mark. The demo: its 6500 rpm unsettled point distrusted; from 185 kPa its 2000 rpm one rippling. Probes: `dynoWordsAt`,
 `dynoUnsteadyDrawn`, `dynoPlotX` (Dyno.h). Tests: `dyno.unsteady`; `build.dyno.unsteady`; the picture

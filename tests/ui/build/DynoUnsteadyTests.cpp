@@ -54,6 +54,11 @@ namespace
         r.points.push_back(q);
         const tee::ui::DynoTrace s = tee::ui::ServiceDyno::traceOf(r, "predicted");
         CHECK(!s.distrustAt(0) && !s.rippleText(0).empty());
+        // The predictor's fields at each point, carried by name (the cursor's BOOST, the band under the plot).
+        r.points[0].fields = { 151e3, 205e3 };
+        const tee::ui::DynoTrace b = tee::ui::ServiceDyno::traceOf(r, "predicted", { "boost.pressure", "engine.manifold" });
+        CHECK(b.fields.size() == 2 && b.fields[0] == "boost.pressure" && b.values.size() == 2);
+        CHECK(b.values[0].size() == 1 && b.values[0][0] == 151e3 && b.values[1][0] == 205e3);
         std::printf("  1733 rpm: %s; %s\n", t.distrustText(1).c_str(), t.rippleText(1).c_str());
         return 0;
     }
@@ -103,6 +108,12 @@ namespace
                             t.rippleText(i).empty() ? "" : (" | " + t.rippleText(i)).c_str());
         }
         std::printf("  %d of %zu points distrusted\n", flagged, t.speed.size());
+        // The boost at each point beside its marks (the lead, 26 Nov): the predictor's, read at the point's end.
+        int boost = -1;
+        for (std::size_t f = 0; f < t.fields.size(); ++f)
+            if (t.fields[f] == "boost.pressure")
+                boost = static_cast<int>(f);
+        CHECK_MSG(boost >= 0, "the predicted curve carries no boost.pressure");
         const std::filesystem::path dir = std::filesystem::path(TEE_UI_OUT_DIR) / "dyno";
         std::error_code ec;
         std::filesystem::create_directories(dir, ec);

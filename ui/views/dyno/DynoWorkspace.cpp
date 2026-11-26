@@ -763,11 +763,11 @@ namespace tee::ui
                     if (isShown(row))
                         for (std::size_t i = 0; i < trace(row).speed.size(); ++i)
                             unsteady = unsteady || trace(row).distrustAt(i);
-                if (unsteady && lx + 22.0f + c.textWidth("NOT STEADY", look::kCaps) < plotBox_.right() - look::kPad)
+                if (unsteady && lx + 22.0f + c.textWidth("NOT SETTLED", look::kCaps) < plotBox_.right() - look::kPad)
                 {
                     dashedRing(c, lx + kUnsteadyR, ly, kUnsteadyR, p.text);
-                    c.text("NOT STEADY", lx + 2.0f * kUnsteadyR + 6.0f, ly - 5.0f, look::kCaps, p.text);
-                    lx += 2.0f * kUnsteadyR + 6.0f + c.textWidth("NOT STEADY", look::kCaps) + 18.0f;
+                    c.text("NOT SETTLED", lx + 2.0f * kUnsteadyR + 6.0f, ly - 5.0f, look::kCaps, p.text);
+                    lx += 2.0f * kUnsteadyR + 6.0f + c.textWidth("NOT SETTLED", look::kCaps) + 18.0f;
                 }
                 // The dim rings: points the rev limiter cut (no measure of the engine).
                 bool cut = false;
