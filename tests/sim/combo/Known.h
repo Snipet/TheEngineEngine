@@ -35,9 +35,11 @@ const Known kKnown[] = {
     // X-038 (random 167 and 298 run clean), X-040 (random 251 runs clean).
     // X-041's first three rows (the turbo six's tour lift, the rally five's lift and its dpWave on the limiter) retired on
     // G's 5941904e (the housing books the burns' gas hot), which moves the turbo six's lift onto the pull:
-    {"X-041", "2026-11-26", "G (Burned in the pipe)", "valve.model+boost.model+ecu.model", "turbo-six", "pull", "click",
-     "a lift (throttle 0.37 to 0.09) at 10.588 s in third, nothing burning within 50 ms (bangHeat and flame 0): excess "
-     "3.69 against 3.37; 2.10 at 8.71 s on 5941904e's parent; Bangs Carved: the worst a ruled shift cut"},
+    {"X-041", "2026-11-26", "N2 (the blow-off and the gate loop; the lead's ruling, 26 Nov 02:22: the next window)",
+     "valve.model+boost.model+ecu.model", "turbo-six", "pull", "click",
+     "the blow-off valve opening on the lift at 10.588 s (0.006 to 0.93 in 20 ms) against a compressor ratio of 1.94 "
+     "(1.81 before 5941904e), the turbo spooled about 10 % harder by the burns' drive (G's measurement): excess 3.69 "
+     "against 3.37; nothing burning, the housing's gas unchanged"},
     {"X-042", "2026-11-25", "N2 with the integrator (the turbine's match under engine.custom; the window's item 3)",
      "+engine.custom+valve.model+boost.model", "large-diesel", "tour", "tel-range:valve.dpWave",
      "the exhaust 337 to 350 kPa over the intake at full throttle, 2480 rpm, the charge at 111.7 kPa (every switch on; "
@@ -58,5 +60,12 @@ const Known kKnown[] = {
      "fuel returning whole on the blip's first firings after the overrun cut; 1 phase in 6 before 98d0dc4d, 3 in 6 after "
      "it (that cure moves which phases meet the return; the idle valve is not in it); green with every switch on (excess "
      "1.92 against 2.85 on the small four, 2.35 at most against 4.03 on the V8). Phase 0: 1.75 before, 3.48 after"},
+    {"X-045", "2026-11-26", "the integrator (engine.fm; the next window, the lead's ruling)", "boost.model", "default",
+     "keyfields", "keyfields-exhaust",
+     "boost.model or exhaust.model written while stopped, and the application's own load, keep tel.exhaust.model 0 and "
+     "the model-0 exhaust configured until the key (the exhaust is built at the key; holdModel() takes the switch with "
+     "no configure); they agree after it: nothing keys an engine without it, only what a stopped engine reports"},
+    {"X-045", "2026-11-26", "the integrator (engine.fm; the next window, the lead's ruling)", "exhaust.model", "default",
+     "keyfields", "keyfields-exhaust", "as boost.model's: the stopped engine reports the last exhaust until the key"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
