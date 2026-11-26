@@ -2,11 +2,12 @@
 // Build::accepts; exhaust pipes 10 mm, the intake's runner 8 mm, its snorkel 10 mm; 0 still means derived). Rows over
 // the real Spec: 3 mm typed into an exhaust pipe's bore (the crossover's, a main pipe's) and into the intake's runner is refused as Rows refuses a value
 // out of range ("Out of range: " and C's reason, the typed text kept, nothing set); 0 typed is taken; BuildDoc::set
-// refuses such a bore from any of the interface's writers.
+// refuses such a bore from any of the interface's writers; an array's table refuses it in its cell.
 #include "build/BuildKit.h"
 
 #include "kit/inspect/FieldInspector.h"
 #include "kit/inspect/Outline.h"
+#include "kit/widgets/Tables.h"
 
 #include <cmath>
 
@@ -70,6 +71,42 @@ namespace
             CHECK_MSG(doc.get(field) == 0.0, path + ": BuildDoc::set took 3 mm");
             doc.set(field, 0.020);
             CHECK_MSG(std::fabs(doc.get(field) - 0.020) < 1e-9, path + ": BuildDoc::set refused 20 mm");
+        }
+        // An array's table (the primaries' bores: too many for rows): 3 mm typed into a cell is refused as text that is
+        // no number is (the typing kept, marked); 0 and 20 mm taken.
+        {
+            const int first = doc.find("exhaust.primD[0]");
+            CHECK(first >= 0);
+            tee::ui::GuiNode n;
+            n.kind = tee::ui::GuiKind::widget;
+            n.widget = "array";
+            n.file = "exhaust.primD";
+            std::unique_ptr<tee::ui::Item> item = tee::ui::fieldWidget(n, 9001, doc, rig.units, rig.telemetry);
+            auto* table = dynamic_cast<tee::ui::MapEdit*>(item.get());
+            CHECK_MSG(table != nullptr, "exhaust.primD's widget is no table");
+            if (table == nullptr || first < 0)
+                return 0;
+            tee::ui::Board tb{ 900, 400 };
+            funkgui::HeadlessHost th{ tb, 0, 1.0f };
+            tb.add(std::move(item));
+            table->setPlace({ 20, 20, 860, 300 }, true);
+            th.tick(2);
+            doc.set(first, 0.040);
+            th.tick(2);
+            const funkgui::Rect cell = table->cellRect(0, 0);
+            th.click(cell.centreX(), cell.centreY());
+            th.keys("3,return");
+            th.tick(2);
+            CHECK_MSG(table->editing(), "3 mm typed into a primary's cell was taken or dropped");
+            CHECK_MSG(std::fabs(doc.get(first) - 0.040) < 1e-9, "the primary's bore moved");
+            th.keys("escape,0,return");
+            th.tick(2);
+            CHECK_MSG(!table->editing() && doc.get(first) == 0.0, "0 typed into a primary's cell was not taken");
+            th.click(cell.centreX(), cell.centreY());
+            th.keys("2,0,return");
+            th.tick(2);
+            CHECK_MSG(!table->editing() && std::fabs(doc.get(first) - 0.020) < 1e-9, "20 mm typed into a primary's cell was not taken");
+            std::printf("  exhaust.primD[0] in its table: 3 mm refused, 0 and 20 mm taken\n");
         }
         return 0;
     }
