@@ -43,6 +43,15 @@
 
 ## Landed
 
+- **26 Nov 09:16 UTC: `main` at 3c42b4d2** (from 5cd03815, fast-forward; run 45781892920 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). New in `main`:
+  the dyno says knock once when it is the curve's state (three quarters of its measured points and four at the
+  least: ticks under the plot and the legend's tick, no ring on each point; a curve that knocks at a few points
+  keeps its rings), carries the cursor down through the boost band with a dot on each curve, and draws a peak's
+  ring over its disc; five dyno goldens moved by the band's cursor line and dots alone. Tests: `Known.h`'s six
+  click rows restated as sometimes rows with their rates over 17 nudged copies (words only); the spread script
+  (tests/sim/combo/spread.sh); eachSwitch's default-block runs to `[nightly]` with the field case as the
+  default-run guard. Docs: X-047's design (`docs/plan/x047-shift-cut.md`).
 - **26 Nov 08:18 UTC: `main` at 5cd03815** (from 07a08dc0, fast-forward; run 45778173063 on that commit: Linux,
   Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). New in `main`:
   the Air workspace says when the Air pressure field is off its default that it moves the car's drag only and the
