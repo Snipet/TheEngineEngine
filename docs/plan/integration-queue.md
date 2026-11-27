@@ -2825,6 +2825,22 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 19:13 UTC: B's STACK IS ON THE BRANCH AT 3e35f7a9** (the wake's window test: `--minimise-after`,
+  `scripts/run-wake.sh` and its ctest copy; X-066's cure: the engine's frame around the jobs in the drain).
+  233d7154's three jobs had all started before it (Windows at 19:12:16Z). B's tier of record on 233d7154 + the
+  stack, plain tree (app OFF, no libsecret, no libcurl): 593 of 593; its app-on tree's shell suites 62 of 62,
+  `shell.window.wake` among them. The one change since the lead's read and run of the patch at 440857f8: the
+  script's answered line after its tick check, and a FAIL expression on the ctest copy (read by the lead in the
+  pushed files). Gated trees unchanged.
+  - Behind it, back to back, the last tip protected (T1, `main`'s next candidate after 233d7154): card A's
+    X-063 (4c1a2d6: 600 of 600 on its own; 322 of 322 of the assistant's, the shell's and the ui's merged with
+    233d7154) and the steward's `Known.h` push.
+  - THEN, as its own push after T1's three jobs have started: the block in `build.yml`'s "Run the application"
+    step (the steward, bytes from `docs/handoffs/b-run-wake-ci.md`, on the lead's word given 27 Nov). Kept apart
+    because its first run is the first time the packed app is minimised on a runner: a failure there costs only
+    that tip. The steward reports the run-wake lines from all three platforms, macOS's above all.
+  - Card A's measurement for the owner: a dyno sweep through the tool is always 17 points; 500 to 8000 rpm took
+    3.9 s on its container, so the 40 s of item 3 is about ten times the need.
 - **27 Nov 19:05 UTC: `main` IS AT 3db7ed07** (run 46047427666: Windows, Linux and macOS green; gated trees
   unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 40463d37 (17:42), 3ba103f4 (17:13). In it:
   card A's seven commits, B's wake, card A's cure. The tip to protect is still 233d7154 (item 3 and the air
