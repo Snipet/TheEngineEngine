@@ -9,6 +9,8 @@ made, sample by sample, from a physical model of the gas in each cylinder and pi
 - [Getting started](getting-started.md): pick a build, start it, rev it, drive it, read the dyno, change a cam and
   watch the curve move.
 - [Controls](controls.md): keyboard, gamepad, and (later) a wheel.
+- [Claude](claude.md): Claude Desktop's extension and the chat with your own key: installing, allowing, what
+  Claude can and cannot do, what is sent where, and what to send when it fails.
 
 ## The screens
 

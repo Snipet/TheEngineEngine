@@ -143,6 +143,7 @@ Made by the packages that built each part of the simulator, to show or test thei
 | `cars/rwd-v8-coupe.json` | Rear-drive V8 coupe | A front-engined rear-drive coupe with a manual six: 1700 kg, 54 % on the front, sport tyres, a clutch-pack limited-slip rear differential (80 N m of ... |
 | `combo/large-diesel.json` | Large diesel (combo) | The reference's Large Diesel (15 L, twin turbos), on a mild day. Package X's (tests/sim/combo): every model switch at 0, the custom engine's geometry filled ... |
 | `combo/small-four.json` | Small four (combo) | A 1.6 L inline four, naturally aspirated, in a light front-drive car. Package X's (tests/sim/combo): every model switch at 0, the custom engine's geometry ... |
+| `combo/turbo-six-mild.json` | Turbo six, mild cam (combo) | Package X's fair twin of the turbo six (tests/sim/combo; the lead's ruling, 26 Nov 11:46, (c)): the same build with a mild cam, the reference's dial at ... |
 | `combo/turbo-six.json` | Turbo six (combo) | A 3 L inline six with one turbo, in an all-wheel-drive coupe. Package X's (tests/sim/combo): every model switch at 0, the custom engine's geometry filled in ... |
 | `combo/turbo-v8-dual.json` | Turbo V8, dual exhaust (combo) | The budget's typical build (02-contracts.md section 9): the V8 with twin turbos and a dual exhaust with a crossover; the exhaust builder's topology is added ... |
 | `combo/v8.json` | V8 (combo) | The reference's V8 in a rear-drive coupe. Package X's (tests/sim/combo): every model switch at 0, the custom engine's geometry filled in to match the layout ... |

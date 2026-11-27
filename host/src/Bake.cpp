@@ -178,8 +178,62 @@ namespace tee
                && static_cast<std::int64_t>(build.get("ecu.maps.camInKey")) == intakeCamKey(build, sim);
     }
 
+    namespace
+    {
+        // The air every bake measures in, whatever the build states (the lead's ruling, 26 Nov: the standard day every
+        // shipped build states already; docs/handoffs/c-host-tools.md, the X-046 note): a table read by absolute load
+        // serves every stated air, and a hot day is the knock control's to hear, as on a car mapped at standard
+        // conditions. spec.env is in no key, so the keys do not move. A copy of `build` at that air.
+        constexpr double kBakeAirPressure = 101325.0;   // Pa
+        constexpr double kBakeAirTemperature = 288.15;  // K, 15 C
+        bool atBakeAir(const Build& build, Build& out, std::string& error)
+        {
+            std::vector<std::string> warnings;
+            if (!out.load(build.save(), BuildPart::Whole, warnings, error))
+                return false;
+            if (out.fieldOf("env.pressure") >= 0)
+                out.set("env.pressure", kBakeAirPressure);
+            if (out.fieldOf("env.temperature") >= 0)
+                out.set("env.temperature", kBakeAirTemperature);
+            return true;
+        }
+    } // namespace
+
+    namespace
+    {
+        bool bakeIntakeCamAt(const std::shared_ptr<Sim>& sim, const Build& build, const CamBakeOptions& options,
+                             CamBakeResult& result, std::string& error, const std::atomic<bool>* cancel);
+        bool bakeKnockLimitAt(const std::shared_ptr<Sim>& sim, const Build& build, const KnockBakeOptions& options,
+                              KnockBakeResult& result, std::string& error, const std::atomic<bool>* cancel);
+        bool checkIdleAt(const std::shared_ptr<Sim>& sim, const Build& build, const std::filesystem::path& scenarios,
+                         IdleCheck& result, std::string& error);
+    } // namespace
+
     bool bakeIntakeCam(const std::shared_ptr<Sim>& sim, const Build& build, const CamBakeOptions& options,
                        CamBakeResult& result, std::string& error, const std::atomic<bool>* cancel)
+    {
+        Build atAir(build.fields());
+        return atBakeAir(build, atAir, error) && bakeIntakeCamAt(sim, atAir, options, result, error, cancel);
+    }
+
+    bool bakeKnockLimit(const std::shared_ptr<Sim>& sim, const Build& build, const KnockBakeOptions& options,
+                        KnockBakeResult& result, std::string& error, const std::atomic<bool>* cancel)
+    {
+        Build atAir(build.fields());
+        return atBakeAir(build, atAir, error) && bakeKnockLimitAt(sim, atAir, options, result, error, cancel);
+    }
+
+    bool checkIdle(const std::shared_ptr<Sim>& sim, const Build& build, const std::filesystem::path& scenarios,
+                   IdleCheck& result, std::string& error)
+    {
+        Build atAir(build.fields());
+        return atBakeAir(build, atAir, error) && checkIdleAt(sim, atAir, scenarios, result, error);
+    }
+
+    namespace
+    {
+    bool bakeIntakeCamAt(const std::shared_ptr<Sim>& sim, const Build& build, const CamBakeOptions& options,
+                         CamBakeResult& result, std::string& error, const std::atomic<bool>* cancel)
     {
         const auto t0 = std::chrono::steady_clock::now();
         result = CamBakeResult{};
@@ -668,6 +722,7 @@ namespace tee
         result.wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         return true;
     }
+    } // namespace
 
     bool applyIntakeCam(Build& build, const CamBakeResult& result, std::string& error)
     {
@@ -707,8 +762,10 @@ namespace tee
         return ok;
     }
 
-    bool checkIdle(const std::shared_ptr<Sim>& sim, const Build& build, const std::filesystem::path& scenarios,
-                   IdleCheck& result, std::string& error)
+    namespace
+    {
+    bool checkIdleAt(const std::shared_ptr<Sim>& sim, const Build& build, const std::filesystem::path& scenarios,
+                     IdleCheck& result, std::string& error)
     {
         constexpr double kRpm = 60.0 / (2.0 * 3.14159265358979323846);
         result = IdleCheck{};
@@ -795,6 +852,7 @@ namespace tee
         result.pass = result.failures.empty();
         return true;
     }
+    } // namespace
 
     // ---- the knock limit ----------------------------------------------------------------------------------------------
 
@@ -897,8 +955,10 @@ namespace tee
                && static_cast<std::int64_t>(build.get("ecu.maps.knockLimitKey")) == knockLimitKey(build, sim);
     }
 
-    bool bakeKnockLimit(const std::shared_ptr<Sim>& sim, const Build& build, const KnockBakeOptions& options,
-                        KnockBakeResult& result, std::string& error, const std::atomic<bool>* cancel)
+    namespace
+    {
+    bool bakeKnockLimitAt(const std::shared_ptr<Sim>& sim, const Build& build, const KnockBakeOptions& options,
+                          KnockBakeResult& result, std::string& error, const std::atomic<bool>* cancel)
     {
         const auto t0 = std::chrono::steady_clock::now();
         result = KnockBakeResult{};
@@ -1174,6 +1234,7 @@ namespace tee
         result.wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         return true;
     }
+    } // namespace
 
     bool applyKnockLimit(Build& build, const KnockBakeResult& result, std::string& error)
     {
@@ -1379,12 +1440,16 @@ namespace tee
         }
 
         // The check set: the full-load row at `speeds` on `build` as it stands (its tables applied)
-        bool measureCheck(const std::shared_ptr<Sim>& sim, const Build& build, const std::vector<double>& speeds,
+        bool measureCheck(const std::shared_ptr<Sim>& sim, const Build& stated, const std::vector<double>& speeds,
                           PredictOptions predict, BakeCheck& out, std::string& error, const std::atomic<bool>* cancel)
         {
             out = BakeCheck{};
             if (speeds.empty())
                 return true;
+            // at the air the tables were baked in (atBakeAir), so a check compares like with like
+            Build build(stated.fields());
+            if (!atBakeAir(stated, build, error))
+                return false;
             predict.speeds = speeds;
             predict.pedal = 1.0;
             predict.fields.clear();
