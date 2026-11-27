@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cctype>
 
 namespace
@@ -1693,6 +1694,59 @@ namespace
             CHECK(f.askOpen() && !ready(first) && !ready(second));
         }
         CHECK(ready(first) && first.get() == false && ready(second) && second.get() == false);
+        return 0;
+    }
+
+    // A question its asker has given up on leaves the screen (card A's, the lead's review of 27 Nov, item 3: load_build
+    // waits askSeconds, then answers Claude "the owner did not answer"): its flag raised from the asker's thread, an open
+    // question closes on the frame's next tick, its future ready and false, and the next one opens; a queued one so
+    // raised before its turn never opens (its future false) and the one behind it opens instead; with no flag, as today.
+    VIEW_TEST(testFrameAskWithdrawn, "frame.ask.withdrawn")
+    {
+        FrameRig rig(1100, 700, 2.0f, 4.6, true, true);
+        AppFrame& f = *rig.frame;
+        auto flagA = std::make_shared<std::atomic<bool>>(false), flagB = std::make_shared<std::atomic<bool>>(false);
+        std::future<bool> a, b, c;
+        std::thread asker([&] {
+            a = f.ask("Claude asks to load \"Hot cam\". Load it?", "Load", "Keep", flagA);
+            b = f.ask("Claude asks to load \"Cold cam\". Load it?", "Load", "Keep", flagB);
+            c = f.ask("Claude asks to save this build. Save it?");   // no flag: as today
+        });
+        asker.join();
+        rig.host->tick(3);
+        CHECK(f.askOpen() && f.askDialog()->question().find("Hot cam") != std::string::npos);
+        // (2) the queued one given up before its turn; (1) then the open one, both from the asker's thread.
+        std::thread giveUp([&] {
+            flagB->store(true, std::memory_order_release);
+            flagA->store(true, std::memory_order_release);
+        });
+        giveUp.join();
+        CHECK(!ready(a));   // closed on the frame's tick, not from the asker's thread
+        rig.host->tick(1);
+        CHECK_MSG(ready(a) && a.get() == false, "the open question withdrawn did not close on the next tick");
+        CHECK(ready(b) && b.get() == false);   // never shown
+        CHECK_MSG(f.askOpen() && f.askDialog()->question().find("save this build") != std::string::npos,
+                  f.askOpen() ? f.askDialog()->question() : std::string("no question open"));
+        CHECK(f.focus() >= 0 && f.item(f.focus()).takesAllKeys());   // the dialog has the keys
+        // (3) the unflagged one: answered as today.
+        CHECK(clickOn(*rig.host, "Yes") && ready(c) && c.get() == true && !f.askOpen());
+        // One withdrawn while open with nothing behind it: the dialog goes, the focus with it, the frame laid out.
+        auto flagD = std::make_shared<std::atomic<bool>>(false);
+        std::future<bool> d = f.ask("Claude asks to load \"Hot cam\". Load it?", "Load", "Keep", flagD);
+        rig.host->tick(2);
+        CHECK(f.askOpen() && !boundsOf(*rig.host, "Keep", funkgui::A11yRole::button).isEmpty());
+        flagD->store(true, std::memory_order_release);
+        rig.host->tick(1);
+        CHECK(ready(d) && d.get() == false && !f.askOpen() && f.focus() < 0);
+        CHECK(boundsOf(*rig.host, "Keep", funkgui::A11yRole::button).isEmpty());   // the dialog's own answer gone
+        // A flag raised after its answer changes nothing.
+        auto flagE = std::make_shared<std::atomic<bool>>(false);
+        std::future<bool> e = f.ask("Claude asks to save this build. Save it?", {}, {}, flagE);
+        rig.host->tick(2);
+        CHECK(clickOn(*rig.host, "Yes") && ready(e) && e.get() == true);
+        flagE->store(true, std::memory_order_release);
+        rig.host->tick(2);
+        CHECK(!f.askOpen());
         return 0;
     }
 }

@@ -73,3 +73,16 @@ ends as a click where it began; before, the page moved under it and the release 
 then wheeled out of the room keeps the focus, unseen, and the first key it takes scrolls it in whole before acting (before,
 an arrow changed a unit out of sight). A press on a stepper steps on the press, so a resize under it (the page back at its
 top) leaves its release nothing to do. Test `frame.settings.held`.
+
+**27 Nov 2026, a question withdrawn (card A's ask, the lead's review of the Claude integration, item 3):**
+`AppFrame::ask` takes a fourth, defaulted argument, `std::shared_ptr<const std::atomic<bool>> withdrawn`, which the asker
+raises from its own thread when it no longer waits (load_build's askSeconds run out, a cancel, the session stopping). A
+queued question so raised is never shown, and its future is answered false. An open one closes on the frame's next tick
+as a no would, answered false (nobody reads it), and the next question opens in its place, laid out once. The flag is read
+with acquire on the frame's thread; no lock. Every caller compiles unchanged. Test `frame.ask.withdrawn`. Card A's half
+(SessionParts::ask, Tools, app/Offline.cpp's askOwner) follows on this.
+
+**Seen where (the lead's note, 27 Nov):** the bake's words, the CLUTCH row and the settings page's scroll were drawn and
+looked at on Linux under software rendering only (out/ui pictures, by U1 and by the lead). None of it has been seen on a
+Mac. Since then: 4 px of air above CLUTCH's heading (WHEEL's line, wrapped to two at 1100, ended against it); and
+build.bake.stale says which way it passed ("the shipped bake was current" or "baked here in N s").
