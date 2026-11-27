@@ -401,47 +401,104 @@ TEST_CASE("shell: a truck's switches latch: Z the splitter, X the range, J the e
     CHECK(actionFromName("enginebrake") == Action::engineBrake);
 }
 
-TEST_CASE("shell: an automatic's or a CVT's presses move the selector R, N, D; the lever is sent whatever the clutch",
+TEST_CASE("shell: an automatic's or a CVT's selector: R, N, D on the lever whatever the clutch; out of D only at a crawl",
           "[shell][input]")
 {
     Driver d;                                                       // the automatic clutch on (the default)
     d.setGearbox(Gearbox::selector);
-    CHECK(run(d, 0.1).lever == 0);                                  // N
+    EngineSeen still;                                               // at rest
+    EngineSeen moving;
+    moving.kmh = 40.0f;
+    const auto step = [&](const EngineSeen& seen) { return d.advance(0.1f, seen).lever; };
+    CHECK(step(still) == 0);                                        // N
     d.press(Action::shiftUp);
-    CHECK(run(d, 0.1).lever == 1);                                  // D
+    CHECK(step(still) == 1);                                        // D, and held there frame after frame
+    CHECK(step(still) == 1);
     d.press(Action::shiftUp);
-    CHECK(run(d, 0.1).lever == 1);                                  // (D is the top)
+    CHECK(step(still) == 1);                                        // (D is the top)
+    // at speed a shift down does nothing (no neutral hoping for a kickdown); at a crawl D to N to R
+    CHECK(step(moving) == 1);
     d.press(Action::shiftDown);
-    CHECK(run(d, 0.1).lever == 0);
+    CHECK(step(moving) == 1);
+    CHECK(step(still) == 1);
     d.press(Action::shiftDown);
-    CHECK(run(d, 0.1).lever == -1);                                 // R (the box takes it only at a crawl)
-    d.requestGear(3);                                               // a gear key or the shifter's forward gate: D
-    CHECK(run(d, 0.1).lever == 1);
-    d.requestGear(0);
-    CHECK(run(d, 0.1).lever == 0);
-    d.requestGear(-1);
-    CHECK(run(d, 0.1).lever == -1);
+    CHECK(step(still) == 0);
+    d.press(Action::shiftDown);
+    CHECK(step(still) == -1);                                       // R (the box takes it only at a crawl)
+    d.press(Action::shiftUp);
+    CHECK(step(still) == 0);                                        // R to N
+    // the keys: 1 to 6 D, N N at any speed, reverse R; no seek (no shift presses)
+    const int ups = d.frame().shiftUp;
+    d.press(Action::gear3);
+    CHECK(step(moving) == 1);
+    d.press(Action::neutral);
+    CHECK(step(moving) == 0);                                       // N at speed: explicit
+    d.press(Action::gear1);
+    step(moving);
+    d.press(Action::reverse);
+    CHECK(step(still) == -1);
+    for (int i = 0; i < 20; ++i)
+        step(still);
+    CHECK(d.frame().shiftUp == ups);                                // nothing seeks on a selector
     // another box: back to neutral and the presses' own rules (the lever 0 with the automatic clutch)
     d.setGearbox(Gearbox::shifts);
-    const int ups = d.frame().shiftUp;
     d.press(Action::shiftUp);
-    CHECK(run(d, 0.1).lever == 0);
+    CHECK(step(still) == 0);
     CHECK(d.frame().shiftUp == ups + 1);
 }
 
-TEST_CASE("shell: the eighteen-speed's lever is sent with the automatic clutch on; presses and gear keys move it",
+TEST_CASE("shell: the eighteen-speed: keys to the lever's positions, a shift the next of its eighteen, Z and X after it",
           "[shell][input]")
 {
-    Driver d;
-    d.setGearbox(Gearbox::lever);
-    d.requestGear(3);
-    CHECK(run(d, 0.1).lever == 3);
+    Driver d;                                                       // the automatic clutch on: the lever passes
+    d.setGearbox(Gearbox::eighteen);
+    EngineSeen seen;
+    const auto frame = [&] { return d.advance(0.1f, seen); };
+    d.press(Action::gear3);
+    CHECK(frame().lever == 3);
+    d.press(Action::gear5);
+    CHECK(frame().lever == 5);                                      // the L slot
+    d.press(Action::gear6);
+    CHECK(frame().lever == 5);                                      // 6: nothing
+    d.press(Action::reverse);
+    CHECK(frame().lever == -1);
+    d.press(Action::neutral);
+    CHECK(frame().lever == 0);
+    // the shifts: from N the first gear (L, low range, low split), then each of the eighteen in order
+    const auto gearOf = [&](const ControlsFrame& f) {
+        const int r = (f.buttons & kButtonRange) != 0, s = (f.buttons & kButtonSplitter) != 0;
+        if (f.lever == 5)
+            return r == 0 ? 1 + s : 0;
+        if (f.lever < 1 || f.lever > 4)
+            return 0;
+        return r == 0 ? 1 + 2 * f.lever + s : 9 + 2 * f.lever + s;
+    };
+    d.press(Action::shiftDown);
+    CHECK(gearOf(frame()) == 0);                                    // nothing below neutral
+    for (int g = 1; g <= 18; ++g)
+    {
+        d.press(Action::shiftUp);
+        CHECK(gearOf(frame()) == g);
+    }
     d.press(Action::shiftUp);
-    CHECK(run(d, 0.1).lever == 4);
-    d.press(Action::shiftUp);
-    CHECK(run(d, 0.1).lever == 4);                                  // (4 the top; 5, the L slot, by its own key)
-    d.requestGear(-1);
-    CHECK(run(d, 0.1).lever == -1);
+    CHECK(gearOf(frame()) == 18);                                   // refused at the top
+    for (int g = 17; g >= 1; --g)
+    {
+        d.press(Action::shiftDown);
+        CHECK(gearOf(frame()) == g);
+    }
+    d.press(Action::shiftDown);
+    CHECK(gearOf(frame()) == 1);                                    // refused at the bottom
+    // Z (the splitter) and X (the range) toggle from where the press left them: up to 12 (lever 1, high, split)
+    for (int g = 2; g <= 12; ++g)
+        d.press(Action::shiftUp);
+    CHECK(gearOf(frame()) == 12);
+    d.press(Action::splitter);
+    CHECK(gearOf(frame()) == 11);
+    d.press(Action::range);
+    CHECK(gearOf(frame()) == 3);                                    // low range, low split, lever 1
+    // nothing works the clutch: the pedal stays where the driver has it
+    CHECK(frame().clutch == 0.0f);
     d.setGearbox(Gearbox::shifts);
-    CHECK(run(d, 0.1).lever == 0);
+    CHECK(frame().lever == 0);
 }
