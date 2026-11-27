@@ -2487,6 +2487,33 @@ engines only where a source shows such an engine drawn split.
 - `main` moves when the lead has checked the trees (sim and tools unchanged; host changed by C's commits
   alone), built it and run the new cases, and three jobs are green.
 
+## 27 Nov 11:26 UTC: TWO REPORTS FROM THE OWNER'S OWN USE: shifting on any box but a manual; the Places mode's sound
+
+- **"In my testing on MacOS from last night, shifting in any form/input does not work for any transmission
+  other than a manual"** (the owner, 27 Nov; their build `main` at 6e67ac62). B reproduces it through the
+  application's own path (the Driver, the adapter) on one shipped build of each gearbox kind and says where
+  a press is lost; a failing test first at the level of the owner's hands (an action in, a gear out, per
+  kind). The integrator reads the vehicle's side (each kind's conditions for a press to change gear; the
+  counters across a load and a change of kind; what puts an automatic in drive). On paper the shell counts
+  presses and every kind in gearbox.fm takes them (the lead's ten-minute read, not a diagnosis). A lead from
+  X's survey of 26 Nov, not flagged then: the five automatics and the CVT "run the pull in one gear against
+  the limiter".
+- **"The Places mode in the Listen view doesn't sound as good as the reference. The Places mode causes some
+  comb-filter effects, and it brings out the noise and quiets the engine sound"** (the owner, 27 Nov). L's,
+  ahead of anything else: reproduce against the reference; the combing's delay and the path that makes it,
+  proved by removing that one path on a scratch tree; which noise comes forward, component by component, and
+  how much of it is level and compression (the reference sits on its limiter; Places has headroom and an
+  auto level near -12 to -14.5 dB) against the mix itself; the loudness out of the box; then a proposal and
+  clips for the owner (the reference, Places as shipped, Places with the fixes, at matched loudness). No
+  code under `sim/` yet.
+- **The bake across edits (C), the rule as built:** provenance in place of a load flag (a stale table keeps
+  playing only if the service saw those exact values current on this program); unfit by a field change
+  (cylinders, layout, cycle; the redline's fields; the idle speed; the boost's class and layout; the fuel's
+  kind; each model switch the keys hold); undo reads current at once; the debounce the larger of 1.5 s and
+  5 % of the expected bake, ceiling 15 s; the predicted curve runs on the build as it stands.
+- **Asked of the owner again, since a fault under `sim/` in either report needs it:** the three sessions whose
+  pushes are refused (the integrator, N2, P): approve inside them, have the lead carry, or fresh sessions.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
