@@ -176,6 +176,34 @@ Not this item's:
 - the flat-plane 3.9 twin turbo's 1-2 (a dual clutch: no cut; the gearbox's and the integrator's);
 - its limiter (X-052's kind, the steward's to read).
 
+**Item 16 on the real code (the steward, 27 Nov 12:40; `launch.fm` as committed, on the branch's tip of 12:30;
+predictions written first, every one met).**
+
+- The cut on `ecu.flags`, a control step at a time (`tests/sim/vehicle/ShiftCutTest.cpp`), against the tip:
+
+  | asker | wants | tip | item 16 |
+  |---|---|---|---|
+  | the paddle robot (car.model 0) | 60 ms | 110 | 60.00 |
+  | the truck's robot | 150 ms | 200 | 150.00 |
+  | car.model 1, paddle manual and sequential | 60 ms | 210 | 60.00 |
+  | the bike, quickshiftCut 50, 80, 20 ms | as set | 100, 160, 40 | 50.00, 80.00, 20.00 |
+
+  Each equals the vehicle's own cut flag within one step, and every window lasts at least two steps (the guard).
+- Model 0: every shipped build (the 17 builds and the 31 archetypes) at ecu.model 0, driven through three upshifts
+  and a downshift, gives the same audio to the bit on both trees.
+- X's per-event spread, 17 copies at 293.15 +- 0.15 K, the tip against item 16:
+
+  | row | tip | item 16 |
+  |---|---|---|
+  | the three-cylinder 1.0 turbo, the 1-2 and the 2-3 | 6 and 8 of 17 (2.84) | 0 and 0 of 17 |
+  | the kei 660, the 1-2 | 2 of 17 (2.77) | 0 of 17 |
+  | the boxer four, every event | 0 of 17 | 0 of 17 |
+  | the V8 pull, fuel+ecu: the 1-2, 2-3, 3-2 (3.91) | 4, 4, 1 of 17 | 1, 0, 0 of 17 |
+
+  No other window moved on any of the four rows. By the evidence rule, the three-cylinder's and the kei's upshifts
+  are CURED (0 of 17 on the tree). The V8's 1-2 is "1 of 17, was 4", the same figure the cut probe gave: not cured
+  as a row. Item 17 reads it next, against that tree's own bound.
+
 ## 5. What it does not cure
 
 *Struck, 26 Nov 17:38:* a read of the V8 "after item 17" (8, 7 and 12 of 17 against a bound of 2.58) was taken on
