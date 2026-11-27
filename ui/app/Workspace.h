@@ -366,6 +366,12 @@ namespace tee::ui
         std::function<bool()> wheelOn;
         std::function<void(bool)> setWheelOn;
         std::function<std::string()> wheelStatus;
+        // The SETTINGS' CLUTCH row (card B's, the lead's three-way ruling, 27 Nov): input::ClutchMode as an int (0 the
+        // shifter's clutch is yours, the default; 1 automatic; 2 yours), set at once and never refused, and what it means
+        // on the gearbox loaded (one sentence, at most 90 characters, re-read each call). Any empty: no row.
+        std::function<int()> clutchMode;
+        std::function<void(int)> setClutchMode;
+        std::function<std::string()> autoClutchSays;
         std::function<std::string()> tryFirst;
         std::function<void()> tryFirstDone;
         std::function<int()> loadFits;

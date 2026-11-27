@@ -7,12 +7,15 @@
 
 #include "app/AppFrame.h"
 #include "views/tune/Tune.h"
+#include "kit/inspect/FieldInspector.h"
 #include "kit/widgets/Tables.h"
 
 #include <funkgui/text/FontService.h>
 #include <funkgui/text/TextFit.h>
+#include <funkgui/widgets/Scroll.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 
 namespace
@@ -43,6 +46,11 @@ namespace
         std::string refuseWith, status, savedKey, refuseKey;
         bool wheel = false;     // card B's G29 (FrameServices::wheelOn ...), served with the assistant's: every row
         std::string wheelSays;
+        // Card B's three-way clutch (FrameServices::clutchMode ...), served when `clutchRow`: the mode, and the line for it.
+        int clutchMode = 0;
+        std::array<std::string, 3> clutchSays = { "Manual: the shifter is the lever, its clutch yours; keys and paddles shift.",
+                                                  "Manual: everything shifts for you, the shifter too; no clutch to work.",
+                                                  "Manual: the shifter and the keys move the lever; the clutch is yours." };
         int saves = 0;
         std::unique_ptr<AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
@@ -53,7 +61,8 @@ namespace
         bool own;
         std::string idOf(const std::string& id) const { return own && id != "drive" ? "own-" + id : id; }
 
-        explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6, bool ownSlots = true, bool assistant = false)
+        explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6, bool ownSlots = true, bool assistant = false,
+                          bool clutchRow = false)
             : demo(t, !ownSlots), own(ownSlots)
         {
             demo.engine.hold(true);   // every picture at the same moment of the script
@@ -113,6 +122,12 @@ namespace
                 s.setWheelOn = [this](bool on) { wheel = on; };
                 s.wheelStatus = [this] { return wheelSays; };
                 s.audioMenu = [] {};   // the real window's: its button beside the device's line
+            }
+            if (clutchRow)
+            {
+                s.clutchMode = [this] { return clutchMode; };
+                s.setClutchMode = [this](int m) { clutchMode = m; };
+                s.autoClutchSays = [this] { return clutchSays[static_cast<std::size_t>(std::clamp(clutchMode, 0, 2))]; };
             }
             std::vector<tee::ui::WorkspaceSlot> slots = tee::ui::defaultSlots();
             for (tee::ui::WorkspaceSlot& sl : slots)
@@ -1297,6 +1312,190 @@ namespace
         CHECK(clickOn(*rig.host, "Allow") && !rig.desktop);
         CHECK_MSG(rig.frame->desktopLine() == "Not allowed: another app has Claude Desktop's link", rig.frame->desktopLine());
         golden("frame.desktop.refused", *rig.host);
+        return 0;
+    }
+
+    // The settings' CLUTCH row (card B's three-way input::ClutchMode; the lead's ruling, 27 Nov): three buttons across the
+    // column under its heading, the mode lit; a click sets the hook; the line under them is the hook's, whole, for the mode
+    // set; a change made elsewhere (B's F9 item) lights its button. With no hooks served, no row.
+    // And the settings page SCROLLS where its rows do not fit (the lead's ruling (C), 27 Nov): at 1100 x 700 with every row
+    // served it does, at 1600 x 1000 it does not (offset 0, every layout as before); nothing shown outside the room; the
+    // wheel by the inspector's own rule (over a stepper's value box one notch changes its unit and the page does not move;
+    // elsewhere it scrolls, a trackpad's small deltas by funkgui::scroll::wheelPx with the Rows' row height, the speed
+    // mended on 26 Nov); Tab brings the next stop scrolled out into view and focuses it; reopened or resized, at the top.
+    VIEW_TEST(testFrameClutch, "frame.clutch")
+    {
+        {
+            FrameRig bare(1100, 700, 2.0f, 4.6, true, true);
+            bare.frame->showSettings(true);
+            bare.host->tick(20);
+            CHECK(bare.frame->clutchLine().empty() && boundsOf(*bare.host, "Automatic", funkgui::A11yRole::button).isEmpty());
+        }
+        // Every settings widget shown lies wholly in the room.
+        const auto allInRoom = [](FrameRig& rig) {
+            const funkgui::Rect room = rig.frame->inspectorRect();
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.visible && it.bounds.x >= room.x && it.bounds.right() <= room.right() + 0.5f && it.bounds.y < room.bottom()
+                    && it.bounds.bottom() > room.y && (it.bounds.y < room.y - 0.5f || it.bounds.bottom() > room.bottom() + 0.5f))
+                    return false;
+            return true;
+        };
+        for (const int w : { 1600, 1100 })
+            for (const float dpi : { 2.0f, 1.0f })
+            {
+                const std::string sfx = std::string(w == 1100 ? ".small" : "") + (dpi < 1.5f ? ".dpi1" : "");
+                FrameRig rig(w, w == 1100 ? 700 : 1000, dpi, 4.6, true, true, true);
+                AppFrame& f = *rig.frame;
+                f.showSettings(true);
+                rig.host->tick(20);
+                CHECK_MSG(f.clutchLine() == rig.clutchSays[0], f.clutchLine());
+                CHECK(f.clutchLit() == 0);
+                CHECK_MSG(allInRoom(rig), sfx);
+                picture("frame.clutch" + sfx, *rig.host);
+                CHECK(clickOn(*rig.host, "Automatic") && rig.clutchMode == 1);
+                CHECK_MSG(f.clutchLine() == rig.clutchSays[1] && f.clutchLit() == 1, f.clutchLine());
+                CHECK(clickOn(*rig.host, "Yours") && rig.clutchMode == 2 && f.clutchLit() == 2);
+                CHECK(clickOn(*rig.host, "Shifter's") && rig.clutchMode == 0);
+                rig.clutchMode = 1;   // set elsewhere (B's F9 item): the row follows
+                rig.host->tick(3);
+                CHECK(f.clutchLit() == 1 && f.clutchLine() == rig.clutchSays[1]);
+                const funkgui::Rect room = f.inspectorRect();
+                if (w == 1600)
+                {
+                    CHECK_MSG(f.settingsScrollMax() == 0.0f, std::to_string(f.settingsScrollMax()));   // it fits: no scroll
+                    continue;
+                }
+                // 1100 x 700, every row: it scrolls.
+                CHECK_MSG(f.settingsScrollMax() > 0.0f, sfx);
+                const tee::ui::Stepper* last = f.unitSteppers().back();
+                CHECK(!last->shown());   // out of the room at the top of the page
+                // A trackpad's small delta: the page moves by exactly the inspector's amount for it.
+                const float sx = room.x + 16.0f, sy = room.y + room.h * 0.5f;   // a heading's or a label's place, no value box
+                const float px = funkgui::scroll::wheelPx(-0.05f, true, tee::ui::FieldInspector::kWheelRowH);
+                rig.host->wheel(sx, sy, -0.05f, true);
+                rig.host->tick(2);
+                CHECK_MSG(std::fabs(f.settingsScroll() - std::min(-px, f.settingsScrollMax())) < 0.01f,
+                          std::to_string(f.settingsScroll()) + " against " + std::to_string(-px));
+                // A mouse wheel to the bottom: the last unit in the room, nothing shown past it.
+                for (int k = 0; k < 40 && f.settingsScroll() < f.settingsScrollMax(); ++k)
+                {
+                    rig.host->wheel(sx, sy, -1.0f);
+                    rig.host->tick(1);
+                }
+                CHECK_MSG(f.settingsScroll() == f.settingsScrollMax(), std::to_string(f.settingsScroll()));
+                CHECK(last->shown() && last->bounds().bottom() <= room.bottom() + 0.5f);
+                CHECK_MSG(allInRoom(rig), sfx + " at the bottom");
+                picture("frame.clutch.bottom" + sfx, *rig.host);
+                // One notch over the last stepper's value box: its unit changes, the page does not move.
+                const std::string unitsBefore = rig.demo.units.save();
+                const float atBottom = f.settingsScroll();
+                const funkgui::Rect vb{ last->minusRect().right(), last->minusRect().y, last->plusRect().x - last->minusRect().right(),
+                                        last->minusRect().h };
+                rig.host->wheel(vb.centreX(), vb.centreY(), 1.0f);
+                rig.host->tick(2);
+                CHECK_MSG(rig.demo.units.save() != unitsBefore, "the unit did not change");
+                CHECK_MSG(f.settingsScroll() == atBottom, std::to_string(f.settingsScroll()));
+                // Opened again (SETTINGS pressed): at the top.
+                f.showSettings(true);
+                rig.host->tick(5);
+                CHECK_MSG(f.settingsScroll() == 0.0f, std::to_string(f.settingsScroll()));
+                // Tab from the top through every stop: each focused stop is shown whole in the room, and the last unit
+                // is reached (the page scrolled to it).
+                bool reached = false;
+                for (int k = 0; k < 60 && !reached; ++k)
+                {
+                    rig.host->keys("tab");
+                    rig.host->tick(1);
+                    if (f.focus() >= 0)
+                    {
+                        const tee::ui::Item& it = f.item(f.focus());
+                        CHECK_MSG(it.shown(), "Tab focused a stop not shown");
+                        reached = static_cast<const tee::ui::Item*>(last) == &it;
+                    }
+                }
+                CHECK_MSG(reached && f.settingsScroll() > 0.0f, "Tab never reached the last unit");
+                CHECK(allInRoom(rig));
+                // Resized: at the top.
+                const bool resized = rig.host->resize(1120, 720);
+                rig.host->tick(3);
+                CHECK(resized);
+                CHECK_MSG(f.settingsScroll() == 0.0f, std::to_string(f.settingsScroll()));
+            }
+        return 0;
+    }
+
+    // The settings page's scroll against a press and a focus (the lead's question, 27 Nov), at 1100 x 700 with every row:
+    // - a press held while the wheel turns: the page does not move under it (the wheel is not taken), and the press ends
+    //   as a click where it began (the button fires once, on its release, as anywhere; the wheel turned under the pointer);
+    // - a focused stop scrolled out of the room keeps the focus, unseen; the first key it takes brings it in whole, then
+    //   does its work (no unit is changed out of sight);
+    // - a press on a stepper (its step taken on the press), the window resized under it (the page back at its top, the
+    //   stepper out of the room): its release does nothing more.
+    VIEW_TEST(testFrameSettingsHeld, "frame.settings.held")
+    {
+        FrameRig rig(1100, 700, 2.0f, 4.6, true, true, true);
+        AppFrame& f = *rig.frame;
+        f.showSettings(true);
+        rig.host->tick(20);
+        const funkgui::Rect room = f.inspectorRect();
+        CHECK(f.settingsScrollMax() > 0.0f);
+        const float sx = room.x + 16.0f, sy = room.y + room.h * 0.5f;
+        // A press held on "Yours", the wheel turned under it: the page stays, the release clicks.
+        const funkgui::Rect yours = boundsOf(*rig.host, "Yours", funkgui::A11yRole::button);
+        CHECK(!yours.isEmpty());
+        rig.host->press(yours.centreX(), yours.centreY());
+        rig.host->tick(1);
+        for (int k = 0; k < 4; ++k)
+        {
+            rig.host->wheel(yours.centreX(), yours.centreY(), -1.0f);
+            rig.host->tick(1);
+        }
+        CHECK_MSG(f.settingsScroll() == 0.0f, "the page moved under a press: " + std::to_string(f.settingsScroll()));
+        rig.host->release();
+        rig.host->tick(2);
+        CHECK_MSG(rig.clutchMode == 2, "the press did not end as a click: " + std::to_string(rig.clutchMode));
+        // Released, the wheel scrolls again.
+        rig.host->wheel(sx, sy, -1.0f);
+        rig.host->tick(1);
+        CHECK(f.settingsScroll() > 0.0f);
+        // The last unit focused (a press on its value), then the page wheeled back to its top: focused, out of sight.
+        for (int k = 0; k < 40 && f.settingsScroll() < f.settingsScrollMax(); ++k)
+        {
+            rig.host->wheel(sx, sy, -1.0f);
+            rig.host->tick(1);
+        }
+        tee::ui::Stepper* last = f.unitSteppers().back();
+        CHECK(last->shown());
+        const funkgui::Rect m = last->minusRect(), pl = last->plusRect();
+        rig.host->click((m.right() + pl.x) * 0.5f, m.centreY());
+        rig.host->tick(2);
+        CHECK(f.focus() >= 0 && &f.item(f.focus()) == static_cast<tee::ui::Item*>(last));
+        for (int k = 0; k < 40 && f.settingsScroll() > 0.0f; ++k)
+        {
+            rig.host->wheel(sx, sy, 1.0f);
+            rig.host->tick(1);
+        }
+        CHECK(f.settingsScroll() == 0.0f && !last->shown());
+        CHECK_MSG(f.focus() >= 0 && &f.item(f.focus()) == static_cast<tee::ui::Item*>(last), "the focus left the stop");
+        const std::string before = rig.demo.units.save();
+        rig.host->keys("up");
+        rig.host->tick(2);
+        CHECK_MSG(last->shown() && last->bounds().y >= room.y - 0.5f && last->bounds().bottom() <= room.bottom() + 0.5f,
+                  "the key changed a unit out of sight");
+        CHECK_MSG(rig.demo.units.save() != before, "the key did nothing");
+        // A press on its minus (a step, on the press), the window resized under it, then the release: nothing more.
+        const std::string beforePress = rig.demo.units.save();
+        rig.host->press(last->minusRect().centreX(), last->minusRect().centreY());
+        rig.host->tick(2);
+        const std::string afterPress = rig.demo.units.save();
+        CHECK(afterPress != beforePress);
+        CHECK(rig.host->resize(1120, 720));
+        rig.host->tick(2);
+        CHECK(f.settingsScroll() == 0.0f && !last->shown());
+        rig.host->release();
+        rig.host->tick(2);
+        CHECK(rig.demo.units.save() == afterPress);
+        CHECK(rig.clutchMode == 2);
         return 0;
     }
 

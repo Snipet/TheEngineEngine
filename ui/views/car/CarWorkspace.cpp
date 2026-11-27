@@ -153,8 +153,7 @@ namespace tee::ui
                                                      "car.ratio[2]", "car.ratio[3]", "car.ratio[4]", "car.ratio[5]", "car.ratio[6]",
                                                      "car.ratio[7]", "car.reverseRatio", "car.finalDrive", "car.clutchTorque",
                                                      "car.gearEfficiency", "car.shiftTime", "car.converterK", "car.converterRatio",
-                                                     "car.couplingPoint", "car.lockUp", "car.cvtLow", "car.cvtHigh", "car.cvtEfficiency",
-                                                     "car.autoClutch" } },
+                                                     "car.couplingPoint", "car.lockUp", "car.cvtLow", "car.cvtHigh", "car.cvtEfficiency" } },
             { "car.aero", "Aero", { "car.cdA", "car.clA", "car.aeroBalance" } },
             { "car.brakes", "Brakes", { "car.brakeDecel", "car.brakeBias", "car.abs" } },
         };
