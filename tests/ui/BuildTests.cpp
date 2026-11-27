@@ -12,9 +12,6 @@
 
 #include "app/AppFrame.h"
 #include "app/host/HostSources.h"
-
-#include <chrono>
-#include <thread>
 #include "kit/bind/Binding.h"
 #include "kit/bind/host/BuildDoc.h"
 #include "views/valves/ValvesWorkspace.h"
@@ -25,11 +22,13 @@
 #include <funkgui/panel/HeadlessGuiScope.h>
 #include <funkgui/panel/HeadlessHost.h>
 
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <thread>
 
 namespace
 {
@@ -335,6 +334,63 @@ namespace
         std::printf("  after an edit of the compression: %s\n", after.c_str());
         CHECK_MSG(after == "waiting to bake" || after.rfind("baking", 0) == 0 || after.rfind("checking", 0) == 0, after);   // "baking spark map", "baking cam" ...
         CHECK(rig.doc->get(autoF) > 0.5);   // set aside: the engine on its knock control
+        CHECK(bake.error().empty());
+        return 0;
+    }
+}
+
+namespace
+{
+    // U1 (27 Nov): the bake across edits (card C's options 1 and 2) as the interface reads it, ServiceBake::status() over
+    // the real Spec: first.json, shipped baked, seen current; an edit of the compression keeps both tables playing,
+    // marked stale (their Auto switches still 0), the bake resting, said "Bakes once your edits rest" and "Old tables in
+    // use until baked"; an edit of the cylinders (a table's axes) sets them aside, today's words alone.
+    BUILD_TEST(bakeAcrossEditsTest, "build.bake.stale")
+    {
+        std::vector<std::string> warnings;
+        std::string error;
+        CHECK_MSG(rig.build->loadFile(std::filesystem::path(TEE_UI_BUILDS_DIR) / "first.json", tee::BuildPart::Whole, warnings, error), error);
+        tee::ui::ServiceBake bake(rig.sim, *rig.build);
+        using P = tee::ui::BakeStatus::Phase;
+        const auto t0 = std::chrono::steady_clock::now();
+        tee::ui::BakeStatus b;
+        while (std::chrono::steady_clock::now() - t0 < std::chrono::seconds(30))
+        {
+            bake.tick();
+            b = bake.status();
+            if (b.phase == P::baked || b.phase == P::checked || b.phase == P::none || b.phase == P::failed)
+                break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+        std::printf("  at load: %s ('%s')\n", bake.state().c_str(), tee::ui::bakeState(b).c_str());
+        if (b.phase == P::none)
+            return 0;   // a program without the tables: nothing to bake
+        CHECK_MSG(b.phase == P::baked || b.phase == P::checked, bake.state());
+        CHECK(!b.stale() && tee::ui::bakeLine(b).empty() && tee::ui::bakeStaleLine(b).empty());
+        const int comp = rig.doc->find("engine.compression"), kla = rig.doc->find("ecu.maps.knockLimitAuto"),
+                  cia = rig.doc->find("ecu.maps.camInAuto"), cyl = rig.doc->find("engine.cylinders");
+        CHECK(comp >= 0 && kla >= 0 && cia >= 0);
+        rig.doc->beginGesture();
+        rig.doc->set(comp, rig.doc->get(comp) + 0.5);
+        rig.doc->endGesture();
+        bake.tick();
+        b = bake.status();
+        std::printf("  after the compression: %s | %s\n", tee::ui::bakeLine(b).c_str(), tee::ui::bakeStaleLine(b).c_str());
+        CHECK(b.phase == P::resting && b.staleSpark && b.staleCam && !b.setAside);
+        CHECK_MSG(tee::ui::bakeLine(b) == "Bakes once your edits rest", tee::ui::bakeLine(b));
+        CHECK_MSG(tee::ui::bakeStaleLine(b) == "Old tables in use until baked", tee::ui::bakeStaleLine(b));
+        CHECK(rig.doc->get(kla) < 0.5 && rig.doc->get(cia) < 0.5);   // still in use: not set aside
+        if (cyl >= 0)
+        {
+            rig.doc->beginGesture();
+            rig.doc->set(cyl, rig.doc->get(cyl) + 1.0);
+            rig.doc->endGesture();
+            bake.tick();
+            b = bake.status();
+            std::printf("  after the cylinders: %s | '%s' (set aside %d)\n", tee::ui::bakeLine(b).c_str(), tee::ui::bakeStaleLine(b).c_str(),
+                        b.setAside ? 1 : 0);
+            CHECK(b.setAside && !b.stale() && tee::ui::bakeStaleLine(b).empty());
+        }
         CHECK(bake.error().empty());
         return 0;
     }

@@ -21,6 +21,7 @@
 // has an example (ui/views/_example/) and the way to test and picture one.
 #pragma once
 
+#include "app/BakeStatus.h"
 #include "kit/bind/Fields.h"
 #include "kit/bind/Units.h"
 #include "kit/widgets/Board.h"
@@ -327,6 +328,9 @@ namespace tee::ui
         // while working with a count ("baking cam 23 of 42", "checking spark map 3 of 9"); done: "baked" or
         // "calibration checked"
         std::function<std::string()> sparkMap;
+        // The same bake as fields (BakeStatus.h; card C's bake across edits: the stale tables played meanwhile, the rest
+        // before a bake, a restart's field, a stage kept). Served: the words come from it; empty function: from sparkMap.
+        std::function<BakeStatus()> bakeStatus;
         // The knock-limit table last baked: its cells still knocking after the corrections, [speed][load] on
         // ecu.maps.knockLimit's grid (empty: none, or not served). TUNE marks them on that map.
         std::function<std::vector<std::vector<bool>>()> stillKnocking;
@@ -391,6 +395,17 @@ namespace tee::ui
         // workspace then copies the text: HostServices::copyText).
         std::function<bool(const std::string& suggestedName, const std::string& text, std::string& error)> saveText;
     };
+
+    // The bake's state as a FrameServices serves it: bakeStatus when served, else sparkMap's string parsed; none when
+    // `s` is null or serves neither.
+    inline BakeStatus bakeStatusOf(const FrameServices* s)
+    {
+        if (s == nullptr)
+            return {};
+        if (s->bakeStatus)
+            return s->bakeStatus();
+        return bakeStatusOf(s->sparkMap ? s->sparkMap() : std::string());
+    }
 
     // ---- the context ------------------------------------------------------------------------------------------------
     // What every workspace is given; owned by the frame (or a test's rig), alive as long as the workspaces are.

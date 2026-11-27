@@ -14,6 +14,7 @@
 // generation() itself asks the host for a newer copy, so a reader that waits for it to move gets one. UI thread.
 #pragma once
 
+#include "app/BakeStatus.h"
 #include "app/Workspace.h"
 
 #include "tee/Bake.h"
@@ -111,6 +112,9 @@ namespace tee::ui
         // The service's words; while baking or checking, its stage and its count ("baking cam 23 of 42", "checking spark
         // map 3 of 9"); done, "baked" or "calibration checked" (a cached bake checked on this program).
         std::string state() const;
+        // The same as fields, for the words (app/BakeStatus.h; card C's tee::BakeStatus mapped: the stale tables in play,
+        // the rest, a restart's field by its label, the stages kept). FrameServices::bakeStatus serves it.
+        BakeStatus status() const;
         // The knock-limit table last applied: its cells still knocking after the corrections, [speed][load] on its grid
         // (empty: none applied); and how many.
         std::vector<std::vector<bool>> stillKnocking() const;

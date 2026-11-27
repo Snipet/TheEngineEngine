@@ -13,6 +13,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstdio>
+#include <functional>
 #include <thread>
 
 namespace
@@ -44,6 +45,7 @@ namespace
         bake->yieldTo(dyno);   // the ribbon's curve before the bake's points
         tee::ui::FrameServices services = tee::ui::buildServices(*rig.build, TEE_UI_BUILDS_DIR, rig.user, {});
         services.sparkMap = [&bake] { return bake ? bake->state() : std::string(); };
+        services.bakeStatus = [&bake] { return bake ? bake->status() : tee::ui::BakeStatus{}; };
         tee::ui::AppFrame frame(*rig.doc, rig.units, rig.telemetry, services, &dyno, nullptr, tee::ui::defaultSlots(), 1280, 800);
         funkgui::HeadlessHost host(frame, 0, 1.0f);
         host.tick(5);
@@ -58,6 +60,7 @@ namespace
         bool bakedAgain = false;   // a stage of baking seen (the second launch must take its tables from the cache)
         double longestStill = 0.0;   // s: the longest the state stood unmoved in a watch to the end (printed: kStall's room)
         constexpr double kStall = 120.0, kCap = 1500.0;   // s: the state unmoved this long is a stall; the run's bound
+        std::function<void()> watchEach;   // called each tick of a watch, when set
         const auto stageOf = [](const std::string& st) {   // "baking cam 23 of 42" -> "baking cam"
             const std::size_t d = st.find_first_of("0123456789");
             return d == std::string::npos ? st : st.substr(0, d - 1);
@@ -72,6 +75,8 @@ namespace
             {
                 bake->tick();
                 host.tick(1);
+                if (watchEach)
+                    watchEach();
                 const std::string s = bake->state();
                 if (s != moved)
                 {
@@ -136,12 +141,43 @@ namespace
         CHECK_MSG(firstCurve >= 0.0 && pointsDone(firstCurveState) <= 10,
                   "first curve at " + std::to_string(firstCurve) + " s, the bake at '" + firstCurveState + "'");
         std::printf("  still knocking after the bake: %d cells\n", bake->stillKnockingCells());
+        // One edit (card C's bake across edits, the owner's options 1 and 2; restated by U1, 27 Nov, on the bake's state):
+        // the old tables stay in use, marked stale, while the bake rests for the edits; it starts by itself once they
+        // rest; the old tables play all through it; the new ones land and nothing is stale. Was "re-bakes within 12 s".
         std::printf("  -- edit compression +0.5\n");
-        const int comp = rig.doc->find("engine.compression");
+        const int comp = rig.doc->find("engine.compression"), kl = rig.doc->find("ecu.maps.knockLimit");
+        const tee::ui::Map16 before = kl >= 0 ? rig.doc->map(kl) : tee::ui::Map16{};
         rig.doc->beginGesture();
         rig.doc->set(comp, rig.doc->get(comp) + 0.5);
         rig.doc->endGesture();
-        watch(12.0, "edit1", false);
+        bake->tick();
+        host.tick(1);
+        tee::ui::BakeStatus st = bake->status();
+        std::printf("  at once: '%s' | '%s'\n", tee::ui::bakeLine(st).c_str(), tee::ui::bakeStaleLine(st).c_str());
+        CHECK_MSG(st.phase == tee::ui::BakeStatus::Phase::resting && st.staleSpark && st.staleCam && !st.setAside, bake->state());
+        CHECK(rig.doc->get(kla) < 0.5 && rig.doc->get(cia) < 0.5);   // in use, not set aside
+        // To the new tables, for as long as the state moves; each tick while it works, the old ones in use and said stale.
+        const double editAt = now();
+        double bakingAt = -1.0;
+        int notStale = 0;
+        watchEach = [&] {
+            const tee::ui::BakeStatus w = bake->status();
+            if (bakingAt < 0.0 && w.phase == tee::ui::BakeStatus::Phase::baking)
+                bakingAt = now();
+            if (w.working() && (!w.staleSpark || !w.staleCam || rig.doc->get(kla) > 0.5 || rig.doc->get(cia) > 0.5))
+                ++notStale;
+        };
+        CHECK_MSG(watch(0.0, "edit1", true), "the edit's bake stalled at '" + bake->state() + "'");
+        watchEach = nullptr;
+        st = bake->status();
+        std::printf("  rested %.1f s, then baked in %.1f s; ticks working without the old tables in use: %d\n",
+                    bakingAt >= 0.0 ? bakingAt - editAt : -1.0, bakingAt >= 0.0 ? now() - bakingAt : -1.0, notStale);
+        CHECK_MSG(bakingAt >= 0.0, "no stage of baking after the edit");
+        CHECK(notStale == 0);
+        CHECK_MSG((st.phase == tee::ui::BakeStatus::Phase::baked || st.phase == tee::ui::BakeStatus::Phase::checked) && !st.stale(),
+                  bake->state());
+        CHECK(rig.doc->get(kla) < 0.5 && rig.doc->get(cia) < 0.5);
+        CHECK_MSG(kl < 0 || !(rig.doc->map(kl).z == before.z), "the knock-limit table did not move with the compression");
         CHECK_MSG(bake->error().empty(), bake->error());
         // A second launch: a fresh service over the same cache, first.json loaded again: "baked" at once.
         bake.reset();

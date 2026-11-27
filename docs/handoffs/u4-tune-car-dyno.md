@@ -60,3 +60,14 @@ line takes the same mark. The cost, accepted: with no ring, a state curve's meas
 beneath, not on the curve. DO NOT add the rings back as "point markers": a mark on a point means something is true of
 that point. Also: the knock rings are drawn after the peaks' discs (a peak shows its own), and the cursor is carried
 down through the band under the plot with a dot on each curve. Test `dyno.knock.state` pins the rule.
+
+**Added by U1 for U4, 27 Nov 2026** (card C's bake across edits, options 1 and 2, the owner's yes; the words U1's, the
+lead's ruling): TUNE's bake words now come from the frame's `BakeStatus` (ui/app/BakeStatus.h; `bakeStatusOf(services)`
+in Workspace.h: `FrameServices::bakeStatus` when served, else `sparkMap`'s string parsed), so TUNE and the status line say
+the bake alike: "Knock limit: baking the spark map 12 of 80; in use" (was the host's raw "baking spark map 12 of 80"),
+and while the engine plays on the table from before an edit, "...; old table in use" (the label's ink: information, not a
+warning). The octane sentence's "(baking the spark map 3 of 9)" likewise (TuneTests' two strings updated to it). The cam
+line no longer needs `sparkMap`'s string to say "in use". "In use" comes from the engine's telemetry (ecu.knockTable;
+the cam's Auto switch); with none (no engine running, as in the application before a start, or a test without a sim),
+the service's own word that a stale table plays (BakeStatus::staleSpark/staleCam) says "old table in use" in its place.
+Probe `tuneBakeWords` (Tune.h). Test `frame.bake.stale` (FrameTests.cpp). No golden moved.
