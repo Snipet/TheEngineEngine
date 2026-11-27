@@ -2825,6 +2825,28 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:39 UTC: card A's seven commits are in at 899259e9 (run 46042046822), AND ONE OF ITS NEW CASES IS RED
+  WHERE THE BUILD HAS NO SYSTEM KEY STORE.** Gated trees unchanged (sim 22314cde, host ef1715f6, tools 7c3e4d59).
+  - The lead's own build of 899259e9: the assistant's tests 30 of 31. `assistant.sim` fails at
+    `tests/assistant/ChatTest.cpp:820` and `:829` (127ae3c's key-read case): "this build has no system key store
+    (libsecret's headers were missing when it was configured)". Cause, read in the code: the session copies the
+    "no key store" reason into the chat when it is made, and `useKeyStore` does not take it back, so `Chat::ready`
+    answers before it asks for the key. Card A's 598 of 598 is true on a container that has libsecret-1-dev; CI's
+    Linux installs it. **Prediction, written before any Windows result: windows-x64 red on the same two lines**
+    (no store and no transport there); Linux and macOS green.
+  - Card A cures it as its own push BEFORE its item 3: the case to run and pass on Windows and on Linux without
+    libsecret's headers, not skipped; the cure proved on a tree configured without them.
+  - **`main` does not move to 899259e9 if Windows is red; it waits for the cure's three greens.** It may move to
+    40463d37 (J2's carry of U1's withdrawn question) on its Windows job: Linux and macOS are green there.
+  - What the lead read and broke on the stack: 46baadb (`urlAllowed`) sound, and with the '@' test removed
+    `TransportTest.cpp:27` fails; acbaae6 (the build's name as a JSON string under a label) and with the old line
+    back `ChatTest.cpp:882` and `:893` fail; 127ae3c's locks read (key state, then chat; no path holds the chat's
+    lock around the key's provider). Not yet run by the lead beyond the suite: d64da73, 38d1fe7, 2023a2a, d4c3ce8.
+  - A question put to card A, a finding if its probe is red: every `dump()` in `assistant/` is the strict one and
+    nothing there catches, so a string that is not UTF-8 in a tool's result (a name, a path on Windows) would throw
+    on the chat's or the link's thread.
+  - **THE HOLD IS ON for code-bearing pushes until 899259e9's three jobs have started** (17:39: Linux and macOS
+    started, Windows waiting). Then, in order: card A's cure, J2's carry of U1's air patch, card A's item 3.
 - **27 Nov 17:23 UTC: U1's air patch (40d461d5) has the lead's word, four goldens blessed** (frame.desktop.off,
   .connected, .refused, frame.ask; no other). 4 px of air under each settings row whose line wraps to two
   (`ui/app/AppFrame.cpp`: CLAUDE DESKTOP and WHEEL at 46, the clutch's own 4 removed). The lead's look, on c0efd215
