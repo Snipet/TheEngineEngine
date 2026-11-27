@@ -1,12 +1,17 @@
 // tests/ui/build/BakeWatch.cpp: the calibration bake (card C's CalibrationBakeService through ServiceBake) as a person
 // sees it, in real time on first.json under the frame with TUNE showing: a timeline of TUNE's words, the set-aside
 // switches and the ribbon's peak (printed), a picture at each change of state (out/ui/bake.watch.<n>.png); then one
-// edit, its first seconds. A ".pictures" case: nightly only, about two minutes on four cores (the lead's ask, 01:12).
+// edit, its first seconds. A ".pictures" case: nightly only, about two and a half minutes on four cores (the lead's ask,
+// 01:12). Its waits are on the bake's state, not a clock (the lead's ask, 27 Nov: hosted runners differ by up to about
+// 1.9x; the 26 Nov soak's slower one failed a 300 s and a 10 s clock): a wait ends when the state is reached, or fails
+// when the state stops moving for kStall; kCap only keeps a hung run from holding the nightly.
 #include "build/BuildKit.h"
 
 #include "app/host/HostSources.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <cstdio>
 #include <thread>
 
@@ -47,24 +52,45 @@ namespace
         const int kla = rig.doc->find("ecu.maps.knockLimitAuto"), cia = rig.doc->find("ecu.maps.camInAuto");
         auto t0 = std::chrono::steady_clock::now();
         auto now = [&] { return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(); };
-        std::string lastStage;
+        std::string lastStage, firstCurveState;
         int shots = 0;
         double lastPeak = -1.0, lastPrint = -100.0, firstCurve = -1.0;
+        bool bakedAgain = false;   // a stage of baking seen (the second launch must take its tables from the cache)
+        double longestStill = 0.0;   // s: the longest the state stood unmoved in a watch to the end (printed: kStall's room)
+        constexpr double kStall = 120.0, kCap = 1500.0;   // s: the state unmoved this long is a stall; the run's bound
         const auto stageOf = [](const std::string& st) {   // "baking cam 23 of 42" -> "baking cam"
             const std::size_t d = st.find_first_of("0123456789");
             return d == std::string::npos ? st : st.substr(0, d - 1);
         };
+        // Watches for `until` seconds; with `stopAtBaked`, until the bake is done instead, for as long as its state moves
+        // (each point changes its words). False when it stopped moving for kStall (or ran past kCap).
         const auto watch = [&](double until, const char* phase, bool stopAtBaked) {
             const double end = now() + until;
-            while (now() < end)
+            std::string moved = bake->state();
+            double movedAt = now();
+            while (stopAtBaked ? now() < kCap : now() < end)
             {
                 bake->tick();
                 host.tick(1);
                 const std::string s = bake->state();
+                if (s != moved)
+                {
+                    longestStill = std::max(longestStill, now() - movedAt);
+                    moved = s;
+                    movedAt = now();
+                }
+                if (s.rfind("baking ", 0) == 0)
+                    bakedAgain = true;
+                if (stopAtBaked && now() - movedAt > kStall)
+                {
+                    std::printf("  %7.2f s  [%s]  state '%s' unmoved for %.0f s: a stall\n", now(), phase, s.c_str(), kStall);
+                    return false;
+                }
                 const double pk = dyno.predicted().peakTorque().value;
                 if (firstCurve < 0.0 && !dyno.predicted().empty())
                 {
                     firstCurve = now();
+                    firstCurveState = s;
                     std::printf("  %7.2f s  [%s]  the ribbon's first curve (state '%s')\n", firstCurve, phase, s.c_str());
                 }
                 const bool newStage = stageOf(s) != lastStage;
@@ -85,16 +111,30 @@ namespace
                     lastPrint = now();
                 }
                 if (stopAtBaked && (s == "baked" || s == "calibration checked"))
-                    return;
+                    return true;
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
+            return !stopAtBaked;
+        };
+        // "baking spark map 3 of 80" -> 3; no count yet ("waiting to bake", "baking"): 0.
+        const auto pointsDone = [](const std::string& st) {
+            const std::size_t of = st.find(" of ");
+            if (of == std::string::npos)
+                return 0;
+            const std::size_t d = st.rfind(' ', of - 1);
+            return std::atoi(st.c_str() + (d == std::string::npos ? 0 : d + 1));
         };
         std::printf("  -- load (the bake yields to the ribbon's predictor; cache %s, empty)\n", cache.string().c_str());
-        watch(300.0, "load", true);
+        CHECK_MSG(watch(0.0, "load", true), "the load's bake stalled at '" + bake->state() + "'");
+        std::printf("  the state stood still at most %.1f s (a stall: %.0f s)\n", longestStill, kStall);
         CHECK(bake->state() == "baked" || bake->state() == "calibration checked");
-        // The ribbon's first curve with the bake running: 6 s here (4.0 s with no bake at all, a cold process's predictor;
-        // 31 to 35 s before the bake yielded to it, card C's 7f2ddfa1).
-        CHECK_MSG(firstCurve >= 0.0 && firstCurve < 10.0, std::to_string(firstCurve));
+        // A promptness check, not a guard of the bake's yield: the ribbon's first curve comes a few points into the bake's
+        // first stage, whatever the machine's speed (both slow together). The yield is no longer what makes it prompt
+        // (U1, 27 Nov, the lead's proof asked for): pinned to two cores and to one, the first curve came at point 3 with the
+        // yield and point 4 without it (2 cores 10.0 s / 13.4 s; 1 core 21.1 s / 24.4 s); on four, 4.9 to 6.8 s at point 2
+        // or 3. Before card C's 7f2ddfa1 it came some thirty points in (31 to 35 s); a check of 10 points would catch that.
+        CHECK_MSG(firstCurve >= 0.0 && pointsDone(firstCurveState) <= 10,
+                  "first curve at " + std::to_string(firstCurve) + " s, the bake at '" + firstCurveState + "'");
         std::printf("  still knocking after the bake: %d cells\n", bake->stillKnockingCells());
         std::printf("  -- edit compression +0.5\n");
         const int comp = rig.doc->find("engine.compression");
@@ -111,8 +151,11 @@ namespace
         std::printf("  -- a second launch (first.json again, the cache from the first)\n");
         t0 = std::chrono::steady_clock::now();
         lastStage.clear();
-        watch(60.0, "second", true);
-        CHECK_MSG((bake->state() == "baked" || bake->state() == "calibration checked") && now() < 5.0, bake->state() + " after " + std::to_string(now()) + " s");
+        bakedAgain = false;
+        // Done from the cache: no stage of baking on the way (checking it on this program may run points; 1.5 s here).
+        CHECK_MSG(watch(0.0, "second", true), "the second launch stalled at '" + bake->state() + "'");
+        CHECK_MSG((bake->state() == "baked" || bake->state() == "calibration checked") && !bakedAgain,
+                  bake->state() + (bakedAgain ? ", baked again" : "") + " after " + std::to_string(now()) + " s");
         return 0;
     }
 }
