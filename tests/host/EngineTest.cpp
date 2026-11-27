@@ -939,8 +939,9 @@ TEST_CASE("the knock limit's loads on a turbo: boost targets from its level down
     CHECK(spread);
 }
 
-TEST_CASE("the background bake: a stale table set aside at once, baked when the edits rest, taken, current; an edit "
-          "of what moves the knock limit makes it stale again",
+TEST_CASE("the background bake: a stale table not seen current here set aside at once, baked when the edits rest, "
+          "taken, current; an edit of what moves the knock limit makes it stale: it plays on, and is replaced when the "
+          "new one lands",
           "[engine][sim][bake]")
 {
     if (!haveSim())
@@ -955,9 +956,10 @@ TEST_CASE("the background bake: a stale table set aside at once, baked when the 
     unbaked(build);   // as before the content's tables were baked
     if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
         SKIP("the program has no knock-limit table yet");
-    KnockBakeOptions options;   // small, for the test: two speeds at full throttle
+    KnockBakeOptions options;   // small, for the test: two speeds at full throttle and one boost step
     options.speeds = 2;
     options.pedals = {1.0};
+    options.boostSteps = 1;
     options.predict.threads = 2;
     KnockBakeService bakes(sim, options, 0.05);
 
@@ -995,10 +997,373 @@ TEST_CASE("the background bake: a stale table set aside at once, baked when the 
     CHECK(bakes.stillKnockingCells() >= 0);
     CHECK(bakes.consider(build) == KnockBakeState::Current);
 
-    // a control is not an edit of the build: nothing to consider. The compression is: stale, set aside, asked again
+    // a control is not an edit of the build: nothing to consider. The compression is: stale, and (the owner's choice,
+    // 27 Nov, docs/plan/bake-across-edits.md option 1) the table this service saw current plays on while the new one
+    // bakes, its values in place, said so; when the new one lands it replaces it
+    const std::vector<double> before = build.values(build.fieldOf("ecu.maps.knockLimit"));
     build.set("engine.compression", build.get("engine.compression") - 0.5);
     CHECK(bakes.consider(build) != KnockBakeState::Current);
-    CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
+    CHECK(build.get("ecu.maps.knockLimitAuto") == 0.0);
+    CHECK(build.values(build.fieldOf("ecu.maps.knockLimit")) == before);
+    CHECK(bakes.status().sparkStale);
+    CHECK(bakes.status().sparkSetAsideBy.empty());
+    CHECK_FALSE(knockLimitCurrent(build, *sim));
+    applied = false;
+    const auto again = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    while (!applied && std::chrono::steady_clock::now() < again)
+    {
+        REQUIRE(bakes.state() != KnockBakeState::Failed);
+        CHECK(build.get("ecu.maps.knockLimitAuto") == 0.0);   // playing on the old one until the new one lands
+        applied = bakes.takeAndApply(build, error);
+        INFO(error);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    REQUIRE(applied);
+    CHECK(knockLimitCurrent(build, *sim));
+    CHECK_FALSE(bakes.status().sparkStale);
+    CHECK(build.values(build.fieldOf("ecu.maps.knockLimit")) != before);   // the new table, not the old one kept
+}
+
+// The bake across an owner's edits (the owner's choice 27 Nov, docs/plan/bake-across-edits.md options 1 and 2), on the
+// V12 as shipped (its tables current on this program): no bake runs in these (the wait is long, or the edit undone), so
+// each is a consider() or a few: what plays, what is set aside and why, how long the wait is, what a cancel or the
+// service's end does to it.
+namespace
+{
+    struct ShippedV12
+    {
+        std::shared_ptr<Sim> sim;
+        Build build;
+        explicit ShippedV12(std::shared_ptr<Sim> s) : sim(std::move(s)), build(sim->fields())
+        {
+            std::vector<std::string> warnings;
+            std::string error;
+            REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/v12-65.json",
+                                   BuildPart::Whole, warnings, error));
+            REQUIRE(knockLimitCurrent(build, *sim));   // as shipped: baked on this program
+            REQUIRE(intakeCamCurrent(build, *sim));
+        }
+    };
+
+    CalibrationBakeOptions slowToStart(double floor = 600.0)
+    {
+        CalibrationBakeOptions o;
+        o.debounceSeconds = floor;   // no bake starts within the case
+        return o;
+    }
+} // namespace
+
+TEST_CASE("an edit keeps the stale tables playing and undone is current at once", "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    ShippedV12 v(compiled(simDir(), {}, error));
+    CalibrationBakeService bakes(v.sim, slowToStart());
+    REQUIRE(bakes.consider(v.build) == KnockBakeState::Current);   // seen current here
+    const std::vector<double> spark = v.build.values(v.build.fieldOf("ecu.maps.knockLimit"));
+    const std::vector<double> cam = v.build.values(v.build.fieldOf("ecu.maps.camIn"));
+    const double compression = v.build.get("engine.compression");
+    v.build.set("engine.compression", compression - 0.5);   // moves both keys
+    CHECK(bakes.consider(v.build) == KnockBakeState::Waiting);
+    // both still applied, their values in place (before: both Auto switches set, the engine on its fallbacks)
+    CHECK(v.build.get("ecu.maps.knockLimitAuto") == 0.0);
+    CHECK(v.build.get("ecu.maps.camInAuto") == 0.0);
+    CHECK(v.build.values(v.build.fieldOf("ecu.maps.knockLimit")) == spark);
+    CHECK(v.build.values(v.build.fieldOf("ecu.maps.camIn")) == cam);
+    const BakeStatus s = bakes.status();
+    CHECK(s.sparkStale);
+    CHECK(s.camStale);
+    CHECK(s.sparkSetAsideBy.empty());
+    CHECK(s.waiting);
+    // undone: the tables kept are the build's again by their own keys, current at once (no bake, no cache)
+    v.build.set("engine.compression", compression);
+    CHECK(bakes.consider(v.build) == KnockBakeState::Current);
+    CHECK(knockLimitCurrent(v.build, *v.sim));
+    CHECK(intakeCamCurrent(v.build, *v.sim));
+    CHECK_FALSE(bakes.status().sparkStale);
+    CHECK_FALSE(bakes.status().waiting);
+    CHECK(bakes.status().bakesStarted == 0);
+}
+
+// The rule a stale table is judged fit by (unfitBy), a line each: each field of the list makes it unfit, by its own
+// path; compression (a key's field, nothing of the table's axes or meaning) does not; nor the displacement while the
+// redline is stated (redlineSpeed above 0), nor a boost kind within its class (Turbo to Twin)
+TEST_CASE("the fit rule: each field of a table's axes or meaning, a line each; compression keeps a table fit",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build base(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(base.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/v12-65.json",
+                          BuildPart::Whole, warnings, error));
+    const auto copyOf = [&](const Build& b) {
+        auto c = std::make_unique<Build>(b.fields());
+        std::vector<std::string> w;
+        std::string e;
+        REQUIRE(c->load(b.save(), BuildPart::Whole, w, e));
+        return c;
+    };
+    // a value other than the base's, within the field's range
+    const auto other = [&](const Build& b, const char* f) {
+        const FieldInfo* info = b.fields().find(std::string("spec.") + f);
+        REQUIRE(info != nullptr);
+        const double v = b.get(f);
+        const double lo = info->minimum.value_or(v - 1.0), hi = info->maximum.value_or(v + 1.0);
+        return v + 1.0 <= hi ? v + 1.0 : v - 1.0 >= lo ? v - 1.0 : (lo + hi) / 2.0;
+    };
+    CHECK(unfitBy(base, *copyOf(base)).empty());   // nothing moved
+    for (const char* f : {"engine.cylinders", "engine.layout", "engine.cycle", "engine.redlineSpeed", "engine.redlineTrim",
+                          "ecu.idle.speed", "boost.layout", "fuel.kind", "valve.model", "intake.model", "boost.model",
+                          "exhaust.model", "fuel.model", "ecu.model"})
+    {
+        INFO(f);
+        if (base.fieldOf(f) < 0)
+            continue;
+        auto now = copyOf(base);
+        now->set(f, other(base, f));
+        CHECK(unfitBy(base, *now) == std::string("spec.") + f);
+    }
+    // the boost's class: none to a turbine, a turbine to a supercharger; within the class (Turbo to Twin) fit
+    {
+        auto now = copyOf(base);
+        now->set("boost.kind", 1.0);
+        CHECK(unfitBy(base, *now) == "spec.boost.kind");
+        auto twin = copyOf(*now);
+        twin->set("boost.kind", 2.0);
+        CHECK(unfitBy(*now, *twin).empty());
+        auto sc = copyOf(*now);
+        sc->set("boost.kind", 4.0);
+        CHECK(unfitBy(*now, *sc) == "spec.boost.kind");
+    }
+    // the displacement and the bore-stroke: unfit while the redline follows the stroke (redlineSpeed 0), fit while it
+    // is stated
+    for (const char* f : {"engine.displacement", "engine.boreStroke"})
+    {
+        INFO(f);
+        auto stated = copyOf(base);
+        REQUIRE(base.get("engine.redlineSpeed") > 0.0);
+        stated->set(f, base.get(f) * 1.05);
+        CHECK(unfitBy(base, *stated).empty());
+        auto derived = copyOf(base);
+        derived->set("engine.redlineSpeed", 0.0);
+        auto moved = copyOf(*derived);
+        moved->set(f, base.get(f) * 1.05);
+        CHECK(unfitBy(*derived, *moved) == std::string("spec.") + f);
+    }
+    // compression: a key's field, fit (the table plays on while it bakes)
+    {
+        auto now = copyOf(base);
+        now->set("engine.compression", base.get("engine.compression") - 0.5);
+        CHECK(unfitBy(base, *now).empty());
+    }
+}
+
+TEST_CASE("an edit of a table's axes or meaning sets it aside, and says which field", "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    struct Edit
+    {
+        const char* field;
+        double to;   // the new value (an absolute one)
+    };
+    const Edit edits[] = {{"engine.cylinders", 8.0},   {"engine.layout", 0.0},     {"engine.redlineSpeed", 600.0},
+                          {"ecu.idle.speed", 110.0},   {"boost.kind", 1.0},        {"fuel.model", 0.0},
+                          {"valve.model", 0.0},        {"exhaust.model", 0.0}};
+    for (const Edit& e : edits)
+    {
+        ShippedV12 v(sim);
+        if (v.build.fieldOf(e.field) < 0 || v.build.get(e.field) == e.to)
+            continue;   // (a field this program lacks, or already that value)
+        INFO(e.field);
+        CalibrationBakeService bakes(v.sim, slowToStart());
+        REQUIRE(bakes.consider(v.build) == KnockBakeState::Current);
+        v.build.set(e.field, e.to);
+        const KnockBakeState st = bakes.consider(v.build);
+        if (st == KnockBakeState::Current || st == KnockBakeState::NoTable)
+            continue;   // an edit that moved no key (said by the keys, not here)
+        const BakeStatus s = bakes.status();
+        const std::string want = std::string("spec.") + e.field;
+        if (!knockLimitCurrent(v.build, *v.sim) && v.build.fieldOf("ecu.maps.knockLimitAuto") >= 0)
+        {
+            CHECK(v.build.get("ecu.maps.knockLimitAuto") == 1.0);
+            CHECK_FALSE(s.sparkStale);
+            CHECK(s.sparkSetAsideBy == want);
+        }
+        if (!intakeCamCurrent(v.build, *v.sim))
+        {
+            CHECK(v.build.get("ecu.maps.camInAuto") == 1.0);
+            CHECK_FALSE(s.camStale);
+            CHECK(s.camSetAsideBy == want);
+        }
+    }
+}
+
+TEST_CASE("a loaded build plays on no table this service did not see current; a first launch as before",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    ShippedV12 v(compiled(simDir(), {}, error));
+    CalibrationBakeService bakes(v.sim, slowToStart());
+    REQUIRE(bakes.consider(v.build) == KnockBakeState::Current);
+    // another build loaded, its tables stale here (baked elsewhere: another key)
+    Build other(v.sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(other.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/economy-four-15.json",
+                           BuildPart::Whole, warnings, error));
+    other.set("ecu.maps.knockLimitKey", 12345.0);
+    other.set("ecu.maps.camInKey", 12345.0);
+    CHECK(bakes.consider(other) == KnockBakeState::Waiting);
+    CHECK(other.get("ecu.maps.knockLimitAuto") == 1.0);
+    CHECK(other.get("ecu.maps.camInAuto") == 1.0);
+    BakeStatus s = bakes.status();
+    CHECK_FALSE(s.sparkStale);
+    CHECK_FALSE(s.camStale);
+    CHECK(s.sparkSetAsideBy == "not seen current here");
+    CHECK(s.camSetAsideBy == "not seen current here");
+    // the V12 again, as it was: its tables seen current, current at once
+    CHECK(bakes.consider(v.build) == KnockBakeState::Current);
+    // a first launch: a new service, a stale build: set aside as before
+    CalibrationBakeService fresh(v.sim, slowToStart());
+    v.build.set("engine.compression", v.build.get("engine.compression") - 0.5);
+    CHECK(fresh.consider(v.build) == KnockBakeState::Waiting);
+    CHECK(v.build.get("ecu.maps.knockLimitAuto") == 1.0);
+    CHECK(fresh.status().sparkSetAsideBy == "not seen current here");
+}
+
+TEST_CASE("the wait for the edits to rest: the floor, a share of the expected bake at the measured rate, the ceiling",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    ShippedV12 v(compiled(simDir(), {}, error));
+    const double compression = v.build.get("engine.compression");
+    // no rate measured yet: the floor
+    {
+        CalibrationBakeService bakes(v.sim, slowToStart(30.0));
+        REQUIRE(bakes.consider(v.build) == KnockBakeState::Current);
+        v.build.set("engine.compression", compression - 0.5);
+        bakes.consider(v.build);
+        CHECK(bakes.status().waitSeconds == 30.0);
+        v.build.set("engine.compression", compression);
+        REQUIRE(bakes.consider(v.build) == KnockBakeState::Current);
+    }
+    // a rate: the share of the expected bake, within the floor and the ceiling
+    for (const double rate : {0.01, 0.5, 100.0})
+    {
+        CalibrationBakeOptions o;
+        o.debounceSeconds = 1.5;
+        o.debounceMostSeconds = 15.0;
+        o.secondsPerPoint = rate;
+        CalibrationBakeService bakes(v.sim, o);
+        REQUIRE(bakes.consider(v.build) == KnockBakeState::Current);
+        v.build.set("engine.compression", compression - 0.5);
+        bakes.consider(v.build);
+        const BakeStatus s = bakes.status();
+        INFO("rate " << rate << " s a point: wait " << s.waitSeconds << " s");
+        CHECK(s.waitSeconds >= 1.5);
+        CHECK(s.waitSeconds <= 15.0);
+        if (rate == 0.01)
+            CHECK(s.waitSeconds == 1.5);    // a fast machine: the floor
+        if (rate == 100.0)
+            CHECK(s.waitSeconds == 15.0);   // a slow one: the ceiling
+        if (rate == 0.5)
+            CHECK((s.waitSeconds > 1.5 && s.waitSeconds < 15.0));
+        CHECK(s.secondsLeft <= s.waitSeconds);
+        v.build.set("engine.compression", compression);
+        REQUIRE(bakes.consider(v.build) == KnockBakeState::Current);   // undone: no bake
+    }
+    // a load (nothing plays meanwhile): the floor whatever the rate
+    {
+        CalibrationBakeOptions o;
+        o.debounceSeconds = 1.5;
+        o.secondsPerPoint = 100.0;
+        CalibrationBakeService bakes(v.sim, o);
+        Build other(v.sim->fields());
+        std::vector<std::string> warnings;
+        REQUIRE(other.load(v.build.save(), BuildPart::Whole, warnings, error));
+        other.set("ecu.maps.knockLimitKey", 12345.0);
+        bakes.consider(other);
+        CHECK(bakes.status().waitSeconds == 1.5);
+        CHECK(other.get("ecu.maps.knockLimitAuto") == 1.0);
+    }
+}
+
+TEST_CASE("edits a little apart start one bake; one undone during the wait starts none; the service may go while it "
+          "waits",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    ShippedV12 v(compiled(simDir(), {}, error));
+    const double compression = v.build.get("engine.compression");
+    // a rate that makes the wait 4 s (the ceiling); three edits 1.6 s apart: under the old 1.5 s each would have
+    // started a bake of its own, cancelled by the next
+    {
+        CalibrationBakeOptions o;
+        o.debounceSeconds = 1.5;
+        o.debounceMostSeconds = 4.0;
+        o.secondsPerPoint = 100.0;
+        CalibrationBakeService bakes(v.sim, o);
+        REQUIRE(bakes.consider(v.build) == KnockBakeState::Current);
+        std::string movedBy;
+        for (int k = 1; k <= 3; ++k)
+        {
+            v.build.set("engine.compression", compression - 0.1 * k);
+            bakes.consider(v.build);
+            CHECK(bakes.status().waitSeconds == 4.0);
+            if (k > 1)
+            {
+                CHECK(bakes.status().restarted);   // the wait started again, by this field
+                movedBy = bakes.status().restartedBy;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1600));
+            CHECK(bakes.status().bakesStarted == 0);
+        }
+        CHECK(movedBy == "spec.engine.compression");
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        while (bakes.status().bakesStarted == 0 && std::chrono::steady_clock::now() < until)
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        CHECK(bakes.status().bakesStarted == 1);
+        // the service goes while it bakes: its cancel ends it (the crash cases of 27 Nov cover what the bake does)
+        v.build.set("engine.compression", compression);
+    }
+    // undone during the wait: none starts
+    {
+        CalibrationBakeOptions o;
+        o.debounceSeconds = 1.0;
+        CalibrationBakeService bakes(v.sim, o);
+        REQUIRE(bakes.consider(v.build) == KnockBakeState::Current);
+        v.build.set("engine.compression", compression - 0.5);
+        bakes.consider(v.build);
+        v.build.set("engine.compression", compression);
+        CHECK(bakes.consider(v.build) == KnockBakeState::Current);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+        CHECK(bakes.status().bakesStarted == 0);
+        CHECK(bakes.state() == KnockBakeState::Current);
+    }
+    // the service goes while it waits: at once, no bake
+    {
+        auto bakes = std::make_unique<CalibrationBakeService>(v.sim, slowToStart());
+        REQUIRE(bakes->consider(v.build) == KnockBakeState::Current);
+        v.build.set("engine.compression", compression - 0.5);
+        bakes->consider(v.build);
+        const auto t0 = std::chrono::steady_clock::now();
+        bakes.reset();
+        CHECK(std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() < 2.0);
+        v.build.set("engine.compression", compression);
+    }
 }
 
 namespace
@@ -1317,11 +1682,14 @@ TEST_CASE("the calibration baked in the background: the spark, the cam on that s
     INFO("stages seen: " << stages.size());
     CHECK(stages.count("cam") == 1);
 
-    // an edit of what moves both (the compression): both stale, both set aside, a bake asked
+    // an edit of what moves both (the compression): both stale, a bake asked; both seen current here and the edit
+    // moving neither's axes, so both play on while it bakes (the owner's choice 27 Nov: before, both were set aside)
     build.set("engine.compression", build.get("engine.compression") - 0.5);
     CHECK(bakes.consider(build) != KnockBakeState::Current);
-    CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
-    CHECK(build.get("ecu.maps.camInAuto") == 1.0);
+    CHECK(build.get("ecu.maps.knockLimitAuto") == 0.0);
+    CHECK(build.get("ecu.maps.camInAuto") == 0.0);
+    CHECK(bakes.status().sparkStale);
+    CHECK(bakes.status().camStale);
 }
 
 // The CalibrationBakeService under the owner's hand: an edit lands while a bake runs, in each of its phases (the spark

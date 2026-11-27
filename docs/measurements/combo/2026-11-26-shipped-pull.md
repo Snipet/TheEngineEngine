@@ -10,25 +10,30 @@ A single draw at 293.15 K selected 3 builds (a red draw, or an event within 15 %
 for all 31, since a draw selects too few (the kei's 1-2 is 2 of 17 over with a draw clear of 85 %).
 
 Columns: copies over / 17 at each upshift and downshift, tip/probe; "-" where the build has no such event: the pull's
-paddle shifts do not apply to an automatic, a CVT or the eighteen-speed (those run the pull in one gear, against the
-limiter); then any other event with a copy over.
+paddle shifts do not apply to an automatic, a CVT or the eighteen-speed; then any other event with a copy over.
+CORRECTION (27 Nov, the integrator's reading, confirmed here by car.gear): those boxes ran this pull in NEUTRAL, not "in
+one gear": the automatic and the CVT take R, N, D from the lever alone (sim/vehicle/gearbox.fm:333) and this pull left
+the lever in N; the eighteen-speed takes the lever, the clutch and its buttons (vehicle.fm eighteen(), roadranger.fm).
+car.gear 0 and car.speed 0 throughout on the hot-vee V8 (automatic), the economy four (CVT) and the tractor, the engine
+free (690 to 710 rad/s; the tractor governed at 210). Their rows below judged an engine revving free in neutral, not a
+pull. The automatics' and the CVT's real pull (the lever in D) is 2026-11-27-automatic-pull.md.
 
 ```
 build                            bound   1-2 tip/probe  2-3 tip/probe      3-2  other events over (tip | probe)
 air-cooled-flat-six-36            3.78             0/0            0/0      -/-  - | -
-big-block-74-pushrod-v8           5.29             -/-            -/-      -/-  - | -
+big-block-74-pushrod-v8           5.29             -/-            -/-      -/-  - | -   in neutral (lever in N)
 big-bore-70-pushrod-v8            7.12             0/0            0/0      0/0  - | -
 boxer-four-turbo-unequal          3.52             0/0            0/0      -/-  - | -
 diesel-20-common-rail             2.32             0/0            0/0      -/-  - | -
-economy-four-15                   3.44             -/-            -/-      -/-  - | -
+economy-four-15                   3.44             -/-            -/-      -/-  - | -   in neutral (lever in N)
 flat-plane-v8-39-twin-turbo       2.33             1/1            0/0      -/-  limiter 7/17 (top 2.63), the rest 1/17 (top 2.76) | limiter 7/17 (top 2.63), the rest 1/17 (top 2.76)
 flat-plane-v8-45                  3.74             0/0            0/0      -/-  - | -
 four-cam-v8-50                    5.77             0/0            0/0      0/0  - | -
 hot-hatch-16-16v                  4.27             0/0            0/0      0/0  - | -
 inline-five-turbo-rally           3.51             0/0            0/0      -/-  cut 1/17 (top 3.85) | -
 kei-660-triple-turbo              2.77             2/0            0/0      0/0  - | -
-pickup-diesel-67-inline-six       3.37             -/-            -/-      -/-  - | -
-pushrod-v6-38                     3.56             -/-            -/-      -/-  - | -
+pickup-diesel-67-inline-six       3.37             -/-            -/-      -/-  - | -   in neutral (lever in N)
+pushrod-v6-38                     3.56             -/-            -/-      -/-  - | -   in neutral (lever in N)
 rotary-twin-13                    2.45             0/0            0/0      0/0  - | -
 rotary-twin-na-side-port          2.66             0/0            0/0      0/0  - | -
 small-block-57-carb               3.97             0/0            0/0      0/0  - | -
@@ -36,15 +41,15 @@ straight-six-32-high-rev          4.68             0/0            0/0      0/0  
 straight-six-twin-turbo-30        3.32             0/0            0/0      0/0  - | -
 supercharged-v8-62                4.42             0/0            0/0      0/0  - | -
 three-cylinder-10-turbo           2.84             6/0            8/0      0/0  - | -
-tractor-15-inline-six             5.28             -/-            -/-      -/-  - | -
+tractor-15-inline-six             5.28             -/-            -/-      -/-  - | -   in neutral (no driver)
 turbo-four-20-gdi                 3.15             0/0            0/0      -/-  - | -
 twin-cam-roadster-18              3.47             0/0            0/0      0/0  - | -
-twin-turbo-hot-vee-v8-40          3.86             -/-            -/-      -/-  - | -
+twin-turbo-hot-vee-v8-40          3.86             -/-            -/-      -/-  - | -   in neutral (lever in N)
 two-stage-cam-20                  4.78             0/0            0/0      0/0  - | -
 v10-52                            3.82             0/0            0/0      -/-  - | -
 v12-65                            4.26             0/0            0/0      -/-  - | -
-v6-35-na                          3.44             -/-            -/-      -/-  - | -
-v6-35-twin-turbo-pickup           3.22             -/-            -/-      -/-  - | -
+v6-35-na                          3.44             -/-            -/-      -/-  - | -   in neutral (lever in N)
+v6-35-twin-turbo-pickup           3.22             -/-            -/-      -/-  - | -   in neutral (lever in N)
 vr6-28                            4.07             0/0            0/0      0/0  - | -
 ```
 

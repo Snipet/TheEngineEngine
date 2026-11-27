@@ -1,7 +1,7 @@
 # P: content, validation targets, the manual (handoff)
 
 Package P, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `content/builds/**` (new files),
-`content/validation/**`, `docs/manual/**`, `docs/measurements/validation/`, this file. Updated 25 Nov, 23:45 UTC.
+`content/validation/**`, `docs/manual/**`, `docs/measurements/validation/`, this file. Updated 26 Nov, 04:20 UTC.
 
 **Builds.** 31 archetypes and `content/builds/first.json` (the first launch: the 2.0 turbo four, now the EA888 gen 3 of
 the Mk7 GTI), written by `content/builds/archetypes/generate.py`. Every model switch on, checked against `tee-schema`
@@ -23,7 +23,7 @@ power curve, revs held at the green, warm tyres), regenerated on each table's pi
 **Tables** (all kept in `docs/measurements/validation/`, named at real UTC): G 132 of 648, H 193 of 741, I 123, J 124 of
 772, K (`ab107ca`) 120 of 839, L final (`066165a0`) 120 of 847 (its columns on K's content 116, L's seat-held cards 118),
 M (`7f64dac1`) 115; N and O (114, 112) read locally and sent to the lead; **P (`abadfb4b`, pushed in `223f4301`) 113 of
-847 (30 of 204 cited)**: rows held by calibration out of the counts, N2's ten builds re-timed (old beside new kept).
+847 (30 of 204 cited)**, rows held by calibration out of the counts, N2's ten builds re-timed; **P2 (`b43ea339`, in `d586682c`) 110 of 847 (30 cited)** on G's settle cure.
 
 **Sources files:** `docs/measurements/validation/2026-11-24-2314-ea888-gen3-sources.md` (the turbo four: what is known,
 what is guessed; gen 3's exhaust cam timing the one figure not found); `docs/measurements/2026-11-25-0032-judgement-sources.md`

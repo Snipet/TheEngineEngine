@@ -147,6 +147,9 @@ namespace tee::input::g29
     public:
         // The bindings from now on (a button held under the old ones is let go).
         void setButtons(Buttons buttons);
+        // Whether the wheel has a clutch pedal (RacingWheel::clutchAxis): with one, its H-shifter is the lever
+        // (Driver::shifterGate).
+        void setClutchAxis(bool has) noexcept { clutchAxis_ = has; }
         const Buttons& buttons() const noexcept { return buttons_; }
 
         // Once a frame, `dt` seconds on. `reading`: the wheel is read (RacingWheel::reading()); false: let go, the
@@ -166,6 +169,7 @@ namespace tee::input::g29
         State was_;
         bool active_ = false;
         bool releaseButtons_ = false;
+        bool clutchAxis_ = true;
         std::vector<Edit> edits_;
         std::array<double, 32> held_{};                      // seconds a repeating button has been held
         std::array<double, 32> next_{};                      // its next repeat at

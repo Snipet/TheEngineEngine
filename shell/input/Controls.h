@@ -48,15 +48,27 @@ namespace tee::input
 
         // The line AppServices::status answers; the application sets it when it changes.
         void setStatus(std::string status) { status_ = std::move(status); }
-        const std::string& status() const noexcept { return status_; }
+        // The line, and after it what the gearbox asks of the driver (an eighteen-speed: the clutch is theirs).
+        std::string status() const;
 
         // The services a Panel is made with. They hold `this`: the Controls outlive the Panel.
         AppServices services();
 
+        // The gearbox a build's fields say the presses drive (Driver.h's Gearbox).
+        static Gearbox gearboxOf(const ParamSource& params);
+        // The build's gearbox as sim/vehicle/vspec.fm numbers it (VEH_*), -1 for the reference's car (car.model 0).
+        static int boxKindOf(const ParamSource& params);
+        // What the automatic clutch means for the gearbox loaded: a line for the setting's row and the F9 item.
+        std::string clutchLine() const;
+
     private:
         ControlSink* sink_;
         const TelemetrySource* telemetry_;
-        int stateHandle_ = -1, gearHandle_ = -1, drivenHandle_ = -1;
+        int stateHandle_ = -1, gearHandle_ = -1, drivenHandle_ = -1, carSpeedHandle_ = -1;
+        const ParamSource* params_ = nullptr;           // the build's fields, where the source has them
+        int boxKind_ = -1;                              // boxKindOf, as last read
+        int shiftHandle_ = -1;                          // car.shift (3: a gear refused)
+        bool refused_ = false, inGearAtRest_ = false;
         Driver driver_;
         std::vector<Binding> bindings_;
         std::string status_;

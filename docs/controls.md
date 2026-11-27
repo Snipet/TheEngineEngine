@@ -27,19 +27,67 @@ expects them on any layout.
 
 **The truck's switches** (Z, X, J) latch like the switches they stand for (a splitter's thumb switch, a range's
 flip lever, a dash switch): they reach the simulator as the held bits of its `ctl.buttons` (BTN_SPLITTER,
-BTN_RANGE, BTN_ENGINE_BRAKE) until pressed again. The eighteen-speed's own lever does not drive the vehicle's
-gearbox yet.
+BTN_RANGE, BTN_ENGINE_BRAKE) until pressed again. On an eighteen-speed a shift press sets them too, for the gear it
+asks (below), and Z and X then toggle from there.
 
 **The start key.** Press it and the starter cranks the engine; it goes on cranking by itself until the engine
 runs (two seconds at the most: an engine that will not catch is left on, not cranking; press again). Hold it for a second while the engine runs and the engine is switched off. A tap is enough to start: a press
 shorter than a frame is still held for 0.15 s.
 
-**The gears.** The automatic clutch is on (there is no switch for it in the window yet). With it, E and Q are the
-paddles of a paddle-shift car: the gearbox works its own clutch, pulls away by itself when the throttle goes down in
+**The gears.** The clutch is the driver's setting, not the car's (the settings file's `driver.autoClutch` and
+`driver.shifterLever`, never in a build), three ways, switched at once by F9, "Clutch", with a line of what it means
+for the gearbox loaded (a row on the SETTINGS page is U1's, to come):
+
+- **The shifter's clutch is yours** (the default). A wheel's H-shifter is the lever: a gate moves it at once and the
+  clutch is the wheel's pedal, so a car can stall and a gear can grind, as a car does. Out of every gate the keys and
+  the paddles shift for you; in a gate they do nothing, as in a car. A wheel with no clutch pedal seen has its gates
+  sought instead (the status line says why).
+- **Automatic**: everything shifts for you, the shifter's gates too (each sought through the gearbox's own shifts,
+  a press every 0.3 s, so a gate takes a moment): for a shifter without a pedal.
+- **Yours**: the keys move the lever too (1 to 6, N, R), and the clutch is Left Shift or the wheel's pedal; with keys
+  only, the status line says "clutch: yours (Left Shift)".
+
+It is a manual's setting (and the reference's car's): a sequential and a dual clutch work their own clutch and seek a
+gate whatever it says, an automatic and a CVT are their selector, and the eighteen-speed's lever is the shifter's and
+its clutch always yours. On a manual with the shifter in a gate the status line says when the car is in gear at rest
+("the clutch, to pull away") and when a gate was refused ("the gear did not go in: the clutch down, or the revs
+matched"), so a gear that did not go in is not mistaken for a delay. Until 27 Nov the shifter's gates were always
+sought (the owner: "a small delay in shifting ... I cannot stall it"). Never yet run on the owner's Mac with the real
+wheel: tested on made-up wheel states through the simulator (`tests/shell/GearboxDrivingTest.cpp`: a gate to its gear
+in 1 frame against 4 to 40 sought; in first at rest, the clutch let up with no throttle, the engine stalls).
+
+Out of the shifter's gates (and with no wheel), in the default or Automatic, on a manual, a sequential or a dual
+clutch, E and Q are the paddles of a paddle-shift car: the gearbox works its own clutch, pulls away by itself when the throttle goes down in
 first, and never stalls. A gear key (1 to 6, N) presses the shift up or down for you, once every 0.3 s, until the
 gearbox is in that gear; it gives up after twelve presses (a downshift the gearbox refuses because it would take the
-engine past its redline). With the automatic clutch off, a gear key moves an H-pattern lever and the clutch is yours
-(Left Shift): the Driver has this path and its test, and nothing in the window turns it on yet.
+engine past its redline). In Yours, a gear key moves an H-pattern lever and the clutch is yours (Left Shift, or the
+wheel's pedal).
+
+What a press reaches depends on the build's gearbox (read from the build each frame; the reference's vehicle, `model`
+Reference, reads no gearbox and is driven as a manual's paddles whatever the field says):
+
+- **Manual, sequential, dual clutch: the shift counters.** As above: E and Q (and the wheel's paddles) are a shift up
+  and down; a gear key or the wheel's shifter seeks that gear through them. A sequential box shifted at a standstill
+  can stall today (a shift into second, or back down, with the car still: X-056, the simulator's, until its fix lands):
+  pull away in first.
+- **Automatic, CVT: the selector.** The box picks its own gears in D; the controls move its selector, R, N, D, held
+  whatever the automatic clutch says. E (a paddle up) steps towards D: R to N, N to D. Q (a paddle down) steps towards
+  R, and out of D only at a crawl (under 5 km/h): at speed Q does nothing, so a press hoping for a kickdown never drops
+  the car into neutral. N is N at any speed; the reverse key R (the box takes it only at a crawl); 1 to 6 and the
+  shifter's forward gates D; its reverse gate R; out of every gate N.
+- **Eighteen-speed: the lever, and your clutch.** The truck's box has no clutch of its own and no synchromesh in its
+  main box: the lever reaches it whatever the automatic clutch says, and the clutch pedal is yours (Left Shift, or
+  the wheel's pedal); the application works no clutch and matches no revs, so a shift without the clutch, or without
+  the revs matched, grinds as the box says. The keys 1 to 4 (and the shifter's gates 1 to 4) are the lever's
+  positions, 5 the L slot (gears 1 and 2, low range), 6 nothing, reverse R, N neutral. E and Q are the next gear of
+  the eighteen in order, up or down: the lever's position and the splitter and range that gear wants, refused at 1 and
+  18; Z and X then toggle from where the press left them. A truck starts in L (key 5, or the shifter's gate 5) with the
+  clutch down: key 1 is third, and a clutch let up there without throttle stalls it. While an eighteen-speed is loaded
+  the status line says the clutch is yours and where to start.
+
+Until 27 Nov the automatic, the CVT and the eighteen-speed sat in neutral whatever was pressed (the automatic clutch
+held the lever they read at neutral; 13 shipped builds: the owner's report). `tests/shell/GearboxDrivingTest.cpp`
+drives a shipped build of each kind from a standstill by the key and by the wheel's paddle through the simulator.
 
 The times are `tee::input::DriverSettings`; they move to the settings file with the bindings in the shell's
 second slice.
@@ -121,7 +169,7 @@ Linux and Windows: never yet run with a real wheel. No test here opens a device.
 |---|---|
 | Throttle, brake, clutch pedals | The pedals: each is the larger of the wheel's and the keys' or a gamepad's (its first 1 % of travel reads released). |
 | Right paddle / left paddle | Shift up / shift down (a press each), by default. |
-| The shifter | The gate it is in: with the automatic clutch off, the H-pattern lever itself (the clutch pedal is yours); with it on, the gear is sought through the gearbox's own shifts, as a gear key does (a sequential or an automatic box too). Out of every gate: neutral. |
+| The shifter | The gate it is in. On a manual, by default, the H-pattern lever itself, at once, and the clutch pedal is yours (the Clutch setting's Automatic seeks it instead, through the gearbox's own shifts); a sequential box or a dual clutch: sought, as a gear key does. An automatic or a CVT: a forward gate is D, the reverse gate R, out of every gate N; the eighteen-speed: its lever's position (gates 1 to 4; 5 the L slot). Out of every gate: neutral. |
 | PS button | By default, the start key, held as long as it is held (a press starts a stopped engine; held on a running one, off). |
 | The steering | Read but not driven: the car runs in a straight line. |
 | Its five shift lights | The DRIVE view's own count (the same five steps below the redline), all five flashing on the limiter. |

@@ -61,6 +61,8 @@ namespace tee::input::g29
         // Each button's presses since the last take (g29/G29.h's Presses): every press the transport saw, a dial's
         // detents between two frames included. All zero where buttons are only sampled (Windows) or none are read.
         Presses takePresses();
+        // Whether the wheel read has a clutch pedal (the G29's table: yes on macOS and Linux; Windows: its probed table).
+        bool clutchAxis() const noexcept;
 
         // Once a frame: the system's run loop serviced once, so the device's sources and the timers run whatever the
         // window's event pump does.

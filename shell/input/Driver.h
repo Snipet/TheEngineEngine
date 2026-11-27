@@ -15,6 +15,25 @@
 // neutral and the gearbox works its own clutch: the keys alone can drive. With it off, a gear key moves the H-pattern
 // lever and the clutch is the driver's (its key).
 //
+// Which gears a press reaches depends on the gearbox (setGearbox: the Controls read it from the build each frame;
+// the reference's vehicle, car.model 0, reads no gearbox and is always `shifts`):
+//   shifts     a manual's paddles, a sequential box, a dual clutch: as above (the shift presses)
+//   selector   an automatic and a CVT, which read only the lever as R, N, D (sim/vehicle/gearbox.fm), held on the
+//              lever whatever the automatic clutch says. A shift up is a step towards D (R to N, N to D); a shift down
+//              a step towards R, and out of D only at a crawl (under kCrawlKmh: above it a shift down does nothing, so
+//              a press hoping for a kickdown never drops the car into neutral at speed). The N key: N at any speed; the
+//              reverse key: R (the box refuses it above a crawl); 1 to 6 and the shifter's forward gates: D; its
+//              reverse gate R; out of every gate N. No gear key seeks.
+//   eighteen   the eighteen-speed (sim/vehicle/roadranger.fm), which reads only the lever's positions (1 to 4, 5 the
+//              L slot, -1 reverse), the splitter and range bits and the clutch pedal: the lever is sent whatever the
+//              automatic clutch says, and the clutch is the driver's (nothing here moves a pedal or matches revs: a
+//              driver who does neither grinds, as the box says). Keys and gates 1 to 4: the lever's positions; 5: the
+//              L slot; 6: nothing; reverse -1; N 0. A shift up or down: the next gear of the eighteen in order (the
+//              lever, the splitter and the range that gear wants: roadranger.fm's gearOf), refused at 1 and 18; Z and
+//              X then toggle from where the press left them.
+// Before 27 Nov the lever was zeroed for every box while the automatic clutch was on, so the automatic, the CVT and
+// the eighteen-speed sat in neutral whatever was pressed (the owner's report; tests/shell/GearboxDrivingTest.cpp).
+//
 // UI thread only.
 #pragma once
 
@@ -28,6 +47,17 @@ namespace tee::input
 {
     // ctl.buttons' bits (sim/spec/controls.fm, BTN_*) the driver's toggles set.
     inline constexpr int kButtonSplitter = 16, kButtonRange = 32, kButtonEngineBrake = 64;
+
+    // What a press of the gears reaches (the comment above).
+    enum class Gearbox : std::uint8_t { manual, shifts, selector, eighteen };
+
+    // The clutch, as the driver sets it (the settings' driver.autoClutch and driver.shifterLever):
+    //   shifter    (the default) a wheel's H-shifter is the lever and its clutch pedal is yours; the keys and the paddles
+    //              shift for you (out of every gate). Only where the box reads the lever as a manual's (Gearbox::manual)
+    //   automatic  everything sought and robotised, the shifter's gates too: a shifter without the pedal
+    //   yours      the keys move the lever too; the clutch is yours (Left Shift, or the wheel's pedal)
+    enum class ClutchMode : std::uint8_t { shifter, automatic, yours };
+    inline constexpr float kCrawlKmh = 5.0f;   // the automatic's own crawl (gearbox.fm: into R only under it)
 
     // Who holds an action: each source lets go of only what it pressed.
     enum class Source : std::uint8_t { keyboard, gamepad, panel, script, wheel, count };
@@ -45,7 +75,8 @@ namespace tee::input
         Easing brake{ 0.20f, 0.12f };
         Easing clutch{ 0.10f, 0.30f };
         Easing handbrake{ 0.10f, 0.10f };
-        bool autoClutch = true;
+        bool autoClutch = true;     // the keys and paddles shift for you (false: ClutchMode::yours)
+        bool shifterLever = true;   // with autoClutch: a wheel's H-shifter is the lever, its clutch yours (ClutchMode::shifter)
         float offHold = 1.0f;       // seconds the start key is held on a running engine to switch it off
         float startLeast = 0.15f;   // seconds the frame says start after a press of the start key, at the least
         float crankMax = 2.0f;      // seconds a press on a stopped engine cranks it, at the most, until it runs
@@ -54,12 +85,16 @@ namespace tee::input
         int mode = 1;               // the frame's mode: 1 is MODE_DRIVE (docs/plan/02-contracts.md section 4)
     };
 
+    ClutchMode clutchModeOf(const DriverSettings&) noexcept;
+    void setClutchMode(DriverSettings&, ClutchMode) noexcept;
+
     // What the engine says, for the start key's rule and the gear keys.
     struct EngineSeen
     {
         bool running = false;
         bool gearKnown = false;     // false: no gearbox to ask (the gear keys then do nothing with the automatic clutch)
         int gear = 0;
+        float kmh = 0.0f;           // the car's speed (car.speed), for the selector's step out of D
     };
 
     class Driver
@@ -78,6 +113,12 @@ namespace tee::input
 
         // The gear a control asks for by its number (-1 R, 0 N, 1 up), as a gear key does.
         void requestGear(int gear);
+        // A wheel's H-shifter in a gate (0: out of every gate; -1 reverse). With ClutchMode::shifter, on a manual, on a
+        // wheel with a clutch pedal (`clutchPedal`), the gate is the lever at once and the clutch is the driver's; in a
+        // gate the shift presses do nothing (as in a car). Otherwise it asks as a gear key does (requestGear).
+        void shifterGate(int gate, bool clutchPedal);
+        int gateLever() const noexcept { return gateLever_; }                    // the shifter's gate as the lever (0 none)
+        bool gateSought() const noexcept { return gateSought_; }                 // a gate sought for want of a clutch pedal
 
         // A gamepad's triggers and stick: the pedals are at least these.
         void setAnalog(float throttle, float brake, float steer);
@@ -89,6 +130,8 @@ namespace tee::input
         // a gamepad's (neither overwrites the other). Its steering is not the car's (a straight line). Let go with
         // release(wheel).
         void setWheel(float throttle, float brake, float clutch);
+        // A wheel's pedals are being read (setWheel since the wheel was last let go): its clutch pedal is there.
+        bool wheelPedals() const noexcept { return wheelPedals_; }
 
         // The Panel's throttle and brake strips: while held, the pedal is at least value.
         void setStrip(float value, bool held);
@@ -107,6 +150,10 @@ namespace tee::input
 
         // The frame's mode from now on (ControlsFrame::mode: MODE_BENCH 0, MODE_DRIVE 1, MODE_DYNO_ENGINE 2).
         void setMode(int mode);
+
+        // The gearbox the presses drive (a change: the selector and the lever back to neutral, as the box goes).
+        void setGearbox(Gearbox g);
+        Gearbox gearbox() const noexcept { return gearbox_; }
 
         // Everything a source holds is let go (the window lost the keyboard; a gamepad was unplugged).
         void release(Source);
@@ -146,6 +193,13 @@ namespace tee::input
         // the gears
         int shiftUp_ = 0, shiftDown_ = 0;
         int lever_ = 0;
+        Gearbox gearbox_ = Gearbox::manual;
+        int gateLever_ = 0;
+        bool gateSought_ = false;
+        bool wheelPedals_ = false;
+        int select_ = 0;            // the selector's R -1, N 0, D 1 (Gearbox::selector)
+        float kmh_ = 0.0f;          // the car's speed as last seen (advance)
+        void eighteenStep(int by);  // the next gear of the eighteen, up (1) or down (-1)
         int seek_ = 0;              // the gear a key asked for (seeking_ says whether one did)
         bool seeking_ = false;
         float seekWait_ = 0;

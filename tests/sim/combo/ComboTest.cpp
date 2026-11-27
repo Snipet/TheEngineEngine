@@ -250,13 +250,14 @@ namespace
         {
             if (fromFile)
                 break;
-            tee::test::Scenario off = scenario(kind, f.string(), 0u, tm);
+            tee::test::Scenario off = referenceScenario(kind, f.string(), tm);
             off.at(0.0);
             for (const Switch& w : switches())
                 off.spec(w.path, 0);
             if (dT != 0.0)
                 off.spec("env.temperature", 293.15 + dT);
             const tee::test::Run r0 = off.run(tm.end);
+            requireReferenceRuns(r0, tm, "corpus " + f.stem().string() + " " + kindName(kind));
             from = tm.started + 0.5;
             to = tm.off > 0.0 ? tm.off : tm.end;
             if (dT == 0.0)
@@ -405,7 +406,7 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
         for (double dT : kBoundNudges)
         {
             Times tm;
-            tee::test::Scenario off = scenario(kind, file, 0u, tm);
+            tee::test::Scenario off = referenceScenario(kind, file, tm);
             off.at(0.0);
             // BOUNDPROOF_OFF="boost.model exhaust.model": the reference turns only those off (X-014's own reference, the
             // build with boost and exhaust off); unset, every switch
@@ -421,6 +422,7 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
                     off.spec(w.path, 0);
             off.spec("env.temperature", 293.15 + dT);
             const tee::test::Run r0 = off.run(tm.end);
+            requireReferenceRuns(r0, tm, "corpus " + kindArg + " " + kindName(kind));
             const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
             if (dT == 0.0)
                 ref = std::max(r0.left().during(from, to).largestStep(), r0.right().during(from, to).largestStep());
@@ -483,11 +485,13 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
     {
         double refStep = referenceStep(build, kind), refExcess = referenceExcess(build, kind);
         auto playRef = [&](double dT, Times& tm) {
-            tee::test::Scenario off = scenario(kind, build, 0u, tm);
+            tee::test::Scenario off = referenceScenario(kind, build, tm);
             off.at(0.0).spec("env.temperature", 293.15 + dT);
             for (const auto& [path, value] : sets)
                 off.spec(path, value);
-            return off.run(tm.end);
+            tee::test::Run r0 = off.run(tm.end);
+            requireReferenceRuns(r0, tm, build + " " + kindName(kind));
+            return r0;
         };
         if (withRef)
         {
@@ -538,4 +542,50 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
     std::printf("boundproof | %s / %s / %s: excess %.2f at %.3f s against %.2f\n", comboName(mask).c_str(), build.c_str(),
                 kindName(kind), v.stepExcess, v.stepAt, v.excessBound);
     report(v, comboName(mask), build, kindName(kind));
+}
+
+// GEARPROBE="<corpus stem> <tour|pull|launch|cold>": a corpus build as built through a scenario, unjudged; one line per
+// change of car.gear ("gear | t | from | to") and a line a second ("state | t | gear | engine rpm | km/h"), so that which
+// gear a scenario really drives in is read, not assumed. GEARPROBE_LEVER="t position ...": the lever moved at those times
+// (on top of the scenario's own controls). GEARPROBE_OFF=1: every switch off, as corpusBuild plays the build's reference.
+TEST_CASE("gear probe: car.gear through a scenario", "[.gearprobe]")
+{
+    const char* arg = std::getenv("GEARPROBE");
+    if (arg == nullptr)
+        SKIP("GEARPROBE not set");
+    std::istringstream in(arg);
+    std::string stem, kindArg;
+    in >> stem >> kindArg;
+    Kind kind = Kind::Pull;
+    for (Kind k : allKinds())
+        if (kindArg == kindName(k))
+            kind = k;
+    Times tm;
+    tee::test::Scenario sc = scenario(kind, (corpusDir() / (stem + ".json")).string(), 0u, tm);
+    if (const char* lv = std::getenv("GEARPROBE_LEVER"))
+    {
+        std::istringstream l(lv);
+        double t = 0.0;
+        int pos = 0;
+        while (l >> t >> pos)
+            sc.at(t).lever(pos);
+    }
+    if (std::getenv("GEARPROBE_OFF") != nullptr)   // every switch off, as the build's reference plays it
+    {
+        sc.at(0.0);
+        for (const Switch& w : switches())
+            sc.spec(w.path, 0);
+    }
+    const tee::test::Run r = sc.run(tm.end);
+    const auto gear = r.tel("car.gear");
+    const auto rpm = r.tel("engine.speed");
+    const auto kmh = r.tel("car.speed");
+    const auto& t = gear.times();
+    const auto& x = gear.values();
+    std::printf("gearprobe | %s | %s%s\n", stem.c_str(), kindName(kind), std::getenv("GEARPROBE_OFF") != nullptr ? " | every switch off" : "");
+    for (std::size_t i = 1; i < t.size(); ++i)
+        if (x[i] != x[i - 1])
+            std::printf("gear | %.3f | %.0f | %.0f\n", t[i], x[i - 1], x[i]);
+    for (double s = 1.0; s <= tm.end; s += 1.0)
+        std::printf("state | %.1f | %.0f | %.0f | %.1f\n", s, gear.at(s), rpm.at(s), kmh.at(s));
 }

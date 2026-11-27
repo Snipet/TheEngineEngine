@@ -149,6 +149,7 @@ namespace tee::settings
                 { "clutch", easing(s.driver.clutch) },
                 { "handbrake", easing(s.driver.handbrake) },
                 { "autoClutch", s.driver.autoClutch },
+                { "shifterLever", s.driver.shifterLever },
                 { "offHold", s.driver.offHold } } },
             { "units", s.units == Units::imperial ? "imperial" : "metric" },
             { "unitChoices", s.unitChoices },
@@ -226,6 +227,7 @@ namespace tee::settings
             if (!driver->is_object() || !readEasing(*driver, "throttle", s.driver.throttle)
                 || !readEasing(*driver, "brake", s.driver.brake) || !readEasing(*driver, "clutch", s.driver.clutch)
                 || !readEasing(*driver, "handbrake", s.driver.handbrake) || !flag(*driver, "autoClutch", s.driver.autoClutch)
+                || !flag(*driver, "shifterLever", s.driver.shifterLever)
                 || !number(*driver, "offHold", s.driver.offHold, 0.1, 10.0))
                 return bad("driver settings");
         }

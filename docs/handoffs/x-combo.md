@@ -192,3 +192,33 @@ family, e.g. the click's level from its neighbouring periods only: it moves ever
 (2) a limiter's rows read per episode (how many of its episodes are over, and the reference's the same way), not the
 worst of all of them; (3) part C's one question on the fixed cut: with item 16's cut at 60 ms and item 17's valve
 converged, does dropping a shift's silent periods move any row's verdict.
+
+## 27 Nov: the pull in D for an automatic and a CVT (the lead's ruling, 11:37)
+
+The integrator's reading confirmed by car.gear: the combo pull left the lever in N, so an automatic, a CVT and the
+eighteen-speed ran it in neutral (gear 0, speed 0, the engine free). The survey of 26 Nov said "in one gear, against
+the limiter" for those eight builds: corrected in its file. No nightly or default case was affected: none plays those
+boxes through the pull or the launch (the generator's are manuals and dual clutches; the shipped pull's four are three
+manuals and a dual clutch), and the tour moves no lever for any box.
+
+Done: the pull and the launch put the lever in D at 3.0 s and back in N as the car stops, for a build whose "gearbox"
+is Automatic or CVT (leverDrives); no other box's lever moves; the reference key carries the lever. Held by a fast-3
+case that fails with the lever left in N. Measured (docs/measurements/combo/2026-11-27-automatic-pull.md): the six
+automatics and the CVT of the corpus on the real pull, 17 copies, 0 of 17 at every event; no new row. Weak where the
+every-switch-off reference's excess is high (8 to 12 in most copies on the real pull; bounds up to 17.02): which event
+raises those references is open.
+
+The eighteen-speed (the tractor; four more at the top level, in no case): no driver. Today it judges, on the tour, a free
+rev in neutral like every other box, and on the pull (the survey only) neutral with the engine governed at 210 rad/s.
+Proposed for the lead's ruling, not done: (a) name its pull rows for what they are, "in neutral (no driver)", and keep
+the truck off the pull; or (b) the smallest honest scenario, a pull-away in one gear: the clutch floored from rest (the
+clutch brake stops the input shaft), the lever to position 1 (low range, gear 3: roadranger.fm), the clutch let up as
+the throttle opens, held in that gear to the stop, no shifts (a shift needs a float or a double clutch: a driver, not
+a timeline). (b) judges the pull-away and the governed run in gear, not the shifts.
+
+27 Nov 12:07, the lead's ruling, done: a reference never moves the lever (referenceScenario), since a reference's own car
+(car.model 0) is a manual and lever 1 dropped it into first with no clutch: it stalled, and the automatics' wide bounds
+were a stalled engine's. Every played reference that stalls while driven throws (requireReferenceRuns). X-058 (the
+automatic put into gear at rest, v6-35-twin-turbo-pickup's start, 1 of 17) numbered and recorded in
+docs/measurements/combo/2026-11-27-automatic-pull.md; no case's path, not in Known.h. Next: the tractor's one nightly
+pull-away (the lead's 3(b)): 17 nudges without a stall, no shifts, its cost stated before it lands with [soak].

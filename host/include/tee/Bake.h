@@ -272,7 +272,15 @@ namespace tee
         KnockBakeOptions spark;
         CamBakeOptions cam;
         bool bakeCam = true;           // the intake cam too (where the program and the build have a phaser to bake)
+        // The wait for the edits to rest before a bake starts (the owner's choice 27 Nov, docs/plan/bake-across-edits.md
+        // option 2): the larger of debounceSeconds and debounceShare of the expected bake (its points at this machine's
+        // measured seconds a point), at most debounceMostSeconds; each edit starts it again. With no measurement yet (no
+        // stage finished on this service, secondsPerPoint 0) and for a build whose tables were set aside (a load: nothing
+        // plays meanwhile), debounceSeconds alone.
         double debounceSeconds = 1.5;
+        double debounceShare = 0.05;
+        double debounceMostSeconds = 15.0;
+        double secondsPerPoint = 0.0;  // a measured rate to start from (0: none yet); each finished stage measures it again
         // A cache across launches (the lead's): each table baked is kept under its key (knockLimitKey, intakeCamKey:
         // the program's sources and the fields that move it) as spark-<key>.json or cam-<key>.json here, the field
         // values its apply wrote (some 6 KB a spark table, 3 KB a cam); a stage whose key is there is taken from it at
@@ -337,6 +345,43 @@ namespace tee
         CamBakeResult camMeasured;
     };
 
+    // What the CalibrationBakeService says of itself, as plain fields: the interface chooses the words (U1's).
+    struct BakeStatus
+    {
+        KnockBakeState state = KnockBakeState::NoTable;
+        // Playing on a table from before the build's last edit (docs/plan/bake-across-edits.md option 1): it is stale
+        // (its key is not the build's) but fit (the service saw it current here, and the edit moved none of its axes or
+        // its meaning, fitFields), so it stays applied while the new one bakes, and is replaced when that lands.
+        bool sparkStale = false, camStale = false;
+        // A stale table set aside (its Auto switch set, the engine on knock control or the auto cam meanwhile), and
+        // why: a spec path from fitFields() the edit moved, or "not seen current here" (a build loaded or first seen
+        // with a stale table: never another build's tables, never one this service did not see current). Empty: not
+        // set aside.
+        std::string sparkSetAsideBy, camSetAsideBy;
+        // Waiting for the edits to rest: the seconds left before the bake starts (0 when not waiting)
+        bool waiting = false;
+        double secondsLeft = 0.0;
+        double waitSeconds = 0.0;       // the whole wait this edit was given
+        // Baking (or checking): the stage and its points, as stage() and progress()
+        std::string stage;
+        int done = 0, total = 0;
+        // The bake asked before was set aside by an edit (waiting or running, of other keys): the spec path the edit
+        // moved that the tables' keys hold (the first such, in the Spec's order)
+        bool restarted = false;
+        std::string restartedBy;
+        // Stages of this bake taken without a measure: from the cache by their key, or current already ("spark map")
+        std::vector<std::string> kept;
+        int bakesStarted = 0;           // bakes this service has started (a wait that ended in a bake)
+        double secondsPerPoint = 0.0;   // the rate the waits are reckoned from (0: none measured yet)
+    };
+
+    // The fields whose change makes a stale table unfit to play on (BakeStatus): what moves its axes or its meaning:
+    // spec.engine.cylinders, layout, cycle; the redline's (redlineSpeed, redlineTrim, and with redlineSpeed 0 the
+    // displacement and boreStroke the redline then follows); spec.ecu.idle.speed; spec.boost.kind's class (none, a
+    // turbine, a supercharger) and spec.boost.layout; spec.fuel.kind; each model switch the keys hold (valve, intake,
+    // boost, exhaust, fuel, ecu). The first of them that differs between `then` and `now`, or "" when none does.
+    std::string unfitBy(const Build& then, const Build& now);
+
     class CalibrationBakeService
     {
     public:
@@ -362,6 +407,7 @@ namespace tee
             int done = 0, total = 0;
         };
         Progress progress() const;
+        BakeStatus status() const;
         // While `predict` is busy (the ribbon's curve wanted), the bake waits between its points, so the curve a person
         // waits for has the workers. What is kept is the service's busy flag, shared (PredictService::busyFlag): it
         // stays valid when the PredictService goes (a reload that makes it again) and reads false then, so no order of
@@ -404,6 +450,29 @@ namespace tee
         std::string stage_;
         std::atomic<int> done_points_{0}, total_points_{0};
         std::shared_ptr<const std::atomic<bool>> yieldTo_;   // under mutex_
+        // Provenance (option 1): each table as this service last saw it current on this program (its values, its key,
+        // and the build it was in, for unfitBy); a stale table plays on only when it is still those values
+        struct Seen
+        {
+            bool valid = false;
+            std::vector<double> values;   // the table's and its key's
+            std::string build;            // the build then, saved
+        };
+        Seen seenSpark_, seenCam_;        // the UI thread's (consider, takeAndApply)
+        void see(const Build& build);     // records each table the build has current
+        // the status's parts (under mutex_)
+        bool sparkStale_ = false, camStale_ = false;
+        std::string sparkSetAsideBy_, camSetAsideBy_;
+        bool restarted_ = false;
+        std::string restartedBy_;
+        std::vector<std::string> kept_;
+        int bakesStarted_ = 0;
+        double secondsPerPoint_ = 0.0;
+        double waitSeconds_ = 0.0;
+        std::string askedBuild_;          // the build json_ was made from (the live one, its stale tables as they play)
+        // the points a spark or a cam bake of `b` measures (the options' grid): the expected bake, for the wait
+        int sparkPointsOf(const Build& b) const;
+        int camPointsOf(const Build& b) const;
         bool haveLast_ = false;
         bool lastChecked_ = false;
         BakedFields last_;
