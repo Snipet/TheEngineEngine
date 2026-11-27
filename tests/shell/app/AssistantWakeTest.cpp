@@ -200,7 +200,7 @@ TEST_CASE("the assistant's wake: a tool's call answered with no frame ticked", "
 
 // A job that says "not yet" (set_fields while a control is held: Tools.cpp's gesture wait) is drained again by the
 // wake's own timer (again(), kAgainMs on), with nothing posted after the first: the window minimised, no frame. The
-// frames clock does not move while no frame ticks, so the batch waits for the control, not for its limit.
+// control is let go well inside the job's real-time deadline (its ticket's), so the batch is done, not refused.
 TEST_CASE("the assistant's wake: a job that says not yet is drained again, no frame ticked", "[app][assistant]")
 {
     Minimised m;
