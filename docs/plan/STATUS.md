@@ -43,6 +43,14 @@
 
 ## Landed
 
+- **27 Nov 23:16 UTC: `main` at f7c54737.** Run 46077563740: Linux, Windows and macOS green (macOS 599 of 599,
+  `shell.app.cases` passed: the lead's read of its log). Gated trees unchanged: `sim` 22314cde, `host` ef1715f6,
+  `tools` 7c3e4d59. In it, past 2a92cc86: B's restatement of the wake's "not yet" case (X-067): the case no
+  longer asserts three drains in 400 ms (a rate, which `main`'s own macOS runs missed twice, `2 >= 3`), but that
+  a second drain comes with nothing posted after the first (a post counter at the wake). Tests only
+  (`tests/shell/app/AssistantWakeTest.cpp`); the application is as at 2a92cc86. B: 20 runs under load, all
+  pass; with the re-arm a no-op it fails. The lead's own build and break of it (`:242`, `:246`, and the unit
+  case's `:93`, `:95`). X-067 is called cured only after `main`'s own macOS run on this commit has been read.
 - **27 Nov 21:14 UTC: `main` at 2a92cc86.** Run 46066140664: Linux 600, macOS 599, Windows 590, all green (the
   steward's counts; the lead read the three jobs' conclusions). Gated trees unchanged: `sim` 22314cde, `host`
   ef1715f6, `tools` 7c3e4d59. In it, past 3ccb826b: B's small push: two comments corrected (no tool's limit

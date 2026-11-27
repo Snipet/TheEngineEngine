@@ -2896,6 +2896,10 @@ forward. None was re-run to green.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 23:16 UTC: `main` IS AT f7c54737** (run 46077563740: three green; gated trees unchanged: sim
+  22314cde, host ef1715f6, tools 7c3e4d59). In it: B's restated "not yet" case (X-067), tests only. macOS draws
+  of the restated case so far: 1 (the branch's run), green. `main`'s own run on it is the second: to be read
+  when it ends, by the rule added at 22:16. Nothing else is in flight.
 - **27 Nov 22:16 UTC: X-067, A RED ON macOS IN `main`'s OWN RUNS, TWICE: A TIMING ASSERTION IN THE WAKE'S "NOT YET"
   CASE. "No known red" in the entry below is withdrawn.** The lead found it when the owner asked for the status,
   not from a watch: `main`'s own run was not on the lead's list of things to read after a move. It is now.
