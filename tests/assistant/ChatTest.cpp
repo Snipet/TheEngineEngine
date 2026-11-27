@@ -863,7 +863,7 @@ TEST_CASE("assistant: the saved key is read off the window's thread, once, and a
         {
             Session session(partsFor());
             session.useKeyStore(std::move(owned));
-        session.useTransport(std::make_unique<ScriptedTransport>());   // (whatever the build has: Windows has none)
+            session.useTransport(std::make_unique<ScriptedTransport>());   // (whatever the build has: Windows has none)
             std::string why;
             session.chat().ready(why);
             REQUIRE(within(5.0, [&] { return store.loads.load() == 1; }));

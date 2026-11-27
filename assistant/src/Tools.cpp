@@ -417,7 +417,7 @@ namespace tee::assistant
              none, true},
             {"run_dyno", "Run a dyno sweep",
              "A full-throttle dyno sweep of a private copy of the open build from one engine speed to another (rpm): "
-             "torque and power at each point. Takes up to a minute.",
+             "torque and power at each point. Takes up to 40 seconds.",
              object({{"from_rpm",
                       {{"type", "number"},
                        {"minimum", 500},
@@ -725,8 +725,16 @@ namespace tee::assistant
             std::future<bool> answer;
             std::uint64_t hash = 0;
             std::string open;
+            std::shared_ptr<std::atomic<bool>> withdrawn = std::make_shared<std::atomic<bool>>(false);
         };
         auto asked = std::make_shared<Asked>();
+        // however this call ends once it has asked (answered, out of time, cancelled, stopped), the question is
+        // withdrawn: the app takes it down if it is still showing, and never shows it if it is still queued
+        struct Withdraw
+        {
+            std::shared_ptr<std::atomic<bool>> flag;
+            ~Withdraw() { flag->store(true, std::memory_order_release); }
+        } const withdraw{asked->withdrawn};
         auto chosen = std::make_shared<std::string>(name);   // the library's own spelling of it
         const auto load = [this, chosen]() -> Reply {
             const std::string& name = *chosen;
@@ -757,7 +765,8 @@ namespace tee::assistant
                 asked->hash = host_.document.build().hash();
                 asked->open = host_.document.build().name;
                 asked->answer = host_.ask("Claude asks to load \"" + found + "\". The open build, \"" + asked->open
-                                          + "\", has unsaved changes, which would be lost. Load it?");
+                                              + "\", has unsaved changes, which would be lost. Load it?",
+                                          asked->withdrawn);
                 return Reply::of({{"asking", true}});
             },
             cancel);
@@ -773,7 +782,8 @@ namespace tee::assistant
             if (stopped(cancel))
                 return error("cancelled while the owner was asked; nothing was loaded");
             if (std::chrono::steady_clock::now() >= deadline)
-                return error("the owner did not answer; nothing was loaded");
+                return error("the owner has not answered, and the question has been taken off their screen: nothing was "
+                             "loaded. Do not ask again until the owner says they are ready.");
             answered = asked->answer.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready;
         }
         if (!asked->answer.get())
