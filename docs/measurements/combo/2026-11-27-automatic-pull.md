@@ -79,5 +79,14 @@ v6-35-twin-turbo-pickup         2.70 1.61 2.06 2.04 1.96         3.22    START 1
 
 The bounds equal the 26 Nov survey's to the digit (that survey's references drove the same way, on the presses in N).
 The one copy over is at 3.045 s, 45 ms after the lever goes to D, before first is in (3.38 s): the box put in gear, an
-event the neutral survey never had; the hot-vee V8's start, 3.67 at the same moment, is under its 3.86. A row for the
-lead to number, 1 of 17, on no case's path; nothing enters Known.h. "0 of 17" elsewhere holds against these bounds.
+event the neutral survey never had; the hot-vee V8's start, 3.67 at the same moment, is under its 3.86. Numbered by the
+lead: **X-058**, the automatic put into gear at rest (N to D): v6-35-twin-turbo-pickup, "start", 1 of 17 (3.57 over 3.22
+at +0.15 K), at 3.045 s; a sometimes row on one build, on no case's path, nothing in Known.h. The integrator's when the
+window's list reaches it (what the box does to the converter and the driveline at the moment of D: a real box softens
+that engagement); nobody spends time on it now. "0 of 17" elsewhere holds against these bounds.
+
+RULED IN (27 Nov 12:07) and done: the reference driven its own way (referenceScenario: never the lever; the case alone
+takes D), and every played reference that stops running while driven throws (requireReferenceRuns: engine.state under
+1.5 between driveFrom and driveTo, the judge's own "stall"), for every build. A fast-3 case holds both: the CVT's
+reference pulls on its presses (gear 2 at 8 s), and under the case's scenario the same reference stalls and the guard
+throws. The table just above is now what the code measures.

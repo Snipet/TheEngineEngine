@@ -238,8 +238,7 @@ namespace
         std::vector<double> excess;
         // (kept across the job's processes as reference() keeps its own: a corpus build with every switch off is its
         // own key, the build's file named in it and its bytes in the content tree's hash)
-        const std::string kept = referenceKey("corpus, every switch off: " + f.generic_string(), kind, nightlyCase(),
-                                             leverDrives(f.string()));
+        const std::string kept = referenceKey("corpus, every switch off: " + f.generic_string(), kind, nightlyCase());
         const bool fromFile = readKeptReference(kept, ref, excess);
         {
             Times t0;
@@ -251,13 +250,14 @@ namespace
         {
             if (fromFile)
                 break;
-            tee::test::Scenario off = scenario(kind, f.string(), 0u, tm);
+            tee::test::Scenario off = referenceScenario(kind, f.string(), tm);
             off.at(0.0);
             for (const Switch& w : switches())
                 off.spec(w.path, 0);
             if (dT != 0.0)
                 off.spec("env.temperature", 293.15 + dT);
             const tee::test::Run r0 = off.run(tm.end);
+            requireReferenceRuns(r0, tm, "corpus " + f.stem().string() + " " + kindName(kind));
             from = tm.started + 0.5;
             to = tm.off > 0.0 ? tm.off : tm.end;
             if (dT == 0.0)
@@ -406,7 +406,7 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
         for (double dT : kBoundNudges)
         {
             Times tm;
-            tee::test::Scenario off = scenario(kind, file, 0u, tm);
+            tee::test::Scenario off = referenceScenario(kind, file, tm);
             off.at(0.0);
             // BOUNDPROOF_OFF="boost.model exhaust.model": the reference turns only those off (X-014's own reference, the
             // build with boost and exhaust off); unset, every switch
@@ -422,6 +422,7 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
                     off.spec(w.path, 0);
             off.spec("env.temperature", 293.15 + dT);
             const tee::test::Run r0 = off.run(tm.end);
+            requireReferenceRuns(r0, tm, "corpus " + kindArg + " " + kindName(kind));
             const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
             if (dT == 0.0)
                 ref = std::max(r0.left().during(from, to).largestStep(), r0.right().during(from, to).largestStep());
@@ -484,11 +485,13 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
     {
         double refStep = referenceStep(build, kind), refExcess = referenceExcess(build, kind);
         auto playRef = [&](double dT, Times& tm) {
-            tee::test::Scenario off = scenario(kind, build, 0u, tm);
+            tee::test::Scenario off = referenceScenario(kind, build, tm);
             off.at(0.0).spec("env.temperature", 293.15 + dT);
             for (const auto& [path, value] : sets)
                 off.spec(path, value);
-            return off.run(tm.end);
+            tee::test::Run r0 = off.run(tm.end);
+            requireReferenceRuns(r0, tm, build + " " + kindName(kind));
+            return r0;
         };
         if (withRef)
         {

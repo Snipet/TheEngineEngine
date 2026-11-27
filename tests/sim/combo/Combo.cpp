@@ -15,6 +15,7 @@
 #include <regex>
 #include <map>
 #include <sstream>
+#include <stdexcept>
 #include <tuple>
 #include <vector>
 
@@ -268,13 +269,46 @@ namespace combo
         }
     } // namespace
 
+    namespace
+    {
+        tee::test::Scenario scenarioOn(Kind kind, const std::string& build, std::uint32_t mask, Times& times,
+                                       double shiftPhase, bool reference);
+    }
+
     tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times,
                                  double shiftPhase)
+    {
+        return scenarioOn(kind, build, mask, times, shiftPhase, false);
+    }
+
+    tee::test::Scenario referenceScenario(Kind kind, const std::string& build, Times& times)
+    {
+        return scenarioOn(kind, build, 0u, times, 0.0, true);
+    }
+
+    void requireReferenceRuns(const tee::test::Run& run, const Times& times, const std::string& what)
+    {
+        if (times.driveFrom < 0.0)
+            return;
+        const double low = run.tel("engine.state").during(times.driveFrom, times.driveTo).min();
+        if (low < 1.5)
+        {
+            char b[160];
+            std::snprintf(b, sizeof b, "the reference stalled while driven (engine.state %.0f between %.1f and %.1f s): ",
+                          low, times.driveFrom, times.driveTo);
+            throw std::runtime_error(b + what);
+        }
+    }
+
+    namespace
+    {
+    tee::test::Scenario scenarioOn(Kind kind, const std::string& build, std::uint32_t mask, Times& times,
+                                   double shiftPhase, bool reference)
     {
         times = Times{};
         const std::string file = build.find('/') != std::string::npos ? build : buildPath(build);
         tee::test::Scenario sc(file);
-        for (const Step& st : steps(kind, mask, times, leverDrives(file)))
+        for (const Step& st : steps(kind, mask, times, !reference && leverDrives(file)))
         {
             // shiftPhase moves the upshifts after the pull-away (3 s) by a few ms: where a shift cut ends among the
             // firings sets its bang's size, so a case reads the worst over a firing interval
@@ -293,6 +327,7 @@ namespace combo
         }
         return sc;
     }
+    } // namespace
 
     std::filesystem::path scenarioDirectory()
     {
@@ -784,7 +819,7 @@ namespace combo
         return refcache::treeHash(dir);
     }
 
-    std::string referenceKey(const std::string& build, Kind kind, bool copies, bool drive)
+    std::string referenceKey(const std::string& build, Kind kind, bool copies)
     {
         const std::uint64_t p = refcache::processKey();
         if (p == 0 || refcache::directory().empty())
@@ -792,7 +827,7 @@ namespace combo
         std::uint64_t h = p;
         h = refcache::mixString(h, build);
         h = refcache::mixString(h, kindName(kind));
-        h = refcache::mixString(h, scenarioJson(kind, 0u, drive));
+        h = refcache::mixString(h, scenarioJson(kind, 0u));   // a reference never moves the lever (referenceScenario)
         for (double d : kBoundNudges)
             h = refcache::mix(h, &d, sizeof d);
         const int c = copies ? 1 : 0;
@@ -867,17 +902,18 @@ namespace combo
             return it->second;
         Reference ref;
         std::vector<double> excess;
-        const std::string kept = referenceKey(build, kind, copies, leverDrives(build.find('/') != std::string::npos ? build : buildPath(build)));
+        const std::string kept = referenceKey(build, kind, copies);
         const bool fromFile = readKeptReference(kept, ref.step, excess);
         for (double dT : kBoundNudges)
         {
             if (fromFile)
                 break;
             Times tm;
-            tee::test::Scenario sc = scenario(kind, build, 0u, tm);
+            tee::test::Scenario sc = referenceScenario(kind, build, tm);
             if (dT != 0.0)
                 sc.at(0.0).spec("env.temperature", 293.15 + dT);
             const tee::test::Run r = sc.run(tm.end);
+            requireReferenceRuns(r, tm, build + " " + kindName(kind));
             const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
             if (dT == 0.0)   // the step's bound stays the single draw's (the ruling is the excess's)
                 ref.step = std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
@@ -915,9 +951,10 @@ namespace combo
         for (double dT : {0.0, 0.01, 0.02})
         {
             Times tm;
-            tee::test::Scenario sc = scenario(kind, build, 0u, tm);
+            tee::test::Scenario sc = referenceScenario(kind, build, tm);
             sc.at(0.0).spec("ecu.pops", 0.3).spec("env.temperature", 293.15 + dT);
             const tee::test::Run r = sc.run(tm.end);
+            requireReferenceRuns(r, tm, build + " " + kindName(kind) + " (pops)");
             const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
             worst = std::max({worst, r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep()});
         }
