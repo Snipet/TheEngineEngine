@@ -161,20 +161,23 @@ namespace
     }
 } // namespace
 
+// The 12 s runs of each switch on the default block are nightly since the bake reached main (07a08dc0; the lead's
+// ruling, 26 Nov 00:28 and 02:22). Their guard in the default run is "each switch written while stopped reaches the
+// engine initialised over the build: every field before the key" (fast-1, below), which bites on 393519ea's parent.
 TEST_CASE("decisions: each switch turned on while stopped reaches the engine it reaches at start: the default block 1 of 3",
-          "[fast][fast-3][combo][decisions]")
+          "[nightly][decisions]")
 {
     eachSwitch("", 0, 3);
 }
 
 TEST_CASE("decisions: each switch turned on while stopped reaches the engine it reaches at start: the default block 2 of 3",
-          "[fast][fast-3][combo][decisions]")
+          "[nightly][decisions]")
 {
     eachSwitch("", 1, 3);
 }
 
 TEST_CASE("decisions: each switch turned on while stopped reaches the engine it reaches at start: the default block 3 of 3",
-          "[fast][fast-3][combo][decisions]")
+          "[nightly][decisions]")
 {
     eachSwitch("", 2, 3);
 }

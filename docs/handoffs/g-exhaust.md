@@ -151,3 +151,93 @@ bores"). The intake's twin (X-040: runner 8 mm, snorkel 10 mm) is N1's, with the
 next window (refusal at input in the loader and the inspector):** the FMinus compiler is the owner's and not ours to
 change, so no new `fminus::` attribute. The rule lives in the host (a table beside the Spec's lint in
 host/src/Fields.cpp) or in an attribute namespace the compiler already passes through.
+
+## The stated air in the exhaust (26 Nov; X-046, the next window's item 15: read only, nothing built)
+
+The lead's two questions, and every 101325 under `sim/exhaust/` (24 of them, read on 7e71f752). Two rules decide
+most of them:
+- **A 101325 added to a gauge pressure is the outside.** The pipes' waves, the back pressures and the turbine's
+  `pTurb` are all Pa above the air outside, so `101325 + x` makes them absolute and must take the stated air.
+- **A 101325 that a law divides by its own reference is a reference.** It cancels, or it is a correlation's p0.
+
+**(a) The pipe's impedance and density** (duct.fm:347-348, `z = 1.4 p / (c a)`, `rho = 1.35 p / c^2`). Physically
+the pipe's own mean (the outside plus its back pressure): rho is the gas's p / R T where it is, and c does not
+depend on p. Before a turbine that is some 1.5 to 2 times the outside (judgement), so the reference's z is low there today.
+But the waves are linear about the outside (every solve takes the absolute pressure as the outside + 2 b), and
+the pipe's mean would move every archetype at the default (their back pressures run some 5 to 100 kPa: judgement, not measured for this note). **My answer for the
+design: takes the outside.** The pipe's mean is a separate change, a model fault of the reference's, to be
+measured on its own.
+- Paired with it, and must take the same value: duct.fm:687 `gk = 0.59 z / (1.4 p)`, where the pressure cancels
+  z's (gk = 0.59 / (c a)); and slots.fm:1225 `mp->rho * pB / 101325`, which rescales rho from the pressure it was
+  made at to the flap's. Both take the outside, the same variable as z's.
+- duct.fm:321, the wall loss's kinematic viscosity at the outside's density: takes the outside, as rho (physically
+  the pipe's mean, as above). At 70 kPa nu rises 1.45 times and the wall's loss, as sqrt(nu), some 20 %.
+
+**(b) The steepening** (`steep = 0.87 / 101325`: duct.fm:29, exhaust.fm:596, 609, 616, slots.fm:1100, 1104, 1114,
+1159, 1202). The law is c + u = c (1 + 0.87 dp / P), 0.87 being (gamma + 1) / 2 gamma at 1.35, with P the gas's
+own absolute pressure. duct.fm:596 computes x = steep dp 101325 / max(101325 + 2 m, 50000): the numerator's 101325
+cancels steep's. **Both stay references** (left as written, so the same floats). **The denominator's 101325 takes
+the outside:** it is P, the outside plus twice the wave's mean. At altitude the same wave then steepens more, as it
+should.
+
+**The rest:**
+
+| site | what | class | reason |
+|---|---|---|---|
+| duct.fm:596, the floor 50000 | the least P the steepening divides by | a decision (below) | an absolute floor |
+| duct.fm:678 `101325 + 2 b` | the valve's pipe pressure with nothing flowing | outside | gauge to absolute |
+| duct.fm:678, the floor 8000 | the least of it | stays | a numerical guard far below any outside |
+| exhaust.fm:911 | the bead's gas density at the port | outside | 101325 + pPortMean, gauge to absolute |
+| exhaust.fm:1132 | the backflow's mass at the port's pressure now | outside | gauge to absolute (its 8000 floor stays) |
+| exhaust.fm:1785 | `tel.exhaust.portPressure` | outside | reported absolute |
+| slots.fm:1222-1223 | the flap's pressures before and after (pB, the ratio) | outside | gauge to absolute; the ratio across the flap is what the valve law needs |
+| slots.fm:2299 `bangP()` | the collector's pressure where the bangs burn | outside | 101325 + pTurb, gauge to absolute |
+| slots.fm:2324 `p / 101325` | Metghalchi and Keck's flame speed, (p / p0)^beta | stays | the correlation's p0, 1 atm |
+
+(slots.fm:2299 is the bangs' collector, not the turbine's outlet: the turbine's outlet pressure is Boost's.)
+**Without a literal, but the outside all the same:** the tailpipe's radiation (ends.fm) has no density in it (dq/dt
+times a gain), so a quieter exhaust at altitude (a monopole's far field goes as the air's rho) is not in the model,
+and adding it would change every archetype's loudness: not for this design. The muffler's and the junctions' losses
+(K 1/2 rho u^2, network.fm) take the duct's rho, so they follow (a).
+
+**Bit-identity at the default.** Built with -ffp-contract=off and never -ffast-math (cmake/TeeFlags.cmake), and
+101325 is exact as a float. So a literal replaced by a float holding the stated 101325, **in the same expression in
+the same order**, gives the same bits. (A compile-time fold of `1.4f * 101325.0f` rounds once, as the runtime
+multiply does.) Where it cannot hold, or holds only with care:
+1. **An expression reshaped**, e.g. steep folded into 0.87 / P. Keep every form as written, the cancelling pair
+   included.
+2. **The 50000 floor at duct.fm:596.** It is absolute, and env.pressure's range starts at 50000, so at a 50 kPa
+   outside every rarefying mean is clamped. A scaled floor `50000 * p / 101325` does not round back to exactly
+   50000 at the default. **`p - 51325`** is exact there (integers in float) and keeps the floor 51.3 kPa under
+   the outside; the 8000 floors can stay.
+3. **The stated value arriving computed** (an altitude formula, a double's product) rather than as the Spec's float
+   copied: then it is 101325 only if it is. The nulls and an archetype hash would show it; reading cannot promise
+   it.
+4. **Model 0.** The reference (sim/ref) has its own literals; whether the reference's exhaust takes the stated air
+   is the integrator's design. Either way, the default stays the reference's to the bit.
+
+### Finding: the pipes' impedance before a turbine is set at the outside, not at the pipe's mean (26 Nov; in no window)
+
+`Duct::set` (duct.fm:347-348) sets every pipe's z = gamma p / (c a) and rho = gamma' p / c^2 at the outside's
+pressure, the reference's way. The gas in a pipe is at its own mean pressure, the outside plus the back pressure
+there. That matters only where the mean pressure differs from the outside or between joined pipes. Where every pipe
+shares one mean, the ratios of z, and so the reflections, are unchanged, but the wave a valve's volume flow makes
+(z q) is not. Before a turbine the mean is some 1.5 to 2 times the outside (judgement, not measured), so there z
+and rho are low by that factor:
+- **in the primaries and collectors:** the valves' waves per unit flow are too small, the flow losses (K 1/2 rho
+  u^2) too small, and the wall loss (sqrt nu) too large;
+- **at the turbine:** the pipes either side meet at a mean pressure ratio of that size, and their impedances do not
+  show it.
+
+**What would measure it, before any change:**
+1. The size of the error, per build: the mean absolute pressure at the ports and the collectors (`pPortMean`, the
+   housings' pressures) over the outside, across the boosted archetypes at full load, from telemetry.
+2. Its effect: the same builds on a scratch tree with z and rho taken at each pipe's own slow mean pressure
+   (one pressure per section, 16-sample rate, as tUse follows the temperature), against the tree as it is. Read the
+   turbine inlet's pulse (its peak over its mean), the port's pulse, the boost and torque, and the tailpipe's level.
+3. Against what is known: a pulse-turbocharged engine's measured turbine-inlet pressure trace (the literature's
+   instantaneous traces, Watson and Janota's kind) for the pulse's height over its mean. No such reference is
+   cited here yet, so finding one is the first step.
+
+At the default no archetype may move, so the change would be a builder switch (model 1, hidden, as `portMean`),
+with test 2 setting the reference's. It is a reference fault, not an X-046 item.

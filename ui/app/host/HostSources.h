@@ -52,7 +52,9 @@ namespace tee::ui
         std::uint64_t requests() const override { return requests_; }
 
         static DynoTrace traceOf(const tee::DynoCurve& c, std::string name);
-        static DynoTrace traceOf(const tee::PredictCurve& c, std::string name);
+        // `fields`: the names of PredictOptions::fields, in order (each point's PredictPoint::fields), carried as the
+        // trace's fields and values (the cursor's card, the band under the plot); none: none carried.
+        static DynoTrace traceOf(const tee::PredictCurve& c, std::string name, const std::vector<std::string>& fields = {});
         static constexpr double kQuiet = 0.25;   // seconds after the last edit before a curve is asked for
 
     private:

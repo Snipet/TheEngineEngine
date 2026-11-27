@@ -7,8 +7,16 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <regex>
 #include <map>
 #include <sstream>
+#include <tuple>
+#include <vector>
 
 namespace combo
 {
@@ -113,6 +121,9 @@ namespace combo
             {"turbo-six", 47.1, 188.5, false},
             {"large-diesel", 36.6, 157.1, true},
             {"turbo-v8-dual", 47.1, 188.5, false},
+            // the turbo six's fair twin, a mild cam (its dial and the lab's cams stated equal; the lead's ruling, 26 Nov
+            // 11:46): the lab's default-length cam judged model against model. Every loop over this list is nightly.
+            {"turbo-six-mild", 47.1, 188.5, false},
         };
         return list;
     }
@@ -159,7 +170,11 @@ namespace combo
             double ramp;
         };
 
-        std::vector<Step> steps(Kind kind, std::uint32_t mask, Times& tm)
+        // drive: the build's box is an automatic or a CVT, whose gear the lever alone sets (R, N, D: gearbox.fm), not the
+        // shift counters: the pull and the launch put it in D as they pull away and back in N as the car stops, as a driver
+        // does (the owner's report, the lead's ruling 27 Nov 11:37: with the lever in N those boxes ran the pull in
+        // neutral). A manual's lever is its H-pattern (1 is first), so no other box's lever is moved.
+        std::vector<Step> steps(Kind kind, std::uint32_t mask, Times& tm, bool drive)
         {
             std::vector<Step> s;
             auto ctl = [&](double t, const char* n, double v, double ramp = 0.0) { s.push_back({t, "ctl", n, v, ramp}); };
@@ -198,6 +213,8 @@ namespace combo
                 tm.idleFrom = 2.5;
                 tm.idleTo = 3.0;
                 press(3.0, "shiftUp");   // first, on the paddle (its own clutch pulls away)
+                if (drive)
+                    ctl(3.0, "lever", 1);
                 ctl(3.3, "throttle", 0.5, 0.2);
                 ctl(4.5, "throttle", 1.0, 0.1);
                 press(6.5, "shiftUp");
@@ -208,6 +225,8 @@ namespace combo
                 press(11.0, "shiftDown");
                 ctl(12.0, "brake", 0.6, 0.2);
                 ctl(13.5, "clutch", 1.0, 0.2);   // stopped: the clutch down before the key, as a driver does
+                if (drive)
+                    ctl(13.5, "lever", 0);
                 ctl(14.0, "ignition", 0);
                 tm.off = 14.0;
                 tm.end = 17.0;
@@ -217,6 +236,8 @@ namespace combo
                 tm.idleTo = 3.0;
                 ctl(3.0, "brake", 1.0);
                 press(3.0, "shiftUp");
+                if (drive)
+                    ctl(3.0, "lever", 1);
                 ctl(3.5, "throttle", 0.6, 0.3);   // held on the brake
                 ctl(5.0, "brake", 0.0, 0.05);
                 ctl(5.0, "throttle", 1.0, 0.1);
@@ -226,6 +247,8 @@ namespace combo
                 ctl(9.0, "throttle", 0.0, 0.05);
                 ctl(9.2, "brake", 0.8, 0.2);
                 ctl(11.0, "clutch", 1.0, 0.2);
+                if (drive)
+                    ctl(11.0, "lever", 0);
                 ctl(11.5, "ignition", 0);
                 tm.off = 11.5;
                 tm.end = 14.5;
@@ -249,8 +272,9 @@ namespace combo
                                  double shiftPhase)
     {
         times = Times{};
-        tee::test::Scenario sc(build.find('/') != std::string::npos ? build : buildPath(build));
-        for (const Step& st : steps(kind, mask, times))
+        const std::string file = build.find('/') != std::string::npos ? build : buildPath(build);
+        tee::test::Scenario sc(file);
+        for (const Step& st : steps(kind, mask, times, leverDrives(file)))
         {
             // shiftPhase moves the upshifts after the pull-away (3 s) by a few ms: where a shift cut ends among the
             // firings sets its bang's size, so a case reads the worst over a firing interval
@@ -275,10 +299,22 @@ namespace combo
         return tee::test::contentDirectory() / "scenarios" / "combo";
     }
 
-    std::string scenarioJson(Kind kind, std::uint32_t mask)
+    bool leverDrives(const std::string& buildFile)
+    {
+        // the build's "gearbox" as written (the tee-build format's spec.car.gearbox, by its choice's name)
+        std::ifstream in(buildFile, std::ios::binary);
+        const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        static const std::regex box("\"gearbox\"\\s*:\\s*\"([^\"]*)\"");
+        std::smatch m;
+        if (!std::regex_search(text, m, box))
+            return false;
+        return m[1] == "Automatic" || m[1] == "CVT";
+    }
+
+    std::string scenarioJson(Kind kind, std::uint32_t mask, bool drive)
     {
         Times tm;
-        const auto s = steps(kind, mask, tm);
+        const auto s = steps(kind, mask, tm, drive);
         std::ostringstream o;
         o << "{\n  \"format\": \"tee-scenario\",\n  \"version\": 1,\n  \"name\": \"" << kindName(kind)
           << "\",\n  \"description\": \"Package X's " << kindName(kind)
@@ -453,15 +489,11 @@ namespace combo
         return reference(build, kind).step;
     }
 
-    double stepExcess(const tee::test::Run& run, double from, double to, double* atOut, double* periodOut)
+    // The excess of the step at `at` on one channel over its neighbouring firing periods, the neighbours inside
+    // [from, to] (the running stretch)
+    double excessAt(const tee::test::Run& run, bool left, double at, double from, double to, double* periodOut)
     {
-        const auto l = run.left().during(from, to), r = run.right().during(from, to);
-        const bool left = l.largestStep() >= r.largestStep();
-        const auto& ch = left ? l : r;
-        const double at = from + largestStepTime(ch.samples(), ch.rate());
         const double hz = run.firingHz(std::max(0.0, at - 0.25), at + 0.25);
-        if (atOut != nullptr)
-            *atOut = at;
         if (!(hz > 1.0))
             return -1.0;
         const double T = 1.0 / hz;
@@ -488,18 +520,382 @@ namespace combo
         return own / std::max(median, 1e-9);
     }
 
+    double stepExcess(const tee::test::Run& run, double from, double to, double* atOut, double* periodOut)
+    {
+        const auto l = run.left().during(from, to), r = run.right().during(from, to);
+        const bool left = l.largestStep() >= r.largestStep();
+        const auto& ch = left ? l : r;
+        const double at = from + largestStepTime(ch.samples(), ch.rate());
+        if (atOut != nullptr)
+            *atOut = at;
+        return excessAt(run, left, at, from, to, periodOut);
+    }
+
+    std::vector<float> stepProfile(std::span<const float> x, double rate)
+    {
+        // largestStepTime's measure at every sample (the step over its local level), so a window picks its worst
+        // sample from the run's own figures and its edges move no figure
+        const std::size_t n = x.size();
+        std::vector<float> out(n, 0.0f);
+        if (n < 3)
+            return out;
+        const std::size_t half = std::max<std::size_t>(8, static_cast<std::size_t>(0.01 * rate));
+        std::vector<double> prefix(n, 0.0);
+        for (std::size_t i = 1; i < n; ++i)
+        {
+            const double d = static_cast<double>(x[i]) - x[i - 1];
+            prefix[i] = prefix[i - 1] + d * d;
+        }
+        for (std::size_t i = 1; i < n; ++i)
+        {
+            const double d = static_cast<double>(x[i]) - x[i - 1];
+            const std::size_t lo = i > half ? i - half : 1;
+            const std::size_t hi = std::min(n - 1, i + half);
+            const double around = prefix[hi] - prefix[lo - 1] - d * d;
+            const double count = static_cast<double>(hi - lo + 1) - 1.0;
+            const double local = count > 0.0 ? std::sqrt(std::max(around, 0.0) / count) : 0.0;
+            out[i] = static_cast<float>(std::fabs(d) / std::max(local, 1e-4));
+        }
+        return out;
+    }
+
+    std::vector<Event> events(const tee::test::Run& run, const Times& tm, double from, double to)
+    {
+        // The run's events from what the scenario and the telemetry report (the lead's ruling, 26 Nov 08:07, part B):
+        // each shift (each gear change, 0.3 s either side; and car.flags 16 shifting or 32 cut asked, from its rise to
+        // 0.3 s after its fall; named by the gear before and after), each ECU cut outside a shift (ecu.flags 2 fuel, 4 spark, 8 overrun; the reference's
+        // engine.flags 2), each limiter episode (ecu.flags 1, engine.flags 1), each lift (the throttle falling
+        // through 0.1: 0.05 s before to 0.5 s after); the start (to 2 s after the key is let go) first of all; a
+        // sample in two windows is the first's in that order (start, flip, shift, limiter, cut, lift); the rest of the running stretch is "the rest"
+        std::vector<Event> out;
+        if (tm.started + 2.0 > from)
+            out.push_back({"start", from, std::min(to, tm.started + 2.0)});
+        // a switch thrown while running (the scenario's flip times): 0.3 s from each (the lead's ruling, 26 Nov 11:11)
+        for (double t : tm.flips)
+            if (t + 0.3 > from && t < to)
+                out.push_back({"flip", std::max(from, t), std::min(to, t + 0.3)});
+        auto episodes = [&](const char* name, std::initializer_list<std::pair<const char*, int>> bits, double after) {
+            std::vector<tee::test::Series> s;
+            for (const auto& [path, bit] : bits)
+                s.push_back(run.tel(path));
+            if (s.empty() || s[0].empty())
+                return;
+            const auto& t = s[0].times();
+            bool on = false;
+            double rise = 0.0;
+            for (std::size_t i = 0; i <= t.size(); ++i)
+            {
+                bool now = false;
+                if (i < t.size())
+                {
+                    std::size_t k = 0;
+                    for (const auto& [path, bit] : bits)
+                    {
+                        const auto& vals = s[k++].values();
+                        if (i < vals.size() && (static_cast<int>(vals[i]) & bit) != 0)
+                            now = true;
+                    }
+                }
+                if (now && !on)
+                    rise = t[i];
+                if (!now && on)
+                {
+                    const double fall = i < t.size() ? t[i] : to;
+                    Event e{name, std::max(from, rise - 0.05), std::min(to, fall + after)};
+                    if (std::string(name) == "shift")
+                    {
+                        const auto gear = run.tel("car.gear");
+                        char g[48];
+                        std::snprintf(g, sizeof g, "shift %.0f-%.0f", gear.at(rise - 0.05), gear.at(fall + after));
+                        e.name = g;
+                    }
+                    if (e.to > e.from)
+                        out.push_back(e);
+                }
+                on = now;
+            }
+        };
+        {
+            // each gear change is a shift (the classic car raises no car.flags: the ECU cuts the spark while the gear
+            // rises): 0.3 s either side of it, named by the gear before and after
+            const auto gear = run.tel("car.gear");
+            const auto& t = gear.times();
+            const auto& x = gear.values();
+            for (std::size_t i = 1; i < t.size(); ++i)
+                if (x[i] != x[i - 1])
+                {
+                    char g[48];
+                    std::snprintf(g, sizeof g, "shift %.0f-%.0f", x[i - 1], x[i]);
+                    Event e{g, std::max(from, t[i] - 0.3), std::min(to, t[i] + 0.3)};
+                    if (e.to > e.from)
+                        out.push_back(e);
+                }
+        }
+        episodes("shift", {{"car.flags", 16 | 32}}, 0.3);
+        episodes("limiter", {{"ecu.flags", 1}, {"engine.flags", 1}}, 0.3);
+        episodes("cut", {{"ecu.flags", 2 | 4 | 8}, {"engine.flags", 2}}, 0.3);
+        {
+            const auto th = run.tel("engine.throttle");
+            const auto& t = th.times();
+            const auto& x = th.values();
+            for (std::size_t i = 1; i < t.size(); ++i)
+                if (x[i - 1] >= 0.1 && x[i] < 0.1)
+                {
+                    Event e{"lift", std::max(from, t[i] - 0.05), std::min(to, t[i] + 0.5)};
+                    if (e.to > e.from)
+                        out.push_back(e);
+                }
+        }
+        out.push_back({"the rest", from, to});
+        return out;
+    }
+
+    double lowestExcess(const std::vector<double>& excess)
+    {
+        double lowest = -1.0;
+        for (double e : excess)
+            if (e >= 0.0 && (lowest < 0.0 || e < lowest))
+                lowest = e;
+        return lowest;
+    }
+
+    namespace
+    {
+        bool gNightlyCase = false;
+    } // namespace
+
+    void setNightlyCase(bool nightly)
+    {
+        gNightlyCase = nightly;
+    }
+
+    bool nightlyCase()
+    {
+        return gNightlyCase;
+    }
+
+    // ---- the reference copies kept across processes (the lead's ruling, 27 Nov 03:44) ----
+    // CI runs each Catch case as its own process, and each judged its references afresh: the five copies behind every
+    // nightly bound were played again in every entry (360 reference sets in one soak for 57 distinct). A set is kept in
+    // a file named by a hash of everything that decides it: the test executable's bytes (any rebuild is a new key),
+    // every file of the sim tree and of the content tree in use, the build's name, the scenario (its kind and its
+    // timeline as tee-scenario JSON), the nudges, and whether copies are taken. The values are written exactly (hex
+    // floats), so a kept set reads the same figures to the digit; a missing, partial or unreadable file is a miss and
+    // the set is played. Written to a temporary name and renamed, so a reader never sees half a file.
+    namespace refcache
+    {
+        std::uint64_t mix(std::uint64_t h, const void* data, std::size_t n)
+        {
+            const auto* p = static_cast<const unsigned char*>(data);
+            for (std::size_t i = 0; i < n; ++i)
+            {
+                h ^= p[i];
+                h *= 1099511628211ull;   // FNV-1a, 64 bits
+            }
+            return h;
+        }
+        std::uint64_t mixString(std::uint64_t h, const std::string& s)
+        {
+            const std::uint64_t n = s.size();
+            h = mix(h, &n, sizeof n);
+            return mix(h, s.data(), s.size());
+        }
+        // every regular file under dir, by its path relative to dir, in order; 0 when dir is not a directory
+        std::uint64_t treeHash(const std::filesystem::path& dir)
+        {
+            std::error_code ec;
+            if (!std::filesystem::is_directory(dir, ec))
+                return 0;
+            std::vector<std::filesystem::path> files;
+            for (auto it = std::filesystem::recursive_directory_iterator(dir, ec);
+                 !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec))
+                if (it->is_regular_file(ec))
+                    files.push_back(it->path());
+            if (ec)
+                return 0;
+            std::sort(files.begin(), files.end());
+            std::uint64_t h = 14695981039346656037ull;
+            std::vector<char> buf;
+            for (const auto& f : files)
+            {
+                h = mixString(h, std::filesystem::relative(f, dir, ec).generic_string());
+                std::ifstream in(f, std::ios::binary);
+                buf.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+                h = mixString(h, std::string(buf.begin(), buf.end()));
+            }
+            return h;
+        }
+        std::uint64_t fileHash(const std::filesystem::path& f)
+        {
+            std::ifstream in(f, std::ios::binary);
+            if (!in)
+                return 0;
+            std::uint64_t h = 14695981039346656037ull;
+            char buf[1 << 16];
+            while (in.read(buf, sizeof buf) || in.gcount() > 0)
+                h = mix(h, buf, static_cast<std::size_t>(in.gcount()));
+            return h;
+        }
+        // the directory the sets are kept in, or empty: none (TEE_COMBO_REFERENCES=off, or no executable to key on)
+        const std::filesystem::path& directory()
+        {
+            static const std::filesystem::path dir = [] {
+                const char* e = std::getenv("TEE_COMBO_REFERENCES");
+                if (e != nullptr && std::strcmp(e, "off") == 0)
+                    return std::filesystem::path();
+                if (e != nullptr && *e != '\0')
+                    return std::filesystem::path(e);
+#ifdef TEE_COMBO_REFERENCE_DIR
+                return std::filesystem::path(TEE_COMBO_REFERENCE_DIR);
+#else
+                return std::filesystem::path();
+#endif
+            }();
+            return dir;
+        }
+        // the hash of what every set of this process shares (the executable, the trees); 0: keep nothing
+        std::uint64_t processKey()
+        {
+            static const std::uint64_t key = [] {
+                std::error_code ec;
+                const auto exe = std::filesystem::read_symlink("/proc/self/exe", ec);
+                if (ec)
+                    return std::uint64_t(0);   // no executable to key on (not Linux): every set is played
+                const std::uint64_t e = fileHash(exe), sim = treeHash(tee::test::simDirectory()),
+                                    content = treeHash(tee::test::contentDirectory());
+                if (e == 0 || sim == 0 || content == 0)
+                    return std::uint64_t(0);
+                std::uint64_t h = 14695981039346656037ull;
+                for (std::uint64_t x : {e, sim, content})
+                    h = mix(h, &x, sizeof x);
+                return h;
+            }();
+            return key;
+        }
+    } // namespace refcache
+
+    std::filesystem::path referenceDirectory()
+    {
+        return refcache::directory();
+    }
+
+    std::uint64_t referenceTreeHash(const std::filesystem::path& dir)
+    {
+        return refcache::treeHash(dir);
+    }
+
+    std::string referenceKey(const std::string& build, Kind kind, bool copies, bool drive)
+    {
+        const std::uint64_t p = refcache::processKey();
+        if (p == 0 || refcache::directory().empty())
+            return std::string();
+        std::uint64_t h = p;
+        h = refcache::mixString(h, build);
+        h = refcache::mixString(h, kindName(kind));
+        h = refcache::mixString(h, scenarioJson(kind, 0u, drive));
+        for (double d : kBoundNudges)
+            h = refcache::mix(h, &d, sizeof d);
+        const int c = copies ? 1 : 0;
+        h = refcache::mix(h, &c, sizeof c);
+        char name[32];
+        std::snprintf(name, sizeof name, "%016llx", static_cast<unsigned long long>(h));
+        return name;
+    }
+
+    bool readKeptReference(const std::string& key, double& step, std::vector<double>& excess)
+    {
+        if (key.empty())
+            return false;
+        std::ifstream in(refcache::directory() / (key + ".ref"));
+        std::string tag;
+        std::size_t n = 0;
+        if (!(in >> tag >> n) || tag != "tee-combo-reference-1" || n == 0 || n > 16)
+            return false;
+        std::string word;
+        if (!(in >> word))
+            return false;
+        step = std::strtod(word.c_str(), nullptr);
+        excess.clear();
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            if (!(in >> word))
+                return false;
+            excess.push_back(std::strtod(word.c_str(), nullptr));
+        }
+        return (in >> word) && word == "end";
+    }
+
+    void keepReference(const std::string& key, double step, const std::vector<double>& excess)
+    {
+        if (key.empty())
+            return;
+        std::error_code ec;
+        std::filesystem::create_directories(refcache::directory(), ec);
+        const auto final = refcache::directory() / (key + ".ref");
+        auto tmp = final;
+        tmp += ".tmp." + std::to_string(std::random_device{}()) + std::to_string(std::random_device{}());   // a name of its own
+        {
+            std::ofstream out(tmp);
+            if (!out)
+                return;
+            char b[64];
+            out << "tee-combo-reference-1 " << excess.size();
+            std::snprintf(b, sizeof b, " %a", step);
+            out << b;
+            for (double e : excess)
+            {
+                std::snprintf(b, sizeof b, " %a", e);
+                out << b;
+            }
+            out << " end\n";
+            if (!out)
+                return;
+        }
+        std::filesystem::rename(tmp, final, ec);
+        if (ec)
+            std::filesystem::remove(tmp, ec);
+    }
+
     const Reference& reference(const std::string& build, Kind kind)
     {
-        static std::map<std::pair<std::string, int>, Reference>* cache = new std::map<std::pair<std::string, int>, Reference>();
-        const auto key = std::make_pair(build, static_cast<int>(kind));
+        // (the default tier's single draw and the nightly's copies kept apart)
+        static std::map<std::tuple<std::string, int, bool>, Reference>* cache =
+            new std::map<std::tuple<std::string, int, bool>, Reference>();
+        const bool copies = nightlyCase();
+        const auto key = std::make_tuple(build, static_cast<int>(kind), copies);
         if (auto it = cache->find(key); it != cache->end())
             return it->second;
-        Times tm;
-        const tee::test::Run r = scenario(kind, build, 0u, tm).run(tm.end);
-        const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
         Reference ref;
-        ref.step = std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
-        ref.excess = stepExcess(r, from, to);
+        std::vector<double> excess;
+        const std::string kept = referenceKey(build, kind, copies, leverDrives(build.find('/') != std::string::npos ? build : buildPath(build)));
+        const bool fromFile = readKeptReference(kept, ref.step, excess);
+        for (double dT : kBoundNudges)
+        {
+            if (fromFile)
+                break;
+            Times tm;
+            tee::test::Scenario sc = scenario(kind, build, 0u, tm);
+            if (dT != 0.0)
+                sc.at(0.0).spec("env.temperature", 293.15 + dT);
+            const tee::test::Run r = sc.run(tm.end);
+            const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+            if (dT == 0.0)   // the step's bound stays the single draw's (the ruling is the excess's)
+                ref.step = std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
+            excess.push_back(stepExcess(r, from, to));
+            if (!copies)
+                break;
+        }
+        if (!fromFile)
+            keepReference(kept, ref.step, excess);
+        ref.excess = lowestExcess(excess);
+        if (copies)
+        {
+            std::printf("reference | %-13s | %-6s | excess over its copies (dT 0, -0.07, -0.03, +0.03, +0.07 K)%s:", build.c_str(),
+                        kindName(kind), fromFile ? " (kept)" : "");
+            for (double e : excess)
+                std::printf(" %.2f", e);
+            std::printf("; the bound twice the lowest, %.2f\n", 2.0 * ref.excess);
+        }
         return (*cache)[key] = ref;
     }
 
@@ -633,21 +1029,67 @@ namespace combo
         // old tree (X-015: 7.33 against 3.19 on the pull, 4.07 against 3.64 on the tour, its weakest proof; X-014:
         // 7.77 against 4.60) and clears the diesel's firing trains (X-033, X-034, X-035: 1.17 to 2.59 against 3.19).
         v.excessBound = refExcess >= 0.0 ? 2.0 * refExcess : -1.0;
-        const bool byExcess = v.excessBound >= 0.0 && v.stepExcess >= 0.0;
-        if (byExcess ? v.stepExcess > v.excessBound : v.stepMax > clickBound)
+        // Per event (the lead's ruling, 26 Nov 08:07, part B): each event window of the run (events(): each shift,
+        // cut, limiter episode, lift, the start, the rest) is judged at its own worst step, so a row is "this event:
+        // n of N" and never the run's one worst. The window's edges move no figure: a window only picks its worst
+        // sample, from the run's own step profile (the step over its local level, stepProfile, computed on the whole
+        // running stretch), and that step's excess is taken over neighbouring firing periods anywhere in the running
+        // stretch, never clipped to the window (the steward read 2.64 in a window against 2.50 over the run, k = -4,
+        // when edges clipped). A sample in two windows is judged in the first (start, flip, shift, limiter, cut, lift): a limiter's cuts are
+        // the limiter's.
+        const auto lch = run.left().during(from, to), rch = run.right().during(from, to);
+        const std::vector<float> lp = stepProfile(lch.samples(), lch.rate());
+        const std::vector<float> rp = stepProfile(rch.samples(), rch.rate());
+        const double rate = lch.rate();
+        const std::vector<Event> evs = events(run, tm, from, to);
+        std::vector<int> owner(lp.size(), -1);
+        for (std::size_t e = 0; e < evs.size(); ++e)
         {
-            const double at = v.stepAt;
+            const auto i0 = static_cast<std::size_t>(std::max(0.0, (evs[e].from - from) * rate));
+            const auto i1 = std::min(lp.size(), static_cast<std::size_t>(std::max(0.0, (evs[e].to - from) * rate)));
+            for (std::size_t k = i0; k < i1; ++k)
+                if (owner[k] < 0)
+                    owner[k] = static_cast<int>(e);
+        }
+        std::vector<std::size_t> worst(evs.size(), 0);
+        std::vector<float> worstR(evs.size(), -1.0f);
+        std::vector<bool> worstLeft(evs.size(), true);
+        for (std::size_t k = 0; k < lp.size(); ++k)
+        {
+            const int e = owner[k];
+            if (e < 0)
+                continue;
+            const bool left = lp[k] >= (k < rp.size() ? rp[k] : 0.0f);
+            const float r = left ? lp[k] : rp[k];
+            if (r > worstR[static_cast<std::size_t>(e)])
+            {
+                worstR[static_cast<std::size_t>(e)] = r;
+                worst[static_cast<std::size_t>(e)] = k;
+                worstLeft[static_cast<std::size_t>(e)] = left;
+            }
+        }
+        for (std::size_t e = 0; e < evs.size(); ++e)
+        {
+            if (worstR[e] < 0.0f)
+                continue;
+            const double at = from + static_cast<double>(worst[e]) / rate;
+            const double step = worstR[e];
+            const double excess = excessAt(run, worstLeft[e], at, from, to, nullptr);
+            v.windows.push_back({evs[e].name, excess, step, at});
+            const bool byExcess = v.excessBound >= 0.0 && excess >= 0.0;
+            if (!(byExcess ? excess > v.excessBound : step > clickBound))
+                continue;
             // The lead's ruling (23:15, through the steward): an upshift's spark cut under the reference's burn
             // (ecu.model 1, fuel.model 0) is an event of the engine: about 70 ms of near silence and the charge sent
             // to the pipe lights after it (D's measure: 15 to 29 times the local level by the cut's phase; the small
             // four's pull 33.6 after the steward's 0cb535ae). At an upshift's cut (car.flags 32, cut asked) and the
-            // 0.15 s after it (with the gear rising), the bound is that step and a margin, 42, and the failure is "click-shift-cut", which
-            // report() accepts for that combination only (Report.cpp, shiftCutRuled); over 42, or anywhere else, it
-            // is a click.
+            // 0.15 s after it (with the gear rising), the bound is that step and a margin, 42, and the failure is
+            // "click-shift-cut", which report() accepts for that combination only (Report.cpp, shiftCutRuled); over
+            // 42, or anywhere else, it is a click.
             constexpr double kShiftCutBound = 42.0;
             // An upshift's cut: the car asks it (car.flags 32, car.model 1) or the ECU cuts the spark (ecu.flags 4,
-            // with the classic car), in the 0.15 s before the step, while the gear rises from 0.3 s before it to 0.15 s after (so a
-            // limiter's spark cut is not one)
+            // with the classic car), in the 0.15 s before the step, while the gear rises from 0.3 s before it to 0.15 s
+            // after (so a limiter's spark cut is not one)
             bool atShiftCut = false;
             {
                 const double cutFrom = std::max(from, at - 0.15), cutTo = at + 0.005;
@@ -665,23 +1107,24 @@ namespace combo
                 atShiftCut = cut && up;
             }
             char both[160];
-            std::snprintf(both, sizeof both, "excess over its firing periods %.2f (bound %.2f%s)", v.stepExcess,
+            std::snprintf(both, sizeof both, "excess over its firing periods %.2f (bound %.2f%s)", excess,
                           v.excessBound, byExcess ? ", which decides" : ", not deciding: no period or no reference's");
-            if (atShiftCut && v.stepMax <= kShiftCutBound)
+            if (atShiftCut && step <= kShiftCutBound)
             {
                 std::snprintf(b, sizeof b,
-                              "largest step %.1f times the local level at %.3f s, at an upshift's cut (the bound there "
-                              "%.0f, the lead's ruling for ecu.model 1 under fuel.model 0; elsewhere %.1f); %s",
-                              v.stepMax, at, kShiftCutBound, clickBound, both);
-                v.failures.push_back({"click-shift-cut", b});
+                              "%s: largest step %.1f times the local level at %.3f s, at an upshift's cut (the bound "
+                              "there %.0f, the lead's ruling for ecu.model 1 under fuel.model 0; elsewhere %.1f); %s",
+                              evs[e].name.c_str(), step, at, kShiftCutBound, clickBound, both);
+                v.failures.push_back({"click-shift-cut", b, evs[e].name});
             }
             else
             {
                 std::snprintf(b, sizeof b,
-                              "largest step %.1f times the local level at %.3f s (bound %.1f; the reference's %.1f%s); %s",
-                              v.stepMax, at, clickBound, refStep, atShiftCut ? "; at an upshift's cut, over 42" : "",
-                              both);
-                v.failures.push_back({"click", b});
+                              "%s: largest step %.1f times the local level at %.3f s (bound %.1f; the reference's "
+                              "%.1f%s); %s",
+                              evs[e].name.c_str(), step, at, clickBound, refStep,
+                              atShiftCut ? "; at an upshift's cut, over 42" : "", both);
+                v.failures.push_back({"click", b, evs[e].name});
             }
         }
 
@@ -787,11 +1230,11 @@ namespace combo
     } // namespace
 
     const Known* known(const std::string& c, const std::string& build, const std::string& scenario,
-                       const std::string& check)
+                       const std::string& check, const std::string& event)
     {
         for (const Known& k : kKnown)
             if (k.id != nullptr && comboMatches(k.combo, c) && matches(k.build, build) && matches(k.scenario, scenario) &&
-                matches(k.check, check))
+                matches(k.check, check) && (k.event == nullptr || event == k.event))
                 return &k;
         return nullptr;
     }

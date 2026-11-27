@@ -59,6 +59,7 @@ namespace combo
         double driveFrom = -1, driveTo = -1;   // in gear: the car must move
         double off = -1;                       // the key off: it must stop within 3 s
         double end = 0;
+        std::vector<double> flips;             // a switch thrown while running: judge's "flip" windows (part B)
     };
     enum class Kind
     {
@@ -74,7 +75,9 @@ namespace combo
     tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times,
                                  double shiftPhase = 0.0);
     // Its timeline as a tee-scenario file (for the tools and the listening pack).
-    std::string scenarioJson(Kind kind, std::uint32_t mask);
+    std::string scenarioJson(Kind kind, std::uint32_t mask, bool drive = false);
+    // the build file's box is an automatic or a CVT: the scenarios put its lever in D to drive (see steps)
+    bool leverDrives(const std::string& buildFile);
     // Where those files are: content/scenarios/combo/ (tee-render takes them by path, not by name).
     std::filesystem::path scenarioDirectory();
 
@@ -83,10 +86,18 @@ namespace combo
     {
         std::string check;   // "finite", "peak", "dc", "click", "start", "idle", "revs", "moves", "stop", "tel", "guard"
         std::string detail;
+        std::string event = {};   // a click's event window ("start", "flip", "shift 3-2", "limiter", "cut", "lift", "the rest")
     };
     struct Verdict
     {
         std::vector<Failure> failures;
+        // Each event window's worst step and its excess (-1: no period) and time, judged or not (part B; for spreads)
+        struct Window
+        {
+            std::string event;
+            double excess = -1.0, step = 0.0, at = 0.0;
+        };
+        std::vector<Window> windows;
         double stepMax = 0.0;       // the largest step over the local level while running
         double dcMax = 0.0;         // the running stretch's mean, as a magnitude
         double idle = 0.0;          // rad/s, mean over the idle stretch
@@ -112,10 +123,43 @@ namespace combo
     // The reference's (every switch off) largest step while running, on a build through a scenario: measured once a
     // process and kept.
     double referenceStep(const std::string& build, Kind kind);
-    // The reference's own excess (Verdict::stepExcess) on a build through a scenario, measured once a process
+    // The reference's own excess (Verdict::stepExcess) on a build through a scenario, measured once a process. In a
+    // [nightly] case: the LOWEST over the reference's copies at kBoundNudges (the lead's ruling, 26 Nov 08:07; the
+    // default tier keeps the single draw at 293.15 K as its tripwire). The lowest, not the median or the highest: the
+    // references' highs are what spread across copies (the flat six's 1.41 to 3.90 over 17), and a bound drawn high is
+    // a loose bound; the 293.15 K copy is among them, so the nightly's bound is never above the default tier's.
     double referenceExcess(const std::string& build, Kind kind);
+    // The air temperatures' offsets (K, from 293.15) of the nightly bound's reference copies: fixed, so the bound is one
+    // number on a given tree and anyone can recompute it (tests/sim/combo/spread.sh with SPREAD_DT set to these)
+    inline constexpr double kBoundNudges[5] = {0.0, -0.07, -0.03, 0.03, 0.07};
+    // The lowest of `excess` over a reference's copies (-1 where none had a period): the nightly bound's make-up
+    double lowestExcess(const std::vector<double>& excess);
+    // Whether the running Catch case is tagged [nightly] (ComboTest.cpp's listener sets it at each case's start; false in
+    // a tool, tee-fuzz, that plays without Catch)
+    bool nightlyCase();
+    void setNightlyCase(bool nightly);
+    // An event window of a run (judge's per-event click, part B): a name ("start", "flip", "shift 2-3", "limiter",
+    // "cut", "lift", "the rest") and its span
+    struct Event
+    {
+        std::string name;
+        double from = 0.0, to = 0.0;
+    };
+    // The events of a run inside [from, to], in their order of precedence (a sample in two is the first's)
+    std::vector<Event> events(const tee::test::Run& run, const Times& tm, double from, double to);
+    // The excess of the step at `at` on one channel over its neighbouring firing periods inside [from, to]
+    double excessAt(const tee::test::Run& run, bool left, double at, double from, double to, double* period = nullptr);
+    // The step over its local level at every sample of x (largestStepTime's measure)
+    std::vector<float> stepProfile(std::span<const float> x, double rate);
     // The excess of the worst step of [from, to] over its neighbouring firing periods (Verdict::stepExcess)
     double stepExcess(const tee::test::Run& run, double from, double to, double* at = nullptr, double* period = nullptr);
+    // The reference sets kept across one job's processes (Combo.cpp): a set's file name from everything that decides it
+    // (empty: nothing kept); a kept set read back (false: a miss, the set is played); one written; a tree's hash
+    std::string referenceKey(const std::string& build, Kind kind, bool copies, bool drive = false);
+    bool readKeptReference(const std::string& key, double& step, std::vector<double>& excess);
+    void keepReference(const std::string& key, double step, const std::vector<double>& excess);
+    std::uint64_t referenceTreeHash(const std::filesystem::path& dir);
+    std::filesystem::path referenceDirectory();   // where the sets are kept (empty: none)
     // The bang rule's baseline (cuts that send fuel to the pipe, the new ECU's): the largest step of three reference
     // copies with ecu.pops at 0.3, 0.01 K apart in the air (one run of a chaotic engine is no bound: 11.9 to 20.5 measured).
     double referenceStepWithPops(const std::string& build, Kind kind);
@@ -143,9 +187,12 @@ namespace combo
         const char* scenario;  // a kindName or a test's name, or "*"
         const char* check;     // a Failure's check, or "*"
         const char* what;      // one sentence
+        // the event window a click falls in (part B; the lead's ruling, 26 Nov 11:11), exact, or nullptr: any (every
+        // row written before the field: its coverage unchanged)
+        const char* event = nullptr;
     };
     const Known* known(const std::string& comboName, const std::string& build, const std::string& scenario,
-                       const std::string& check);
+                       const std::string& check, const std::string& event = std::string());
 
     // The lead's ruling (23:15): judge's "click-shift-cut" (a step within 42 at an upshift's cut) is the engine's own
     // event for a combination with ecu.model on and fuel.model off; report() accepts it there and nowhere else.

@@ -1619,19 +1619,1237 @@ does, or says which state it did not read.
   dip, warm). From now on, an idle change of mine is read on p-idle-warm and the cold start for every archetype
   before it is proposed, and its note names the states it read.
 
+**The idle's design, measured (the steward, 26 Nov 04:40 to 05:40; no code: `main`'s idle stands).** The window's
+item 2. The acceptance, from the lead's rulings of 04:38 and 05:00, in order: the 31 shipped archetypes on P's gate
+(tee::checkIdle: p-idle-warm 8 to 14 s, p-cold-start 8 to 11.5 s); each archetype's LOWEST speed 2 to 8 s on
+p-idle-warm, none lower than `main`'s without a stated reason (the dips: nothing guarded them; N1 asked for a test of
+its own); then the fixture turbo six (cam 0.9999, nothing ships it) on the tour, sd 2.5 to 5 s.
+
+The three measurements the design answers:
+- **The rate's look-ahead damps the warm idle's own valve loop** (the 3.0 twin turbo: 650 sd 5.4 with it, 53.9
+  without, a period near 1.6 s; the flat six, big-bore V8 and V12 warm 5.4, 3.5, 3.2 to 9.2, 7.4, 6.3 without).
+- **It catches the start's fall.** Through the post-start phase (3 s) the valve runs at twice the gain near the
+  target, the loop idle.fm's own note calls marginal; on `main` the 7.4 V8 hunts there 530 to 730 rpm (a period near
+  0.6 s), and the look-ahead is what holds its lowest speed at 545 (650 asked).
+- **The fixture's lope is seeded at the catch** by the look-ahead reading the flare's thousands of rpm/s (the valve
+  0.01 to 0.77, the plenum 55 to 98 kPa): a 0.4 s limit cycle that then sustains itself. Not the limiter: on the
+  rally five the valve is pinned at the dashpot's 0.350 through the limiter on both trees; its row moved because the
+  runs part at the crank (the lead's correction of record).
+
+The forms, the fixture's three sets (ecu / exhaust+fuel+ecu / intake+ecu; `main` 287 / 291 / 379) and the worst dips
+against `main` across all 31:
+
+| form | fixture | P's gate (31) | dips, worst against `main` |
+|---|---|---|---|
+| 98d0dc4d (no look-ahead) | 19 / 22 / 227 | the twin six fails warm, 49.0 | not read (the gate decided) |
+| look-ahead filtered 0.15 s / two poles / clamped 100 rpm | 61-349 / 44-349 / 40-242 | not read | not read |
+| look-ahead held off for the post-start phase | 19 / 29 / 233 | all pass | the 7.4 V8 545 to 457 (of 7 read) |
+| the same, opening only | 285 / 298 / 384 | not read | as `main` (of 7 read) |
+| the post-start gain not doubled | 238 / 274 / 338 | not read | as `main` or better (of 7 read) |
+| held off and not doubled ("both") | 20 / 23 / 43 | all pass, within 0.5 rpm sd | four-cam V8 681 to 536, supercharged V8 639 to 544, twin-turbo pickup 622 to 537, NA V6 670 to 594, twin six 639 to 564, 3.8 V6 619 to 554 |
+| opening only, not doubled | 206 / 268 / 320 | not read | supercharged V8 -45, four-cam V8 -34, pickup -26 |
+
+**What it shows.** Every form that cures the fixture takes the look-ahead off the shipped builds' fall, and the dips
+row reads it; the forms that keep the dips leave the fixture hunting. The fixture's catch and the shipped builds' catch
+want the same signal in opposite ways through the same window. By the lead's order (the 31 first), **`main`'s idle
+stays and the fixture's hunt stays known** (X-032's kind; X-031 and X-041's two rows with it, X's at fb32d4fc). "Both"
+was tier-green (581) and gate-green; it failed only the dips row, which a sample of 7 builds had passed: the dips row
+is read on all 31 or it is not read.
+
+The combo rows quoted in this section and in the steward's notes above (X-031, X-041's, the rally five) are single
+draws: G has since measured the rally five's row at 1.55 to 3.08 over 15 nudges of the air by a thousandth of a
+kelvin (the lead, 07:20), so none of them tells one tree from another. The conclusion rests on the gate and the dips
+row, which read continuous idles, not one step.
+
+Open, not this window's: the doubled post-start gain is marginal on `main` itself (the 7.4 V8's 0.6 s swing; the
+look-ahead hides it); the dashpot holds the idle valve at 0.35 at full throttle and on boost (ecu.fm:230's form in
+idle.fm), which no measurement here judged.
+
+## 26 Nov 04:36 UTC: `main` AT d586682c; the next window and who can open it
+
+`main` was fast-forwarded b557c4a1..d586682c at 04:36:15 UTC by the lead, after its own checks: remote `main`
+still b557c4a1; d586682c descends from it; its `sim/`, `host/` and `tools/` trees (f23337cc, 2e7c1bec, 7c3e4d59)
+equal the bake b43ea339's; run 45752116326 is on d586682c and its linux-x64, windows-x64 and macos-arm64 jobs
+all concluded success (581 of 581; 573 of 573; macOS green). P's own tier (574 of 574) was on the bake before
+the wheel's chain was merged in; B's (580 of 580) was on the chain; CI's was the first whole run on the union.
+
+**The hold for it**: twelve "holding" before P's push, kept until all three jobs on the baked commit had started
+(Windows 04:03:54, Linux 04:04:37, macOS 04:13:59), so none was replaced while waiting; released at 04:14.
+
+**Three sessions' pushes are refused by their own permission checks tonight** (the integrator from 02:51, N2
+from 04:16, P from 04:24; the plain push's refusal reads "denied by the Claude Code auto mode classifier.
+Reason: [Undermining Oversight]"). Each stopped; none is worked around; no other session carries their commits.
+It is with the owner. Local to them meanwhile: the integrator's tests-only FieldDiff helper and X-045's cure;
+N2's design for "no wheel without a path" (it restates the integrator's notes with attribution: the lead's
+arrangement, withdrawn); P's Table P2 docs (ac0d0e77). **The next window's first item (N2 with the integrator)
+and any bake (P) wait on the owner's decision.**
+
+**From tonight, for every session:** a sha or a result goes into a message only after the command has printed
+it (four sessions sent one alongside a push that had not finished; one of those pushes had been refused).
+
+**X on the reverted tree** (fb32d4fc, Known.h): X-031 back (the V8's downshift, 4.73 against 4.03); X-044 as
+before the cure; two X-041 rows: the fixture turbo six's tour lift (3.23 against 2.97) and the shipped rally
+five's tour on its limiter (3.08 against 3.00; 3.92 on the old `main`, so the bake improves it); with the idle
+cure both read under their bounds. **Corrected 04:39 (the steward's read, 10 ms steps, both trees):** that is
+NOT the rate term acting on the limiter's bounce, as the lead and the steward's first reading of the formula
+had it: on the rally five's limiter the idle valve is pinned at 0.350, the dashpot's ceiling, in both runs.
+The two runs part at the crank (0.30 s: valve 0.494 against 0.606, the rate term on the cranking speed's
+climb), and by 6.48 s the spool and the bangs' phase differ: the whole trajectory moved, and a row at 3.08
+against 3.00 reads chaotic. The design's third measurement is therefore the rate term during the crank and
+the start's flare. Open with the steward: whether the dashpot holding the valve at 0.35 at full throttle on
+boost is right, and how close the rally row sits to its bound on other trees.
+
+## 26 Nov 04:49 UTC: after `main` d586682c: first.json's boost threshold, read four ways; corrections of record
+
+Measurement and design only since `main` moved; nothing under `sim/`, `host/` or `tools/` is pushed until a bake
+can follow (P's push is refused; with the owner).
+
+**first.json between 1500 and 1800 rpm is a boost threshold, and three earlier statements about it are
+corrected.**
+- N1, held points on `main`'s sim (stepped, --settle 40): 1503 rpm 225 N m with the gate shut and boost 19.5 kPa
+  against a 120 target; 1655 rpm 250 N m at 30 kPa; 1796 rpm 384 N m at 120 kPa. Steady (20 s and 40 s holds
+  agree): a match, not a lag. Breathing per kPa of manifold is the same at 1500 as at 1800: not the cam.
+- G, 1733 rpm, 60 s holds: on `main` 272 N m at 42 kPa approached from below and from above alike (not
+  bistable by these approaches); 256 at 35 kPa on a 90 s hold with no settle; the predictor reads 293 at 51.
+  With the running path mass-weighted (item 6, scratch): 383 at 120 kPa every way. The weighting moves the
+  threshold across 1733; it is not shown more right on a turbine whose size is a guess.
+- **Corrected (G):** the record under 9e52a186 that the stepped dyno "held 20 s reads 383.4" at 1733 as the
+  truth the old settle missed was not independent: that settle weighed by mass at the step and moved the
+  threshold itself. The hole P read at 1800 rpm on Table P (270) was the old settle's; the 1733 point was not.
+- **Corrected (N2):** the boost falling to 85 kPa at 6000 rpm is not the shaft's ceiling (omegaMax is 560 m/s
+  over the tip radius, a judgement, and the shaft ran far under it) but the build's 60 kPa gate spring against a
+  120 target: with a 120 kPa spring, on target and 327 N m (+13 %). Content, with its source to find.
+- **Corrected (N2, by N1's check):** "a smaller turbine costs torque everywhere" priced the cam with the
+  turbine. At 3000 rpm and equal boost the mean back pressure moves 4 %; the loss is the exhaust pushing back in
+  the overlap under a cam map baked for the larger turbine: holding the intake phase at 20 deg recovers about
+  60 % (designShare 0.6: -18.8 % becomes -7.2 %). A turbine cannot be priced without re-baking spark and cam
+  for it: item 9 opens with C's bake stage (match, spark, cam, spark), not with a published map.
+- For C, agreed for when `host/` may be pushed: on a build with a turbine a held step is measured only when the
+  shaft's drift over the last second is under 0.5 %, capped at 40 s, a capped step marked unsettled. And the
+  long-hold case does not look inside a threshold. **Corrected by C's 5-minute holds (05:19):** the steady
+  state at 1733 rpm on `main` is 272 N m at 41 kPa: a pure ramp with no settle anywhere reaches it from above
+  within 20 s and from below only after about 4 minutes (253 at 95 s, 262.5 at 155 s, 268.4 at 215 s, 271.2
+  from 4 min); the stepped dyno with its settle, C's rounds and both long holds agree within 0.6 %. So the
+  settle does not bias this point, and G's 256 on a 90 s no-settle hold was a climb not yet finished, not a
+  truth the settle missed (the lead's "14 % over" was against that unfinished hold). What stands apart is
+  the predictor's 293, 8 % over: C's to explain.
+
+**Corrected (the steward), already in the section above:** the idle's rate term does not act on the rally
+five's limiter; the runs part at the crank.
+
+**The idle's design is measured (the steward; no code pushed).** The fixture's lope is a 0.4 s limit cycle
+seeded at the catch by the proportional part reading the flare's rate; held off through the post-start window
+(the one the integrator hold already uses: no new number) it never starts, and the rate switching on after it
+does not restart it. A filtered rate and a clamped rate both fail the fixture. On the gate's own measure, warm
+and cold, all 31 archetypes pass within about 1 rpm sd of `main` (the 3.0 twin turbo warm 5.5; 49.0 with
+98d0dc4d); the fixture 287 to 19 rpm sd under ecu.model. To code locally, with: what happens at the instant
+the rate switches on (the fixture and two shipped builds, 10 ms steps); the same constant as the integrator
+hold's, by one name; X-031 (4.02 against 4.03) not rested on; the diesel's rows to the digit; alone and first
+when a bake can follow.
+
+**The guarantee for "no wheel without a path" is designed and ruled (N2; local, its push refused):** the
+builder's one call saying which housings a collector reaches; a turbine without a fed housing draws from its
+bank's fed sibling's (twin and quad only); the shared housing's volume the two summed; each nozzle by its own
+orifice law from the one gas, as the twin scroll's are; no new number. The split by firing order on table
+engines only where a source shows such an engine drawn split.
+
+## 26 Nov: CI's record (the steward)
+
+- **ba364841, macOS, run 45762948828 (job 139717022365): infrastructure, not a red on N1's dips guard.** "Upload the
+  application" failed on the artifact service ("Failed to CreateArtifact: Unable to make request: ETIMEDOUT"); Build
+  and Test were not reached, so no test ran. Not re-run (the lead: the next push's macOS job covers the same code).
+  Note for a second time: in build.yml the application's upload (line 511) comes before Build (617) and Test (646),
+  so an upload's failure stops the tests; if it recurs, the order (or `continue-on-error` on the uploads) is the look.
+
+## 26 Nov 07:23 UTC: a combo row's "excess" is a draw; item 6 is a patch that waits; what is asked of whom
+
+- **X-041's rally five tour row is chaotic (G's measurement, 15 runs on `main`'s tree).** The same run with
+  `env.temperature` moved by a thousandth of a kelvin reads an excess from 1.55 to 3.08, median about 2.2, 2 of
+  15 at or over the row's 3.00; on item 6's patch tree 1.93 to 3.00. One draw of such a row cannot tell two
+  trees apart, so every "the row came back" and "the row went" read tonight on a single run is withdrawn as
+  evidence for or against a change (the steward's line at 4d121479 says so of its idle section; the idle
+  design's conclusion rests on the gate and the dips row, which are continuous idles, and stands). `--set
+  env.pressure` nudges left the run bit-identical: not a nudge, and a question of its own (below).
+- **Asked of X with the steward, tests only, a proposal to the lead before code:** a measure for such rows that
+  a tree cannot pass or fail by luck (the median over nudged runs is the first candidate); the spread under the
+  same nudges of three rows believed real (X-031's V8 downshift, X-030's shift cut, one of X's choosing) and
+  three suspect ones; its cost to the nightly and the soak on CI's logs; what a `Known.h` entry means under it.
+  Until it is ruled, `Known.h` stands as it is and no entry is closed or opened on one draw.
+- **Asked of the integrator, read only, and answered at 07:21 (below):** whether a write to `env.pressure`
+  after t 0 reaches a running engine at all.
+- **Item 6 (G) is ready and parked.** Physics note fc30811c: every receiver of the port's gas wants the mass
+  mean, so the reference's time weighting is a fault to fix under the new models, not a choice.
+  `docs/handoffs/patches/g-port-mass-mean.patch` (7e71f752): a hidden switch `spec.exhaust.portMean` (1 the
+  mass mean, the default; 0 the time mean, the reference's), the nulls 23 of 23 to the bit, the exhaust's
+  test 2 pinned to 0. It moves every table, so it lands with N2's item 9 and before it, never alone, and only
+  when a bake can follow.
+- **Nothing under `sim/`, `host/` or `tools/` has moved since the bake** (read at 4d121479: sim f23337cc, host
+  2e7c1bec, tools 7c3e4d59). The branch past `main` is tests, `ui/` and docs.
+
+## 26 Nov 07:26 UTC: the engine never reads the air's pressure; the combo rows' copies pass and evidence rule
+
+- **THE AIR PRESSURE FIELD ACTS ON THE CAR'S DRAG ONLY (the integrator's read and the lead's, made apart; G's
+  bit-identical runs the measurement).** `readSpec()` takes the temperature alone from `spec.env`
+  (sim/engine.fm:1714). Every outside pressure the engine uses is the literal 101325: the box (:301, :1007),
+  the machine's ambient (:528, :1694), the two-stroke (:540, :1197), the trapped charge's reference (:1389),
+  the scopes, the exhaust's outside. The one reader is sim/vehicle/car.fm:393 (the air's density for drag and
+  downforce, when `spec.env.rev` moves). An owner who sets 70 kPa for altitude gets the same power, boost
+  and sound, against the field's own help ("lower at altitude"). X numbers it. The temperature is read (Heat
+  takes `set.ambF` every 16 samples), which is why it is a nudge and the pressure is not.
+- **Item 15 below, the integrator's, a design first** (its push is refused: the design stays local until the
+  owner decides). Meanwhile, `ui/` only: U1 adds an AIR line when the field is off its default ("moves the
+  car's drag only") and holds the workspace's printed absolutes over 101325, both to leave with item 15.
+- **The combo rows (X reproduced G's spread on fb32d4fc: 3.08, 2.68, 1.97 a thousandth of a kelvin apart).
+  Ruled:** the X-041 row stays; no median as a judge (a step heard one run in seven is still heard); the
+  default tier's judge does not change. The nightly gets a COPIES pass (X): the worst over three temperature
+  copies on the case and on its reference, symmetric, each copy printed, proved to bite on X-014's and
+  X-015's old tree (62a6a7fd) on the source tree before it lands. A row whose copies fall on both sides of
+  its threshold is MARGINAL and `Known.h` says so with its spread; a marginal entry leaves only when all of 15
+  copies read under on the tree said to cure it. The steward runs the 15-copy spreads of three rows believed
+  real and three suspect ones, and gives the pass's cost from CI's logs (over about 10 minutes on the soak:
+  the nightly alone).
+- **THE EVIDENCE RULE, for every session from now:** no single draw of a combo row is evidence for or against a
+  change to a tree. "This change cured row R" or "caused it" needs every copy on one side before and every
+  copy on the other after, or it says "marginal, unchanged".
+
+## 26 Nov 07:28 UTC: a row believed real straddles too; the copies pass is held
+
+- **X-031 (the V8 pull, fuel and ECU models; the steward's 15 copies a thousandth of a kelvin apart, bound
+  4.03): excess 1.76 to 5.11, median 3.39; 4 of 15 over** (the 11.02 s downshift twice, the upshift's cut at
+  6.63 to 6.71 s twice), 11 under. `Known.h`'s 4.73 to 5.17 for it are draws from the top of that spread.
+  X's 17-nudge run of the same row is the second measurement, with five more rows (X-030, X-043, the X-041
+  rally five, X-041's turbo-six tour lift, X-044); one writer, X.
+- **So the split "real against suspect" is withdrawn until those are in.** On this evidence a click row is a
+  SOMETIMES click with a rate (X-031 about one run in four, the rally five one in seven), and three copies
+  cannot sort them. **The copies pass ruled at 07:26 is HELD**; X reports each row's count over, its lowest,
+  median and highest, each over-copy's event, and the reference's own worst step across the copies (the
+  excess is a ratio: how much of the spread is the denominator's).
+- **What the lead expects to rule, open to refutation:** a click row is measured as a rate (n of N copies over,
+  and the worst) in the nightly alone; `Known.h` carries the rate; the default tier keeps its single draw as
+  a tripwire, and a default-tier row that goes red on a draw is neither re-run to green nor waved off: its
+  copies are run, and a row with any copy over is entered as marginal under a number.
+- **The steward reads, with no code, why a cut clicks one run in four:** the crank angle at which the cut and
+  the re-entry take effect against the nearest firing, on the four over and eleven under copies. The lead's
+  guess, to be refuted: the cut acts at the sample it is decided on, in mid-cycle; a cut that takes effect at
+  each cylinder's next event would take the rate to none. It sits beside item 8 and decides whether X-030
+  and X-031 are one fault.
+
+## 26 Nov 07:30 UTC: all six click rows are SOMETIMES rows; no copies pass; item 15's design is written
+
+- **X's spreads (17 copies, 293.15 +/- 0.15 K, on fb32d4fc; the second measurement, agreeing with the
+  steward's X-031): no row sits on one side of its bound.** X-031 (V8 pull, fuel+ecu, 4.03) 6 of 17 over, 1.83
+  to 4.78, at three different shift events; X-030 (small four pull, fuel+ecu+car, 2.85) 12 of 17, 2.25 to 7.09,
+  the upshift's cut; X-043 (turbo six tour, intake+exhaust+car, 2.97) 11 of 17, the start's catch; X-041's
+  rally five (3.00) 1 of 17; X-041's turbo six tour (2.97) 3 of 17, the 9.76 s lift; X-044 (small four pull,
+  custom+fuel+ecu, 2.85) 11 of 17, mostly the 11.02 s downshift (its pass at the unmoved temperature was a
+  draw). A row's named event is itself a draw.
+- **RULED (the 07:26 copies pass is WITHDRAWN, not held):** no copies pass in any tier (worst of three is a
+  weighted coin per night; a red fraction would be a number made from the rows' own measurements).
+  `Known.h`'s six entries become SOMETIMES rows with their rates, words only (X). The spread is an on-demand
+  instrument in no tier (X), printing each copy's excess, time, check and the reference's own worst step.
+  **The evidence rule for a sometimes row: the only verdicts are CURED (0 of 17 over on the tree said to cure
+  it, the rate before on record) and NOT CURED; anything between is "n of 17, was m of 17" with no verdict.**
+  The single draw stays as a tripwire in the default tier and the nightly: a row not in `Known.h` that goes
+  red on a draw is neither re-run to green nor waved off; its spread is run, and with any copy over it is
+  entered under a number.
+- **Next, X:** the reference's own worst step per copy on the six; and the same spread on six rows that pass
+  today, chosen blind (every k-th click-judged row, k fixed first). The lead's prediction before it runs: at
+  least two show a copy over, and then the soak's stream of "new" rows has been one population sampled again
+  on each tree. **The steward:** why a cut clicks only sometimes (the phase at which it lands), X-030 first.
+- **Item 15's design is written by the integrator** (`docs/handoffs/d-air-pressure-design.md`, local: its push
+  is refused): the readers by owner; the 101325s that stay references (a compressor map's corrected flow, the
+  knock table's axis, the tables' load axis, a flame-speed correlation); the spring gauge and the ECU's target
+  absolute, sources first, with a migration that keeps the shipped builds bit-identical at the default. Its
+  predictions at 3000 rpm full load and 70 kPa: the default V8's BMEP 10.57 to 6.77 bar (36 % down against 31 %
+  of pressure: friction stays), the economy four's 11.90 to 7.78; a 1 bar spring turbo 1.70 against 2.01 bar
+  absolute. The lead has put its questions to G (the pipe's impedance and steepening: the outside, a
+  reference, or the pipe's mean) and to C (the tables' load axis; what in the bake and the predictor assumes
+  sea level), each to answer in its own handoff.
+
+## 26 Nov 07:34 UTC: item 15's answers from G and C; why the upshift row is a draw (the steward's read; a probe)
+
+- **Item 15, the exhaust (G, `docs/handoffs/g-exhaust.md`, "The stated air in the exhaust", 2ac9f0f7):** all 24
+  sites classed. A pipe's impedance and density (duct.fm:347-348) TAKE THE OUTSIDE (the waves are linear about
+  it); the pipe's own mean before a turbine, 1.5 to 2 times the outside by G's judgement, is a separate
+  reference fault, in no window. `steep = 0.87/101325` and its numerator stay as the cancelling pair; the
+  denominator at duct.fm:596 takes the outside; its 50000 floor becomes p - 51325 (exact at the default; the
+  field's range starts at 50000). No expression reshaped; the stated float copied, never computed.
+- **Item 15, the tables and the bake (C, `docs/handoffs/c-host-tools.md`):** the knock table is absolute over
+  a literal 101325 on both sides (combustion.fm:352, Bake.cpp:1006) and stays; the CAM map is relative to the
+  outside (ecu1.fm:194, :204 over ecu.fm:317), so the ECU's barometer takes the stated pressure. Nothing in
+  `host/` or `tools/` corrects for density. **Ruled, C's own change in the bake's window:** the bake measures
+  at 288.15 K and 101325 Pa whatever a build states (every shipped build states that air already: all 31 and
+  first.json; today a copy runs at the stated air while env is in no key), env stays out of the keys, no
+  temperature axis (the knock control hears a hot day). Acceptance: every shipped table to the bit, and a
+  made-up build at 322.04 K and 70 kPa bakes its standard-day twin's tables, shown to differ today first.
+- **Item 15, the sound (the integrator; ruled):** nothing in the sound reads the outside's density today.
+  The pressure's share alone, one factor p/101325 on what radiates into the outside (tailpipes, mouth, bay),
+  exactly 1.0 at the default; the temperature's share is its own later item (it moves every build stated off
+  300 K). Prediction: about -3.2 dB at 70 kPa for the default V8 at full load, the pipes taking the outside.
+- **The upshift's row (the steward's read; the lead's mid-cycle guess REFUTED):** each firing is decided once,
+  at its cylinder's intake closing (ecu1.fm fire(c)). On 15 V8 copies the worst step is time-locked 20 ms
+  after the cut's end, inside the 0.1 s reinstatement ramp (launch.fm: half the firings still cut at first),
+  at every crank phase; the under copy's firing is the larger. The judge takes the step over the median of
+  its neighbouring periods and the ramp's train is thinned by design, so the verdict follows which neighbours
+  were cut. **Hypothesis: a judge question, not a fault in the burn.** A probe is allowed (a sim copy through
+  TEE_SIM_DIR with kReinstateShare 0; nothing committed; figures named by tree). Predictions on record: the
+  V8 0 of 15 over at the 6.6 s event, the small four's X-030 at most 2 of 15 at its upshift, the downshift's
+  copies unmoved. If it collapses: X restates the judge on the property (a firing the ECU reports cut is no
+  neighbour for a median) with proof it bites on a real click in a shift's window; `sim/` untouched. If not:
+  X-030 is the burn's on return, the steward's. The downshift (the overrun cut and the blip) is traced next.
+
+## 26 Nov 07:37 UTC: the probe: no collapse; X-030 is a real sometimes fault; the bound is itself a draw
+
+- **The steward's probe (a copy of sim f23337cc with launch.fm's kReinstateShare 0, through TEE_SIM_DIR,
+  nothing committed; the same 15 nudges, the source tree beside it). The pattern story is REFUTED and so are
+  the lead's predictions** (0 of 15 on the V8's 6.6 s event; at most 2 of 15 at the small four's upshift).
+  Small four pull, fuel+ecu+car: 12 of 15 over on both trees (9 of 15 at the upshifts either way). V8 pull,
+  fuel+ecu: 4 of 15 on the source, 1 of 15 on the probe (the 6.6 s event 2 against 1: marginal both ways,
+  undecided). With the retard at 0 instead (the share kept), the small four reads 6 of 15: the 15 degrees that
+  is there to soften the return doubles the rate.
+- **By the ruling made before the number: X-030 is a real sometimes fault at the upshift's return, the
+  steward's for the next window, its cause not yet named.** The worst step is time-locked 21.1 to 22.7 ms
+  after the cut's end (20 ms on the V8) at every crank phase. Being read: whether that is one engine cycle
+  after the cut's end; the step and the judge's median apart per copy, with the count of neighbours that fall
+  in the cut's silence; the same with the drive off. Then the downshift, beside item 8.
+- **The reference's side (the steward; X's own measurement to follow):** its shift cut is the fuel cut, no
+  ramp and no retard (ecu.fm:246). Its excess in the shift windows: V8 1.26 to 2.52, small four 1.20 to 1.88;
+  its whole-run excess per copy 1.80 to 2.56 and 1.33 to 1.75. **Each row's bound is twice ONE draw of that
+  (4.03 = 2 x 2.015; 2.85 = 2 x 1.425): the bound is a draw from a spread about 20 % wide either way.** X is
+  asked for a proposal, no code: what the bound should be made of so that it is one number on every tree,
+  and, row by row, whether that form loosens any row against today's bound.
+
+## 26 Nov 07:39 UTC: the upshift's step is the first firing back, judged partly against the cut's silence
+
+- **The steward's reads on the source tree (15 nudges) NARROW the section before this one.** The worst step
+  is the FIRST burning firing back, about one revolution after the cut's flags end (332 to 360 degrees on the
+  four at 2920 to 2940 rpm; 266 to 339 on the V8 at 3580 to 3620): a firing is decided at intake closing. Not
+  a cycle (the lead's second guess refuted), not a crank phase.
+- **Small four:** the step in its own firing period reads 12.6 to 17.2 in over and under copies ALIKE; the
+  judge's median of the 8 neighbouring periods reads 3.9 to 4.9 where 3 of 8 neighbours fall inside the cut
+  and 5.39 where 2 of 8 do. The median sits between two populations (the cut's side 3.3 to 5.1, the running
+  side 5.3 to 17), and the count of neighbours in the silence moves it. **V8:** the first firing's own size
+  also varies by two (18.4 against a median of 3.60 in an over copy; 9.0 against 5.11 in an under). The
+  reference has the same silence (a fuel cut) and a first firing back that reads 1.2 to 2.5.
+- **So X-030 is two questions, and "a real sometimes fault" is withdrawn until they are answered.** (A) X: the
+  judge at a cut, a proposal and no code: periods inside a cut the ECU reports are no neighbours for the
+  median, symmetric on case and reference, with the bound's make-up, what each row then reads over 17
+  copies, every row it loosens named, and proof it bites (X-014, X-015 on 62a6a7fd; a click planted in a
+  shift's window). (B) the steward, a read with predictions and sources first: why the fuel and ECU models'
+  first burn back is larger against the running firings after it than the reference's (no burnt residual
+  after a spark cut; the reinstatement's retard into the blowdown: the probe without the retard halved the
+  rate; the wall film on re-entry), and whether a real quick-shifted engine's first report is that size. If
+  it is the real thing it is a sound for the owner's ears; if the model overdoes it, its cure waits for the
+  window. The drive's read is dropped as not needed. The downshift follows, beside item 8.
+
+## 26 Nov 07:40 UTC: the downshift in its own window: X-044 is near-always, the others rare
+
+- **The steward, the judge's excess over 10.95 to 11.20 s in every copy (source tree, 15 nudges):** the V8 pull
+  with the fuel and ECU models (X-031 proper, 4.03) 2 of 15 over, median 2.34; the small four pull with fuel,
+  ECU and car (2.85) 4 of 15, median 2.20; **the small four pull with the custom engine, fuel and ECU (X-044,
+  2.85) 14 of 15, median 3.51**: the one near-decidable row of the six, a click at the overrun cut's end and
+  the blip, as its entry says. It goes to item 8 (the fuel's re-entry after an overrun cut) with X-030's
+  first burn back beside it.
+- **A row's named event is a draw as well as its figure:** a window's figures differ a little from the
+  worst-of-run ones because the edges change the neighbours. X is asked whether the judge can count PER EVENT
+  WINDOW (each shift, each cut, the start) from what the ECU and the scenario report, and at what cost.
+
+## 26 Nov 07:49 UTC: the upshift's re-entry: the new models' is the larger; the cut runs its request twice
+
+- **The first firing back against the median of the four after it (the steward; source tree, 15 nudges, found
+  from the cut's end):** the reference 1.16 on the small four (0.97 to 1.37) and 1.51 on the V8 (1.02 to
+  1.73); the case 1.66 (1.19 to 3.36) and 2.01 (1.18 to 3.42), in over and under copies alike. The retard does
+  not change the ratio (probe without it: 1.94 and 2.26); why the row's rate halves without it is
+  UNEXPLAINED. Sourced: a torque step on recovery is real and tuners soften it with 20 to 30 degrees ramped
+  out over 50 to 100 ms (ours 15 over 0.1 s); no source sizes the first firing against the next. So the
+  size is neither a fault nor cleared.
+- **A fault candidate (X to number it; the steward's if it is one):** the new ECU's shift cut is 203 ms on the
+  four where the reference's is 53, and 107 on the V8 against 64, because launch.fm sets its countdown to
+  the vehicle's request again on every step while the vehicle asks (`dogLeft = dog > 0 ? dog : ...`) and
+  car.fm's cutRequest() returns its seconds for as long as the shift lasts: the shift's window plus the
+  request again. Probe copy (sim f23337cc, the countdown set once when the request starts): 149 and 43 ms;
+  the ratio 1.52 and 1.81; the rows' rates halved (X-030 12 to 6 of 15; the V8's 4 to 2). Part of the cause,
+  not all. The integrator is asked, read only, what card I's vehicle meant the number to be (seconds from
+  the request's start, or "while I ask") and for sourced cut lengths by gearbox kind. The lead's guess that
+  an overrun cut joins the shift is struck.
+- **Clips are with the owner in the steward's session** (six 3 s files at one level: each upshift as shipped,
+  on the reference, and on the probe without the retard), with one question: a quick-shifted car's report,
+  or a click. Nothing is shaped on the answer before the window.
+- **Next (the steward):** the per-cylinder residual and wall film at the re-entry, on the source and on the
+  countdown-once probe.
+
+## 26 Nov 07:53 UTC: X-047 IS A FAULT: the shift's cut is the vehicle's window plus its number (item 16)
+
+- **Two reads that agree (the steward's flags, the integrator's code).** One flag only: the spark cut, 210 ms
+  on the small four (8.5003 to 8.7103 s), the pedal at 1.000, no fuel cut and no overrun cut (the lead's
+  suspect and the steward's "fuel flag" both struck). The vehicle hands its number for as long as its own cut
+  window lasts, 60 ms on every kind (car.fm:791, gearbox.fm:232, :268; 150 ms on a truck's automated box):
+  0.05 without `car.model`, and under model 1 `shiftTime`, 0.15 s, a whole shift's time (car.fm:852). The ECU
+  re-arms its countdown to that number on every step it is asked (launch.fm:80). So the cut lasts the window
+  plus the number: 60 + 150 on the four, 60 + 50 on the V8, where the reference cuts 53 and 64 ms and tuners'
+  timed ignition cuts are 40 to 60 ms. The seam's own words were "seconds of cut" from the request's start.
+- **Probe (sim f23337cc, launch.fm:80: the cut held only while the vehicle asks), the cut 53 ms on both:** the
+  V8's pull row 4 of 15 to 0 of 15; the four's X-030 12 of 15 to 4 of 15; the first firing back over the next
+  four 2.01 to 1.80 (the reference 1.51) and 1.66 to 1.30 (1.16). The cut's length carries most of it. On a
+  probe copy, so no verdict.
+- **RULED: item 16 of the next window, a design first, written by the steward with the integrator's reads
+  under the integrator's name.** Two halves: the ECU's re-arm (the steward) and the vehicle's number (the
+  integrator). It settles the contract among three forms (seconds latched at the rising edge; cut while the
+  vehicle asks and no longer, the lead's leaning; seconds remaining), every asker sample by sample (the
+  reference's robot, model 1's robotised and dog boxes up and down, the truck's box, the bike's quickshifter),
+  sourced cut lengths by kind, and its acceptance before code: each kind's cut what that kind wants within a
+  step; model 0 to the bit; every table reproduced by the bake; the V8's upshift row 0 of 17 and the four's
+  as a rate on X's instrument; the blip, the dips test and the idle gate untouched. Not cured by it: the
+  four's remaining 4 of 15 and its first firing back at 1.30 against 1.16 (the per-cylinder residual and
+  film reads are for that).
+
+## 26 Nov 07:53 UTC: the background is clean (the lead's prediction refuted); the first firing back is the purge
+
+- **X's background, fixed before it ran (every 5th of the 31 archetypes sorted; as built, the tour, 17 nudges
+  on fb32d4fc): 0 of 6 show a copy over.** The flat six, the economy four, the kei triple, the side-port
+  rotary, the 1.0 turbo three and the two-stage 2.0: every case at 2.18 or under across all copies. The lead
+  had predicted at least two with a copy over: REFUTED. So the six known rows are particular faults, and the
+  soak's "new" rows were not one population sampled again.
+- **The references move far more than the cases** (the flat six 1.41 to 3.90; the economy four's bound 5.10 is
+  twice a reference drawn at 2.55 over a case that never passes 1.82). Today's bound is set by the noisier
+  side. A symmetric worst over copies would loosen and is not the form; X's proposal fixes what the bound is
+  made of.
+- **The first firing back (the steward; a print of each cylinder's burned share and charge at intake closing
+  on a probe copy, the run the source's):** through a spark cut each cylinder pumps fresh charge; the burned
+  share falls 0.11 to 0.00 by the second intake and the trapped charge rises 385 to 460-468 mg (+21 %). The
+  first firings back burn a charge a fifth fuller with nothing inert in it. Purging is done in two cycles;
+  the cut's length sets how many cylinders come back purged and how long the silence before them is. No wall
+  film exists under fuel.model 1 (mixture.fm): struck. **So X-030's cure candidate is X-047's cut length, not
+  the burn**; what remains with the cut right (1.30 against the reference's 1.16 on the four) is checked then.
+- **For the owner's ears:** two more clips asked of the steward, each upshift on the probe with the cut at
+  53 ms, beside the six already shown.
+
+## 26 Nov 08:07 UTC: the combo judge: X's proposal in three parts, ruled; the dyno's knock look; the shift's cut
+
+- **X's proposal (text; every figure from 17 nudges on fb32d4fc), ruled in X's order, each part proved before
+  the next:**
+  - **A, the bound: twice the reference's LOWEST excess over 5 copies at fixed nudges, in the nightly; the
+    default tier keeps the single draw as the tripwire.** A tightening or equal on every measured row (copies
+    over, today to the new bound: X-031 6 to 9, X-030 12 to 15, X-043 11 to 11, the rally five 1 to 5, the
+    tour's lift 3 to 3, X-044 11 to 11) and the six background builds stay 0 of 17. The lowest, not the
+    median or highest: the references' highs are what spread. Before it lands: it bites on X-014 and X-015
+    at 62a6a7fd; every nightly row outside `Known.h` that it turns red is listed with its spread and entered
+    as a sometimes row, none waved off; its cost read from CI's log.
+  - **B, per-event windows** (the start, each shift, each cut onset, each lift, each limiter episode, the
+    rest), judge-side only: a row becomes "this event: n of N". `Known.h` gains an event field, a pattern
+    change: each entry's old and new pattern to the lead before any is made.
+  - **C, the judge at a cut:** periods overlapping a cut flag are no neighbours for the median, case and
+    reference alike. Agreed as a design; a measurement-only variant, local and never pushed, is allowed, and
+    its readings (the six rows, the background, X-030 still showing on today's tree, the planted click) come
+    before any proposal to push. C is the only part that can loosen.
+- **eachSwitch's default-block runs go to `[nightly]`** under the fast tier's rule (the field form the named
+  default-run guard; combo's test-s before and after).
+- **The dyno (U1, carried by J2):** knock as the curve's state at three quarters of its measured points and
+  four at the least (ticks under the plot, no ring on each point), the lead's choice on its own render of
+  both looks; the cursor through the boost band; five goldens move by the band's cursor line and dots alone
+  (dyno.stage and dyno.large at two densities, dyno.paper).
+- **X-047's design is ruled and on the branch** (`docs/plan/x047-shift-cut.md`, e7d1246b): the engine cut while
+  the vehicle asks and no longer, the number's size not read, no floor, a test that every asker's window is
+  at least two ECU steps; the whole change launch.fm (the steward's); the bike's quickshifter, today cut for
+  twice its setting, cured by the same. Clips for the owner's ears are in the steward's session (each
+  upshift as shipped, on the reference, without the retard, and with the cut at 53 ms).
+
+## 26 Nov 10:08 UTC: the nightly bound is in; what it found on the turbo six's pull; a dead cam dial
+
+- **`main` is at 3c42b4d2 (09:16).** Past it on the branch: X's part A (97a7f92e, 24d51259: the nightly's click
+  bound twice the reference's lowest excess over five fixed copies; the default tier's single draw kept) and
+  docs. Tests only; the baked trees unchanged.
+- **Under the nightly bound, combo's nightly reads 117 of 127; every new red is the turbo six's PULL** (its
+  bound 3.37 to 2.67; the control with nothing on 0 of 17, highest 2.06). Entered in three groups by the
+  lead's ruling: **X-043 widened to the pull** as two exact rows (intake+exhaust+car 7 of 17 and
+  custom+intake+exhaust 3 of 17, the start's catch); **X-048**, the pull at its shifts with boost.model on
+  (alone 2, valve+boost 4, wallHeat+valve+boost 14, valve+boost+fuel 8 of 17; N2, N1 on the valve rows);
+  **X-049**, valve+exhaust+sound (2 of 17 at 6.59 s). The six older rows under the nightly bound: X-031 7,
+  X-030 13, X-043 11, the rally five 5, the tour's lift 3, X-044 11 of 17.
+- **X-048 (N1's read): its over copies are the gate loop's limit cycle at steady full load**, item 3, N2's.
+- **X-049, read three ways (N1, G, L).** The event exists only with sound.model on, sound alone included; no
+  exhaust or valve combination without it shows it. L (its note e664691e): sound.model does not starve the
+  cut; both models' cuts are the exhaust's pumping pulses alone, the new one 9.4 dB under its firing. The
+  REFERENCE SITS ON ITS 0.85 LIMITER FOR THE WHOLE PULL at the combo build's view and cannot show a relight
+  standing out. So part (1) is the judge's (X, inside part C, with a measurement of each side's excess with
+  the reference off its limiter). Part (2) is real and N1's: the turbo six's first pulse after the shift's
+  cut is +10 dB over its own firing (0.569 against 0.175) where the small four's is +0.6 dB.
+- **A dead dial (N1's read of sim/, U1's of the interface; X numbers it).** Under valve.model Lab the
+  reference's cam dial moves no event on a piston engine (valvetrain.fm:113-129) and its idle term is
+  bypassed with ecu.model Maps and a stated idle speed. All 31 archetypes and first.json run that way, so on
+  30 of 32 the dial does nothing; it is on screen and editable with no word beside it (ValvesWorkspace.cpp:133,
+  :176-177; the generated pages, Binding.cpp:427). On the two rotaries it is live. **Ruled:** the fault is
+  cured in the interface now (U1: not offered as live on a Lab piston build, a line saying where the cams
+  are; pictures first); N1's "the dial as the lab's seat events" behind an explicit flag is a feature for the
+  owner to want, not in the window; the idle term on a Lab build without Maps is a small item of N1's.
+- **A corpus question (N1):** a combo build that states only the dial (the turbo six) runs the lab's default
+  cam whenever valve.model is on, so its valve rows compare cam against cam. X measures the valve rows with
+  lab cams stated equal to the dial (a scratch copy) before anything in the corpus changes.
+
+## 26 Nov 10:36 UTC: X-049 PLACED: the exhaust valve's flow solve does not converge on a first pulse (item 17)
+
+- **G, on scratch trees with a sample-by-sample capture (the run unchanged by it): not a pipe front, not a
+  junction, not physics** (two of G's three predictions wrong, as G states). On the first pulse into pipes a
+  cut has emptied, `Valve::flow` (sim/exhaust/duct.fm: three fixed passes of a fixed-point iteration, a
+  slowly damped oscillation there: 1.67, 0.27, 0.75, 0.38 ... to 0.49) is left unconverged, and its choke
+  test acts on a ratio that wanders across 0.5457 from sample to sample: the valve's flow chatters between
+  about 0.6 and 1.2 m3/s, 29 jumps over 0.2 m3/s in 10 ms where running has none. The first pulse meets a
+  rarefaction of -57 kPa (the pipe near 60 kPa absolute) where running pulses meet -24 to -30.
+- **Whichever cylinder fires first into the emptied pipes has it, in every copy** (cylinders 1, 3, 4, 5, 6
+  seen); the row's 2 of 17 was the judge's draw on which cylinder that was. **The same at 48, 96 and 192 kHz**
+  (the solve is algebraic each sample; nothing thins). The collector and the primary's far end show nothing.
+- **With the solve converged (a 30-pass stand-in, a scratch tree): X-049 reads 0 of 17, median 1.52, highest
+  2.00** (was 2 of 17, 2.30, 3.28); its 6.58 s and 8.58 s events both gone. A stand-in, so no verdict.
+- **RULED: a fault, item 17 of the next window, G's, a design first.** The valve's flow solved to convergence
+  as one continuous equation (the flow function flat below critical), a bracketed root with a convergence
+  test and never a fixed count, both branches, behind a hidden switch (the converged solve the default
+  under the new models; the reference's three passes for the null, test 2 pinned). The running solve is
+  unconverged too, by about 5 % between its last two passes: every build's sound and every table moves, so
+  clips before and after for the owner and Q's cost are part of it.
+- **How wide it is, being measured (G, predictions per row first):** the spreads on the stand-in of every
+  sometimes row whose event is a first pulse into quiet pipes (X-030, X-031, X-044, X-043, X-041's two,
+  X-048's rows, the control, two background builds), case and reference both. **X's part C is HELD until
+  they are in:** on this row the judge was right to call a click, and dropping a cut's neighbours from the
+  median could have taught it to overlook a real numerical fault. Item 16's acceptance is read knowing
+  item 17 moves the same rows: 16 first on today's valve, then 17.
+- Also since 10:08: X-050 is the dead cam dial's number (U1 the interface, N1 the sim side; N1's notes at
+  9f11391c). U1's form, on the lead's render: on a Lab piston build the dial left out on both pages and NO
+  line (a healthy build carries no warning words); on a rotary it stays with a neutral line; on a Reference
+  build the lab-off warning.
+
+- **aa8d6c4c, Linux, run 45806403099 (job 139862779783): infrastructure.** The bootstrap's apt install got 404s from
+  security.ubuntu.com for libasound2t64 and libasound2-data 1.2.11-1ubuntu0.5 right after a clean `apt-get update`
+  (the mirror's race: a fresh index naming a version the pool had just replaced). Build and Test were not reached.
+  Fixed by the lead's approval (11:01): one more update and one retry of the install, both logged; a second failure
+  fails the job as before. If the step fails again after that, the package set is pinned or cached (the lead's word).
+- **`main` at 5278e3e9** (11:01, the lead; run 45796819517 green on Linux 584, macOS 583, Windows 576; tests only
+  since 3c42b4d2).
+
+## 26 Nov 11:39 UTC: how wide X-051 is (G's two columns); part C lifted in two-tree form; part B's rows; X-050 on the branch
+
+- **X-051, the tip against a tree differing only in the valve solve's passes (30 for 3), X's spread.sh in its
+  two-tree mode, 17 copies; counts over the nightly bounds (own-tree bound in brackets where it differs):**
+  X-049 2 to 0, X-043 tour 11 to 0, X-043 pull 7 to 0: **cured on the stand-in**. X-048 (wallHeat+valve+boost)
+  14 to 8 (3) and X-030 (fuel+ecu+car) 13 to 9, its highest 7.09 to 4.03: **partly**. X-044 11 to 12, X-041's
+  lift 3 to 3 (0), the rally five 5 to 4 over 2.48: **not carried**. X-031 7 to 2 against today's bound, 14
+  against the stand-in's own (its reference's median fell 2.09 to 1.61): bound-dependent. The controls and
+  background rows stay 0 of 17 but their medians move 0.1 to 0.5 either way: every reading, case and
+  reference, sits partly on this solve's noise. G's predictions scored by G: X-043 predicted to stay (cured),
+  X-044 and the rally five predicted to fall (they stay). A stand-in: no verdict until the real solve.
+- **Ruled:** item 17 stands (a start's first firings are heard on every start); G writes its design
+  (`docs/plan/x051-valve-solve.md`) with acceptance in this table's terms, and "what moves that nobody asked
+  to move": every nightly bound recomputed on the new tree, rows entered or released by the spread, never by
+  a draw. Clips for the owner asked of G (a shipped turbo build: a cold start, an upshift, steady running,
+  as shipped against the stand-in) and of the steward (each upshift with both of the window's fixes).
+- **Part C's hold is lifted in one form:** a proposal with measurements, every reading taken on both trees
+  (the tip and G's stand-in), so the restated judge is not fitted to today's unconverged valve.
+- **Part B (X, local until its proof and its final nightly):** per-event windows (the start, each shift, each
+  limiter episode, each cut, each lift, the rest; a worst sample's neighbours never clipped to a window).
+  Ten rows it uncovers, entered by the lead's ruling: X-044 gains the small four's 3-2 downshift rows, the
+  V8 tour's cut at 9.46 s and the turbo six's 3-2 downshift with custom+boost+ecu; one new number at the
+  limiter (the V8's tour, the turbo six's tour: the steward for the rows with ecu.model, G for the rest);
+  a "flip" window for a model switched in mid-run, entered only on its spread. `Known.h` gains an event
+  field, every present row "*"; narrowing any present row is a ruling of its own.
+- **X-050 is on the branch at 389ee865** (U1, carried by J2; 578 of 578): the dead cam dial left out on a Lab
+  piston build with no line; a rotary's named for its ports; the Reference build's lab-off words on the
+  generated page and the head; ENGINE's "no lift figure under the reference model"; the frame's pages follow
+  valve.model at once. The lead rendered all six pictures from the tip: accepted. `main` when its three
+  jobs are green.
+- **CI:** aa8d6c4c's Linux job red on apt's 404 before Build (infrastructure); the steward's bootstrap retry
+  (one more update, one retry, logged) is at 0d040a4b.
+
+## 26 Nov 11:46 UTC: TWO CORRECTIONS OF RECORD: X-051 is nearly absent on what ships; five valve rows measured a cam swap
+
+- **The lead wrote at 11:39 that item 17 was worth a window "on X-043 alone: heard on every start of every
+  build". WITHDRAWN.** G's probe (a counter of the chatter's signature in a scratch tree's `Valve::flow`): all
+  nine shipped turbo archetypes as built, the default build and first.json read 0 on the cold start; on the
+  pull only the kei 660 triple shows any (4 events at 9.03 to 9.12 s, half a second after its third shift).
+  The rows X-051 cures (X-049, X-043) are reference-model combinations on the combo fixtures. On the combo
+  turbo six the counter also shows sustained chatter in 1st gear at low speed under load (3.5 to 4.7 s), a
+  running regime, not yet read on shipped builds. **Ruled: item 17 stays as a design and drops behind items
+  16 and 15;** it remains a real numerical fault (the running solve about 5 % unconverged on every build),
+  and an owner can make the combinations that chatter from the model selectors. The design carries the
+  counter as hidden telemetry and a test that the shipped builds read 0 on a start, a pull and a lug.
+- **The valve rows on the turbo six measured a CAM SWAP (X's run of N1's fields; a scratch copy).** With lab
+  cams stated equal to the dial every valve row reads 0 of 17 (X-049 2 to 0; X-048's valve+boost 4 to 0,
+  wallHeat+valve+boost 14 to 0, valve+boost+fuel 8 to 0; X-041's tour lift 3 to 0), the references identical
+  on both builds. valve.model Lab without stated cams runs the lab's default 231 degree cam where the dial
+  says 300: X-050 seen from the corpus. N1 withdraws "the valve model raises the gate loop's swing" and
+  X-049's valve share: both were the cam swap. **Ruled:** the combo builds state lab cams equal to their
+  dials (references bit-identical with valve.model off, shown in the commit); the lab's default cam keeps
+  its coverage by a fair twin (the turbo six with a mild dial equal to that cam), whose valve rows are
+  measured before anything is entered; the five rows on the dial build leave `Known.h` when the builds
+  change, with a dated line saying what they measured; X-048 keeps its rows without valve.model. And the
+  shipped boosted builds are sampled on the PULL (the background was the tour only).
+- **Clips with the owner:** the steward's upshifts with both of the window's fixes; G's kei 660 triple (a cold
+  start, the full-throttle upshift that holds its chatter, steady mid load), as shipped against the
+  converged solve.
+
+## 26 Nov 12:34 UTC: item 17 has a form that costs less than today's; it goes FIRST in the window
+
+- **The cost, measured (G; the design at b2f177c3, `docs/plan/x051-valve-solve.md`).** Today's three passes
+  of every valve's solve are about 28 % of the whole program. A converged solve at 6 to 8 evaluations would
+  have added 28 to 47 %: refused by the lead at that price. A warm-started Newton with the exact slope cured
+  and missed the target by about a point of a core. **A warm-started SECANT with the test at 1e-4 relative
+  meets it:** on a replay of the solve's captured inputs (float32, faithful to the engine's flows to 6.3e-6
+  m3/s) 38.3 ns a call against today's 50.5 on the running windows (-24 %); dearer at the start (+11 %), in
+  low gear (+39 %) and at the lift and stop (+30 %), where flows reverse and the solve starts cold; the whole
+  pull over nine alternated runs -3 %. Evaluations a call: 2.26 to 2.29 in running, 2.68 over the pull.
+- **It cures on the scratch tree:** the chatter counter 0 in every window (today 243 on that run); the looser
+  test's error 2e-5 to 9e-5 relative where today's passes are off by up to 0.82 at the chatter; X-043's pull
+  7 to 0 of 17 and its tour 11 to 0 at its own event (one copy over today's number at another event, 6.801 s,
+  0 against that tree's own bound). The same run twice is identical to the bit; the bracket holds from any
+  start; a reversal starts cold. **A hazard found on the way, for the real code:** in float32 a Newton step
+  can land on the root exactly, the root be taken as the bracket's top and the next step bisect away from
+  it; the design names it with its test.
+- **RULED: item 17 takes its place in the next window in that form, and FIRST among the sim changes that
+  move readings, ahead of items 16 and 15** (it moves every reference and every nightly bound; the others are
+  read once on the converged valve). X-043's cure is read per event, as part B reads; the 6.801 s copy is
+  spread on the new tree against its own bound when the real code is in. It needs a bake to follow and the
+  integrator's two lines in the cylinder (the switch's hand-over; the memory cleared in `Cylinder::reset`).
+  Q reads the cost on the real code in the window. This reverses "16 first, then 17" (11:39).
+- **`main` is at 389ee865 (12:25): X-050's interface form.** The dead cam dial is no longer offered on a Lab
+  piston build; the pages follow the valvetrain model the moment it is switched.
+
+## 26 Nov 13:41 UTC: part B in `main`; the valve rows on lift-matched cams; what leaves `Known.h` and what stays
+
+- **N1 corrected its own law:** lab cams "equal to the dial" are matched by LIFT (the lab's seat at 1.5 % and
+  its 1 mm at 10 % of the reference's curve), not by event; the first fields were 9 to 12 degrees wider at
+  each end. The lead's ruling that five rows leave `Known.h` rested on a table made with those and was
+  suspended until the rows were read again.
+- **X's two tables on the lift-matched fields (17 copies; the five combo builds bit-identical on the tour
+  with valve.model off; the lab's events within 0.04 degrees of the reference's).** The turbo six, dial
+  build to lift-matched: valve+exhaust+sound (X-049) 2 to 0; the tour's valve+boost+ecu (X-041's lift) 3 to
+  0; wallHeat+valve+boost 14 to 0; valve+boost+fuel 8 to 0; **valve+boost 4 to 2: stays over.** The mild twin
+  (dial 0.0921, the lab's default 231 degree cam, against its own reference): valve+boost 0;
+  **wallHeat+valve+boost 2 of 17 and valve+boost+fuel 3 of 17: over.**
+- **Ruled, entry by entry:** X-049's row and X-041's tour lift LEAVE (they measured the lab's default cam
+  against the dial's; X-049's limiter question stays inside part C; X-051 stands on X-043). X-048's
+  valve+boost stays, restated on the lift-matched turbo six at 2 of 17. X-048's wallHeat+valve+boost and
+  valve+boost+fuel leave as dial-build rows and are entered on the twin at 2 and 3 of 17: the fault is real
+  on a mild cam. The twin joins the corpus (content/builds/combo/turbo-six-mild.json, the nightly only).
+  One push after a nightly and the tier.
+- **Part B is in `main`** (3f892823): clicks judged per event, the event in `Known.h`, the rows it uncovered
+  entered; it bites on 62a6a7fd per event (X-015's pull at its 1-2 shift 6.58 against 3.19; its tour at the
+  limiter 13.33 against 3.08; X-014 at a cut 7.77 against 3.57).
+- **Next (X):** the corrected combo builds and the twin; three shipped boosted builds on the pull; part C on
+  two trees.
+
+## 26 Nov 15:04 UTC: A SHIPPED BUILD CLICKS AT ITS UPSHIFTS, and the cut's length carries it (item 16's evidence)
+
+- **X, three shipped boosted builds as built on the PULL (named before the run; 17 copies, per event, each
+  against twice the lowest of its own reference's five copies):** the three-cylinder 1.0 turbo over at its 1-2
+  upshift in 6 of 17 (1.26/2.62/3.98, bound 2.84) and at its 2-3 in 8 of 17 (2.32/2.83/3.56); the kei 660
+  triple at its 1-2 in 2 of 17 (bound 2.77); the boxer four 0 of 17 everywhere. Nothing over anywhere but at
+  upshifts. The background's "clean" (0 of 6) was the tour's.
+- **The steward's read of the three-cylinder on probes (predictions first; nothing committed).** The cut by
+  the flags: 210 ms at both upshifts on the tip (the spark cut alone), 60 ms on the probe with the cut held
+  only while the vehicle asks. The first firing back over the next four, 15 copies: at the 1-2, 2.65 on the
+  tip (1.35 to 3.98), 1.12 on the cut probe (0.99 to 1.19), 1.12 with both fixes; at the 2-3, 2.82 (2.04 to
+  3.70), 1.07, 1.11. **A cut of real length brings the first firing back level with the next ones**, a
+  larger fall than on the small four (1.66 to 1.30) or the V8 (2.01 to 1.80); boost held through the cut is
+  not needed to explain it (not read). The counts per event on the probe trees follow, in X's form.
+- **So item 16 (X-047) has its evidence on what ships.** Its design is ruled, its change is one file of the
+  steward's (launch.fm), and it waits for one thing: a bake to follow it.
+- **Ruled for the tests:** a small shipped-pull pass in the nightly, exactly these three builds, the
+  three-cylinder's two upshifts and the kei's 1-2 entered under X-048 with the steward named beside N2; the
+  whole corpus on the pull (about 40 minutes) stays a proposal.
+- **Also:** the corrected combo corpus is on the branch (8ec06fd1: lab cams lift-matched to their dials; the
+  twin `turbo-six-mild`; `Known.h` entry by entry; the twin's eight rows entered). G re-read X-052's two rows
+  on it per event: valve+intake+car's 1 to 4 on the dial build was the cam swap (0 per event on both trees);
+  intake+exhaust+voices sits at the limiter's edge (3.03 against 2.97; 2.99 on the secant tree).
+- **Clips with the owner (the steward's session):** `three-cylinder-upshift-as-shipped.wav` and
+  `three-cylinder-upshift-PROBE-both-fixes.wav`, a build the owner drives.
+
+## 26 Nov 16:31 UTC: item 16's prediction confirmed on three shipped builds (a probe); part C's limiter question closed
+
+- **X, the steward's probe trees on the three shipped builds (17 copies, per event):** with the cut held only
+  while the vehicle asks, the three-cylinder's 1-2 and 2-3 and the kei's 1-2 read 0 of 17 (from 6, 8 and 2),
+  every event 0 of 17 on all three builds; the same with both fixes. The steward had predicted 0 to 1. A
+  probe: the rows stay in `Known.h` until item 16 is on the branch and they read 0 of 17 on the real code
+  under both of their check names.
+- **Part C, the reference on its output limiter: NO CHANGE.** Neither pull has a limiter window (the output's
+  0.85 limiter is no event of the judge's). Off its limiter the reference moves the small four's bound 0 to
+  +0.02 and the turbo six's +0.21 on the tip and -0.16 on G's stand-in: not one direction, and about the
+  reference's own copy-to-copy spread, which the lowest-of-five exists to cut. L's form (i) is not taken.
+  Recorded as the bound's known blind spot, no entry: sound.model on the turbo six's pull at -0.07 K reads
+  3.56 at 4.612 s where the reference's own copy reads 3.29 at 4.607 s (both sides click; the lowest-of-five
+  raises nothing for a reference copy that clicks).
+- **The cut-aware variant (local, never pushed), first reading:** it moves the cut windows' medians (the turbo
+  six's 1.75 to 1.27 on the tip) and no bound and no count. Its full tables on both trees, on the rows X-051
+  does not carry, come as a proposal.
+- **Left `Known.h` with the corrected corpus, each on its own ruling:** X-049's row, X-041's tour lift, X-052's
+  valve+intake+car (G's table and X's own 17 copies: 0 of 17 per event).
+
+## 26 Nov 17:39 UTC: A CORRECTION OF RECORD: item 17 moves no reference and no bound; the order is 16 first
+
+- **The lead ruled at 12:34 that item 17 goes first "because it moves every reference and every nightly
+  bound". FALSE of G's design; true only of G's scratch trees.** The stand-in (30 passes) and the secant
+  tree converged the valve for every run, the every-switch-off reference too; that is where "the reference
+  row moved as well" and each tree's "own bound" came from. The design's switch acts only where a side's
+  model is on. G confirms from the code (its page at ef83ad06): every `Valve::flow` call is a cylinder's
+  (core/cylinder.fm vE and vI; the two-stroke's vE), and a cylinder hands its valve the converged solve only
+  under that side's model. So on the real change: (a) no reference and no nightly bound moves; (b) cases with
+  the exhaust and intake models both off are untouched to the bit (X-030, X-031, X-044, X-048's
+  wallHeat+valve+boost, X-041's lift, X-052's wallHeat+ecu+car and the V8's valve+fuel+ecu), and a move there
+  is a fault of the gate; (c) only cases with one of those models on move, against today's bounds: in G's
+  two-column tables the "over X's bound" columns are the ones to read (X-043's tour 11 to 1 of 17, the one
+  at another event; its pull 7 to 0), and for a case with one of the two models on the stand-ins overstate.
+- **So the order is RESTORED: item 16 first, then item 17.** The steward's "V8 after item 17" (8, 7 and 12 of
+  17 against a bound of 2.58) describes a tree that will not exist; on the real change that row's bound
+  stays 3.91 and its reading after item 16 is the cut probe's 1, 0, 0. The lead's line to X that "every
+  nightly bound is recomputed" with item 17 is withdrawn with it.
+- **Ruled, the intake valve:** each valve follows its own side's model: vE under exhaust.model with
+  `spec.exhaust.valveSolve` (G's); vI under intake.model with `spec.intake.valveSolve` (N1's field, G's
+  code); each side's "model 1 at its defaults is model 0" test pins its own switch.
+- **Part C is NOT TAKEN before items 16 and 17 are on the branch** (X's interim tables, recorded in
+  docs/measurements/combo/): at a shift's cut the cut-aware neighbours lower the counts and cure no row; at
+  the limiter they tighten and in one reference leave no excess at all; the cut it would be fitted to is
+  about to go from 210 to 60 ms. Re-opened as one question after the window.
+- **X-054, the judge's own blindness (X; one draw so far, a reading to follow):** a single-sample impulse has
+  two adjacent differences and each one's local level contains the other, so the step measure saturates near
+  sqrt(960), about 31; on a steady full-throttle stretch whose firings read 9 to 12 the excess tops out near
+  2.5 to 2.7 under a bound near 2.8, however large the click, and the step rule that does see it is silenced
+  where the excess is defined. Caught inside a shift's window (about 4), not on a steady stretch. After X's
+  survey: plants at three sizes in four kinds of place on two builds, then the smallest change that can only
+  tighten, every newly red row spread before entry.
+- **X's survey, running:** all 31 shipped builds as built on the pull, 17 copies per event, the tip against the
+  steward's cut probe: item 16's before and after across everything that ships. On single draws three
+  builds stood out (the three-cylinder red at its 2-3; the kei 660 and the flat-plane twin-turbo V8 within
+  15 % of a bound); a draw selects too few (the kei's 1-2 is 2 of 17 with a clear draw), so all 31 are spread.
+
+## 26 Nov 18:12 UTC: ITEM 16's BEFORE AND AFTER ACROSS ALL 31 SHIPPED BUILDS (X's survey); the one it does not cure
+
+- **X, every shipped build as built on the pull, 17 copies per event, the tip against the steward's cut probe
+  (the cut held only while the vehicle asks; each build's bound the same on both), in
+  docs/measurements/combo/2026-11-26-shipped-pull.md:** upshifts over on the tip: the three-cylinder 1.0 turbo
+  1-2 6 of 17 and 2-3 8 of 17; the kei 660 triple 1-2 2 of 17; the flat-plane 3.9 twin-turbo V8 1-2 1 of 17.
+  **On the probe: 0, 0, 0, and the flat-plane's 1 of 17 unchanged.** No build gains a copy over on the probe
+  at any event. Eight builds have no shift event on the pull (five automatics, the CVT, the tractor: one
+  gear against the limiter; none over). Every other build 0 of 17 at every event on both trees.
+- **What item 16 does not cure: the flat-plane twin-turbo V8,** a dual-clutch box with no cut to shorten: its
+  1-2 at 1 of 17 on both trees (2.66 over 2.33); **at the LIMITER 7 of 17** (top 2.63) and the rest 1 of 17
+  (2.76), neither moved by the probe. Ruled: it joins the nightly's shipped-pull case as a fourth build, its
+  rows under one new number (the limiter the steward's; the dual clutch's 1-2 the integrator's with N2; the
+  rest's owner not known). The steward reads its limiter from the ECU's side; G runs the chatter counter and
+  the secant tree with the real gate on it (as built the new exhaust is on, so item 17 applies there).
+- **X-054, first figures (X; a local measurement branch):** on a steady full-throttle stretch a single-sample
+  click about 11 dB over the firing's sharpest edge passes today's judge in 7 of 17 copies; 1.5 dB over, in
+  10 of 17; 9 dB under, in every copy. A guard of 2 to 4 samples takes the 3.0 plant from 2.65 (passing) to
+  3.20 against 2.81; the level taken from the neighbouring periods to 3.59. The guard is near-monotone, not
+  strictly (a measure can fall by a hundredth): every fall is to be named in its list.
+
+## 26 Nov 18:30 UTC: the flat-plane V8's limiter read three ways; X-054's plants; X-055
+
+- **The flat-plane 3.9 twin-turbo V8's limiter (7 of 17 on the pull, as built).** The steward: a hard
+  all-cylinder fuel cut at 8000 rpm bouncing near 25 Hz, about 40 episodes a run of 13 to 26 ms, the first
+  firing back mostly 1.0 to 1.5 of the next four and about one in ten near 2; the row's count is each copy's
+  worst of forty episodes against a bound whose reference's lowest copy is 1.17. G: the chatter counter 0
+  over the whole pull, and on a scratch tree WITH THE REAL GATE (the every-model-off pull identical to the bit;
+  the reference's copies identical) the limiter reads 7 to 6: not X-051's. So it is X-052's kind and the
+  steward's alone; item 17 has no evidence on a shipped build, only on the fixtures' combinations. The Spec
+  offers four limiter kinds (fuel cut, spark cut, soft, throttle; 29 of the 31 shipped builds state fuel
+  cut, the supercharged 6.2 soft, the rally five spark cut): clips of all four on the flat-plane are with
+  the owner. For the judge, after the window: a limiter's row read per episode, not as the worst of all.
+- **X-055 (X):** the flat-plane V8 as built on the pull, in the nightly's shipped-pull case as its fourth
+  build: the limiter 7 of 17 (the steward), the 1-2 on its dual clutch 1 of 17 (the integrator, with N2),
+  the rest 1 of 17 (owner not known).
+- **X-054, the plants (the unchanged judge; a single-sample click added to the case's output; 17 copies):**
+  caught at a start, at idle and at a shift in nearly every copy at +1.5 dB over the firing's sharpest edge;
+  on a steady full-throttle stretch in 7 and 10 of 17 on the small four (+1.5 and +11 dB) and 16 on the
+  turbo six; **at the LIMITER in 0 of 17 (the small four) and 3 of 17 (the turbo six) even at +11 dB.** +1.5
+  and +11 dB read the same windows to the digit (the saturation, measured); -9 dB passes nearly everywhere
+  (beyond this measure by design). So a "0 of 17" tonight is strong at starts, idles and shifts, weaker on a
+  steady full-throttle stretch, and says little at a limiter.
+
+## 26 Nov 20:32 UTC: X-054 placed: the judge's blindness is the reference sound path's; the guard and what it moves
+
+- **With sound.model on, as every shipped build runs, TODAY'S judge catches the planted click in 17 of 17** on a
+  steady full-throttle stretch (excess 3.31 to 4.52 against 2.82; the firing's sharpest edge there about 0.32
+  a sample). On the reference sound path (sound.model off: every combo row without it, every reference) the
+  firing's own edges are about 0.84 a sample and up to a full swing in one sample (the 0.85 output limiter's
+  square edges), and the same click passes in 7 of 17. So the judge sees further on what ships than on the
+  fixtures; the floor of the method is the reference limiter's doing.
+- **The guard (leave g samples each side of a difference out of its own level):** it closes a click up to about
+  g samples wide and no wider (g2 is back to today's at 3 samples, g4 at 5). At the limiter g4 takes the
+  planted click from 0 to 15 of 17 caught (the small four) and from 3 to 13 (the turbo six): the limiter's
+  blindness was mostly the saturation. The level taken from the neighbouring periods gains one to three
+  copies more and moves every reference: written down, not taken.
+- **Not purely a tightening:** g4 unsaturates the references' own sharp edges too, so a BOUND can rise (the
+  turbo six's tour 2.97 to 3.35; the small four's 4.68 to 4.78) and a measure can fall by a hundredth. X's
+  list (every visible combo case under today's judge and under g4: every bound that rises, every measure that
+  falls, every row whose verdict moves either way, each newly red row spread before entry; X-014 and X-015
+  on 62a6a7fd still caught) comes before any ruling.
+- **X-055 is in `main`** (57265b5f): the flat-plane V8 in the nightly's shipped-pull case.
+
+- **The nightly schedule's soak of 26 Nov: run 45823658255 (job 139922148115), on the branch tip 3f892823.** GitHub
+  fired the 03:23 UTC cron at 12:52, 9.5 h late. 224 of 226 passed.
+  - `ui.build.bake.pictures` (nightly, test 704; `tests/ui/build/BakeWatch.cpp`): SEGFAULT at 385.9 s. The load's bake
+    was not finished at 300 s on that runner (FAIL at :94 and :97, the first curve 14.8 s against 10). An edit of the
+    compression then landed while a new bake started, and the process crashed. It is the owner's own crash on their
+    Mac (`host/src/Bake.cpp:354`, six times on 25 and 26 Nov). Owner C, for the crash: `predictCurve` returns true
+    when cancelled mid-curve, and `bakeIntakeCam` checks the cancel flag only between curves (the owner's session's
+    report). U1 restates the test's wait on the bake's state, not a clock, after C's fix.
+  - N2-38 (the vanes long form), standing.
+  - Combo green against X's Known.h.
+  - Wall 8912 s, against 3894 on d586682c's soak. Most of it is the runner: code that did not change ran about 1.8x
+    (host 1.82, shell 1.74, core 1.96, calibration-na 1.84). The real growth is in combo's nightly labels, by
+    label sec*proc, with the runner's 1.8 divided out: triples x1.28, pairs x1.65, corpus x2.2 (the shipped pulls),
+    flip x1.9, archetype x1.8.
+  - The steward's watcher missed this run: it read the branch's runs only, and a schedule's runs are filed under
+    main. Fixed: it reads the schedule's runs too.
+
+## 27 Nov 03:43 UTC: THE OWNER'S APP CRASHES ON AN EDIT DURING A CAM BAKE; `host/` opened for that one fix (C)
+
+- **The owner's Mac build of `main` died six times on 25 and 26 Nov** with a read from address 0 on the
+  CalibrationBakeService worker inside `tee::bakeIntakeCam` (host/src/Bake.cpp:354, and once in `insertRows`
+  on two-stage cam rows), each time an edit landed while a cam map was baking. The owner had a session on
+  their machine write a report for the lead; the lead read it in that session's record on 27 Nov (it had not
+  been passed on). **The same crash took down the nightly's `ui.build.bake.pictures` on CI** (the scheduled
+  soak of 26 Nov, run 45823658255 on 3f892823: an edit of compression while "baking spark map", a segfault
+  at 385.9 s; 224 of 226, the other N2-38): the steward connected the two.
+- **The report's cause, to be checked by C against the code:** `predictCurve` returns true when cancelled
+  mid-curve with only the points it finished (Predict.cpp, makeCurve, near line 1078), and `bakeIntakeCam`
+  checks the cancel flag only between curves, so a cancel in a loop's last curve leaves a short or empty row
+  that the next code indexes (lines 252-275 read at :354; 289-321 `insertRows`; 395-415 the refine pass). The
+  service cancels on any edit or load (Bake.cpp:1519), when the build is current again (:1495) and in its
+  destructor.
+- **RULED: `host/` is OPENED for this one change, C's, ahead of everything.** A regression test first, shown to
+  fail today (the cancel set on the first point of the last advance's curve; and the two-stage one); the fix
+  at the source (a cancelled curve returns false, "cancelled") and the defensive checks; every other bake
+  and caller read for the same assumption; a cancel during any phase leaves the service ready and the app
+  alive; **proof that no table moves** (three shipped builds re-baked, byte for byte against content/); the
+  default tier and the nightly's bake test; the push carries `[soak]`. Then the lead checks the trees (sim
+  and tools unchanged, host changed by that commit alone), waits for three jobs, and moves `main`.
+- **The soak's cost (the steward):** 2 h 29 min of wall against 65 min at d586682c, mostly a slower runner
+  (unchanged packages grew 1.74 to 1.96 times); combo about +900 test-s of real growth (the per-event judge
+  and the new nightly cases): about 80 minutes on a normal runner. The soak gains `tee-bench --quick` so its
+  times can be scaled; what leaves the soak is ruled on the next one's figures (the line: 10 added minutes).
+  The nightly's bake test had also failed on time before it crashed (the load's bake not finished at 300 s
+  on that runner): U1's, after C's fix.
+
+## 27 Nov 05:08 UTC: THE CRASH FIX IS IN `main` (dc2f7db3); what it does not change; the soak's replayed references
+
+- **C's a86b38c6:** at the source, `makeCurve` returns false with "cancelled" when cancelled before every point
+  is in (the PredictService already discards a cancelled curve by its request number); in the bakes every
+  curve is checked whole before it is indexed (the cam's sweep, stage rows, refine, half steps, acceptance;
+  the knock bake's later steps and corrections) and `insertRows` checks the flag. C's corrections to the
+  owner's report: the stage-rows crash is the turbo four's and first.json's (the two-stage archetype has no
+  phaser range); line 634 and the half steps were partial-and-true, a wrong result and not a crash, now false.
+  Tests: two default cases (a cancel in the sweep's last curve, the V12; in the stage rows, the turbo four)
+  that segfaulted before; a nightly case that edits during every phase of a service's bake and destroys it
+  mid-bake. The lead's second measurement: both default cases pass at the tip and fail with `main`'s old
+  host under them. Three rebakes byte-identical. The tier 578 of 578; the nightly's bake test by hand.
+- **Not changed by it:** an edit that moves a key cancels the bake and a new one starts from nothing after
+  1.5 s, so an owner who keeps nudging never sees a bake finish. C's design (docs/plan/bake-across-edits.md):
+  recommended, run on the last good tables marked stale while the new ones bake, and a debounce of the
+  longer of 1.5 s and 5 % of the expected bake; not recommended, reusing a table's untouched cells or a
+  warm-started bake. The owner's choice.
+- **The soak's growth (X, confirmed):** every combo case is its own process and the nightly bound's reference
+  sets were kept per process: 360 sets played for 57 distinct ones. X keeps them in files in the build tree,
+  keyed by the test executable's bytes, the sim and content trees, the build, the scenario and the nudges;
+  the proof is every nightly figure to the digit with the store off and on. The soak now runs
+  `tee-bench --quick` (the steward) so its times can be scaled; the first scaled soak is the one on dc2f7db3.
+
+- **The soak's cost, measured on the reference runner (the lead's ruling, 27 Nov 07:34).** Each soak now prints
+  `tee-bench --quick` (the soak's runner; a step after its tests), so its wall can be scaled.
+
+  | soak | commit | runner | wall |
+  |---|---|---|---|
+  | the push's | d586682c | the same speed as the reference, by its unchanged code | 3894 s (65 min) |
+  | C's crash fix | dc2f7db3 | the reference Xeon 6975P-C, -O2 0.91 s | 5566 s (93 min) |
+  | after X's 72684d9b (the nightly bound's reference sets kept across one job's processes) | ddacdf97 | the same | 4251 s (71 min) |
+
+  - At ddacdf97 the mild twin, the shipped pulls and the per-event judge are all in, at 6 minutes over 65.
+  - The line is 10 added minutes on a reference runner, so nothing leaves the soak.
+  - The next growth is measured against 4251 s on a reference runner (a slower runner's wall scaled by its bench
+    first).
+  - At ddacdf97: 226 of 227, N2-38 alone; `ui.build.bake.pictures` passed (243.6 s); `main` at ddacdf97.
+
+## 27 Nov 11:23 UTC: THE OWNER'S RULING: yes to options 1 and 2 for the bake; `host/` opened for it (C), the words U1's
+
+- **The owner, 27 Nov: "Yes to options 1 and 2 for the bake"** (docs/plan/bake-across-edits.md): after an edit
+  the engine keeps playing on the last good tables, marked stale, while the new ones bake; and a bake waits
+  for the edits to rest (the larger of 1.5 s and 5 % of the expected bake on that machine).
+- **C builds it, tests first, under these conditions:** what "stale" may cover is decided and tested first (a
+  different build loaded never plays on the last one's tables; an edit that changes a table's axes or meaning
+  sets the table aside as today; a first launch as today); the tests: an edit mid-bake leaves both Auto
+  switches at 0 and the old values in place; three edits a second apart start one bake; a stale table is
+  replaced when the new one lands; an edit undone takes its tables from the cache and is not stale; a cancel
+  and a destruction during the wait; this morning's crash cases stay green. The debounce gets a ceiling and a
+  floor. The service gives the interface FIELDS (stale: which tables; waiting, with seconds; baking, stage and
+  count; restarted, by which field; a stage kept), not sentences. What the predicted curve runs on while
+  tables are stale is answered in the handoff. **No baked value moves** (three shipped builds byte for
+  byte). C's push carries no `[soak]`.
+- **U1:** the words on TUNE's status line (information, not the warning colour), pictures first; the nightly's
+  `ui.build.bake.pictures` restated for the new behaviour on the bake's state; carried by J2 right after C's
+  push, with `[soak]`.
+- `main` moves when the lead has checked the trees (sim and tools unchanged; host changed by C's commits
+  alone), built it and run the new cases, and three jobs are green.
+
+## 27 Nov 11:26 UTC: TWO REPORTS FROM THE OWNER'S OWN USE: shifting on any box but a manual; the Places mode's sound
+
+- **"In my testing on MacOS from last night, shifting in any form/input does not work for any transmission
+  other than a manual"** (the owner, 27 Nov; their build `main` at 6e67ac62). B reproduces it through the
+  application's own path (the Driver, the adapter) on one shipped build of each gearbox kind and says where
+  a press is lost; a failing test first at the level of the owner's hands (an action in, a gear out, per
+  kind). The integrator reads the vehicle's side (each kind's conditions for a press to change gear; the
+  counters across a load and a change of kind; what puts an automatic in drive). On paper the shell counts
+  presses and every kind in gearbox.fm takes them (the lead's ten-minute read, not a diagnosis). A lead from
+  X's survey of 26 Nov, not flagged then: the five automatics and the CVT "run the pull in one gear against
+  the limiter".
+- **"The Places mode in the Listen view doesn't sound as good as the reference. The Places mode causes some
+  comb-filter effects, and it brings out the noise and quiets the engine sound"** (the owner, 27 Nov). L's,
+  ahead of anything else: reproduce against the reference; the combing's delay and the path that makes it,
+  proved by removing that one path on a scratch tree; which noise comes forward, component by component, and
+  how much of it is level and compression (the reference sits on its limiter; Places has headroom and an
+  auto level near -12 to -14.5 dB) against the mix itself; the loudness out of the box; then a proposal and
+  clips for the owner (the reference, Places as shipped, Places with the fixes, at matched loudness). No
+  code under `sim/` yet.
+- **The bake across edits (C), the rule as built:** provenance in place of a load flag (a stale table keeps
+  playing only if the service saw those exact values current on this program); unfit by a field change
+  (cylinders, layout, cycle; the redline's fields; the idle speed; the boost's class and layout; the fuel's
+  kind; each model switch the keys hold); undo reads current at once; the debounce the larger of 1.5 s and
+  5 % of the expected bake, ceiling 15 s; the predicted curve runs on the build as it stands.
+- **Asked of the owner again, since a fault under `sim/` in either report needs it:** the three sessions whose
+  pushes are refused (the integrator, N2, P): approve inside them, have the lead carry, or fresh sessions.
+
+## 27 Nov 11:35 UTC: SHIFTING ON ANY BOX BUT A MANUAL: reproduced (B), the shell half ruled, the sim half X-056
+
+**Reproduced** by B in the application's own path (tee-headless, DRIVE, the default settings: the automatic clutch
+on; E twice at rest, the throttle, E at speed, Q), `car.gear` after each. Manual: 0, 1, 2, 3, 2. Dual clutch
+(shipped, and the coupe set to it): the same. Automatic (diesel-pickup-tuned, the only shipped one) and a coupe
+set to CVT: 0 throughout, the engine free in neutral. Eighteen-speed (truck-15l-six): 0 throughout. The coupe
+set to Sequential: 0, 1, 2 at a standstill, then the engine stalls.
+
+**The cause, confirmed by the lead's own read of the code.** `shell/input/Driver.cpp:276` sends `lever = 0`
+whenever the automatic clutch is on (the default). The automatic and the CVT take R, N, D from the lever alone
+(`sim/vehicle/gearbox.fm:333`) and ignore the counters by design; the eighteen-speed is driven by the lever, the
+buttons and the clutch pedal (`vehicle.fm:611`). So all three sit in neutral whatever is pressed. Of the six
+shipped builds that state a gearbox, four are Eighteen-speed and one is Automatic: five of six. The Dual clutch
+failing for the owner is NOT reproduced and stays open until they say which build, input and mode.
+
+**Ruled (B, `shell/` only, a failing test first per kind, no `sim/` change, no `[soak]`):**
+- The Driver learns the gearbox kind and `car.model` from the build; under `car.model` 0 nothing moves (a test).
+- Automatic and CVT: a selector, a ladder R, N, D held on the lever. A shift up steps towards D; a shift down
+  steps towards R, and from D only at a crawl (above it the press does nothing: a press hoping for a kickdown
+  must not find neutral at speed). N: N at any speed. Keys 1 to 6 and the shifter's forward gates: D. The
+  reverse gate: R. Out of every gate: N.
+- Eighteen-speed: mapped, not refused. The lever passes through whatever the automatic clutch says, and the
+  clutch is the driver's. Keys and gates 1 to 4: the lever's positions; 5: the L slot; reverse; N. A shift up
+  or down: the next gear of the eighteen in order (the shell sets the lever and the splitter and range bits
+  that gear wants, no pedal, no rev match: a driver who does neither grinds, as the box says). A status line
+  says the clutch is the driver's. NOT built: a truck that works its own clutch on the paddles (a `sim/`
+  feature, an automated eighteen; put to the owner as a want).
+- `docs/controls.md` corrected in the same push (three lines there are false today).
+
+**X-056 (numbered now; the integrator's; `sim/`, so the window):** a Sequential box shifted 1 to 2 at rest
+stalls the engine. B's reading, one trace, unconfirmed: `gearbox.fm:283` `robot = 1.0f` ("a dog shift leaves
+the clutch closed") holds during every dog shift, also where the robotised clutch was open. No shipped build is
+Sequential. The integrator confirms or refutes with its own measurement and designs the smallest cure; item 18.
+
+## 27 Nov 11:36 UTC: CORRECTION to the section above; the integrator's read; the pull in neutral (X)
+
+- **False, and mine to withdraw: "No shipped build is Sequential" and "five of six".** The application opens the
+  shipped folder recursively, archetypes included. By the lead's grep of `content/builds/*.json` and
+  `content/builds/archetypes/*.json`: Automatic 7, Dual clutch 7, Eighteen-speed 5, Sequential 1
+  (`archetypes/inline-five-turbo-rally`), CVT 1 (`archetypes/economy-four-15`), the rest Manual. So **13 shipped
+  builds sit in neutral** under the automatic clutch, and X-056 touches a shipped build (it still needs a shift
+  pressed twice at rest; it stays item 18).
+- **The integrator's own probe of the sim (the second measurement):** from rest in DRIVE, presses move the
+  manual (lever 0), the sequential and the dual clutch; the automatic and the CVT ignore presses and drive on
+  lever 1; the eighteen-speed moves by neither alone. The counters cannot swallow more than one step's press.
+  The sim does what its code says for every kind: the fault is the lever the shell never sends.
+- **Not taken:** the counters as a selector inside `gearbox.fm`, or a manual mode on the automatic. A feature
+  for the owner to want.
+- **For X (tests only):** the combo pull drives by shift-up presses and sets no lever (Combo.cpp:206-221), so on
+  an automatic, a CVT and an eighteen-speed it has been revving in NEUTRAL, where the survey says "one gear on
+  the limiter". X confirms by `car.gear`, gives the automatic and CVT a real pull (lever 1), and proposes what
+  the truck rows should be; rows by the evidence rule; the soak's cost stated before it lands.
+
+## 27 Nov 11:49 UTC: X-057: the tuned diesel pickup's automatic never leaves first (found by B's proof of the shell fix)
+
+- **The fact (B, tee-headless, the selector fix applied, one trace):** `content/builds/diesel-pickup-tuned.json`, D,
+  full throttle held 37 s: gear 1 throughout, 13.3 m/s by 20 s and 13.87 at 40 s, the engine 2197 to 2228 rpm.
+  `archetypes/v6-35-na` upshifts by itself in the same script.
+- **The lead's read of the fields (fits the numbers; not yet a measurement of redW):** the build states an
+  electronic governor, `ecu.ratedSpeed` 219.9 rad/s (2100 rpm), droop 0.06, so high idle 2226 rpm, and no
+  `engine.redlineSpeed`. The automatic's schedule goes up at full pedal past min(idle + 0.9 x span, 0.85 x
+  redW) (`gearbox.fm`). If 85 % of the redline the vehicle holds is over the governor's high idle, the shift
+  point is never reached. The archetype pickup states its redline at its high idle and shifts.
+- **With the integrator (a read, a measurement, a proposal; nothing under `sim/`):** redW as the vehicle holds it
+  on this build; which other shipped builds pair a limit under the stated redline with a box that schedules on
+  it; where the cure belongs (the engine hands the vehicle the speed it can reach, `sim/`; or the build states
+  its redline, content, which moves its bake key: P either way); what else reads redW (the auto gearing, the
+  launch, the downshift's refusal, the lights). Item 19, or ahead of 18 if the integrator agrees the owner
+  cannot drive a shipped build without it.
+- **CONFIRMED by the lead's own run (11:50; the tip's simulator through tee-render, a scratch scenario: the lever at
+  1 from 2.5 s, full throttle from 3 s, 42 s; predicted first: gear 1 throughout, about 2220 rpm, 13 to 14 m/s):**
+  diesel-pickup-tuned gear 1 at every reading, 13.86 m/s and 2221 rpm at 42 s. The archetype
+  pickup-diesel-67-inline-six in the same scenario: 2 by 9 s, 3 by 12 s, 6 by 27 s, 53 m/s at 42 s. So the box
+  and the lever work, and this build's shift point is out of its engine's reach. redW itself is still unmeasured.
+- **B's push (the gears by gearbox kind) is NOT held for it:** the selector works; this is what it uncovered.
+
+## 27 Nov 11:52 UTC: X-057 MEASURED AND RULED (content now through D2; the rule in the window); the pull in neutral confirmed (X)
+
+- **X-057, the integrator's numbers (its own probe):** on diesel-pickup-tuned the vehicle holds redW 3265 rpm (the
+  reference's redline for 6.7 L: the build states no `engine.redlineSpeed`) and idleW 712; the automatic's upshift
+  at full pedal is 2775 rpm of road-derived input; the governor holds the engine at 2226 and the input at 1996.
+  The same redline sets the auto final drive (1.97: top gear geared for 198 km/h at a speed the engine cannot
+  reach). ONE shipped build exposed: the two archetype diesels state their redline at their high idle.
+- **Ruled:** (ii) NOW, D2's file and tests: the build states a redline its engine reaches (or D2 corrects the rated
+  speed if 2100 rpm was a slip, with its source); the test first (D at full pedal reaches second within a stated
+  time). By the lead's read the build carries no baked table (no maps or knock tables in its `ecu`), so no bake;
+  D2 confirms or stops. (i) in its FULL form only (the ECU's `redlineFor`: a governed engine's redline is its
+  governed high idle, so the lights, the vehicle and the key move together) is the window's item 19, AHEAD of
+  18; the vehicle-only half is not taken.
+- **The pull in neutral, CONFIRMED by X's `car.gear`:** automatic, CVT and truck sat in gear 0 at 0 m/s through the
+  pull. None of the 13 such shipped builds was in a nightly or default pull or launch case, so the mislabel was
+  in the survey's rows only (corrected). Tests only, X pushing: lever 1 for Automatic and CVT on the pull and the
+  launch; a fast-3 case that fails with the lever in N. On the automatics' real pull: 0 of 17 at every event on
+  the six corpus automatics and the CVT, NO NEW ROW, but WEAK on four of them (bounds 6.7 to 17 against a top of
+  3.67): the references read excesses of 8 to 12. The lead's hypothesis, for X to test: the reference run is
+  `car.model` 0, the reference's manual with first slammed in by the lever: not a fair twin under the lever.
+  No automatic goes on a nightly pull until that is read. Trucks: rows named "in neutral (no driver)" now; one
+  nightly pull-away on the tractor allowed after B's push, with conditions (no stall on 17 nudges, no shifts,
+  its cost stated).
+
+## 27 Nov 11:55 UTC: THE PLACES MODE'S SOUND (the owner's report): L's read, its correction, what is ruled
+
+One session's measurements throughout (L, tee-render, scratch trees for the probes, nothing pushed); the lead has
+not repeated them. first.json at the Places defaults (Tailpipe, Field, asphalt, auto level on) against the
+reference at its defaults, then four builds chosen before looking (big-block V8, truck-15l-six, the 600 bike,
+the rotary twin).
+
+- **A CORRECTION OF RECORD (L's, and the lead passed the wrong figures to the owner):** every LUFS figure of L's
+  first two reports was wrong (the K-weighting ran along the wrong axis). Corrected, Places minus reference on
+  first.json: idle -0.8, mid -3.9, pull -6.0 LU; the pull is 10.0 LU over the idle where the reference has 15.2
+  (NOT 0.8 against 5.7). The comb's, the octaves' and the top octave's figures stand.
+- **The three causes, as they now read:**
+  1. THE COMB: the ground tap summed with the direct at fixed gain (asphalt 0.9, a path 0.262 m longer at the
+     default geometry): notches from 659 Hz every 1310 Hz, 11 to 17 dB deep, gone with ground None. It takes the
+     500 Hz octave 7 to 11 dB under the reference.
+  2. THE HIGHS: the top octave 4 to 9 dB proud of the note's body on the five builds. Not a noise bed: the
+     exhaust's own broadband part. The reference stands 0.5 m back and 35 degrees off the pipe's axis, where the
+     piston law that already exists cuts from about 9.7 kHz; Places' Tailpipe camera stands at 1.7 m, 12 degrees
+     off, where it cuts almost nothing.
+  3. THE LEVEL: the auto level brings EVERY BUILD to one loudness. At mid load the reference spans 21.5 LU over
+     the five builds and Places 3.4: the V8 and the truck come out 15 to 19 LU under their references, the
+     rotary 10 over at idle. Within one build the range narrows by about a third.
+- **Withdrawn by L on the lead's questions:** the ground tap's 0.5 gain (chosen for the notch depth: built from
+  its target); the 9 kHz pole at the pipe's mouth (the camera's geometry is the cause); the 2.2 in the half
+  exposure is a level match at one named point and evidence of nothing. Refuted by L's own measure: a higher
+  target and floor (louder everywhere, the spread unchanged).
+- **RULED:** (a) the default camera spot at the reference's own (distance 0: 0.5 m, 35 degrees off the axis),
+  as a DEFAULT and named one, approved in principle to land now if it is content only: every shipped build
+  that opens at Tailpipe at the same spot; no bake key holding it (the gate run, not reasoned); the cases on
+  the defaults restated, not loosened. It brings the top octave to +2.0 on first.json and leaves a comb (ripple
+  9.2 to 7.4 dB). (b) The ground's coherence: NOT yet. First the thing that needs no constant: whether the
+  reflected ray carries its own departure angle through the piston law, and the camera's height against the
+  pipe's (the first notch's place is the geometry's). Sources cited before any corner from a jet's extent.
+  (c) The level is THE OWNER'S: three forms to be heard side by side: as shipped (every build one loudness),
+  half, and the level set by the camera's position and not by the signal (each build its own loudness, the
+  limiter for the peaks), which L measures now. The owner ruled on 25 Nov that the idle's loudness stays as
+  designed; this reopens it on new evidence. (d) The Driver camera duller than the reference's Cabin by 7 to
+  13 dB above 4 kHz: its own item, a measured cabin transfer from sources first.
+- (b) and (c) are `sim/` (scene.fm, listen.fm): the window and a bake.
+
+## 27 Nov 12:03 UTC: B's gears are on the branch and driven by the lead; the Places sound: (a) withdrawn, the level by the camera measured
+
+- **B's push 35a733d1** (the gears by gearbox kind; whole tier 585 of 585 on the ruling's merge; `sim` f23337cc,
+  `host` 86ea14da, `tools` 7c3e4d59 unchanged by the lead's rev-parse). **Driven by the lead**, own scripts through
+  tee-headless on shipped builds: `archetypes/v6-35-na` 11 of 11 checks (E gives D, upshifts by itself, Q at
+  speed nothing, at rest D, N, R and back); `archetypes/economy-four-15` (CVT) 11 of 11; diesel-pickup-tuned in
+  D, first throughout (X-057); truck-15l-six and the tractor 8 of 8 (clutch down, 5, clutch up, moving; clutch
+  down, E, second); v8 and first.json as before. B's cases in the lead's build: "gearbox:*" 141 assertions in 3
+  cases, [input] 1047 in 31. Run 45994332561 on the three platforms in progress; `main` moves on its green.
+- **X-056 on the shipped rally five, measured by the lead (new):** at rest E, E, Q: the 1-2 takes the engine to
+  217 rpm and it lives; the 2-1 STALLS it (state 0, 0.15 s after the press). A third failing case for item 18.
+- **The automatic clutch has no switch in the real window** (B: `car.autoClutch` is in the CAR workspace's list
+  and in no Spec; only the Demo has it). Approved: the shell's setting behind a FrameServices hook and an F9
+  item (B), a SETTINGS row (U1, after the bake's words). The owner's G29 has an H-shifter and a clutch pedal.
+- **Places, corrections to the section of 11:55:** (a) the default camera spot CANNOT land as content: the
+  default is the spec's source and `sound.distance` is read by BOTH listeners (a build-file line would move the
+  reference, the yardstick). WITHDRAWN; nothing lands now. (b) The reflected ray already leaves at its own
+  angle (the image path through the piston law): nothing there. The comb's first notch is THE CAMERA'S HEIGHT:
+  Tailpipe stands 1.71 m back and 0.70 m up over a pipe at 0.35 m (path difference 0.261 m, 657 Hz, the
+  reflection 0.87 of the direct). L measures a grid of recordist's spots on five builds (close, low, beside
+  the pipe; the ground) and proposes one; the jet's coherence stays withdrawn until sourced.
+- **"True levels" exists on `main` today** (Listen, Places, Auto level): each build's own range whole and the
+  builds' true differences, 5 to 10 LU under the reference at Tailpipe (L, five builds).
+- **The level by the camera's position, measured (L, a scratch probe):** against the reference at idle, mid and
+  pull: first.json +0.2 / -0.3 / -0.1, the truck +0.1 / -1.5 / -1.2, the V8 +2.7 / -1.9 / -1.5; the outdoor
+  cameras within 2.5 dB of each other; the loud builds' pulls on the limiter as the reference's are (the
+  truck 98 % of reads). It FAILS at Engine bay (+9.7) until the gain is taken from the source that camera
+  chiefly hears. Its staging (+9.7 dB) is a level match at one named point. The choice among shipped, half and
+  by position is the owner's, with clips; all of it is `sim/` and the window.
+- **L writes docs/plan/places-sound.md** (docs only) when the grid and the pass-by are measured.
+
+## 27 Nov 12:16 UTC: THE OWNER'S RULINGS AND REPORTS since 12:00: the level in Places; the H-shifter; what is ruled on each
+
+- **THE OWNER, on the level in Places: "Go with true levels with a fixed gain".** Their answer to three defaults put
+  to them (as shipped: every build, camera and distance at about one loudness; true levels with one fixed gain;
+  half). It supersedes their 25 Nov ruling that the idle's loudness stays as designed. So: true levels the
+  default in Places, ONE staging gain for every build, camera and distance (a level match at one named point:
+  first.json at the default camera beside its reference, taken at the new Tailpipe spot), the limiter for the
+  peaks, "Auto" still a setting. L's; `sim/` (the spec's default, listen.fm); item 20 of the window.
+- **The level by the camera's position (the lead's idea) is REFUTED by L's measure** and dropped: from the stated
+  strengths it is worse (Side -9.6, Engine bay -14.6, Trackside -11.5 against Tailpipe), and the tailpipe-only
+  form is +9.7 at Engine bay and turns the dial upside down (a camera walked back about 9 dB louder).
+- **The Tailpipe camera's spot, ACCEPTED as the proposal (L, a grid of nine spots and an onboard one on five builds,
+  chosen before looking):** a boundary microphone on the ground 0.5 m behind the mouth. Ripple 0.2 to 1.0 dB on
+  four builds (2.1 on the V8: its own two pipes) against 5.7 to 14.0 shipped; the 500 Hz hole within 0.6 dB;
+  the top octave within 1.6 dB on four; the rotary 5.8 dB dull at the top (a large bore heard 34 degrees off
+  its axis: stated, not hidden). The lead's onboard spot was right on four builds and wrong on the bike (11.6
+  dB). `sim/` (scene.fm); item 20 with the level. The page: docs/plan/places-sound.md (L, 38f6f691; under
+  revision for the owner's ruling).
+- **THE OWNER, on the wheel: "When I use the H-shifter connected to my G29, there is a small delay in shifting.
+  Additionally, the engine does not fully use the clutch mechanics when using the H-shifter because I cannot
+  stall it."** The automatic clutch doing what it was built for (a gate sought by presses every 0.3 s through
+  robotised shifts; no stall), with no switch in the window. RULED (B, `shell/`): on a wheel with a clutch
+  pedal the H-shifter IS the lever by default and the clutch is the driver's, nothing to set up; out of every
+  gate the paddles and keys shift as now; a three-way setting (the shifter's clutch yours, the default;
+  Automatic; Yours for the keys too); manual boxes only; the edges tested; the gate-to-gear time before and
+  after and a stall at rest measured. A stall that does not come is a `sim/` finding, not B's to tune.
+- **X-057, D2:** the pickup cured locally (rated 2900 rpm: 219.9 was a copy with no source; the redline at its
+  high idle by the trim; the archetype's six ratios and 3.42; the 1-2 at 37 km/h after 4.6 s; the most power
+  224 kW at 1796 to 320 at 2613 rpm), its push to follow. On the reference ECU `redlineFor` floors the
+  redline at idle + 1500 rpm, so diesel-v8-truck, diesel-mechanical-classic and diesel-marine-v12 CANNOT state
+  a reachable redline in content: they wait for item 19, whose null is now "every shipped build bit-identical
+  but those three, by name". The two 15 L trucks already sit under their high idle and are left alone.
+- **X, the automatics' pull:** the reference under the lever is the reference's manual dropped into first and it
+  STALLS; ruled: the reference driven its own way (presses, the lever in N), only the case in D, and a guard
+  that a pull's reference with a stopped engine fails loudly. Then 0 of 17 on six builds. **X-058 numbered:**
+  an automatic put into D at rest, `archetypes/v6-35-twin-turbo-pickup`, 1 of 17 (3.57 over 3.22) 45 ms after
+  the lever; a sometimes row on one build, in no case's path; the integrator's list.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
-- **26 Nov 03:29 UTC: FROZEN FOR THE BAKE AGAIN, at e341bee3** (the steward's revert 2c4624e5 in it;
-  trees: **sim f23337cc, host 2e7c1bec, tools 7c3e4d59**, verified by the lead's fetch). `sim/`, `host/` and
-  `tools/` are CLOSED to every session until the baked commit is on `main`. P is baking on those trees (the
-  first bake, at 14bccbf7 on sim a86a64c9, stopped at its gate: the section above).
-- **Open at any time, as before:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the baked
-  tables), docs. One green whole default tier on a merged state, then merge a moved tip and push, saying what
-  was not in the run; `scripts/lint.sh` first; wait on the tier's process; a refusal of a session's permission
-  check is never worked around. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead
-  runs (every "holding" collected, then the tip named).
-- **Then:** P's final push by a hold; CI on the baked commit read on all three platforms; `main` fast-forwarded
-  by the lead's own check that the baked commit's `sim/`, `host/` and `tools/` trees equal the bake's, that it
-  descends from `main`, and that Linux, macOS and Windows are green on it; `[soak]` on it; then the next
-  window opens with the list of the section above.
+- **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
+  tests and docs only past the crash fix). **The trees `main` is gated on: sim f23337cc, host 86ea14da, tools
+  7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked
+  byte-identical). Before it: ddacdf97 (27 Nov 07:16), dc2f7db3 (05:08, the crash fix), 57265b5f (26 Nov
+  20:32), 6e67ac62, d6615852, 3f892823, 389ee865, 317404d9, 5278e3e9, 3c42b4d2, 5cd03815, 07a08dc0, d586682c
+  (04:36). Nothing code-bearing is on the branch past it.
+- **27 Nov 11:23 UTC: `host/` IS OPEN FOR ONE CHANGE: the owner's options 1 and 2 for the bake (C: Bake.cpp, its
+  service, their tests), with U1's words and restated nightly case following.** Nothing else under `host/`,
+  and nothing under `sim/` or `tools/`.
+- (`host/` was closed again after the crash fix, opened 27 Nov 03:43 for that alone.) `sim/`, `host/` and `tools/` wait
+  for a bake as before; the next thing under `host/` is the owner's choice on docs/plan/bake-across-edits.md.
+- **THE WINDOW'S ORDER, as ruled on 26 Nov and corrected at 17:39 (each needs a bake to follow, so P):** item 16
+  (X-047, the shift's cut; the steward; one file; evidence on three shipped builds), item 17 (X-051, the
+  valve's flow solve; G; it moves only cases with the exhaust or intake model on, no reference and no
+  bound), item 15 (X-046, the air's pressure; the integrator), then items 1, 6 and the rest of the list
+  below as before.
+- **26 Nov 04:36 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items below and nothing
+  else. From the first push under those trees the branch's baked tables are stale until the next bake; `main`
+  stays the stable build. **A bake needs P, whose push is refused tonight: until the owner decides, land only
+  what can wait for one, and say early what will not.**
+- **The list, in order** (each waits for the one before where their files meet):
+  1. N2 with the integrator: no wheel without a path. (ii) the guarantee first, as designed and ruled (the
+     builder's one call; feedOf; the shared volume summed; each nozzle by its own orifice law; acceptance: every
+     archetype and the null to the bit, then N2's predictions, then the gate's idle measure warm and cold on
+     every boosted archetype); (i) the split only where a source shows such an engine drawn split. BOTH OWNERS'
+     PUSHES ARE REFUSED: the item waits on the owner.
+  2. CLOSED (see 13): the idle's cure. `main`'s idle stands; the fixture stays known.
+  3. N2: the gate loop's limit cycle; X-041's pull row (the blow-off on a lift).
+  4. N2: the sequential rotary's pair after its join (#17).
+  5. N2 with C: step A of the turbine's match with the bake's stage (C's task #39).
+  6. G: the running path's port heat mass-weighted. READY AS A PATCH (7e71f752, `spec.exhaust.portMean`; the
+     nulls read); lands with item 9 and before it, never alone.
+  7. the integrator: X-045 (the cure local); the dyno loop's overshoot; a custom engine's friction.
+  8. the steward: the fuel's re-entry after an overrun cut, sources first, clips for the owner; X-036's cause.
+     With it (26 Nov): X-044's downshift under the custom engine (14 of 15 copies over in its own window), and
+     the first burn back after an upshift's cut (X-030), read against a real quick-shifted engine's report.
+  9. N2 (with item 5): first.json's boost threshold. N1's held points (--settle 40): 1503 rpm 225 N m with the
+     gate shut and boost 19.5 kPa against a 120 target; 1655 rpm 250 N m, 30 kPa; 1796 rpm 384 N m, 120 kPa. A
+     steady-state match, not a lag; breathing per kPa of manifold the same at 1500 as at 1800. The cited engine
+     makes its plateau from 1500: the build's turbine (about 50 mm, A/Rs for which no source was found) is the
+     suspect. No number from N1. For C: the stepped dyno's default settle reads this turbo at 27 kPa where 20 s
+     reaches 120.
+ 10. the steward, a design first: a torque ceiling that acts on a petrol build. `ecu.torqueMax` and `powerMax`
+     are read only by the diesel's electronic governor (sim/combustion/heavy.fm:221); nothing in sim/ecu reads
+     them, and the petrol path carries no torque at all (N1's read). Shape proposed by N1: the brake torque
+     over 0.1 s into the ECU; the same integral against min(torqueMax, powerMax/omega) lowering the BOOST
+     TARGET first, the plate only at zero boost, never raising either, the spark left alone; 0 keeps the null.
+     With it the cited plateau (350 N m from 1500 to 4400) is a ceiling first.json may state, and P counts the
+     rows it holds as held by a stated limit, not as predictions. WITHOUT it nobody shapes the boost map by
+     speed to reach 350: that would build the row from its own target.
+ 11. N2, a design first (its own number in its list): the variable vanes on the spring law past the gain's
+     reversal. The nightly case "variable vanes past the surge line open" (GateTest.cpp:197-198) has been red
+     for two soaks (223f4301: 163.1 kPa; d586682c: 165.4) and is RIGHT: the 15 L truck at 1300 rpm, full load,
+     no target: vanes 0.52, 165 kPa and 2551 N m, where a fixed nozzle makes 208 kPa and 2708; only the
+     back-pressure limit (1.4) stops the vanes shutting. The guard against the reversal acts on the target
+     loop only. Its two "no worse than a fixed nozzle" checks are to be MARKED on the finding (printing their
+     figures every run), the one-state check live; no restatement. Open: whether any shipped build runs vanes
+     on the spring law (the diesels' low-end rows may be this); which commit made it (between the last green
+     soak and 223f4301).
+ 12. C (`host/`): on a build with a turbine a held step is measured only when the shaft's drift over the last
+     second is under 0.5 %, capped at 40 s, a capped step marked unsettled; a build without one bit-identical.
+     Local on C's side branch (99d51cc4): the step held in ROUNDS (the shaft settled, the heat settled again,
+     until a settle moves the shaft's 2 s mean under 3 %; the shaft alone read 320 at 1796 rpm): 383.4 N m
+     after 27 s at 1796 (N1's long hold 384.2; the default 239), 225.9 at 1503; five CSVs without a turbine
+     byte-identical; both cases fail with the rule off. And the long-hold case to read one point inside a
+     threshold: first.json at 1733 rpm, steady state 272 N m (5-minute holds from both sides), where the
+     predictor reads 293: C to explain the predictor's 8 %.
+ 13. CLOSED for this window (the steward, 05:17; its notes at cbbf48e7): `main`'s idle stands and the fixture
+     stays known. Read on all 31, every form that cures the fixture (the look-ahead held off through the
+     post-start phase, with or without the doubled gain) deepens the shipped builds' fall after the flare
+     (four-cam V8 681 to 536, supercharged V8 639 to 544, twin-turbo pickup 622 to 537; a 7-build sample had
+     passed). Left noted: the doubled post-start gain is marginal on `main` itself; the dashpot holds the
+     valve at 0.35 at full throttle on boost. N1 makes the dips' row a test.
+ 14. N2-38 is the rig's configuration only (N2's read): every shipped VGT build states a target and runs the
+     target loop. Beside it, for item 9, sourced before any number: (a) the back-pressure limit (1.4, a
+     judgement, at every speed) holds the 2.0 at 88 kPa of its 140 target at 1750 rpm (1.7: 111 kPa; 2.0:
+     131 kPa and 275 N m, still under 304); (b) on the pickup and the tractor the vanes make more boost than
+     a fixed nozzle and 3 to 5 % less torque: one target number where a maker has a map.
+ 15. the integrator, a design first: the engine breathes the stated air. Every reader of the outside's
+     pressure under the new models by file, line and owner (the box and throttle N1; the machine's ambient
+     N2; the exhaust's outside and the tailpipe's radiation G; the two-stroke; the trapped charge; the knock
+     model; a compressor map's corrected-flow reference stays 101325). The null: model 0 keeps 101325, and at
+     the field's default every archetype is bit-identical to today's, so the bake reproduces its tables. What
+     a boost target means at altitude (gauge or absolute; sources), and each shipped boosted build at 70 kPa
+     under both. Predictions first: a naturally aspirated engine's brake torque at 70 kPa (indicated about in
+     proportion, brake by more: friction does not fall), a wastegated turbo below and above the compressor's
+     limit, the idle, a cold start. U1's AIR line and held absolutes leave with it.
+ 16. the steward with the integrator, a design first: X-047, the shift's cut. One length, asked once: the
+     contract of `cutRequest()` (launch.fm:80 against car.fm:852), every asker, sourced lengths, and the
+     acceptance in the section of 26 Nov above. The steward's design is a docs commit; `sim/` waits.
+ 17. AFTER ITEM 16 (the "first" of 12:34 withdrawn, 26 Nov): G, the design written
+     (`docs/plan/x051-valve-solve.md`): the exhaust valve's flow solved to convergence (`Valve::flow`, sim/exhaust/duct.fm),
+     behind a hidden switch with the reference's three passes for the null. The line that hands the switch
+     to the cylinder's valves is its file's owner's. Acceptance: the null to the bit; the sometimes rows by
+     the evidence rule on the real code; the gate warm and cold on all 31; Q's cost; clips for the owner.
+ 18. the integrator (27 Nov; the design held here, its notes being local): X-056, a dog shift shuts the
+     robotised clutch (gearbox.fm:283, `robot = 1.0f`) where it was open or slipping. CONFIRMED by the
+     integrator's own trace on the shipped rally five: at rest 1-2 the engine to 382 rpm and the car shoved to
+     3 km/h (B's coupe stalled); an early 1-2 on a slipping launch to 719 rpm; a 2-1 at a crawl to 947 rpm.
+     The first cure (`robot = launch`) was REFUTED by the lead's question, measured: the synced latch is
+     cleared through every shift (:177), so under idle + 110 rad/s it would open a closed clutch (to 0.11 at
+     1536 rpm on the overrun). THE CURE (11:40): the dog shift holds the clutch where it was when the shift
+     began (begin() keeps robot's value). Equal to today's bits wherever robot was 1.0 at the shift's start
+     (synced, or the revs over the edge); the pull's and tour's rows to confirm it, not a reading. Two tests:
+     rest, two presses (the engine over 0.85 x idle, the car under 0.5 km/h: fails today); a synced 1-2 at
+     1500 rpm on the overrun keeps robot 1.0 (passes today, fails on the first cure). Behind 16, 17 and 15.
+ 19. AHEAD OF 18 (27 Nov): X-057's rule, the integrator with the steward: a governed engine's redline is its
+     governed high idle (`redlineFor`, the full form: the lights, the vehicle and the key together). The one
+     shipped build that met it (diesel-pickup-tuned) is cured in content by D2 outside the window; after that
+     every shipped build is to be bit-identical under the rule BUT THREE, by name (diesel-v8-truck,
+     diesel-mechanical-classic, diesel-marine-v12: the reference ECU floors the redline at idle + 1500 rpm,
+     over their high idle, so content cannot state it; the rule must let a governor go under that floor).
+ 20. L (27 Nov, THE OWNER'S RULING "true levels with a fixed gain", and their report of the comb and the
+     highs): Places' level true by default with one fixed staging; the Tailpipe camera a boundary microphone
+     on the ground 0.5 m behind the mouth. docs/plan/places-sound.md. L's files only (scene.fm, listen.fm,
+     the spec's sound.fm), model 1 only; the patch ready on a scratch tree before the window.
+- **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
+  red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
+  default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
+  `scripts/lint.sh` before pushing; wait on the tier's process; a sha only after the command printed it; a
+  check that reads "the shipped builds" reads them as the bake's gate does (warm and cold) or says which state
+  it did not read; a refusal of a session's permission check is never worked around; no single draw of a combo row is
+  evidence for or against a change (26 Nov 07:26).
+- **27 Nov 11:35 UTC: `shell/` carries one ruled change in flight (B: the gears by gearbox kind, the owner's
+  shifting report).** It needs no bake; `main` moves on its three green jobs after the lead has driven it.
+- **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
+  baked tables), docs. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead runs.
+- **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**

@@ -614,6 +614,11 @@ namespace tee::ui
             const bool unsure = boost >= 185e3 && std::fabs(rpm - 6250.0) < 1.0, unsettled = boost >= 185e3 && std::fabs(rpm - 6500.0) < 1.0;
             c.torqueSe.push_back((unsure ? 0.02 : 0.003) * tq);
             c.settledCycles.push_back(unsettled ? 0 : 8);
+            // What the predictor says beyond the numbers (card C's flags, DynoTrace::pointFlags): the 6500 rpm point did
+            // not settle (distrusted); from 185 kPa the 2000 rpm one, where the turbo comes on, settled with its boost
+            // rippling (said, not distrusted).
+            const bool ripples = boost >= 185e3 && std::fabs(rpm - 2000.0) < 1.0;
+            c.pointFlags.push_back(static_cast<char>((unsettled ? DynoTrace::kNotSettled : 0) | (ripples ? DynoTrace::kBoostRipple : 0)));
         }
         return c;
     }

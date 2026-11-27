@@ -112,6 +112,8 @@ namespace tee::ui
         void select(std::string path) { selection_.select(std::move(path)); }
         int inspectorPageCount() const noexcept { return static_cast<int>(pages_.size()); }
         int inspectorPageIndex() const noexcept { return page_; }
+        // A page's .gui text, as the inspector shows it (for tests); "" past the last.
+        std::string inspectorGui(int i) const { return i >= 0 && i < inspectorPageCount() ? pages_[static_cast<std::size_t>(i)].gui : std::string(); }
         const std::string& inspectorTitle(int p) const;
         FieldPage* inspector() const;                        // the page shown (nullptr: the units page)
         // The shown page as Rows (J2's RowsPage, the owner's pick, 25 Nov): what the inspector shows and gives the
@@ -264,6 +266,7 @@ namespace tee::ui
         int tableFrom_ = -1, tableField_ = -1;               // openTable's: the Rows page it left, the table's first field
         bool unitsPage_ = false, folded_ = false;
         std::uint32_t selectionSeen_ = 0, unitsSeen_ = 0;
+        std::uint64_t inspectorKeySeen_ = 0;   // the shown workspace's inspectorKey() the pages were made for
         std::string inspectorHead_, pagesFor_;
         std::vector<Button*> tabs_;
         Button *clear_ = nullptr, *fold_ = nullptr, *unitsButton_ = nullptr;

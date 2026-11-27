@@ -53,8 +53,18 @@ if [ ${#missing[@]} -gt 0 ]; then
   fi
   # (another session may hold apt's lock: wait for it rather than fail; the environment through env, as sudo drops it)
   "${as[@]}" apt-get -o DPkg::Lock::Timeout=600 update -qq || echo "apt-get update reported errors: going on with the lists there are"
-  "${as[@]}" env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 \
-    apt-get -o DPkg::Lock::Timeout=600 install -y -qq --no-install-recommends "${missing[@]}"
+  # (a mirror can 404 a package its fresh index still names, while the pool moves to a newer version: run 45806403099,
+  # libasound2t64 from security.ubuntu.com. One more update and one retry, both said; a second failure fails as before)
+  apt_install() {
+    "${as[@]}" env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 \
+      apt-get -o DPkg::Lock::Timeout=600 install -y -qq --no-install-recommends "${missing[@]}"
+  }
+  if ! apt_install; then
+    say "apt: the install failed; updating the lists once more and retrying it once"
+    "${as[@]}" apt-get -o DPkg::Lock::Timeout=600 update -qq || echo "apt-get update reported errors: going on with the lists there are"
+    apt_install || { say "apt: the retry failed too"; exit 1; }
+    say "apt: the retry installed them"
+  fi
 else
   say "apt: every package is installed"
 fi
