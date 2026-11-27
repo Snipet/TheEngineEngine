@@ -1016,3 +1016,22 @@ TEST_CASE("X-057: a governed diesel's automatic and its shift point", "[.x057]")
                     b.tel("engine.speed") / (rTop * fd) * radius * 3.6);
     }
 }
+
+// Item 19 (X-057's rule): the three governed builds whose high idle sits under the reference ECU's idle + 1500 floor;
+// their stated governor and the redline the ECU gives them today (hidden: "[.x057figs]")
+TEST_CASE("Item 19: the governed builds under the idle + 1500 floor", "[.x057figs]")
+{
+    const double k = 9.5492966;
+    for (const char* build : {"diesel-v8-truck", "diesel-mechanical-classic", "diesel-marine-v12"})
+    {
+        Bench b(build);
+        b.start();
+        b.play(2.0);
+        const double rated = b.field("spec.ecu.ratedSpeed") * k, droop = b.field("spec.ecu.droop");
+        const double hiStated = b.field("spec.ecu.highIdle") * k, idle = b.field("ecu.idleRpm"), red = b.field("ecu.redRpm");
+        std::printf("%s: ratedSpeed %.1f rpm, droop %.3f, highIdle stated %.1f rpm -> governed high idle %.1f rpm; ecu.idleRpm %.1f, "
+                    "floor (idle + 1500) %.1f, ecu.redRpm today %.1f, ecu.model %g\n",
+                    build, rated, droop, hiStated, hiStated > 0 ? hiStated : rated * (1 + droop), idle, idle + 1500, red,
+                    b.field("spec.ecu.model"));
+    }
+}
