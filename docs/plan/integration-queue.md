@@ -2825,6 +2825,29 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:48 UTC: THE BRANCH TIP DOES NOT BUILD IN THE DEFAULT TREE (B's d0949cf2). DO NOT BASE A TIER ON IT
+  until B's fix is in.** The lead's checkout at f4580ae4, unmodified, configured by the plain `dev` preset
+  (`TEE_BUILD_APP` OFF, its default): `tests/shell/app/AssistantWakeTest.cpp` fails to compile,
+  "app/AssistantWake.h:12:10: fatal error: 'SDL3/SDL.h' file not found". `tests/shell/CMakeLists.txt:109-117` adds
+  the case to `tee-shell-app-tests` always and gives that target SDL's headers only under `TEE_BUILD_APP`. B's
+  tree has the app on; CI's tests tree is the plain preset (`build.yml:327`). **Prediction, written with run
+  46044044673's three jobs still pending: all three fail at the build step.** B fixes forward at once, without
+  waiting for jobs (they are its own and lost). `main` is untouched: it is at 40463d37, which builds.
+  - **THE RULE FROM NOW ON: the tier of record runs in a tree configured as CI configures it** (the plain preset
+    and the deps dir, nothing else). A tier in any other tree is extra. Every report names its tree:
+    `TEE_BUILD_APP`, and whether libsecret and libcurl were found. Two breaks in one hour came from a tier that was
+    green only on its author's configuration: card A's key-read case (a tree with libsecret) and B's wake (a tree
+    with the app on).
+  - The lead's part in it: it allowed B's push on B's tier without asking what tree it ran in, and read the code
+    only after the push. A change the lead has not read is now read from a patch or a pushed side ref before it
+    lands when it touches CMake or a platform part.
+  - The lead's read of the wake itself (60d4c56c): the loop agrees with FunkGui 0.28.0's `DesktopHost::pump` (every
+    event goes to `rawEvent` first, minimised or not); post and take lose no wake; the timer's "stale once fired"
+    note holds for SDL 3.4.20. NOT covered by any case: `app/Main.cpp`'s own lines (the `setWake` call,
+    `rawEvent`'s branch: the case copies that loop), and the 75 ms path through a job that says "not yet". Asked of
+    B: whether a window test under Xvfb can cover the first. A real minimised window on macOS is the owner's.
+  - Order now: B's build fix; card A's cure (ef77de5: proved by card A on a tree with neither libsecret nor
+    libcurl); J2's carry of U1's air patch; card A's item 3.
 - **27 Nov 17:42 UTC: `main` IS AT 40463d37** (run 46039773867: Linux, macOS and Windows green; gated trees
   unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 3ba103f4 (17:13).
 - **27 Nov 17:42 UTC: THE HOLD IS LIFTED** (899259e9's three jobs started, windows-x64 at 17:41:51), **AND ONE RED IS
