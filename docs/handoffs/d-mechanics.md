@@ -207,9 +207,10 @@ any of its builds; to check).
 The six ecu.model 0 builds that state a governor, measured on 3ca7b90c ("[.x057figs]", 2.0 s after start; none states
 highIdle, so the high idle is ratedSpeed x (1 + droop)): diesel-v8-truck 2014.3 against ecu.redRpm 2338.7 today;
 diesel-mechanical-classic 2267.9 against 2364.9; diesel-marine-v12 1890.0 against 2361.5; truck-15l-six and its bobtail
-2225.9 against 2186.6 (under: bit-identical under the min rule); diesel-pickup-tuned 2225.9 against 3264.8 (D2's
-content correction, rated 2900 rpm, is on neither this branch nor main yet: until it lands, the min rule moves the
-pickup too). The lead's ruling (12:37): redlineFor itself, min(today's value, the governed high idle) for a stated
+2225.9 against 2186.6 (under: bit-identical under the min rule); diesel-pickup-tuned, after D2's f77a46e6 (rated 303.7 rad/s =
+2900.1 rpm; re-read on 8d2e60f0): high idle 3074.1 against 3073.8 today (under: bit-identical). (My first read, on
+3ca7b90c, predated f77a46e6: 2225.9 against 3264.8.) So item 19 moves exactly three builds, as ruled. D2's
+tests/sim/diesel/RedlineTest.cpp:130 ([!mayfail]) checks the same three as GearsTest's X-057 case ([!shouldfail]). The lead's ruling (12:37): redlineFor itself, min(today's value, the governed high idle) for a stated
 governor, the idle + 1500 floor not holding the cap up.
 
 Numbered for the list, not for now: X-058 (X's), archetypes/v6-35-twin-turbo-pickup, an automatic put into D at rest,
