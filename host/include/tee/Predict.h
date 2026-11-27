@@ -156,7 +156,8 @@ namespace tee
     std::shared_ptr<Sim> simAtInnerRate(const std::shared_ptr<Sim>& sim, double rate, std::string& error);
 
     // One curve, made now on this thread with `threads` workers (0 as PredictOptions says): what the service does, for
-    // tools and tests. False with `error` when the program cannot be braked or played. `cancel` stops it early.
+    // tools and tests. False with `error` when the program cannot be braked or played. `cancel` stops it early: false,
+    // `error` "cancelled", when it stopped before every point was in (a curve is whole or there is none).
     // `inner`: the Sim at options.innerRate (simAtInnerRate), or nullptr (the program's own rate).
     bool predictCurve(const std::shared_ptr<Sim>& sim, const Build& build, const PredictOptions& options,
                       PredictCurve& curve, std::string& error, const std::atomic<bool>* cancel = nullptr,

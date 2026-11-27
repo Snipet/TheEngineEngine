@@ -242,6 +242,16 @@ namespace tee
         const double step = std::max(options.step, 1.0);
         for (double a = 0.0; a <= range + 1e-9; a += step)
             result.advances.push_back(a);
+        // A curve must be whole: a row the rest index by speed. predictCurve says a cancel by returning false; this is
+        // the bake's own guard besides (a curve of another number of points is an error, never a row to index)
+        const auto whole = [&](const PredictCurve& curve, std::size_t want) {
+            if (curve.points.size() == want)
+                return true;
+            error = cancel != nullptr && cancel->load() ? "cancelled"
+                                                         : "a cam bake's curve came back with " + std::to_string(curve.points.size())
+                                                               + " of its " + std::to_string(want) + " points";
+            return false;
+        };
 
         for (const double advance : result.advances)
         {
@@ -263,6 +273,8 @@ namespace tee
             if (result.speeds.empty())
                 for (const PredictPoint& p : curve.points)
                     result.speeds.push_back(p.speed);
+            if (!whole(curve, result.speeds.size()))
+                return false;
             std::vector<double> torque, knock, se;
             for (const PredictPoint& p : curve.points)
             {
@@ -295,8 +307,13 @@ namespace tee
                 sAt(result.advances.size());
             for (std::size_t a = 0; a < result.advances.size(); ++a)
             {
+                if (cancel != nullptr && cancel->load())
+                {
+                    error = "cancelled";
+                    return false;
+                }
                 PredictCurve curve;
-                if (!heldCurve(result.advances[a], at, curve))
+                if (!heldCurve(result.advances[a], at, curve) || !whole(curve, at.size()))
                     return false;
                 for (const PredictPoint& p : curve.points)
                 {
@@ -403,7 +420,7 @@ namespace tee
                 PredictOptions po = base;
                 po.speeds = at;
                 PredictCurve curve;
-                if (!predictCurve(sim, held, po, curve, error, cancel))
+                if (!predictCurve(sim, held, po, curve, error, cancel) || !whole(curve, at.size()))
                     return false;
                 for (const PredictPoint& p : curve.points)
                 {
@@ -500,7 +517,7 @@ namespace tee
                         where.push_back(sp);
                     }
                 PredictCurve curve;
-                if (!heldCurve(c, at, curve))
+                if (!heldCurve(c, at, curve) || !whole(curve, at.size()))
                     return false;
                 std::vector<double> torque(result.speeds.size(), nan), knock(result.speeds.size(), nan),
                     se(result.speeds.size(), nan);
@@ -631,7 +648,8 @@ namespace tee
             po.speeds = result.speeds;
             po.fields = {"valve.inPhaseTarget"};
             PredictCurve autoC, mapC;
-            if (!predictCurve(sim, autoB, po, autoC, error, cancel) || !predictCurve(sim, mapB, po, mapC, error, cancel))
+            if (!predictCurve(sim, autoB, po, autoC, error, cancel) || !predictCurve(sim, mapB, po, mapC, error, cancel)
+                || !whole(autoC, result.speeds.size()) || !whole(mapC, result.speeds.size()))
                 return false;
             for (std::size_t s = 0; s < result.speeds.size() && s < autoC.points.size() && s < mapC.points.size(); ++s)
             {
@@ -989,6 +1007,13 @@ namespace tee
             PredictCurve curve;
             if (!predictCurve(sim, stepBuild, predict, curve, error, cancel))
                 return false;
+            // (a curve is whole or predictCurve says why not; the bake's own guard besides, as the cam bake's)
+            if (k > 0 && curve.points.size() != active.size())
+            {
+                error = "a knock bake's curve came back with " + std::to_string(curve.points.size()) + " of its "
+                        + std::to_string(active.size()) + " points";
+                return false;
+            }
             result.points += static_cast<int>(curve.points.size());
             result.simulatedSeconds += curve.simulatedSeconds;
             if (k == 0)
@@ -1116,6 +1141,12 @@ namespace tee
                 PredictCurve curve;
                 if (!predictCurve(sim, stepBuild, predict, curve, error, cancel))
                     return false;
+                if (curve.points.size() != again[k].size())
+                {
+                    error = "a knock bake's correction curve came back with " + std::to_string(curve.points.size())
+                            + " of its " + std::to_string(again[k].size()) + " points";
+                    return false;
+                }
                 result.points += static_cast<int>(curve.points.size());
                 result.simulatedSeconds += curve.simulatedSeconds;
                 for (const PredictPoint& p : curve.points)
