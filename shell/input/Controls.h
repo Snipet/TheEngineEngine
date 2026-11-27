@@ -56,12 +56,17 @@ namespace tee::input
 
         // The gearbox a build's fields say the presses drive (Driver.h's Gearbox).
         static Gearbox gearboxOf(const ParamSource& params);
+        // The build's gearbox as sim/vehicle/vspec.fm numbers it (VEH_*), -1 for the reference's car (car.model 0).
+        static int boxKindOf(const ParamSource& params);
+        // What the automatic clutch means for the gearbox loaded: a line for the setting's row and the F9 item.
+        std::string clutchLine() const;
 
     private:
         ControlSink* sink_;
         const TelemetrySource* telemetry_;
         int stateHandle_ = -1, gearHandle_ = -1, drivenHandle_ = -1, carSpeedHandle_ = -1;
         const ParamSource* params_ = nullptr;           // the build's fields, where the source has them
+        int boxKind_ = -1;                              // boxKindOf, as last read
         Driver driver_;
         std::vector<Binding> bindings_;
         std::string status_;

@@ -183,3 +183,45 @@ TEST_CASE("gearbox: the reference's vehicle (car.model 0) is driven as before, w
     CHECK(car.controls->driver().frame().lever == 0);                 // the lever not moved (the automatic clutch)
     CHECK(car.geared() == 1);                                         // the reference's car: first gear
 }
+
+TEST_CASE("gearbox: the automatic clutch's line per kind, and a manual with it off and keys only says which key the clutch is",
+          "[shell][sim][sharedsim]")
+{
+    const struct
+    {
+        const char* build;
+        const char* says;
+    } lines[] = {
+        { "cars/rwd-v8-coupe.json", "Manual: E, Q and the gear keys shift" },
+        { "archetypes/inline-five-turbo-rally.json", "Sequential: it works its own clutch" },
+        { "cars/awd-turbo-six.json", "Dual clutch: it works its own clutch" },
+        { "diesel-pickup-tuned.json", "Automatic: its selector" },
+        { "archetypes/economy-four-15.json", "CVT: its selector" },
+        { "truck-15l-six.json", "Eighteen-speed: the clutch is always yours" },
+    };
+    for (const auto& l : lines)
+    {
+        INFO(l.build);
+        Car car(l.build);
+        CHECK(car.controls->clutchLine().find(l.says) != std::string::npos);
+        CHECK(car.controls->clutchLine().size() <= 90);                 // the SETTINGS row's small line
+    }
+    // the manual with the automatic clutch off: the line says so, and with keys only the status line names the key
+    Car car("cars/rwd-v8-coupe.json");
+    input::DriverSettings off = car.controls->driver().settings();
+    off.autoClutch = false;
+    car.controls->driver().setSettings(off);
+    car.frames(2);
+    CHECK(car.controls->clutchLine().find("the clutch is yours") != std::string::npos);
+    CHECK(car.controls->services().status().find("clutch: yours (Left Shift)") != std::string::npos);
+    // a wheel's pedals read: its clutch pedal is there, nothing to say
+    car.controls->driver().setWheel(0.0f, 0.0f, 0.0f);
+    CHECK(car.controls->services().status().find("clutch: yours") == std::string::npos);
+    // the H-lever with the clutch down: a gear key puts it in first
+    car.controls->driver().release(input::Source::wheel);
+    car.controls->key(input::key::kLeftShift, true);
+    car.frames(30);
+    car.controls->driver().requestGear(1);
+    car.frames(30);
+    CHECK(car.geared() == 1);
+}

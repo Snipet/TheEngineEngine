@@ -39,6 +39,7 @@ namespace tee::app
             kQuality = 900,         // + 0 full, 1 economy
             kColdStart = 950,
             kWheel = 960,
+            kAutoClutch = 990,
             kWheelDefaults = 970,
             kWheelLearn = 971,      // + index of the bindable actions
         };
@@ -440,6 +441,10 @@ namespace tee::app
             b.submenu.push_back({ kWheelDefaults, "The defaults (paddles shift, PS starts, the rest edit)", true });
             items.push_back(std::move(b));
         }
+        if (ctx_.autoClutch && ctx_.setAutoClutch)
+            items.push_back({ kAutoClutch, std::string("Clutch: automatic (off: yours)") +
+                                               (ctx_.autoClutchSays ? " -- " + ctx_.autoClutchSays() : std::string()),
+                              true, ctx_.autoClutch(), false, false, true });
         if (ctx_.coldStart && ctx_.setColdStart)
             items.push_back({ kColdStart, "Start the engine cold (from the next launch)", true, ctx_.coldStart(), false,
                               false, true });
@@ -461,6 +466,14 @@ namespace tee::app
             if (id == kWheelDefaults || (id >= kWheelLearn && ctx_.wheelButtonCount && id < kWheelLearn + ctx_.wheelButtonCount()))
             {
                 ctx_.learnWheelButton(id == kWheelDefaults ? -1 : id - kWheelLearn);
+                return;
+            }
+            if (id == kAutoClutch)
+            {
+                const bool on = !ctx_.autoClutch();
+                ctx_.setAutoClutch(on);
+                say(std::string("clutch: ") + (on ? "automatic" : "yours") +
+                    (ctx_.autoClutchSays ? " (" + ctx_.autoClutchSays() + ")" : std::string()));
                 return;
             }
             if (id == kColdStart)

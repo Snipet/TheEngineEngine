@@ -113,6 +113,8 @@ namespace tee::input
         // a gamepad's (neither overwrites the other). Its steering is not the car's (a straight line). Let go with
         // release(wheel).
         void setWheel(float throttle, float brake, float clutch);
+        // A wheel's pedals are being read (setWheel since the wheel was last let go): its clutch pedal is there.
+        bool wheelPedals() const noexcept { return wheelPedals_; }
 
         // The Panel's throttle and brake strips: while held, the pedal is at least value.
         void setStrip(float value, bool held);
@@ -175,6 +177,7 @@ namespace tee::input
         int shiftUp_ = 0, shiftDown_ = 0;
         int lever_ = 0;
         Gearbox gearbox_ = Gearbox::shifts;
+        bool wheelPedals_ = false;
         int select_ = 0;            // the selector's R -1, N 0, D 1 (Gearbox::selector)
         float kmh_ = 0.0f;          // the car's speed as last seen (advance)
         void eighteenStep(int by);  // the next gear of the eighteen, up (1) or down (-1)

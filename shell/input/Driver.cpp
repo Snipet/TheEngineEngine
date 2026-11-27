@@ -173,6 +173,7 @@ namespace tee::input
 
     void Driver::setWheel(float throttle, float brake, float clutch)
     {
+        wheelPedals_ = true;
         wheelThrottle_ = clamp01(throttle);
         wheelBrake_ = clamp01(brake);
         wheelClutch_ = clamp01(clutch);
@@ -267,7 +268,10 @@ namespace tee::input
         if (source == Source::gamepad)
             padThrottle_ = padBrake_ = padSteer_ = padClutch_ = 0.0f;
         if (source == Source::wheel)
+        {
             wheelThrottle_ = wheelBrake_ = wheelClutch_ = 0.0f;
+            wheelPedals_ = false;
+        }
         if (source == Source::panel)
             stripHeld_ = brakeStripHeld_ = clutchStripHeld_ = handbrakeStripHeld_ = false;
     }

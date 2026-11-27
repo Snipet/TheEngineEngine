@@ -87,6 +87,9 @@ namespace tee::app
             std::function<std::string()> wheelStatus;
             std::function<bool()> coldStart;            // the settings' coldStart (ENGINE START: from the next launch)
             std::function<void(bool)> setColdStart;
+            std::function<bool()> autoClutch;           // the settings' driver.autoClutch (at once), for the frame's
+            std::function<void(bool)> setAutoClutch;    // SETTINGS row (U1's, to come: FrameServices autoClutch)
+            std::function<std::string()> autoClutchSays;    // what it means for the gearbox loaded (Controls::clutchLine)
             std::function<void(bool)> desktopChosen;     // the CLAUDE DESKTOP switch took: the settings' allowClaudeDesktop
         };
         std::shared_ptr<WindowHooks> window;

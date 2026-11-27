@@ -502,3 +502,29 @@ TEST_CASE("shell: the eighteen-speed: keys to the lever's positions, a shift the
     d.setGearbox(Gearbox::shifts);
     CHECK(frame().lever == 0);
 }
+
+TEST_CASE("shell: the automatic clutch switched: off, the lever passes and a gear key moves it; on again, the H-lever to neutral",
+          "[shell][input]")
+{
+    Driver d;                                                       // on (the default): the lever 0, a gear key seeks
+    d.requestGear(3);
+    CHECK(run(d, 0.1).lever == 0);
+    DriverSettings off = d.settings();
+    off.autoClutch = false;
+    d.setSettings(off);
+    d.requestGear(3);
+    CHECK(run(d, 0.1).lever == 3);                                  // the H-lever itself
+    d.set(Source::keyboard, Action::clutch, true);
+    CHECK(run(d, 0.5).clutch == 1.0f);                              // the clutch the driver's
+    d.set(Source::keyboard, Action::clutch, false);
+    DriverSettings on = d.settings();
+    on.autoClutch = true;
+    d.setSettings(on);
+    CHECK(run(d, 0.1).lever == 0);                                  // back on: the lever to neutral
+    // a wheel's pedals are seen while it is read, and not after it is let go
+    CHECK_FALSE(d.wheelPedals());
+    d.setWheel(0.0f, 0.0f, 0.0f);
+    CHECK(d.wheelPedals());
+    d.release(Source::wheel);
+    CHECK_FALSE(d.wheelPedals());
+}

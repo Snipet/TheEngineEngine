@@ -34,14 +34,18 @@ asks (below), and Z and X then toggle from there.
 runs (two seconds at the most: an engine that will not catch is left on, not cranking; press again). Hold it for a second while the engine runs and the engine is switched off. A tap is enough to start: a press
 shorter than a frame is still held for 0.15 s.
 
-**The gears.** The automatic clutch is on (there is no switch for it in the window yet: the simulator's Spec has no
-`car.autoClutch` field; the CAR workspace's gearbox group names one that only the interface's demo document has). With
-it, on a manual, a sequential or a dual clutch, E and Q are the
+**The gears.** The automatic clutch is on by default. It is the driver's setting, not the car's (the settings file's
+`driver.autoClutch`, never in a build): F9, "Clutch: automatic (off: yours)", switches it at once, with a line of what
+it means for the gearbox loaded; a row on the SETTINGS page is U1's, to come. It matters on a manual (and the
+reference's car): a sequential and a dual clutch work their own clutch either way, an automatic and a CVT are their
+selector either way, and the eighteen-speed's clutch is always yours. Off on a manual, the shifter and the gear keys
+move the lever and the clutch is yours: with keys only (no wheel's pedals read) the status line says "clutch: yours
+(Left Shift)". With it on, on a manual, a sequential or a dual clutch, E and Q are the
 paddles of a paddle-shift car: the gearbox works its own clutch, pulls away by itself when the throttle goes down in
 first, and never stalls. A gear key (1 to 6, N) presses the shift up or down for you, once every 0.3 s, until the
 gearbox is in that gear; it gives up after twelve presses (a downshift the gearbox refuses because it would take the
 engine past its redline). With the automatic clutch off, a gear key moves an H-pattern lever and the clutch is yours
-(Left Shift): the Driver has this path and its test, and nothing in the window turns it on yet.
+(Left Shift, or the wheel's pedal).
 
 What a press reaches depends on the build's gearbox (read from the build each frame; the reference's vehicle, `model`
 Reference, reads no gearbox and is driven as a manual's paddles whatever the field says):

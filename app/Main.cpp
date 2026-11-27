@@ -307,6 +307,16 @@ namespace
                 now.audioQuality = q == 1 ? "economy" : "full";
             };
         }
+        // the automatic clutch: the Driver's setting, at once, and the settings file's when the window closes
+        const auto setAutoClutch = [&controls, &now](bool on) {
+            input::DriverSettings s = controls.driver().settings();
+            s.autoClutch = on;
+            controls.driver().setSettings(s);
+            now.driver.autoClutch = on;
+        };
+        commandsContext.autoClutch = [&controls] { return controls.driver().settings().autoClutch; };
+        commandsContext.setAutoClutch = setAutoClutch;
+        commandsContext.autoClutchSays = [&controls] { return controls.clutchLine(); };
         commandsContext.coldStart = [&now] { return now.coldStart; };
         commandsContext.setColdStart = [&now](bool cold) { now.coldStart = cold; };
         commandsContext.audioChanged = [&] {
@@ -671,6 +681,9 @@ namespace
             };
             shown.window->coldStart = [&now] { return now.coldStart; };
             shown.window->setColdStart = [&now](bool cold) { now.coldStart = cold; };
+            shown.window->autoClutch = [&controls] { return controls.driver().settings().autoClutch; };
+            shown.window->setAutoClutch = setAutoClutch;
+            shown.window->autoClutchSays = [&controls] { return controls.clutchLine(); };
             shown.window->desktopChosen = [&now](bool on) { now.allowClaudeDesktop = on; };
         }
         std::string why;

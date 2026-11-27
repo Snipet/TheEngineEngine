@@ -25,6 +25,31 @@ namespace tee::input
         params_ = dynamic_cast<const ParamSource*>(&telemetry);
     }
 
+    int Controls::boxKindOf(const ParamSource& params)
+    {
+        const int model = params.findParam("car.model"), box = params.findParam("car.gearbox");
+        if (model < 0 || box < 0 || std::lround(params.get(model)) != 1)
+            return -1;
+        return static_cast<int>(std::lround(params.get(box)));
+    }
+
+    std::string Controls::clutchLine() const
+    {
+        // one whole sentence each, at most about 90 characters (the SETTINGS row's small line, U1's)
+        switch (boxKind_)
+        {
+            case 1: return "Sequential: it works its own clutch either way.";
+            case 2: return "Dual clutch: it works its own clutch either way.";
+            case 3: return "Automatic: its selector, R N D, either way.";
+            case 4: return "CVT: its selector, R N D, either way.";
+            case 5: return "Eighteen-speed: the clutch is always yours.";
+            default:
+                return driver_.settings().autoClutch
+                           ? "Manual: E, Q and the gear keys shift; the gearbox works the clutch."
+                           : "Manual: the shifter and gear keys move the lever; the clutch is yours.";
+        }
+    }
+
     Gearbox Controls::gearboxOf(const ParamSource& params)
     {
         // sim/spec/car.fm: `gearbox` is read only with `model` 1 (the vehicle model); sim/vehicle/vspec.fm's VEH_*
@@ -108,12 +133,21 @@ namespace tee::input
         if (carSpeedHandle_ >= 0 && driven)
             seen.kmh = static_cast<float>(std::fabs(read(carSpeedHandle_)) * 3.6);
         if (params_ != nullptr)
+        {
             driver_.setGearbox(gearboxOf(*params_));
+            boxKind_ = boxKindOf(*params_);
+        }
         sink_->setControls(driver_.advance(dt, seen));
     }
 
     std::string Controls::status() const
     {
+        // a manual (or the reference's car) with the automatic clutch off and no wheel's pedals: say which key the clutch is
+        if ((boxKind_ <= 0) && !driver_.settings().autoClutch && !driver_.wheelPedals())
+        {
+            const std::string note = "clutch: yours (Left Shift)";
+            return status_.empty() ? note : status_ + "   " + note;
+        }
         if (driver_.gearbox() != Gearbox::eighteen)
             return status_;
         const std::string note = "eighteen-speed: the clutch is yours (Left Shift, or the wheel's pedal); start in L "
