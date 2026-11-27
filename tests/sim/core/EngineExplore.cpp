@@ -939,3 +939,53 @@ TEST_CASE("X-056: a sequential's dog shift at rest and while the launch clutch s
                     c.what, b.tel("car.gear"), b.tel("car.speed") * 3.6, minRpm, minRobot, maxRobot, state, b.field("ecu.state"));
     }
 }
+
+// X-056's edge (the lead's question): an upshift at speed with the engine under idle + 110 rad/s: the synced latch and
+// the robotised clutch through the shift, step by step (hidden: "[.x056edge]")
+TEST_CASE("X-056: the synced latch through a low-revs dog upshift", "[.x056edge]")
+{
+    for (float ped : {0.06f, 0.08f, 0.12f, 0.2f, 0.35f})
+    {
+        Bench b("archetypes/inline-five-turbo-rally");
+        b.start();
+        b.ctl().mode = 1;
+        b.play(0.2);
+        b.ctl().shiftUp += 1;
+        b.play(0.2);
+        b.ctl().throttle = ped;
+        b.play(ped < 0.1f ? 2.0 : 4.0);
+        const double idle = b.field("ecu.idleRpm");
+        std::printf("pedal %.2f: before the shift %.0f rpm (idle %.0f, idle + 110 rad/s = %.0f), synced %g, robot %.3f, %.1f km/h\n", ped,
+                    b.tel("engine.speed") * 9.5492966, idle, idle + 110.0 * 9.5492966, b.field("car.m1.box.synced"), b.field("car.m1.box.robot"),
+                    b.tel("car.speed") * 3.6);
+        b.ctl().shiftUp += 1;
+        int k = 0;
+        b.play(0.15, [&] {
+            if (k++ < 9)
+                std::printf("   step %d: shifting %g gear %g synced %g robot %.3f engine %.0f rpm\n", k, b.field("car.m1.box.shifting"),
+                            b.field("car.m1.box.gear"), b.field("car.m1.box.synced"), b.field("car.m1.box.robot"), b.tel("engine.speed") * 9.5492966);
+        });
+    }
+}
+
+TEST_CASE("X-056: a synced low-revs upshift on the overrun", "[.x056coast]")
+{
+    for (double coast : {3.5, 5.0, 7.0})
+    {
+        Bench b("archetypes/inline-five-turbo-rally");
+        b.start();
+        b.ctl().mode = 1;
+        b.play(0.2);
+        b.ctl().shiftUp += 1;
+        b.play(0.2);
+        b.ctl().throttle = 0.2f;
+        b.play(3.0);
+        b.ctl().throttle = 0.0f;
+        b.play(coast);
+        const double idle = b.field("ecu.idleRpm");
+        const double w = b.tel("engine.speed") * 9.5492966;
+        const double x = std::min(std::max((b.tel("engine.speed") - idle / 9.5492966 - 15.7) / 94.2, 0.0), 1.0);
+        std::printf("coast %.1f s: %.0f rpm (idle %.0f), synced %g, robot %.3f; the revs' launch term %.3f (what the cure would hold through the shift)\n",
+                    coast, w, idle, b.field("car.m1.box.synced"), b.field("car.m1.box.robot"), x * x * (3.0 - 2.0 * x));
+    }
+}
