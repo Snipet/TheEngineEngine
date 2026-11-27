@@ -893,3 +893,32 @@ TEST_CASE("assistant: the build's name rides as the app's data, escaped, never a
     CHECK(name.get<std::string>() == evil);
     CHECK(b.transport.body(0)["messages"][0]["content"][1]["text"] == "What is open?");
 }
+
+TEST_CASE("assistant: what Claude wrote is sent back byte for byte, its keys in their order, every request after",
+          "[assistant][sharedsim]")
+{
+    // A tool call's input is kept as Claude streamed it, not re-sorted: preserved thinking's check of earlier messages
+    // may count a re-ordered object as an edit. Each request's messages are the next one's first bytes.
+    Bench b("chat-bytes");
+    const std::string input = R"({"changes":[{"value":0.0861,"path":"engine.bore"}]})";   // "value" before "path"
+    b.transport.script.push_back(ok(Stream().text("Setting the bore.").tool("tu_1", "set_fields", input).end("tool_use")));
+    b.transport.script.push_back(ok(Stream().text("Done.").end("end_turn")));
+    b.transport.script.push_back(ok(Stream().text("It is.").end("end_turn")));
+    b.say("Make the bore 86.1 mm.");
+    b.say("Is it set?");
+    REQUIRE(b.transport.count() == 3);
+    const auto messagesOf = [&](std::size_t i) {
+        const std::string& body = b.transport.requests[i].body;
+        const std::size_t at = body.find("\"messages\":");
+        REQUIRE(at != std::string::npos);
+        return body.substr(at + 11, body.size() - (at + 11) - 1);   // the array, without the body's closing brace
+    };
+    const std::string second = messagesOf(1), third = messagesOf(2);
+    INFO(second);
+    // the input exactly as written: its keys in Claude's order
+    CHECK(second.find(R"("input":{"changes":[{"value":0.0861,"path":"engine.bore"}]})") != std::string::npos);
+    // each request's messages begin with the one before's, byte for byte
+    REQUIRE(second.size() > 2);
+    CHECK(third.compare(0, second.size() - 1, second, 0, second.size() - 1) == 0);
+    CHECK(b.transport.requests[0].body.size() > 0);
+}

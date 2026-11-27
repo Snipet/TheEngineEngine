@@ -151,6 +151,8 @@ namespace tee::assistant
 
         // The history as it would be sent (a copy), for tests and for nothing else.
         nlohmann::json history() const;
+        // The same in the order it is sent, key for key (the API's own order for what Claude wrote).
+        nlohmann::ordered_json historyAsSent() const;
         // Waits for the turn to end (tests).
         void wait();
 
@@ -176,7 +178,9 @@ namespace tee::assistant
         const std::string toolsJson_;           // made once: byte-stable
 
         mutable std::mutex mutex_;
-        nlohmann::json history_ = nlohmann::json::array();
+        // What is sent, in the API's own key order for what Claude wrote (a tool call's input as it was streamed): an
+        // earlier message is sent again byte for byte, never re-sorted (preserved thinking's check of earlier messages).
+        nlohmann::ordered_json history_ = nlohmann::ordered_json::array();
         std::vector<ChatItem> items_;
         std::uint64_t revision_ = 0;
         std::string question_;
@@ -211,4 +215,5 @@ namespace tee::assistant
     // thinking, redacted_thinking, tool_use and any block type not known to be the conversation's own are omitted;
     // the fallback block stays where it is; everything after it is kept. Without a fallback block: unchanged.
     nlohmann::json echoContent(const nlohmann::json& content);
+    nlohmann::ordered_json echoContent(const nlohmann::ordered_json& content);   // (the same, keys in their order)
 }
