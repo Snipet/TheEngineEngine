@@ -2614,6 +2614,77 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
   nightly pull-away on the tractor allowed after B's push, with conditions (no stall on 17 nudges, no shifts,
   its cost stated).
 
+## 27 Nov 11:55 UTC: THE PLACES MODE'S SOUND (the owner's report): L's read, its correction, what is ruled
+
+One session's measurements throughout (L, tee-render, scratch trees for the probes, nothing pushed); the lead has
+not repeated them. first.json at the Places defaults (Tailpipe, Field, asphalt, auto level on) against the
+reference at its defaults, then four builds chosen before looking (big-block V8, truck-15l-six, the 600 bike,
+the rotary twin).
+
+- **A CORRECTION OF RECORD (L's, and the lead passed the wrong figures to the owner):** every LUFS figure of L's
+  first two reports was wrong (the K-weighting ran along the wrong axis). Corrected, Places minus reference on
+  first.json: idle -0.8, mid -3.9, pull -6.0 LU; the pull is 10.0 LU over the idle where the reference has 15.2
+  (NOT 0.8 against 5.7). The comb's, the octaves' and the top octave's figures stand.
+- **The three causes, as they now read:**
+  1. THE COMB: the ground tap summed with the direct at fixed gain (asphalt 0.9, a path 0.262 m longer at the
+     default geometry): notches from 659 Hz every 1310 Hz, 11 to 17 dB deep, gone with ground None. It takes the
+     500 Hz octave 7 to 11 dB under the reference.
+  2. THE HIGHS: the top octave 4 to 9 dB proud of the note's body on the five builds. Not a noise bed: the
+     exhaust's own broadband part. The reference stands 0.5 m back and 35 degrees off the pipe's axis, where the
+     piston law that already exists cuts from about 9.7 kHz; Places' Tailpipe camera stands at 1.7 m, 12 degrees
+     off, where it cuts almost nothing.
+  3. THE LEVEL: the auto level brings EVERY BUILD to one loudness. At mid load the reference spans 21.5 LU over
+     the five builds and Places 3.4: the V8 and the truck come out 15 to 19 LU under their references, the
+     rotary 10 over at idle. Within one build the range narrows by about a third.
+- **Withdrawn by L on the lead's questions:** the ground tap's 0.5 gain (chosen for the notch depth: built from
+  its target); the 9 kHz pole at the pipe's mouth (the camera's geometry is the cause); the 2.2 in the half
+  exposure is a level match at one named point and evidence of nothing. Refuted by L's own measure: a higher
+  target and floor (louder everywhere, the spread unchanged).
+- **RULED:** (a) the default camera spot at the reference's own (distance 0: 0.5 m, 35 degrees off the axis),
+  as a DEFAULT and named one, approved in principle to land now if it is content only: every shipped build
+  that opens at Tailpipe at the same spot; no bake key holding it (the gate run, not reasoned); the cases on
+  the defaults restated, not loosened. It brings the top octave to +2.0 on first.json and leaves a comb (ripple
+  9.2 to 7.4 dB). (b) The ground's coherence: NOT yet. First the thing that needs no constant: whether the
+  reflected ray carries its own departure angle through the piston law, and the camera's height against the
+  pipe's (the first notch's place is the geometry's). Sources cited before any corner from a jet's extent.
+  (c) The level is THE OWNER'S: three forms to be heard side by side: as shipped (every build one loudness),
+  half, and the level set by the camera's position and not by the signal (each build its own loudness, the
+  limiter for the peaks), which L measures now. The owner ruled on 25 Nov that the idle's loudness stays as
+  designed; this reopens it on new evidence. (d) The Driver camera duller than the reference's Cabin by 7 to
+  13 dB above 4 kHz: its own item, a measured cabin transfer from sources first.
+- (b) and (c) are `sim/` (scene.fm, listen.fm): the window and a bake.
+
+## 27 Nov 12:03 UTC: B's gears are on the branch and driven by the lead; the Places sound: (a) withdrawn, the level by the camera measured
+
+- **B's push 35a733d1** (the gears by gearbox kind; whole tier 585 of 585 on the ruling's merge; `sim` f23337cc,
+  `host` 86ea14da, `tools` 7c3e4d59 unchanged by the lead's rev-parse). **Driven by the lead**, own scripts through
+  tee-headless on shipped builds: `archetypes/v6-35-na` 11 of 11 checks (E gives D, upshifts by itself, Q at
+  speed nothing, at rest D, N, R and back); `archetypes/economy-four-15` (CVT) 11 of 11; diesel-pickup-tuned in
+  D, first throughout (X-057); truck-15l-six and the tractor 8 of 8 (clutch down, 5, clutch up, moving; clutch
+  down, E, second); v8 and first.json as before. B's cases in the lead's build: "gearbox:*" 141 assertions in 3
+  cases, [input] 1047 in 31. Run 45994332561 on the three platforms in progress; `main` moves on its green.
+- **X-056 on the shipped rally five, measured by the lead (new):** at rest E, E, Q: the 1-2 takes the engine to
+  217 rpm and it lives; the 2-1 STALLS it (state 0, 0.15 s after the press). A third failing case for item 18.
+- **The automatic clutch has no switch in the real window** (B: `car.autoClutch` is in the CAR workspace's list
+  and in no Spec; only the Demo has it). Approved: the shell's setting behind a FrameServices hook and an F9
+  item (B), a SETTINGS row (U1, after the bake's words). The owner's G29 has an H-shifter and a clutch pedal.
+- **Places, corrections to the section of 11:55:** (a) the default camera spot CANNOT land as content: the
+  default is the spec's source and `sound.distance` is read by BOTH listeners (a build-file line would move the
+  reference, the yardstick). WITHDRAWN; nothing lands now. (b) The reflected ray already leaves at its own
+  angle (the image path through the piston law): nothing there. The comb's first notch is THE CAMERA'S HEIGHT:
+  Tailpipe stands 1.71 m back and 0.70 m up over a pipe at 0.35 m (path difference 0.261 m, 657 Hz, the
+  reflection 0.87 of the direct). L measures a grid of recordist's spots on five builds (close, low, beside
+  the pipe; the ground) and proposes one; the jet's coherence stays withdrawn until sourced.
+- **"True levels" exists on `main` today** (Listen, Places, Auto level): each build's own range whole and the
+  builds' true differences, 5 to 10 LU under the reference at Tailpipe (L, five builds).
+- **The level by the camera's position, measured (L, a scratch probe):** against the reference at idle, mid and
+  pull: first.json +0.2 / -0.3 / -0.1, the truck +0.1 / -1.5 / -1.2, the V8 +2.7 / -1.9 / -1.5; the outdoor
+  cameras within 2.5 dB of each other; the loud builds' pulls on the limiter as the reference's are (the
+  truck 98 % of reads). It FAILS at Engine bay (+9.7) until the gain is taken from the source that camera
+  chiefly hears. Its staging (+9.7 dB) is a level match at one named point. The choice among shipped, half and
+  by position is the owner's, with clips; all of it is `sim/` and the window.
+- **L writes docs/plan/places-sound.md** (docs only) when the grid and the pass-by are measured.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;

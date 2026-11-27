@@ -10,8 +10,13 @@ A single draw at 293.15 K selected 3 builds (a red draw, or an event within 15 %
 for all 31, since a draw selects too few (the kei's 1-2 is 2 of 17 over with a draw clear of 85 %).
 
 Columns: copies over / 17 at each upshift and downshift, tip/probe; "-" where the build has no such event: the pull's
-paddle shifts do not apply to an automatic, a CVT or the eighteen-speed (those run the pull in one gear, against the
-limiter); then any other event with a copy over.
+paddle shifts do not apply to an automatic, a CVT or the eighteen-speed; then any other event with a copy over.
+CORRECTION (27 Nov, the integrator's reading, confirmed here by car.gear): those boxes ran this pull in NEUTRAL, not "in
+one gear": the automatic and the CVT take R, N, D from the lever alone (sim/vehicle/gearbox.fm:333) and this pull left
+the lever in N; the eighteen-speed takes the lever, the clutch and its buttons (vehicle.fm eighteen(), roadranger.fm).
+car.gear 0 and car.speed 0 throughout on the hot-vee V8 (automatic), the economy four (CVT) and the tractor, the engine
+free (690 to 710 rad/s; the tractor governed at 210). Their rows below judged an engine revving free in neutral, not a
+pull. The automatics' and the CVT's real pull (the lever in D) is 2026-11-27-automatic-pull.md.
 
 ```
 build                            bound   1-2 tip/probe  2-3 tip/probe      3-2  other events over (tip | probe)
