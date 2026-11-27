@@ -2825,6 +2825,20 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 18:50 UTC: CARD A's ITEM 3 AND J2's CARRY ARE ON THE BRANCH, BACK TO BACK. THE TIP TO PROTECT IS 233d7154.**
+  Gated trees unchanged (sim 22314cde, host ef1715f6, tools 7c3e4d59).
+  - Item 3 (f97c88cc: 28bd43e the withdrawn question, every tool inside 55 s, the owner's answer 40 s, a dyno
+    run 40 s, the extension 0.2.3; 604404a the owner's page; d9c3bd9 the held-clock case). Card A's tier of
+    record: 599 of 599 on 3db7ed07 + item 3, plain tree with libsecret and libcurl. The lead's own tree at
+    f97c88cc (plain, no libsecret): the assistant's and the shell's suites 93 of 93; with the owner's answer put
+    back to 60 s the case "every tool ends inside the MCP client's 60 s" fails at `ToolsTest.cpp:295`; restored.
+  - J2's carry (233d7154: U1's air ccd75273 and the four goldens 1472be2f, under U1's authorship). Tier of
+    record 592 of 592 on 2680d5a9 (plain tree without libsecret); as second, on card A's tip merged: the
+    assistant's and the shell's suites 82 of 82, ui 213 of 213; no golden moved beyond the four.
+  - 3db7ed07 at 18:49: Windows GREEN (588 of 588, the steward's read: the cure proved), Linux GREEN (598 of
+    598), macOS running since 18:41:12. `main` moves to it on macOS green.
+  - Next, when 233d7154's three jobs have started, back to back in either order: B's stack (the wake's window
+    test, X-066's cure) and card A's X-063; then the steward's block in `build.yml`; then X-064.
 - **27 Nov 18:44 UTC: 3db7ed07's THREE JOBS HAVE ALL STARTED (macOS at 18:41:12Z): J2's carry and card A's item 3 may
   go, back to back.** Windows on 3db7ed07 is GREEN (the cure proved where it was red), Linux green, macOS
   running: `main` moves to it on macOS green. f61531fa's macOS ended green too: the wake's cases have passed on
