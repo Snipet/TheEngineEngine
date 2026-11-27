@@ -342,9 +342,11 @@ namespace
 namespace
 {
     // U1 (27 Nov): the bake across edits (card C's options 1 and 2) as the interface reads it, ServiceBake::status() over
-    // the real Spec: first.json, shipped baked, seen current; an edit of the compression keeps both tables playing,
-    // marked stale (their Auto switches still 0), the bake resting, said "Bakes once your edits rest" and "Old tables in
-    // use until baked"; an edit of the cylinders (a table's axes) sets them aside, today's words alone.
+    // the real Spec: first.json, its tables current once baked (the shipped bake, or the test's own where the program has
+    // moved since it was shipped: it waits for that bake to land, not on the shipped one being current); an edit of the
+    // compression keeps both tables playing, marked stale (their Auto switches still 0), the bake resting, said "Bakes
+    // once your edits rest" and "Old tables in use until baked"; an edit of the cylinders (a table's axes) sets them
+    // aside, today's words alone.
     BUILD_TEST(bakeAcrossEditsTest, "build.bake.stale")
     {
         std::vector<std::string> warnings;
@@ -354,15 +356,20 @@ namespace
         using P = tee::ui::BakeStatus::Phase;
         const auto t0 = std::chrono::steady_clock::now();
         tee::ui::BakeStatus b;
-        while (std::chrono::steady_clock::now() - t0 < std::chrono::seconds(30))
+        std::string atLoad;
+        while (std::chrono::steady_clock::now() - t0 < std::chrono::seconds(600))
         {
             bake.tick();
             b = bake.status();
+            if (atLoad.empty())
+                atLoad = bake.state();
             if (b.phase == P::baked || b.phase == P::checked || b.phase == P::none || b.phase == P::failed)
                 break;
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
-        std::printf("  at load: %s ('%s')\n", bake.state().c_str(), tee::ui::bakeState(b).c_str());
+        std::printf("  at load: %s; current after %.0f s: %s ('%s')\n", atLoad.c_str(),
+                    std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(), bake.state().c_str(),
+                    tee::ui::bakeState(b).c_str());
         if (b.phase == P::none)
             return 0;   // a program without the tables: nothing to bake
         CHECK_MSG(b.phase == P::baked || b.phase == P::checked, bake.state());
