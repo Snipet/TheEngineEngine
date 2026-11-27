@@ -2399,8 +2399,39 @@ engines only where a source shows such an engine drawn split.
   - The steward's watcher missed this run: it read the branch's runs only, and a schedule's runs are filed under
     main. Fixed: it reads the schedule's runs too.
 
+## 27 Nov 03:43 UTC: THE OWNER'S APP CRASHES ON AN EDIT DURING A CAM BAKE; `host/` opened for that one fix (C)
+
+- **The owner's Mac build of `main` died six times on 25 and 26 Nov** with a read from address 0 on the
+  CalibrationBakeService worker inside `tee::bakeIntakeCam` (host/src/Bake.cpp:354, and once in `insertRows`
+  on two-stage cam rows), each time an edit landed while a cam map was baking. The owner had a session on
+  their machine write a report for the lead; the lead read it in that session's record on 27 Nov (it had not
+  been passed on). **The same crash took down the nightly's `ui.build.bake.pictures` on CI** (the scheduled
+  soak of 26 Nov, run 45823658255 on 3f892823: an edit of compression while "baking spark map", a segfault
+  at 385.9 s; 224 of 226, the other N2-38): the steward connected the two.
+- **The report's cause, to be checked by C against the code:** `predictCurve` returns true when cancelled
+  mid-curve with only the points it finished (Predict.cpp, makeCurve, near line 1078), and `bakeIntakeCam`
+  checks the cancel flag only between curves, so a cancel in a loop's last curve leaves a short or empty row
+  that the next code indexes (lines 252-275 read at :354; 289-321 `insertRows`; 395-415 the refine pass). The
+  service cancels on any edit or load (Bake.cpp:1519), when the build is current again (:1495) and in its
+  destructor.
+- **RULED: `host/` is OPENED for this one change, C's, ahead of everything.** A regression test first, shown to
+  fail today (the cancel set on the first point of the last advance's curve; and the two-stage one); the fix
+  at the source (a cancelled curve returns false, "cancelled") and the defensive checks; every other bake
+  and caller read for the same assumption; a cancel during any phase leaves the service ready and the app
+  alive; **proof that no table moves** (three shipped builds re-baked, byte for byte against content/); the
+  default tier and the nightly's bake test; the push carries `[soak]`. Then the lead checks the trees (sim
+  and tools unchanged, host changed by that commit alone), waits for three jobs, and moves `main`.
+- **The soak's cost (the steward):** 2 h 29 min of wall against 65 min at d586682c, mostly a slower runner
+  (unchanged packages grew 1.74 to 1.96 times); combo about +900 test-s of real growth (the per-event judge
+  and the new nightly cases): about 80 minutes on a normal runner. The soak gains `tee-bench --quick` so its
+  times can be scaled; what leaves the soak is ruled on the next one's figures (the line: 10 added minutes).
+  The nightly's bake test had also failed on time before it crashed (the load's bake not finished at 300 s
+  on that runner): U1's, after C's fix.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 03:43 UTC: `host/` IS OPEN FOR ONE CHANGE: C's fix for the crash on an edit during a cam bake
+  (Bake.cpp, Predict.cpp and their tests). Nothing else under `host/`, and nothing under `sim/` or `tools/`.**
 - **26 Nov 20:32 UTC: `main` IS AT 57265b5f** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
   7c3e4d59, those trees unchanged; run 45877287272: Linux, macOS and Windows green on that commit; `ui/`,
   tests, the combo corpus, scripts and docs only since d586682c). Before it: 6e67ac62 (26 Nov 18:30), d6615852
