@@ -13,17 +13,20 @@
 
 #include "tee/Build.h"
 #include "tee/Fields.h"
+#include "tee/SimHost.h"
 #include "tee/assistant/Session.h"
 #include "tee/assistant/Tools.h"
 
 #include <SDL3/SDL.h>
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
 #include <future>
 #include <memory>
 #include <string>
+#include <thread>
 
 using namespace tee;
 
@@ -116,14 +119,26 @@ namespace
         std::unique_ptr<app::AssistantWake> wake;
         int drains = 0;
 
-        Minimised()
+        // `adopted` false: the simulator's compile is waited for but not adopted (a window minimised before its first
+        // frame after the compile: only a drain can adopt it)
+        explicit Minimised(bool adopted = true)
         {
             options.engine = "sim";
             options.sim = TEE_SOURCE_SIM_DIR;
+            options.background = true;   // compiled on a worker, as the window's application has it
             engine = app::loadEngine(options, 48000.0);
             REQUIRE(engine.error.empty());
             REQUIRE(engine.sim != nullptr);
-            REQUIRE(engine.sim->waitReady(120.0));
+            if (adopted)
+                REQUIRE(engine.sim->waitReady(120.0));
+            else
+            {
+                const auto until = Clock::now() + std::chrono::seconds(120);
+                while (!engine.sim->compiled() && Clock::now() < until)
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                REQUIRE(engine.sim->compiled());
+                REQUIRE_FALSE(engine.sim->ready());
+            }
             controls = std::make_unique<input::Controls>(*engine.player, *engine.player);
             shown = app::makePanel(options, engine, *controls, false);
             REQUIRE(shown.problem.empty());
@@ -214,4 +229,63 @@ TEST_CASE("the assistant's wake: a job that says not yet is drained again, no fr
     INFO(r.value.dump());
     CHECK_FALSE(r.isError);
     CHECK(build.get(field->path) == want);
+}
+
+// X-066: a window that does not tick never ran the engine's frame, so its simulator was never adopted and a tool's change
+// never reached it until the window came back. The drain runs the engine's frame around the jobs: no frame ticked here.
+TEST_CASE("the assistant's wake: the simulator adopted through drains alone, no frame ticked", "[app][assistant]")
+{
+    Minimised m(/*adopted*/ false);
+    auto call = m.call("get_build", nlohmann::json::object());
+    m.serve(call, 30000);
+    REQUIRE(answered(call));
+    CHECK_FALSE(call.get().isError);
+    CHECK(m.engine.sim->ready());
+}
+
+// The change made before the simulator is adopted: only the drain's frame (adopting it, the document attached and sent)
+// puts it in the engine; once adopted, a set goes straight to the host, and the frame after the jobs sends what it held.
+TEST_CASE("the assistant's wake: a tool's change reaches the engine, no frame ticked", "[app][assistant]")
+{
+    Minimised m(/*adopted*/ false);
+    Build& build = m.engine.sim->build();
+    const FieldInfo* field = nullptr;
+    double want = 0.0;
+    for (const FieldInfo& f : build.fields().all())
+        if (f.block == "spec" && !f.hidden && f.kind == FieldKind::Number && f.hasRange() && *f.maximum > *f.minimum
+            && f.section >= 0 && f.path.rfind("spec.engine.", 0) == 0)
+        {
+            const double now = build.get(f.path);
+            want = now < (*f.minimum + *f.maximum) / 2.0 ? *f.maximum : *f.minimum;
+            field = &f;
+            break;
+        }
+    REQUIRE(field != nullptr);
+    SimHost& host = m.engine.sim->host();
+    std::string why;
+    const auto inEngine = [&] { return host.readSpec(host.fields().ref(field->path, why)); };
+
+    auto call = m.call("set_fields", { { "changes", { { { "path", field->path.substr(5) }, { "value", want } } } } });
+    m.serve(call, 30000);
+    REQUIRE(answered(call));
+    const assistant::Result r = call.get();
+    INFO(r.value.dump());
+    REQUIRE_FALSE(r.isError);
+    CHECK(build.get(field->path) == want);
+    REQUIRE(m.engine.sim->ready());
+    CHECK(inEngine() == Catch::Approx(want));   // in the engine within the drain that ran the job
+}
+
+// The frame before the jobs: a tool that needs the simulator itself (predict_curve takes it in its job) finds it adopted
+// in the same drain, not "not ready yet" until the window ticks once.
+TEST_CASE("the assistant's wake: a tool that needs the simulator finds it adopted, no frame ticked", "[app][assistant]")
+{
+    Minimised m(/*adopted*/ false);
+    auto call = m.call("predict_curve", nlohmann::json::object());
+    m.serve(call, 300000);
+    REQUIRE(answered(call));
+    const assistant::Result r = call.get();
+    INFO(r.value.dump().substr(0, 400));
+    CHECK(r.value.dump().find("not ready") == std::string::npos);
+    CHECK_FALSE(r.isError);
 }

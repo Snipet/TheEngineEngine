@@ -76,6 +76,8 @@ namespace tee::player
         // The machine code is made and the host plays it. Until then process() writes silence, the telemetry reads 0,
         // the controls are not sent, and the document's edits wait in it (sent whole when it is ready).
         bool ready() const noexcept { return ready_.load(std::memory_order_acquire); }
+        // The worker's compile is over (made or failed), adopted or not: ready() follows at the next frame() or waitReady().
+        bool compiled() const noexcept { return workerState_.load(std::memory_order_acquire) != 0; }
         // The background compile failed where the front end did not (the code generator, the linker): its words.
         const std::string& compileError() const noexcept { return compileError_; }
         // Seconds since create() while not ready (the status line's "compiling the engine: 3 s").

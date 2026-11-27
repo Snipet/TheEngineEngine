@@ -493,7 +493,12 @@ namespace
             }
             if (assistantWake && assistantWake->take(e))
             {
-                // a tool posted: its job drained here, the window ticking or not; jobs left waiting: again a little later
+                // a tool posted: its job drained here, the window ticking or not; jobs left waiting: again a little later.
+                // The drain runs the engine's frame around the jobs (Shown::drainAssistant, X-066). Of beforeTick, this
+                // still does NOT run while the window does not tick, deliberately: the keys', the gamepad's and the wheel's
+                // input (nobody drives a window they cannot see; the wheel's pump is the frame's), the bake's tick and the
+                // frames clock (shown.frame: the tools' clock stands still, so a job waiting on it waits for its
+                // condition, not its limit), the status line and the script's checks.
                 if (shown.drainAssistant)
                     shown.drainAssistant();
                 if (shown.assistant != nullptr && shown.assistant->waiting() > 0)

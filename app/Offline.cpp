@@ -242,7 +242,14 @@ namespace tee::app
                 kept->assistant.frame(appBusy());
                 kept->frames.store(kept->frames.load() + 1.0);
             };
-            shown.drainAssistant = [kept, appBusy] { kept->assistant.frame(appBusy()); };
+            // A window that does not tick (X-066): the engine's frame around the drain, as the frame does it, so that a
+            // simulator compiled meanwhile is adopted before the jobs run (predict_curve and run_dyno need it) and a job's
+            // change reaches the engine in this drain, not at a next frame a minimised window never has.
+            shown.drainAssistant = [kept, appBusy, e = &engine] {
+                e->frame();
+                kept->assistant.frame(appBusy());
+                e->frame();
+            };
             if (window)
             {
                 const auto hooks = std::make_shared<Shown::WindowHooks>();
