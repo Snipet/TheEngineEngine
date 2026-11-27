@@ -16,7 +16,12 @@ TEST_CASE("assistant: only https, or plain http to this machine, is ever asked",
     CHECK(urlAllowed("http://localhost:1/x", why));
     CHECK(urlAllowed("http://[::1]:9/x", why));
     for (const char* bad : {"http://api.anthropic.com/v1/messages", "ftp://127.0.0.1/", "file:///etc/passwd",
-                            "http://127.0.0.1.evil.example/", "http://localhost.evil.example/", "gopher://x"})
+                            "http://127.0.0.1.evil.example/", "http://localhost.evil.example/", "gopher://x",
+                            // a user part names another host: the reviewer's (27 Nov) and its kin
+                            "http://localhost:80@evil.example/x", "http://127.0.0.1@evil.example/", "http://[::1]@evil.example/",
+                            "https://api.anthropic.com@evil.example/v1/messages", "http://localhost%2f@evil.example/",
+                            "http://localhost\\@evil.example/", "http://localhost:80x/", "http://localhost:/", "https:///x",
+                            "http://local host/"})
     {
         INFO(bad);
         CHECK_FALSE(urlAllowed(bad, why));
