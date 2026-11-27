@@ -1,5 +1,6 @@
 // assistant/src/McpLink.cpp: the app's end of Claude Desktop's link (McpLink.h, McpWire.h).
 #include "tee/assistant/McpLink.h"
+#include "tee/assistant/Json.h"
 
 #include "tee/assistant/McpWire.h"
 
@@ -41,7 +42,7 @@ namespace tee::assistant
         {
             if (v.is_string())
                 return v.get<std::string>();
-            return v.dump();
+            return dumpText(v);
         }
 
         // What a card says of a call that changed something.
@@ -317,7 +318,16 @@ namespace tee::assistant
                 std::string line;
                 while (c->lines.next(line))
                     if (!line.empty())
-                        request(c, line);
+                    {
+                        try
+                        {
+                            request(c, line);
+                        }
+                        catch (const std::exception&)   // the last guard (X-063): answered, and the next line read
+                        {
+                            refuse(*c, "null", "the app could not answer this request");
+                        }
+                    }
             }
             for (const auto& c : gone)
             {
@@ -350,7 +360,7 @@ namespace tee::assistant
 
     void McpLink::answer(Client& client, const std::string& id, const json& result)
     {
-        const std::string line = "{\"id\":" + id + ",\"result\":" + result.dump() + "}\n";
+        const std::string line = "{\"id\":" + id + ",\"result\":" + dumpText(result) + "}\n";
         std::lock_guard<std::mutex> lock(client.write);
         if (client.fd >= 0 && !wire::sendAll(client.fd, line.data(), line.size()))
             shutdown(client.fd, SHUT_RDWR);   // gone, or not reading: the poll thread sees it close and drops it
@@ -358,7 +368,7 @@ namespace tee::assistant
 
     void McpLink::refuse(Client& client, const std::string& id, const std::string& why)
     {
-        const std::string line = "{\"id\":" + id + ",\"error\":" + json(why).dump() + "}\n";
+        const std::string line = "{\"id\":" + id + ",\"error\":" + dumpText(json(why)) + "}\n";
         std::lock_guard<std::mutex> lock(client.write);
         if (client.fd >= 0)
             wire::sendAll(client.fd, line.data(), line.size());   // (a refusal to a peer gone: nothing more to do)
@@ -373,7 +383,7 @@ namespace tee::assistant
             refuse(*client, "null", "not a request");
             return;
         }
-        const std::string id = msg["id"].dump();
+        const std::string id = dumpText(msg["id"]);
         const std::string method = msg["method"].get<std::string>();
         const json params = msg.contains("params") && msg["params"].is_object() ? msg["params"] : json::object();
         if (method == "hello")
@@ -382,7 +392,7 @@ namespace tee::assistant
             answer(*client, id, {{"tools", toolList()}});
         else if (method == "cancel")
         {
-            const std::string which = params.contains("id") ? params["id"].dump() : std::string();
+            const std::string which = params.contains("id") ? dumpText(params["id"]) : std::string();
             bool found = false;
             Job dropped;
             {
@@ -403,7 +413,7 @@ namespace tee::assistant
             }
             if (dropped.client)
                 answer(*client, which,
-                       {{"content", json::array({{{"type", "text"}, {"text", json({{"error", kCancelled}}).dump()}}})},
+                       {{"content", json::array({{{"type", "text"}, {"text", dumpText(json({{"error", kCancelled}}))}}})},
                         {"isError", true}});
             answer(*client, id, {{"cancelled", found}});
         }
@@ -417,7 +427,7 @@ namespace tee::assistant
             if (tools_.find(params["name"].get<std::string>()) == nullptr)
             {
                 // an unknown tool is a protocol error in MCP (-32602), not a tool's failure: the bridge says so
-                const std::string out = "{\"id\":" + id + ",\"error\":" + json("no tool named " + params["name"].get<std::string>().substr(0, 64)).dump()
+                const std::string out = "{\"id\":" + id + ",\"error\":" + dumpText(json("no tool named " + params["name"].get<std::string>().substr(0, 64)))
                                          + ",\"code\":-32602}\n";
                 std::lock_guard<std::mutex> lock(client->write);
                 if (client->fd >= 0)
@@ -462,9 +472,16 @@ namespace tee::assistant
                 view_.tool = job->name;
             }
             Result r;
+            // the last guard (X-063): whatever a call throws ends that call, answered in words, never the app; the
+            // worker serves the next
+            try
             {
                 Turn turn(tools_, drivers_, Driver::Desktop, clock_);   // one call: one turn of Claude Desktop's
                 r = turn.call(job->name, job->arguments, job->cancel.get());
+            }
+            catch (const std::exception&)
+            {
+                r = Result{true, {{"error", "the app could not complete this call; nothing more was done"}}};
             }
             remember(*job, r);
             answer(*job->client, job->id,

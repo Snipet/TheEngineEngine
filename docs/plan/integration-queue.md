@@ -2825,6 +2825,36 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 19:22 UTC: X-063's CURE IS ON THE BRANCH AT 6bfb90d2** (card A's 4c1a2d67, second behind B's stack; gated
+  trees unchanged). One helper, `dumpText` (`assistant/include/tee/assistant/Json.h`), writes every JSON text
+  in `assistant/` with a bad byte as U+FFFD; a test reads all of `assistant/` and fails on any `.dump(`
+  elsewhere; a last guard ends a faulty call or turn, not the app; a build whose file name is not UTF-8 is
+  listed with U+FFFD and loading it says "rename its file". Card A's tier of record: 600 of 600 on f97c88cc +
+  the cure (plain tree, libsecret and libcurl found); merged with 233d7154, 322 of 322 of the assistant's, the
+  shell's and the ui's; merged with B's 3e35f7a9, everything built and 94 of 94 of the assistant's and the
+  shell's. The lead's own tree at 6bfb90d2: the same 94 of 94; a bare `.dump()` added in
+  `assistant/view/ChatView.cpp` fails `InboxTest.cpp:236`, which names the file and line; the helper made strict
+  again fails `ChatTest.cpp:972` and the process does not end (the guards hold); both restored.
+  - Also on the branch, docs only: B's note for the owner's try of the wake on their Mac
+    (`docs/handoffs/b-owner-mac-wake.md`), given to the owner in short.
+  - CI at 19:21: 233d7154 Linux green, macOS and Windows running; 6bfb90d2 Linux started, Windows and macOS
+    pending. Next in the train: the steward's `Known.h` push; then, apart, the block in `build.yml`; then X-064.
+- **27 Nov 19:13 UTC: B's STACK IS ON THE BRANCH AT 3e35f7a9** (the wake's window test: `--minimise-after`,
+  `scripts/run-wake.sh` and its ctest copy; X-066's cure: the engine's frame around the jobs in the drain).
+  233d7154's three jobs had all started before it (Windows at 19:12:16Z). B's tier of record on 233d7154 + the
+  stack, plain tree (app OFF, no libsecret, no libcurl): 593 of 593; its app-on tree's shell suites 62 of 62,
+  `shell.window.wake` among them. The one change since the lead's read and run of the patch at 440857f8: the
+  script's answered line after its tick check, and a FAIL expression on the ctest copy (read by the lead in the
+  pushed files). Gated trees unchanged.
+  - Behind it, back to back, the last tip protected (T1, `main`'s next candidate after 233d7154): card A's
+    X-063 (4c1a2d6: 600 of 600 on its own; 322 of 322 of the assistant's, the shell's and the ui's merged with
+    233d7154) and the steward's `Known.h` push.
+  - THEN, as its own push after T1's three jobs have started: the block in `build.yml`'s "Run the application"
+    step (the steward, bytes from `docs/handoffs/b-run-wake-ci.md`, on the lead's word given 27 Nov). Kept apart
+    because its first run is the first time the packed app is minimised on a runner: a failure there costs only
+    that tip. The steward reports the run-wake lines from all three platforms, macOS's above all.
+  - Card A's measurement for the owner: a dyno sweep through the tool is always 17 points; 500 to 8000 rpm took
+    3.9 s on its container, so the 40 s of item 3 is about ten times the need.
 - **27 Nov 19:05 UTC: `main` IS AT 3db7ed07** (run 46047427666: Windows, Linux and macOS green; gated trees
   unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 40463d37 (17:42), 3ba103f4 (17:13). In it:
   card A's seven commits, B's wake, card A's cure. The tip to protect is still 233d7154 (item 3 and the air

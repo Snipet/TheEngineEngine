@@ -1,6 +1,7 @@
 // assistant/src/Tools.cpp: the tool table (Tools.h). Every touch of the document is a job on the frame's thread (Inbox.h);
 // the curves run on the calling worker, on a private copy of the build.
 #include "tee/assistant/Tools.h"
+#include "tee/assistant/Json.h"
 
 #include "files/BuildFiles.h"
 #include "tee/Build.h"
@@ -88,7 +89,7 @@ namespace tee::assistant
                     any = typeIs(v, schema["type"].get<std::string>());
                 if (!any)
                 {
-                    why = where + " is not of its type (" + schema["type"].dump() + ")";
+                    why = where + " is not of its type (" + dumpText(schema["type"]) + ")";
                     return false;
                 }
             }
@@ -116,12 +117,12 @@ namespace tee::assistant
             {
                 if (schema.contains("maxItems") && v.size() > schema["maxItems"].get<std::size_t>())
                 {
-                    why = where + " has more than " + schema["maxItems"].dump() + " items";
+                    why = where + " has more than " + dumpText(schema["maxItems"]) + " items";
                     return false;
                 }
                 if (schema.contains("minItems") && v.size() < schema["minItems"].get<std::size_t>())
                 {
-                    why = where + " has fewer than " + schema["minItems"].dump() + " items";
+                    why = where + " has fewer than " + dumpText(schema["minItems"]) + " items";
                     return false;
                 }
                 if (schema.contains("items"))
@@ -131,7 +132,7 @@ namespace tee::assistant
             }
             if (v.is_string() && schema.contains("maxLength") && v.get<std::string>().size() > schema["maxLength"].get<std::size_t>())
             {
-                why = where + " is longer than " + schema["maxLength"].dump() + " characters";
+                why = where + " is longer than " + dumpText(schema["maxLength"]) + " characters";
                 return false;
             }
             return true;
@@ -304,7 +305,13 @@ namespace tee::assistant
                     matches.push_back(b.name);
             if (matches.empty())
             {
-                why = "the library has no build named \"" + asked + "\"";
+                // a file whose name is not valid text is listed with U+FFFD where its bad bytes are (dumpText): that
+                // name can never be the file's own, so it says why instead of "no build"
+                if (asked.find("\xEF\xBF\xBD") != std::string::npos)
+                    why = "a build whose file name is not valid text cannot be loaded by name: ask the owner to rename its "
+                          "file (it shows here with a replacement mark where the bad bytes are)";
+                else
+                    why = "the library has no build named \"" + asked + "\"";
                 return false;
             }
             if (matches.size() > 1)

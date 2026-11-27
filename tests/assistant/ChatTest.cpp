@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <deque>
+#include <stdexcept>
 #include <map>
 #include <mutex>
 #include <set>
@@ -110,6 +111,7 @@ namespace
         std::vector<std::string> chunks;
         bool cut = false;               // the connection breaks after the chunks
         bool hang = false;              // waits for the cancel after the chunks
+        bool explode = false;           // throws, as a transport's fault would (X-063's last guard)
     };
 
     Scripted ok(const Stream& s)
@@ -144,6 +146,10 @@ namespace
                 }
                 s = script.front();
                 script.pop_front();
+            }
+            if (s.explode)
+                throw std::runtime_error("a fault in the transport");
+            {
             }
             out = HttpResponse{};
             out.status = s.status;
@@ -927,4 +933,51 @@ TEST_CASE("assistant: what Claude wrote is sent back byte for byte, its keys in 
     REQUIRE(second.size() > 2);
     CHECK(third.compare(0, second.size() - 1, second, 0, second.size() - 1) == 0);
     CHECK(b.transport.requests[0].body.size() > 0);
+}
+
+TEST_CASE("assistant: a fault during the chat's turn ends the turn, never the app: the history as before (X-063)",
+          "[assistant][sharedsim]")
+{
+    Bench b("chat-guard");
+    b.transport.script.push_back(ok(Stream().text("A V8 is open.").end("end_turn")));
+    b.say("What is open?");
+    const json before = b.chat->history();
+    Scripted boom;
+    boom.explode = true;
+    b.transport.script.push_back(boom);
+    b.say("And the cam?");   // without the guard the process ends here (std::terminate on the chat's worker)
+    CHECK_FALSE(b.chat->busy());
+    REQUIRE_FALSE(b.chat->items().empty());
+    CHECK(b.chat->items().back().kind == ChatItem::Kind::Notice);
+    CHECK(b.chat->items().back().text.find("went wrong") != std::string::npos);
+    CHECK(b.chat->history() == before);
+    // and the chat goes on
+    b.transport.script.push_back(ok(Stream().text("Stock.").end("end_turn")));
+    b.say("And the cam?");
+    CHECK(b.chat->items().back().text == "Stock.");
+}
+
+TEST_CASE("assistant: a build's name that is not UTF-8 is sent with its bad bytes replaced, the same every request (X-063)",
+          "[assistant][sharedsim]")
+{
+    // a file named on Linux with any bytes: its stem is the build's name when the file has no "name"
+    Bench b("chat-badname");
+    b.rig.build().name = std::string("v8") + static_cast<char>(0xFF);
+    const std::string input = R"({"changes":[{"value":0.0861,"path":"engine.bore"}]})";
+    b.transport.script.push_back(ok(Stream().text("Setting.").tool("tu_1", "set_fields", input).end("tool_use")));
+    b.transport.script.push_back(ok(Stream().text("Done.").end("end_turn")));
+    b.transport.script.push_back(ok(Stream().text("It is.").end("end_turn")));
+    b.say("Make the bore 86.1 mm.");   // without the replacement the worker throws type_error 316 and the app ends
+    b.say("Is it set?");
+    REQUIRE(b.transport.count() == 3);
+    const auto messagesOf = [&](std::size_t i) {
+        const std::string& body = b.transport.requests[i].body;
+        const std::size_t at = body.find("\"messages\":");
+        REQUIRE(at != std::string::npos);
+        return body.substr(at + 11, body.size() - (at + 11) - 1);
+    };
+    const std::string second = messagesOf(1), third = messagesOf(2);
+    CHECK(second.find("v8\xEF\xBF\xBD") != std::string::npos);   // U+FFFD where the bad byte was
+    CHECK(json::parse(b.transport.requests[2].body, nullptr, false).is_object());   // valid JSON, valid UTF-8
+    CHECK(third.compare(0, second.size() - 1, second, 0, second.size() - 1) == 0);   // the same bytes every request
 }

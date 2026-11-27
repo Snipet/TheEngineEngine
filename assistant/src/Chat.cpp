@@ -1,5 +1,6 @@
 // assistant/src/Chat.cpp: the key chat's conversation and turn loop (Chat.h). Every rule there is implemented here once.
 #include "tee/assistant/Chat.h"
+#include "tee/assistant/Json.h"
 
 #include "tee/Fields.h"
 
@@ -190,7 +191,7 @@ namespace tee::assistant
     Chat::Chat(Tools& tools, Drivers& drivers, Transport* transport, std::function<std::string()> key,
                std::string systemPrompt, std::function<double()> clock, ChatOptions options)
         : tools_(tools), drivers_(drivers), transport_(transport), key_(std::move(key)), system_(std::move(systemPrompt)),
-          clock_(std::move(clock)), options_(std::move(options)), toolsJson_(toolDefinitions().dump())
+          clock_(std::move(clock)), options_(std::move(options)), toolsJson_(dumpText(toolDefinitions()))
     {
     }
 
@@ -412,12 +413,12 @@ namespace tee::assistant
             }
         }
         // the members in a fixed order: the system and the tools first, byte for byte the same every request
-        std::string body = "{\"model\":" + json(options_.model).dump() + ",\"max_tokens\":" + std::to_string(options_.maxTokens)
-                           + ",\"stream\":true,\"system\":" + json::array({{{"type", "text"}, {"text", system_}}}).dump()
+        std::string body = "{\"model\":" + dumpText(json(options_.model)) + ",\"max_tokens\":" + std::to_string(options_.maxTokens)
+                           + ",\"stream\":true,\"system\":" + dumpText(json::array({{{"type", "text"}, {"text", system_}}}))
                            + ",\"tools\":" + toolsJson_ + ",\"cache_control\":{\"type\":\"ephemeral\"}"
                            + ",\"thinking\":{\"type\":\"adaptive\",\"display\":\"summarized\"}"
-                           + ",\"output_config\":" + json({{"effort", options_.effort}}).dump()
-                           + ",\"fallbacks\":\"default\",\"messages\":" + messages.dump() + "}";
+                           + ",\"output_config\":" + dumpText(json({{"effort", options_.effort}}))
+                           + ",\"fallbacks\":\"default\",\"messages\":" + dumpText(messages) + "}";
         return body;
     }
 
@@ -697,6 +698,44 @@ namespace tee::assistant
 
     void Chat::turn(std::string text)
     {
+        // The last guard (X-063): whatever the turn throws ends the turn, never the app. What is sent goes back to
+        // before this message (as a too-long reply does), the owner is told, and the chat is ready for the next.
+        std::size_t historyWas = 0, joinedWas = 0;
+        bool joined = false;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            historyWas = history_.size();
+            joined = !history_.empty() && history_.back().value("role", "") == "user";
+            if (joined)
+                joinedWas = history_.back()["content"].size();
+        }
+        try
+        {
+            turnBody(std::move(text));
+        }
+        catch (const std::exception&)
+        {
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                if (history_.size() > historyWas)
+                    history_.erase(history_.begin() + static_cast<std::ptrdiff_t>(historyWas), history_.end());
+                if (joined && !history_.empty() && history_.back()["content"].size() > joinedWas)
+                    history_.back()["content"].erase(history_.back()["content"].begin() + static_cast<std::ptrdiff_t>(joinedWas),
+                                                     history_.back()["content"].end());
+                question_.clear();
+            }
+            notice("Something went wrong in the app during this turn, and it was stopped: nothing more was done. You can "
+                   "send your message again.");
+            std::lock_guard<std::mutex> lock(mutex_);
+            busy_ = false;
+            if (clearAfter_)
+                clearLocked();
+            ++revision_;
+        }
+    }
+
+    void Chat::turnBody(std::string text)
+    {
         const auto finish = [&] {
             std::lock_guard<std::mutex> lock(mutex_);
             busy_ = false;
@@ -721,9 +760,9 @@ namespace tee::assistant
             state += "unknown";
         else
         {
-            state += "build " + json(status.value.value("build", std::string())).dump();
+            state += "build " + dumpText(json(status.value.value("build", std::string())));
             state += status.value.value("unsavedChanges", false) ? ", with unsaved changes" : ", saved";
-            state += ", engine " + json(status.value.value("engine", std::string())).dump();
+            state += ", engine " + dumpText(json(status.value.value("engine", std::string())));
         }
         state += "]";
         std::size_t historyWas = 0, joinedWas = 0;   // the history before this message: what a too-long turn goes back to

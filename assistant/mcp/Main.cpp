@@ -17,6 +17,7 @@
 // stderr (Claude Desktop keeps it in its MCP logs: ~/Library/Logs/Claude/mcp*.log), never the owner's anything; the one
 // path it names is the link's folder, so that a log can tell a folder the two ends do not share from a closed app.
 #include "tee/assistant/McpWire.h"
+#include "tee/assistant/Json.h"
 
 #include <nlohmann/json.hpp>
 
@@ -34,6 +35,7 @@ namespace
 {
     using nlohmann::json;
     namespace wire = tee::assistant::wire;
+    using tee::assistant::dumpText;
     using Clock = std::chrono::steady_clock;
 
     constexpr const char* kVersion = "0.2.3";
@@ -129,7 +131,7 @@ namespace
 
         void send(const json& msg)
         {
-            if (!writeAll(1, msg.dump() + "\n"))
+            if (!writeAll(1, dumpText(msg) + "\n"))
                 std::exit(0);
         }
         void reply(const json& id, json result) { send({{"jsonrpc", "2.0"}, {"id", id}, {"result", std::move(result)}}); }
@@ -139,7 +141,7 @@ namespace
         }
         static json toolError(const std::string& why)
         {
-            return {{"content", json::array({{{"type", "text"}, {"text", json({{"error", why}}).dump()}}})},
+            return {{"content", json::array({{{"type", "text"}, {"text", dumpText(json({{"error", why}}))}}})},
                     {"isError", true}};
         }
 
@@ -182,7 +184,7 @@ namespace
         void toApp(const std::string& method, json params, Pending p)
         {
             const long id = nextId_++;
-            const std::string line = json({{"id", id}, {"method", method}, {"params", std::move(params)}}).dump() + "\n";
+            const std::string line = dumpText(json({{"id", id}, {"method", method}, {"params", std::move(params)}})) + "\n";
             if (!wire::sendAll(app_, line.data(), line.size()))   // (to the app: never a signal, the app gone is EPIPE)
             {
                 if (method != "cancel")

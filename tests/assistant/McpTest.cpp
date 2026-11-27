@@ -10,6 +10,12 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <stdexcept>
+
+#include <sstream>
+
+#include <fstream>
+
 #if !defined(_WIN32)
  #include <csignal>
  #include <poll.h>
@@ -330,8 +336,15 @@ namespace
         Drivers drivers;
         Cards cards;
         McpLink link;
+        std::atomic<bool> clockThrows{false};   // a fault on the link's own worker (X-063's last guard)
         App(const std::string& name, const std::string& dir, long user = -1)
-            : rig(name), link(*rig.tools, drivers, cards, [this] { return rig.clock; }, McpLinkOptions{dir, user, "0.2.0", {}})
+            : rig(name), link(*rig.tools, drivers, cards,
+                              [this] {
+                                  if (clockThrows)
+                                      throw std::runtime_error("a fault in the app");
+                                  return rig.clock;
+                              },
+                              McpLinkOptions{dir, user, "0.2.0", {}})
         {
         }
         ~App() { link.stop(); }
@@ -829,6 +842,76 @@ TEST_CASE("assistant: tee-mcp in Claude Desktop's bare environment reaches the a
     CHECK(call["result"]["isError"] == false);
     CHECK(bridge.errText().find("connected to the app at " + folder) != std::string::npos);
     link.stop();
+}
+
+
+TEST_CASE("assistant: a fault during a call from Claude Desktop answers that call in words, and the next is served (X-063)",
+          "[assistant][sharedsim]")
+{
+    const LinkDir held("guard");
+    App app("mcp-guard", held.path);
+    std::string why;
+    REQUIRE(app.link.start(why));
+    Bridge bridge(held.path);
+    bridge.ask(&app.rig, 1, "initialize", {{"protocolVersion", "2025-11-25"}});
+    app.clockThrows = true;   // without the guard the link's worker ends the process here
+    const json bad = bridge.ask(&app.rig, 2, "tools/call", {{"name", "get_status"}}, 10.0);
+    INFO(bad.dump(-1, ' ', false, json::error_handler_t::replace));
+    REQUIRE(bad.contains("result"));
+    CHECK(bad["result"]["isError"] == true);
+    CHECK(toolResult(bad)["error"].get<std::string>().find("could not complete") != std::string::npos);
+    app.clockThrows = false;
+    const json good = bridge.ask(&app.rig, 3, "tools/call", {{"name", "get_status"}}, 10.0);
+    REQUIRE(good.contains("result"));
+    CHECK(good["result"]["isError"] == false);
+    CHECK_FALSE(app.link.view().running);
+}
+
+TEST_CASE("assistant: a build's name that is not UTF-8 reaches Claude Desktop replaced, and the app lives (X-063)",
+          "[assistant][sharedsim]")
+{
+    const LinkDir held("badname");
+    App app("mcp-badname", held.path);
+    app.rig.build().name = std::string("v8") + static_cast<char>(0xFF);
+    // through Result::text(): valid JSON, the bad byte U+FFFD
+    const Result direct = app.rig.call("get_status");
+    const json parsed = json::parse(direct.text(), nullptr, false);
+    REQUIRE(parsed.is_object());
+    CHECK(parsed["build"] == "v8\xEF\xBF\xBD");
+    // through the link and the bridge, as Claude Desktop sees it
+    std::string why;
+    REQUIRE(app.link.start(why));
+    Bridge bridge(held.path);
+    bridge.ask(&app.rig, 1, "initialize", {{"protocolVersion", "2025-11-25"}});
+    const json r = bridge.ask(&app.rig, 2, "tools/call", {{"name", "get_status"}}, 10.0);
+    REQUIRE(r.contains("result"));
+    CHECK(toolResult(r)["build"] == "v8\xEF\xBF\xBD");
+}
+
+TEST_CASE("assistant: a whole build whose file name is not UTF-8 is listed replaced, and loading it says why it cannot (X-063)",
+          "[assistant][sharedsim]")
+{
+    Rig rig("mcp-badstem");
+    // a whole build in the owner's folder, its "name" taken away so that its file's stem is its name
+    std::ifstream in(fs::path(TEE_SOURCE_DIR) / "content" / "builds" / "v8.json");
+    std::stringstream text;
+    text << in.rdbuf();
+    json build = json::parse(text.str());
+    build.erase("name");
+    const std::string stem = std::string("v8") + static_cast<char>(0xFF);
+    std::ofstream(rig.user / (stem + ".json")) << build.dump(2);
+    const Result listed = rig.call("list_builds");
+    REQUIRE_FALSE(listed.isError);
+    bool seen = false;
+    for (const json& b : listed.value["builds"])
+        seen = seen || b["name"].get<std::string>() == stem;
+    CHECK(seen);   // in the result as the app holds it; written out with U+FFFD
+    CHECK(listed.text().find("v8\xEF\xBF\xBD") != std::string::npos);
+    // Claude can only send the name back as it read it (U+FFFD), which is not the file's name: refused in words
+    const Result load = rig.call("load_build", {{"name", "v8\xEF\xBF\xBD"}});
+    CHECK(load.isError);
+    INFO(load.text());
+    CHECK(load.value["error"].get<std::string>().find("not valid text") != std::string::npos);
 }
 
 #endif
