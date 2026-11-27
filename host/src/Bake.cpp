@@ -1466,6 +1466,7 @@ namespace tee
         : sim_(std::move(sim)), options_(std::move(options))
     {
         options_.debounceSeconds = std::max(options_.debounceSeconds, 0.0);
+        secondsPerPoint_ = std::max(options_.secondsPerPoint, 0.0);
         thread_ = std::thread([this] { coordinator(); });
     }
 
@@ -1506,6 +1507,71 @@ namespace tee
                && build.fieldOf("valve.inPhaseRange") >= 0 && build.get("valve.inPhaseRange") > 0.0;
     }
 
+    std::string unfitBy(const Build& then, const Build& now)
+    {
+        const auto get = [](const Build& b, const char* f) { return b.fieldOf(f) >= 0 ? b.get(f) : 0.0; };
+        const auto differs = [&](const char* f) { return get(then, f) != get(now, f); };
+        for (const char* f : {"engine.cylinders", "engine.layout", "engine.cycle", "engine.redlineSpeed",
+                              "engine.redlineTrim"})
+            if (differs(f))
+                return std::string("spec.") + f;
+        // a redline the program derives from the stroke (redlineSpeed 0) follows the displacement and the bore-stroke
+        if (get(then, "engine.redlineSpeed") == 0.0 || get(now, "engine.redlineSpeed") == 0.0)
+            for (const char* f : {"engine.displacement", "engine.boreStroke"})
+                if (differs(f))
+                    return std::string("spec.") + f;
+        if (differs("ecu.idle.speed"))
+            return "spec.ecu.idle.speed";
+        // the boost's class: none (0), a turbine (Turbo, Twin, Quad: 1 to 3), a supercharger (4)
+        const auto boostClass = [&](const Build& b) {
+            const double k = get(b, "boost.kind");
+            return k < 0.5 ? 0 : k < 3.5 ? 1 : 2;
+        };
+        if (boostClass(then) != boostClass(now))
+            return "spec.boost.kind";
+        for (const char* f : {"boost.layout", "fuel.kind", "valve.model", "intake.model", "boost.model",
+                              "exhaust.model", "fuel.model", "ecu.model"})
+            if (differs(f))
+                return std::string("spec.") + f;
+        return {};
+    }
+
+    namespace
+    {
+        // a table's values and its key's, as a build holds them ("ecu.maps.knockLimit", "ecu.maps.knockLimitKey")
+        std::vector<double> tableOf(const Build& build, const char* map, const char* key)
+        {
+            std::vector<double> v;
+            if (build.fieldOf(map) >= 0)
+                v = build.values(build.fieldOf(map));
+            v.push_back(build.fieldOf(key) >= 0 ? build.get(key) : 0.0);
+            return v;
+        }
+
+        // the first Spec field a table's key holds whose value differs between the two builds, or ""
+        std::string firstKeyFieldMoved(const Build& then, const Build& now)
+        {
+            const auto& all = now.fields().all();
+            for (std::size_t i = 0; i < all.size(); ++i)
+            {
+                const FieldInfo& f = all[i];
+                if (f.block != "spec" || f.hidden || !(movesKnock(f) || movesCam(f)))
+                    continue;
+                if (then.values(static_cast<int>(i)) != now.values(static_cast<int>(i)))
+                    return f.path;
+            }
+            return {};
+        }
+    } // namespace
+
+    void CalibrationBakeService::see(const Build& build)
+    {
+        if (sparkWanted(build) && knockLimitCurrent(build, *sim_))
+            seenSpark_ = {true, tableOf(build, "ecu.maps.knockLimit", "ecu.maps.knockLimitKey"), build.save()};
+        if (camWanted(build) && intakeCamCurrent(build, *sim_))
+            seenCam_ = {true, tableOf(build, "ecu.maps.camIn", "ecu.maps.camInKey"), build.save()};
+    }
+
     KnockBakeState CalibrationBakeService::consider(Build& build)
     {
         const bool wantSpark = sparkWanted(build);
@@ -1520,37 +1586,182 @@ namespace tee
         const bool sparkCurrent = !wantSpark || knockLimitCurrent(build, *sim_);
         if (sparkCurrent && camCurrent)
         {
+            // seen current here, the whole build (a table current beside a stale one is not recorded: the edit that made
+            // the other stale would become its own baseline)
+            see(build);
             const std::lock_guard<std::mutex> lock(mutex_);
             if (asked_ || state_ == KnockBakeState::Waiting || state_ == KnockBakeState::Baking
                 || state_ == KnockBakeState::Checking)
                 cancel_ = true;   // what runs is for another build: not wanted
             asked_ = false;
             ready_ = false;
+            sparkStale_ = camStale_ = false;
+            sparkSetAsideBy_.clear();
+            camSetAsideBy_.clear();
+            restarted_ = false;
+            restartedBy_.clear();
             setState(KnockBakeState::Current);
             return state_;
         }
-        // stale: the stale tables set aside now (the engine on its knock control and its auto cam), a bake asked
-        if (wantCam && !camCurrent && build.get("ecu.maps.camInAuto") == 0.0)
-            build.set("ecu.maps.camInAuto", 1.0);
-        if (!sparkCurrent && build.get("ecu.maps.knockLimitAuto") == 0.0)
-            build.set("ecu.maps.knockLimitAuto", 1.0);
-        const std::int64_t sparkKey = wantSpark ? knockLimitKey(build, *sim_) : 0;
-        const std::int64_t camKey = wantCam ? intakeCamKey(build, *sim_) : 0;
+        // Stale. A stale table this service saw current here, and still those values, whose fields the edit since did
+        // not move (unfitBy), plays on while the new one bakes (option 1); any other is set aside now, as before (the
+        // engine on its knock control or its auto cam). The bake's own copy has every stale table set aside either way,
+        // so what it measures is what it measured before (its tables the same bytes).
+        Build copy(build.fields());
+        {
+            std::vector<std::string> warnings;
+            std::string error;
+            if (!copy.load(build.save(), BuildPart::Whole, warnings, error))
+                return state();
+        }
+        bool sparkStale = false, camStale = false;
+        std::string sparkAside, camAside;
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            sparkAside = sparkSetAsideBy_;
+            camAside = camSetAsideBy_;
+        }
+        const auto judge = [&](bool want, bool current, const char* map, const char* keyField, const char* autoField,
+                               const Seen& seen, bool& stale, std::string& aside) {
+            if (!want || current)
+            {
+                aside.clear();
+                return;
+            }
+            if (build.get(autoField) != 0.0)
+                return;   // set aside already (by an earlier edit, or never baked): as it was said
+            std::string why;
+            if (!seen.valid || tableOf(build, map, keyField) != seen.values)
+                why = "not seen current here";
+            else
+            {
+                Build then(build.fields());
+                std::vector<std::string> warnings;
+                std::string error;
+                why = then.load(seen.build, BuildPart::Whole, warnings, error) ? unfitBy(then, build)
+                                                                               : std::string("not seen current here");
+            }
+            copy.set(autoField, 1.0);
+            if (why.empty())
+            {
+                stale = true;   // fit: it plays on
+                aside.clear();
+            }
+            else
+            {
+                build.set(autoField, 1.0);
+                aside = why;
+            }
+        };
+        // the cam first: its Auto switch is in the spark's key, so a cam set aside makes the spark stale too, and the
+        // spark is judged after it on what the build then is
+        judge(wantCam, camCurrent, "ecu.maps.camIn", "ecu.maps.camInKey", "ecu.maps.camInAuto", seenCam_, camStale,
+              camAside);
+        const bool sparkNow = !wantSpark || knockLimitCurrent(build, *sim_);
+        judge(wantSpark, sparkNow, "ecu.maps.knockLimit", "ecu.maps.knockLimitKey", "ecu.maps.knockLimitAuto",
+              seenSpark_, sparkStale, sparkAside);
+        // a table still playing from an earlier consider of this same stale build stays playing
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            if (wantSpark && !sparkNow && build.get("ecu.maps.knockLimitAuto") == 0.0)
+                sparkStale = true;
+            if (wantCam && !camCurrent && build.get("ecu.maps.camInAuto") == 0.0)
+                camStale = true;
+        }
+        if (sparkStale)
+            copy.set("ecu.maps.knockLimitAuto", 1.0);
+        if (camStale)
+            copy.set("ecu.maps.camInAuto", 1.0);
+        const std::int64_t sparkKey = wantSpark ? knockLimitKey(copy, *sim_) : 0;
+        const std::int64_t camKey = wantCam ? intakeCamKey(copy, *sim_) : 0;
+        // the wait: the larger of the floor and a share of the expected bake at this machine's rate, at most the
+        // ceiling; the floor alone with no rate yet, or when nothing plays meanwhile (every stale table set aside)
         const std::lock_guard<std::mutex> lock(mutex_);
+        sparkStale_ = sparkStale;
+        camStale_ = camStale;
+        sparkSetAsideBy_ = sparkAside;
+        camSetAsideBy_ = camAside;
         if (sparkKey == sparkKey_ && camKey == camKey_ && state_ != KnockBakeState::Failed
             && state_ != KnockBakeState::Current)
             return state_;   // asked already (waiting, baking, or ready to take)
+        // an edit that sets aside a bake asked or running: which field moved the keys
+        const bool inFlight = asked_ || state_ == KnockBakeState::Waiting || state_ == KnockBakeState::Baking
+                              || state_ == KnockBakeState::Checking;
+        restarted_ = false;
+        restartedBy_.clear();
+        if (inFlight && !askedBuild_.empty())
+        {
+            Build then(build.fields());
+            std::vector<std::string> warnings;
+            std::string error;
+            if (then.load(askedBuild_, BuildPart::Whole, warnings, error))
+            {
+                restarted_ = true;
+                restartedBy_ = firstKeyFieldMoved(then, build);
+            }
+        }
+        double wait = std::max(options_.debounceSeconds, 0.0);
+        if ((sparkStale || camStale) && secondsPerPoint_ > 0.0)
+        {
+            const int points = (wantSpark && !sparkNow ? sparkPointsOf(copy) : 0)
+                               + (wantCam && !camCurrent ? camPointsOf(copy) + (wantSpark ? sparkPointsOf(copy) : 0) : 0);
+            const double share = options_.debounceShare * points * secondsPerPoint_;
+            wait = std::min(std::max(wait, share), std::max(wait, options_.debounceMostSeconds));
+        }
         sparkKey_ = sparkKey;
         camKey_ = camKey;
-        json_ = build.save();
+        json_ = copy.save();
+        askedBuild_ = build.save();
         asked_ = true;
         ready_ = false;
-        due_ = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                                     std::chrono::duration<double>(options_.debounceSeconds));
+        kept_.clear();
+        waitSeconds_ = wait;
+        due_ = std::chrono::steady_clock::now()
+               + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(wait));
         cancel_ = true;   // a bake running is of an older build
         setState(KnockBakeState::Waiting);
         wake_.notify_all();
         return state_;
+    }
+
+    int CalibrationBakeService::sparkPointsOf(const Build& b) const
+    {
+        const bool turbo = b.fieldOf("boost.kind") >= 0 && b.get("boost.kind") >= 1.0 && b.get("boost.kind") <= 3.0;
+        return options_.spark.speeds
+               * (static_cast<int>(options_.spark.pedals.size()) + (turbo ? options_.spark.boostSteps : 0));
+    }
+
+    int CalibrationBakeService::camPointsOf(const Build& b) const
+    {
+        const double range = b.fieldOf("valve.inPhaseRange") >= 0 ? b.get("valve.inPhaseRange") : 0.0;
+        return (static_cast<int>(range / std::max(options_.cam.step, 1.0)) + 1) * std::max(options_.cam.predict.points, 2);
+    }
+
+    BakeStatus CalibrationBakeService::status() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        BakeStatus s;
+        s.state = state_;
+        s.sparkStale = sparkStale_;
+        s.camStale = camStale_;
+        s.sparkSetAsideBy = sparkSetAsideBy_;
+        s.camSetAsideBy = camSetAsideBy_;
+        s.waiting = state_ == KnockBakeState::Waiting && asked_;
+        s.waitSeconds = waitSeconds_;
+        if (s.waiting)
+            s.secondsLeft = std::max(0.0, std::chrono::duration<double>(due_ - std::chrono::steady_clock::now()).count());
+        if (state_ == KnockBakeState::Baking || state_ == KnockBakeState::Checking)
+        {
+            s.stage = stage_;
+            s.done = done_points_.load();
+            s.total = total_points_.load();
+        }
+        s.restarted = restarted_;
+        s.restartedBy = restartedBy_;
+        s.kept = kept_;
+        s.bakesStarted = bakesStarted_;
+        s.secondsPerPoint = secondsPerPoint_;
+        return s;
     }
 
     bool CalibrationBakeService::take(CalibrationBakeResult& out)
@@ -1603,8 +1814,13 @@ namespace tee
         }
         if (applied)
         {
+            see(build);   // what is current now is what a later edit may play on
             const std::lock_guard<std::mutex> lock(mutex_);
             lastChecked_ = anyChecked && !anyBaked;
+            if (knockLimitCurrent(build, *sim_))
+                sparkStale_ = false, sparkSetAsideBy_.clear();
+            if (intakeCamCurrent(build, *sim_))
+                camStale_ = false, camSetAsideBy_.clear();
         }
         // both current now: so it says (consider() need not be called for it)
         if (applied && (!sparkWanted(build) || knockLimitCurrent(build, *sim_))
@@ -1702,10 +1918,18 @@ namespace tee
             const std::int64_t sparkKey = sparkKey_, camKey = camKey_;
             cancel_ = false;
             stage_.clear();
+            ++bakesStarted_;
+            ++revision_;
             // (the state stays Waiting until a stage says whether it checks or bakes: a table taken from the cache by
             // its key does neither, and the status line never says "baking" for a check)
             lock.unlock();
 
+            // a stage taken without a measure (from the cache, or current already), for the status
+            const auto keep = [&](const std::string& stage) {
+                const std::lock_guard<std::mutex> guard(mutex_);
+                kept_.push_back(stage);
+                ++revision_;
+            };
             const auto at = [&](const char* stage, int total) {
                 const std::lock_guard<std::mutex> guard(mutex_);
                 stage_ = stage;
@@ -1714,7 +1938,10 @@ namespace tee
                 ++revision_;
             };
             // each point counted, and the bake waiting between points while the ribbon's curve is wanted
-            const auto onPoint = [this] {
+            std::atomic<int> measured{0};   // this bake's points, for the machine's rate
+            const auto bakeStart = std::chrono::steady_clock::now();
+            const auto onPoint = [this, &measured] {
+                ++measured;
                 ++done_points_;
                 ++revision_;
                 std::shared_ptr<const std::atomic<bool>> busy;
@@ -1798,11 +2025,17 @@ namespace tee
             const auto sparkStage = [&](const char* name) {
                 const std::int64_t key = knockLimitKey(build, *sim_);
                 if (cacheRead(cache, "spark", key, result.spark))
+                {
+                    keep(name);
                     return applyFields(build, result.spark, error);
+                }
                 const std::int64_t fieldsKey = knockLimitFieldsKey(build);
                 if (verified("spark", kSparkFields, std::size(kSparkFields), "ecu.maps.knockLimitKey", key, fieldsKey,
                              name, false, result.spark))
+                {
+                    keep(name);
                     return true;
+                }
                 if (cancel_.load())
                     return false;
                 doing(KnockBakeState::Baking);
@@ -1825,11 +2058,17 @@ namespace tee
             const auto camStage = [&] {
                 const std::int64_t key = intakeCamKey(build, *sim_);
                 if (cacheRead(cache, "cam", key, result.cam))
+                {
+                    keep("cam");
                     return applyFields(build, result.cam, error);
+                }
                 const std::int64_t fieldsKey = intakeCamFieldsKey(build);
                 if (verified("cam", kCamFields, std::size(kCamFields), "ecu.maps.camInKey", key, fieldsKey, "cam", true,
                              result.cam))
+                {
+                    keep("cam");
                     return true;
+                }
                 if (cancel_.load())
                     return false;
                 doing(KnockBakeState::Baking);
@@ -1853,6 +2092,8 @@ namespace tee
                 ok = sparkStage("spark map");
                 result.hasSpark = ok;
             }
+            else if (ok && sparkWanted(build))
+                keep("spark map");   // current already: the edit moved the cam alone
             // the cam on that spark, if wanted and stale, applied to the copy; the spark again if that made it stale
             if (ok && camWanted(build) && !intakeCamCurrent(build, *sim_))
             {
@@ -1866,6 +2107,10 @@ namespace tee
             }
 
             lock.lock();
+            // this machine's rate, from a bake that measured (what the next wait is reckoned from)
+            if (ok && !cancel_ && measured.load() > 0)
+                secondsPerPoint_ = std::chrono::duration<double>(std::chrono::steady_clock::now() - bakeStart).count()
+                                   / measured.load();
             if (stop_ || asked_ || sparkKey != sparkKey_ || camKey != camKey_ || cancel_)
                 continue;   // a newer build was asked meanwhile, or this one was set aside: dropped
             stage_.clear();
