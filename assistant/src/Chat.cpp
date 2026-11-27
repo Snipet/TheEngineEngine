@@ -167,6 +167,7 @@ namespace tee::assistant
         std::vector<std::string> partialInput;   // each block's input_json_delta, joined
         bool cancelled = false;
         bool failed = false;
+        bool tooLong = false;         // failed: the conversation is longer than the model's window
         std::string error;            // failed: what to tell the owner
         std::size_t streamingItem = static_cast<std::size_t>(-1);
     };
@@ -322,6 +323,42 @@ namespace tee::assistant
     void Chat::stop()
     {
         cancel_ = true;
+    }
+
+    void Chat::clearLocked()
+    {
+        history_ = json::array();
+        items_.clear();
+        question_.clear();
+        clearAfter_ = false;
+        ++revision_;
+    }
+
+    void Chat::clear()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (busy_)
+        {
+            clearAfter_ = true;   // the turn is stopped, and the chat empties as it ends
+            cancel_ = true;
+            ++revision_;
+            return;
+        }
+        clearLocked();
+    }
+
+    bool Chat::canClear() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return busy_ || !items_.empty() || !history_.empty();
+    }
+
+    std::string Chat::takeReturned()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string r;
+        r.swap(returned_);
+        return r;
     }
 
     std::string Chat::buildRequest() const
@@ -521,6 +558,14 @@ namespace tee::assistant
                     retry = false;
                 if (resp.status == 401)
                     why = "the API key was refused (401): check it in the chat's settings";
+                else if (resp.status == 400 && message_.find("prompt is too long") != std::string::npos)
+                {
+                    // (the API's words for input over the model's context window: 400 invalid_request_error)
+                    r.tooLong = true;
+                    retry = false;
+                    why = "This conversation is now longer than Claude can read. Start a new chat (New chat, at the top "
+                          "of the panel): your last message is back in the box.";
+                }
                 else
                     why = "the API answered " + std::to_string(resp.status) + (message_.empty() ? "" : ": " + message_);
                 if (const std::string ra = resp.header("retry-after"); !ra.empty())
@@ -618,6 +663,8 @@ namespace tee::assistant
         const auto finish = [&] {
             std::lock_guard<std::mutex> lock(mutex_);
             busy_ = false;
+            if (clearAfter_)
+                clearLocked();
             ++revision_;
         };
         Turn t(tools_, drivers_, Driver::Chat, clock_);
@@ -639,8 +686,14 @@ namespace tee::assistant
             state += ", engine " + status.value.value("engine", std::string());
         }
         state += "]";
+        std::size_t historyWas = 0, joinedWas = 0;   // the history before this message: what a too-long turn goes back to
+        bool joined = false;
         {
             std::lock_guard<std::mutex> lock(mutex_);
+            historyWas = history_.size();
+            joined = !history_.empty() && history_.back().value("role", "") == "user";
+            if (joined)
+                joinedWas = history_.back()["content"].size();
             const json blocks = json::array({{{"type", "text"}, {"text", state}}, {{"type", "text"}, {"text", text}}});
             // after a refusal or a cut reply the history ends with a user message: this one joins it, so that the
             // roles still alternate (nothing before it is changed)
@@ -664,6 +717,21 @@ namespace tee::assistant
             {
                 if (r.cancelled)
                     notice("stopped", false);
+                else if (r.tooLong)
+                {
+                    // nothing of this turn stays in what is sent (it could never be read), and the message goes back to
+                    // the owner's box; what was shown of the turn stays shown, with the notice
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_);
+                        history_.erase(history_.begin() + static_cast<std::ptrdiff_t>(historyWas), history_.end());
+                        if (joined && !history_.empty())
+                            history_.back()["content"].erase(
+                                history_.back()["content"].begin() + static_cast<std::ptrdiff_t>(joinedWas),
+                                history_.back()["content"].end());
+                        returned_ = text;
+                    }
+                    notice(r.error);
+                }
                 else
                     notice(r.error);
                 break;

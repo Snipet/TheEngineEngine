@@ -57,6 +57,21 @@ namespace
             return true;
         }
         void stop() override { ++stops; }
+        int clears = 0;
+        std::string returned;
+        void clear() override
+        {
+            ++clears;
+            list.clear();
+            ++rev;
+        }
+        bool canClear() const override { return isBusy || !list.empty(); }
+        std::string takeReturned() override
+        {
+            std::string r;
+            r.swap(returned);
+            return r;
+        }
         std::string question() const override { return asked; }
         bool answer(const std::string& text) override
         {
@@ -204,6 +219,50 @@ TEST_CASE("assistant: the chat panel, empty: why it cannot chat yet, and its Add
     CHECK_FALSE(v.addKeyButton().has_value());   // nothing to add: no button
     v.press({60.0f, 60.0f});
     CHECK(dialogs == 1);
+}
+
+TEST_CASE("assistant: the chat panel's New chat: drawn when there is a conversation, and it empties it", "[assistant][view]")
+{
+    FakePort port;
+    ChatView v({[] {}});
+    v.attach(&port);
+    v.setBounds({0.0f, 0.0f, 420.0f, 560.0f});
+    tick(v);
+    CHECK_FALSE(v.newChatButton().has_value());   // nothing to clear: no row, the empty chat as it was
+    port.add(ChatItem::Kind::User, "What does the cam do?");
+    port.add(ChatItem::Kind::Assistant, "It sets when the valves open.");
+    tick(v);
+    const auto button = v.newChatButton();
+    REQUIRE(button.has_value());
+    // drawn: its place differs from the same panel with nothing to clear
+    {
+        FakePort none;
+        ChatView bare({[] {}});
+        bare.attach(&none);
+        bare.setBounds({0.0f, 0.0f, 420.0f, 560.0f});
+        tick(bare);
+        const std::size_t changed = differing(render(v, 420, 560), render(bare, 420, 560), *button);
+        INFO("pixels of the button's place that differ: " << changed);
+        CHECK(changed > static_cast<std::size_t>(button->w * button->h * 0.5f));
+    }
+    std::vector<funkgui::A11yItem> a11y;
+    v.accessibility(a11y);
+    CHECK(std::any_of(a11y.begin(), a11y.end(), [](const funkgui::A11yItem& i) { return i.title == "New chat"; }));
+    v.press({button->centreX(), button->centreY()});
+    CHECK(port.clears == 1);
+    tick(v);
+    CHECK(v.shownText().find("valves") == std::string::npos);
+    CHECK_FALSE(v.newChatButton().has_value());
+    // a message handed back (the API could not take it) lands in the empty box, and not over what the owner typed
+    port.returned = "my long question";
+    port.add(ChatItem::Kind::Notice, "This conversation is now longer than Claude can read.", true);
+    tick(v);
+    CHECK(v.draft() == "my long question");
+    v.setDraft("typed since");
+    port.returned = "older";
+    ++port.rev;
+    tick(v);
+    CHECK(v.draft() == "typed since");
 }
 
 TEST_CASE("assistant: the chat panel shows the conversation: markdown answers, tool rows, notices", "[assistant][view]")

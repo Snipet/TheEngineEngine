@@ -91,6 +91,14 @@ namespace tee::assistant
         virtual void stop() = 0;                             // the turn running cancelled
         virtual std::string question() const = 0;           // Claude's question waiting for the owner ("" none)
         virtual bool answer(const std::string& text) = 0;    // the owner's answer to it
+        // A new chat: the conversation (what is sent, and what is shown) emptied. A turn running is stopped, and the
+        // chat empties once it has ended (never under it).
+        // (Defaults: nothing to clear, nothing returned, so a port that predates them still compiles.)
+        virtual void clear() {}
+        virtual bool canClear() const { return false; }      // there is something to clear (or a turn to stop first)
+        // A message handed back to the owner's box, once ("" none): one the API could not take (the conversation is
+        // longer than Claude can read), so that it is not lost.
+        virtual std::string takeReturned() { return {}; }
     };
 
     struct ChatOptions
@@ -131,6 +139,9 @@ namespace tee::assistant
         void stop() override;
         std::string question() const override;
         bool answer(const std::string& text) override;
+        void clear() override;
+        bool canClear() const override;
+        std::string takeReturned() override;
 
         // The history as it would be sent (a copy), for tests and for nothing else.
         nlohmann::json history() const;
@@ -166,6 +177,9 @@ namespace tee::assistant
         std::string answer_;
         bool answered_ = false;
         bool busy_ = false;
+        bool clearAfter_ = false;               // clear() during a turn: emptied when it ends
+        std::string returned_;                  // for the owner's box (takeReturned)
+        void clearLocked();                     // (mutex_ held)
 
         std::atomic<bool> cancel_{false};
         std::thread worker_;
