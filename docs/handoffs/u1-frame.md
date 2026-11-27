@@ -68,3 +68,8 @@ a stepper's value box its unit, the page still; elsewhere the page, by funkgui::
 the trackpad speed mended on 26 Nov); Tab and Shift-Tab bring a stop scrolled out into view before focusing it; a thin bar
 at the column's right edge while it scrolls; at the top when SETTINGS is opened or the window changes. Where the rows fit,
 nothing changes (offset 0; no golden moved). Test `frame.clutch`; pictures out/ui/frame.clutch[.bottom][.small][.dpi1].png.
+Against a press and a focus (the lead's question): while a press holds, the wheel does not move the page (the press
+ends as a click where it began; before, the page moved under it and the release landed on nothing); a stop focused and
+then wheeled out of the room keeps the focus, unseen, and the first key it takes scrolls it in whole before acting (before,
+an arrow changed a unit out of sight). A press on a stepper steps on the press, so a resize under it (the page back at its
+top) leaves its release nothing to do. Test `frame.settings.held`.

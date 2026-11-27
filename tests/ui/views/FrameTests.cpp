@@ -1424,6 +1424,81 @@ namespace
         return 0;
     }
 
+    // The settings page's scroll against a press and a focus (the lead's question, 27 Nov), at 1100 x 700 with every row:
+    // - a press held while the wheel turns: the page does not move under it (the wheel is not taken), and the press ends
+    //   as a click where it began (the button fires once, on its release, as anywhere; the wheel turned under the pointer);
+    // - a focused stop scrolled out of the room keeps the focus, unseen; the first key it takes brings it in whole, then
+    //   does its work (no unit is changed out of sight);
+    // - a press on a stepper (its step taken on the press), the window resized under it (the page back at its top, the
+    //   stepper out of the room): its release does nothing more.
+    VIEW_TEST(testFrameSettingsHeld, "frame.settings.held")
+    {
+        FrameRig rig(1100, 700, 2.0f, 4.6, true, true, true);
+        AppFrame& f = *rig.frame;
+        f.showSettings(true);
+        rig.host->tick(20);
+        const funkgui::Rect room = f.inspectorRect();
+        CHECK(f.settingsScrollMax() > 0.0f);
+        const float sx = room.x + 16.0f, sy = room.y + room.h * 0.5f;
+        // A press held on "Yours", the wheel turned under it: the page stays, the release clicks.
+        const funkgui::Rect yours = boundsOf(*rig.host, "Yours", funkgui::A11yRole::button);
+        CHECK(!yours.isEmpty());
+        rig.host->press(yours.centreX(), yours.centreY());
+        rig.host->tick(1);
+        for (int k = 0; k < 4; ++k)
+        {
+            rig.host->wheel(yours.centreX(), yours.centreY(), -1.0f);
+            rig.host->tick(1);
+        }
+        CHECK_MSG(f.settingsScroll() == 0.0f, "the page moved under a press: " + std::to_string(f.settingsScroll()));
+        rig.host->release();
+        rig.host->tick(2);
+        CHECK_MSG(rig.clutchMode == 2, "the press did not end as a click: " + std::to_string(rig.clutchMode));
+        // Released, the wheel scrolls again.
+        rig.host->wheel(sx, sy, -1.0f);
+        rig.host->tick(1);
+        CHECK(f.settingsScroll() > 0.0f);
+        // The last unit focused (a press on its value), then the page wheeled back to its top: focused, out of sight.
+        for (int k = 0; k < 40 && f.settingsScroll() < f.settingsScrollMax(); ++k)
+        {
+            rig.host->wheel(sx, sy, -1.0f);
+            rig.host->tick(1);
+        }
+        tee::ui::Stepper* last = f.unitSteppers().back();
+        CHECK(last->shown());
+        const funkgui::Rect m = last->minusRect(), pl = last->plusRect();
+        rig.host->click((m.right() + pl.x) * 0.5f, m.centreY());
+        rig.host->tick(2);
+        CHECK(f.focus() >= 0 && &f.item(f.focus()) == static_cast<tee::ui::Item*>(last));
+        for (int k = 0; k < 40 && f.settingsScroll() > 0.0f; ++k)
+        {
+            rig.host->wheel(sx, sy, 1.0f);
+            rig.host->tick(1);
+        }
+        CHECK(f.settingsScroll() == 0.0f && !last->shown());
+        CHECK_MSG(f.focus() >= 0 && &f.item(f.focus()) == static_cast<tee::ui::Item*>(last), "the focus left the stop");
+        const std::string before = rig.demo.units.save();
+        rig.host->keys("up");
+        rig.host->tick(2);
+        CHECK_MSG(last->shown() && last->bounds().y >= room.y - 0.5f && last->bounds().bottom() <= room.bottom() + 0.5f,
+                  "the key changed a unit out of sight");
+        CHECK_MSG(rig.demo.units.save() != before, "the key did nothing");
+        // A press on its minus (a step, on the press), the window resized under it, then the release: nothing more.
+        const std::string beforePress = rig.demo.units.save();
+        rig.host->press(last->minusRect().centreX(), last->minusRect().centreY());
+        rig.host->tick(2);
+        const std::string afterPress = rig.demo.units.save();
+        CHECK(afterPress != beforePress);
+        CHECK(rig.host->resize(1120, 720));
+        rig.host->tick(2);
+        CHECK(f.settingsScroll() == 0.0f && !last->shown());
+        rig.host->release();
+        rig.host->tick(2);
+        CHECK(rig.demo.units.save() == afterPress);
+        CHECK(rig.clutchMode == 2);
+        return 0;
+    }
+
     // A stand-in for card A's ChatView (ui/ links nothing of the assistant; its own panel is drawn in the root build's
     // build.chat): a framed box with a line of words and an "Add a key" button that calls the frame's key dialog.
     class StandInChat final : public tee::ui::Widget

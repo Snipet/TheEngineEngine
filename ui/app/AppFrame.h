@@ -297,6 +297,8 @@ namespace tee::ui
         void placeSettings(const funkgui::Rect& room);
         std::vector<Widget*> settingsWidgets() const;
         bool scrollSettings(float to);   // clamped to [0, most]; true: it moved (the page laid out again)
+        bool bringSettingsIn(const Item& it);   // a stop out of the room scrolled in whole; false: it was not out
+        bool pointerHeld_ = false;              // between a press and its release (the page does not scroll under it)
         float clutchNoteY_ = -1.0f;
         float wheelNoteY_ = -1.0f;
         std::string desktopWhy_;                               // the switch's last refusal (cleared by a change)

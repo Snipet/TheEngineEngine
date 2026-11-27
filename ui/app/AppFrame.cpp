@@ -1479,6 +1479,17 @@ namespace tee::ui
         return out;
     }
 
+    bool AppFrame::bringSettingsIn(const Item& it)
+    {
+        const auto c = std::find_if(settingsClipped_.begin(), settingsClipped_.end(),
+                                    [&](const auto& w) { return static_cast<const Item*>(w.first) == &it; });
+        if (c == settingsClipped_.end())
+            return false;
+        const funkgui::Rect room = inspectorRect(), r = c->second;
+        scrollSettings(r.y < room.y ? settingsScroll_ - (room.y - r.y) - 4.0f : settingsScroll_ + (r.bottom() - room.bottom()) + 4.0f);
+        return true;
+    }
+
     bool AppFrame::scrollSettings(float to)
     {
         const float before = settingsScroll_;
@@ -1790,6 +1801,7 @@ namespace tee::ui
         const std::string before = selection_.path();
         const bool onStage = !askOpen() && !keyDialogOpen() && stageRect().contains(p)
                              && !(card_->isOpen() && cardItem_->bounds().contains(p));
+        pointerHeld_ = true;
         Board::pointerDown(e);
         if (onStage)
             card_->afterPress(before, selection_.path(), selection_.hovered(), p);
@@ -1804,6 +1816,7 @@ namespace tee::ui
     void AppFrame::pointerUp(const funkgui::PointerEvent& e)
     {
         dirty_ = true;
+        pointerHeld_ = false;
         Board::pointerUp(e);
     }
 
@@ -1821,6 +1834,9 @@ namespace tee::ui
         // (funkgui::scroll::wheelPx with the Rows' row height: the trackpad's small deltas as mended on 26 Nov).
         if (unitsPage_ && !chatOpen_ && settingsMax_ > 0.0f && e.dy != 0.0f && inspectorRect().contains({ e.x, e.y }))
         {
+            // While a press holds, the page does not move under it (the press ends as a click where it began).
+            if (pointerHeld_)
+                return true;
             for (const Stepper* st : unitSteppers_)
                 if (st->shown() && st->bounds().contains({ e.x, e.y }) && e.x >= st->minusRect().x && e.x <= st->plusRect().right())
                     return Board::wheel(e);
@@ -1864,29 +1880,28 @@ namespace tee::ui
                 services_.redo();
             return true;
         }
-        // Tab on the settings page while it scrolls: the next stop scrolled out of the room is brought in whole first,
-        // so the board's own Tab finds it shown (a list shows its focused row).
-        if (e.key == funkgui::Key::tab && unitsPage_ && !chatOpen_ && !settingsClipped_.empty())
+        // On the settings page while it scrolls, a stop out of the room is brought in whole before a key reaches it: Tab's
+        // next stop (so the board's own Tab finds it shown: a list shows its focused row), or the stop focused when the
+        // page was wheeled away from it (it keeps the focus, unseen, and no unit is changed out of sight).
+        if (unitsPage_ && !chatOpen_ && !settingsClipped_.empty())
         {
-            const int step = e.mods.shift ? -1 : 1, n = count();
-            for (int k = 1; k <= n; ++k)
+            if (e.key == funkgui::Key::tab)
             {
-                const int at = focus() < 0 ? (step > 0 ? k - 1 : n - k) : focus() + step * k;
-                if (at < 0 || at >= n)
-                    break;
-                const Item& it = item(at);
-                if (it.shown() && it.focusable())
-                    break;   // a stop in sight: the board's Tab takes it
-                const auto c = std::find_if(settingsClipped_.begin(), settingsClipped_.end(),
-                                            [&](const auto& w) { return static_cast<const Item*>(w.first) == &it; });
-                if (c != settingsClipped_.end())
+                const int step = e.mods.shift ? -1 : 1, n = count();
+                for (int k = 1; k <= n; ++k)
                 {
-                    const funkgui::Rect room = inspectorRect(), r = c->second;
-                    scrollSettings(r.y < room.y ? settingsScroll_ - (room.y - r.y) - 4.0f
-                                                : settingsScroll_ + (r.bottom() - room.bottom()) + 4.0f);
-                    break;
+                    const int at = focus() < 0 ? (step > 0 ? k - 1 : n - k) : focus() + step * k;
+                    if (at < 0 || at >= n)
+                        break;
+                    const Item& it = item(at);
+                    if (it.shown() && it.focusable())
+                        break;   // a stop in sight: the board's Tab takes it
+                    if (bringSettingsIn(it))
+                        break;
                 }
             }
+            else if (focus() >= 0)
+                bringSettingsIn(item(focus()));
         }
         return Board::key(e);
     }
