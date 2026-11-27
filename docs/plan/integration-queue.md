@@ -2825,6 +2825,22 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 16:55 UTC: THE FREEZE IS OVER. THE BAKED COMMIT IS 3ba103f4** (P's fcc5ff53 under two merges, pushed 16:17).
+  Its trees: **sim 22314cde, host ef1715f6, tools 7c3e4d59**. The bake (15:39 to 16:00): all 31 idle within their
+  bands warm and cold, before and after; NO TABLE'S VALUES MOVED: the 28 knock-limit tables, the 14 intake cam
+  maps and first.json's two are bit-identical in value to the committed ones and only their keys moved (the
+  lead's own read of fcc5ff53: 256 changed content lines, 170 `knockLimitKey` and 86 `camInKey`, none other;
+  one generated row in docs/manual/builds.md). P's tier on the baked and merged state: 589 of 589,
+  `host.sim.bakes` green with its five cases passing by name; the lead's build: [sim][bake] 15 cases pass.
+  CI on 3ba103f4 (run 46032401939): Linux GREEN, 595 of 595; macOS, Windows and the soak running.
+  **`main` moves to it on macOS and Windows green.**
+- **THE KNOWN RED IS ENDED: a whole default tier has NO red from 3ba103f4 on. Any red is a red.**
+- **`sim/`, `host/`, `tools/` are CLOSED again until the next window** (its list: item 15 the air's pressure, item
+  17 with X-060, item 19 with X-059, and the list below as it stands; X-058 the integrator's).
+- **The hold on code-bearing pushes is lifted (16:55)** for what was held: card A's seven commits from the owner's
+  quality check of the Claude integration (one push, one tier), then its item 3; J2's carry of U1's two
+  patches (the withdrawn question; three notes); B's half of the wake if its permission allows. After each,
+  the tip's three jobs start before the next lands.
 - **27 Nov 15:34 UTC: FROZEN FOR THE BAKE.** `sim/`, `host/`, `tools/` and `content/builds/archetypes` with its
   generator and data are CLOSED TO EVERYONE until the lead lifts this. **The trees P bakes: sim 22314cde, host
   24835b34, tools 7c3e4d59, as on 91dc6bc6** (C's standard-day bake, the window's last push: `host` 29bcbaa5 to
@@ -2855,6 +2871,16 @@ It ran while the day's fast jobs crowded the runners.
     the baked commit's macOS job should not hang on a draw, and it is not in the bake's path (no Bake or
     Predict file; tee-dyno's bake calls bakeKnockLimit and bakeIntakeCam, not DynoService). So `host` will
     differ from 24835b34 by Dyno.cpp alone when P merges, and that is expected: no key or table can move by it.
+  - **THE TWO EXCEPTIONS ARE IN (16:03); nothing else code-bearing lands before P's push.** Card A's test fix:
+    443ba893 (tests/assistant/McpTest.cpp alone: every socket-making case under a short mkdtemp folder, a
+    length check against 104 on every platform; the lead's run: 49 cases pass, nothing left in /tmp). C's cure
+    of X-062: 36362b62, **`host` 24835b34 to ef1715f6 by host/src/Dyno.cpp alone (+8/-1)**, `sim` 22314cde and
+    `tools` 7c3e4d59 unchanged; the lead's run: the 13 [dyno] cases pass and the new case fails at
+    DynoTest.cpp:146 and :147 on the frozen Dyno.cpp; three readings (C's nm, P's and the lead's of
+    tee-dyno's main) that the bake's path does not call the changed code. **THE TREES OF THE BAKED COMMIT ARE TO
+    BE: sim 22314cde, host ef1715f6, tools 7c3e4d59**, the tables P bakes on sim 22314cde. Card A's manual
+    page (docs/manual/claude.md, 2efa1b80) is in. Held, ready: card A's seven commits (one tier on the stack
+    after the bake), J2's carry of U1's two patches, B's wake (its permission the owner's).
 - **27 Nov 13:28 UTC: `main` IS AT f77a46e6** (run 46000962256, three jobs green). **The trees `main` is gated on: sim
   f23337cc, host 29bcbaa5, tools 7c3e4d59** (host moved 86ea14da to 29bcbaa5 by C's bake across edits alone, no
   baked value moved: C's two byte-identity proofs, the lead's own run of its cases). Before it: 35a733d1 (12:19).
