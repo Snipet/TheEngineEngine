@@ -52,3 +52,7 @@ their words and place. The ribbon's caption while old tables play: "ON THE OLD T
 runs on the build as it stands: C). TUNE says the same (U4's handoff). Tests: `frame.bake.stale` (made-up states),
 `build.bake.stale` (the real service on first.json: an edit keeps the old tables, an edit of the cylinders sets them
 aside), and the nightly `build.bake.pictures` (an edit's whole course on the bake's state).
+The lead's look (27 Nov, 12:42: the patch's text applied, built, the pictures drawn, the bite repeated) was on the text
+before two mends the lead then asked for, which the lead took as described and did not draw again: tune.bake.stale's rig
+given a baked table, and TUNE's "old table in use" said from the service's own word when no telemetry says it (U4's
+handoff). J2's tier covers them.

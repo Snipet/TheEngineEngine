@@ -71,3 +71,6 @@ line no longer needs `sparkMap`'s string to say "in use". "In use" comes from th
 the cam's Auto switch); with none (no engine running, as in the application before a start, or a test without a sim),
 the service's own word that a stale table plays (BakeStatus::staleSpark/staleCam) says "old table in use" in its place.
 Probe `tuneBakeWords` (Tune.h). Test `frame.bake.stale` (FrameTests.cpp). No golden moved.
+A wording question for U4 (the lead's, 27 Nov; not changed): the knock limit's switch is titled "Not baked (no table)",
+the state it turns on, so beside a line saying "old table in use" (the switch off, a table in play) the two read oddly
+together. Whether the title should say what the switch is now, or name the choice ("Table / Not baked"), is U4's call.
