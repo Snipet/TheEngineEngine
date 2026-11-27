@@ -2685,6 +2685,44 @@ the rotary twin).
   by position is the owner's, with clips; all of it is `sim/` and the window.
 - **L writes docs/plan/places-sound.md** (docs only) when the grid and the pass-by are measured.
 
+## 27 Nov 12:16 UTC: THE OWNER'S RULINGS AND REPORTS since 12:00: the level in Places; the H-shifter; what is ruled on each
+
+- **THE OWNER, on the level in Places: "Go with true levels with a fixed gain".** Their answer to three defaults put
+  to them (as shipped: every build, camera and distance at about one loudness; true levels with one fixed gain;
+  half). It supersedes their 25 Nov ruling that the idle's loudness stays as designed. So: true levels the
+  default in Places, ONE staging gain for every build, camera and distance (a level match at one named point:
+  first.json at the default camera beside its reference, taken at the new Tailpipe spot), the limiter for the
+  peaks, "Auto" still a setting. L's; `sim/` (the spec's default, listen.fm); item 20 of the window.
+- **The level by the camera's position (the lead's idea) is REFUTED by L's measure** and dropped: from the stated
+  strengths it is worse (Side -9.6, Engine bay -14.6, Trackside -11.5 against Tailpipe), and the tailpipe-only
+  form is +9.7 at Engine bay and turns the dial upside down (a camera walked back about 9 dB louder).
+- **The Tailpipe camera's spot, ACCEPTED as the proposal (L, a grid of nine spots and an onboard one on five builds,
+  chosen before looking):** a boundary microphone on the ground 0.5 m behind the mouth. Ripple 0.2 to 1.0 dB on
+  four builds (2.1 on the V8: its own two pipes) against 5.7 to 14.0 shipped; the 500 Hz hole within 0.6 dB;
+  the top octave within 1.6 dB on four; the rotary 5.8 dB dull at the top (a large bore heard 34 degrees off
+  its axis: stated, not hidden). The lead's onboard spot was right on four builds and wrong on the bike (11.6
+  dB). `sim/` (scene.fm); item 20 with the level. The page: docs/plan/places-sound.md (L, 38f6f691; under
+  revision for the owner's ruling).
+- **THE OWNER, on the wheel: "When I use the H-shifter connected to my G29, there is a small delay in shifting.
+  Additionally, the engine does not fully use the clutch mechanics when using the H-shifter because I cannot
+  stall it."** The automatic clutch doing what it was built for (a gate sought by presses every 0.3 s through
+  robotised shifts; no stall), with no switch in the window. RULED (B, `shell/`): on a wheel with a clutch
+  pedal the H-shifter IS the lever by default and the clutch is the driver's, nothing to set up; out of every
+  gate the paddles and keys shift as now; a three-way setting (the shifter's clutch yours, the default;
+  Automatic; Yours for the keys too); manual boxes only; the edges tested; the gate-to-gear time before and
+  after and a stall at rest measured. A stall that does not come is a `sim/` finding, not B's to tune.
+- **X-057, D2:** the pickup cured locally (rated 2900 rpm: 219.9 was a copy with no source; the redline at its
+  high idle by the trim; the archetype's six ratios and 3.42; the 1-2 at 37 km/h after 4.6 s; the most power
+  224 kW at 1796 to 320 at 2613 rpm), its push to follow. On the reference ECU `redlineFor` floors the
+  redline at idle + 1500 rpm, so diesel-v8-truck, diesel-mechanical-classic and diesel-marine-v12 CANNOT state
+  a reachable redline in content: they wait for item 19, whose null is now "every shipped build bit-identical
+  but those three, by name". The two 15 L trucks already sit under their high idle and are left alone.
+- **X, the automatics' pull:** the reference under the lever is the reference's manual dropped into first and it
+  STALLS; ruled: the reference driven its own way (presses, the lever in N), only the case in D, and a guard
+  that a pull's reference with a stopped engine fails loudly. Then 0 of 17 on six builds. **X-058 numbered:**
+  an automatic put into D at rest, `archetypes/v6-35-twin-turbo-pickup`, 1 of 17 (3.57 over 3.22) 45 ms after
+  the lever; a sometimes row on one build, in no case's path; the integrator's list.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
@@ -2796,7 +2834,13 @@ the rotary twin).
  19. AHEAD OF 18 (27 Nov): X-057's rule, the integrator with the steward: a governed engine's redline is its
      governed high idle (`redlineFor`, the full form: the lights, the vehicle and the key together). The one
      shipped build that met it (diesel-pickup-tuned) is cured in content by D2 outside the window; after that
-     every shipped build is to be bit-identical under the rule.
+     every shipped build is to be bit-identical under the rule BUT THREE, by name (diesel-v8-truck,
+     diesel-mechanical-classic, diesel-marine-v12: the reference ECU floors the redline at idle + 1500 rpm,
+     over their high idle, so content cannot state it; the rule must let a governor go under that floor).
+ 20. L (27 Nov, THE OWNER'S RULING "true levels with a fixed gain", and their report of the comb and the
+     highs): Places' level true by default with one fixed staging; the Tailpipe camera a boundary microphone
+     on the ground 0.5 m behind the mouth. docs/plan/places-sound.md. L's files only (scene.fm, listen.fm,
+     the spec's sound.fm), model 1 only; the patch ready on a scratch tree before the window.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
