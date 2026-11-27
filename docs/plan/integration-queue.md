@@ -2745,8 +2745,46 @@ the rotary twin).
   (0.67 s) to second when sought: the owner's delay, measured; and the stall: first, at rest, the clutch let up
   with no throttle, `engine.state` leaves 2. The sim's clutch does stall.
 
+## 27 Nov: CI's record, the bake day and the hold (the steward; the lead's rulings of 12:29 and 12:45)
+
+**The bake day's CI (ruled 12:29; no workflow change):**
+
+- A sim/ item's acceptance is its own Linux green plus its evidence, and the lead's second measurement of it.
+- The three platforms are read on the FROZEN commit, and again on the baked commit before main.
+- The exception: a push with platform-sensitive files (host/ C++, the build) waits for its three platforms.
+- P starts the bake when the frozen commit's three fast jobs are green.
+- The soak runs beside the bake on the frozen commit, read against 4251 s and `Known.h`. main does not move past a new
+  soak red that the bake did not explain.
+
+**The hold (12:36):** the runners starved. Each platform's job that was still waiting was replaced by the next
+push, so no commit holding B's H-shifter had a job started (b09ba28c lost macOS and Windows; dfd86fcd's whole run was
+replaced). The lead held every code-bearing push until the tip's three jobs had started. Docs-only pushes start
+nothing (`paths-ignore`) and stayed free.
+
+- Two code-bearing pushes landed after the hold message:
+  - 2aba905c (N2: `GateTest.cpp`'s nightly marks). It replaced 3c654b83's waiting Linux and Windows jobs.
+  - f77a46e6 (D2's pickup, inside the lead's exception). It replaced 2aba905c's waiting macOS job.
+- The tip to protect became f77a46e6: B's H-shifter, C's bake across edits, D2's pickup, and X's, N2's and the
+  integrator's tests.
+- The lesson for the day: while runners are short, a push costs every platform whose job has not started yet.
+
+**A proposal for the owner, not in force:** cancel a superseded run when runners starve. The lead's cancel of
+3c654b83's run was refused (12:45). Nobody cancels on anyone's behalf: that would work around the refusal. The rule
+the steward would use, if the owner allows it:
+
+- Cancel an in-flight job only when its commit is an ancestor of the protected tip, and the tip's own job on that
+  platform is still waiting. That frees exactly the runner the tip needs, and loses no result the tip will not give.
+- Record each cancel here.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 12:37 UTC: A HOLD ON EVERY CODE-BEARING PUSH, until the lead lifts it here.** Pushes arrived faster than
+  runners: each replaced the macOS and Windows jobs still waiting on the one before (b09ba28c lost both;
+  dfd86fcd's and f5946d7b's whole runs were replaced), so no commit holding B's H-shifter has three jobs
+  started and `main` cannot move on the owner's report. Docs-only pushes are free (they start no run). One
+  exception let in first: D2's pickup, if its tier was green by 12:46. The hold lifts when the tip's three jobs
+  have STARTED (the steward says when). Verified by the lead on dfd86fcd meanwhile: C's 21 [bake] cases and
+  B's 7 gearbox cases pass, and each fails under a deliberate break of the source it guards.
 - **27 Nov 12:19 UTC: `main` IS AT 35a733d1** (run 45994332561: Linux, macOS and Windows green on that commit;
   B's gears by gearbox kind, `shell/` and tests). **The trees `main` is gated on: sim f23337cc, host 86ea14da,
   tools 7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked

@@ -1,0 +1,388 @@
+diff --git a/docs/manual/parameters.md b/docs/manual/parameters.md
+index 6095fea8..9b6cb89c 100644
+--- a/docs/manual/parameters.md
++++ b/docs/manual/parameters.md
+@@ -471,7 +471,7 @@
+ | `listenerY` | Listener along | number | -60 to 60 | 2.2 | length | Camera Free: how far forward of the rear bumper the listener stands (negative: behind the car) |
+ | `listenerZ` | Listener height | number | 0.1 to 10 | 1.5 | length | Camera Free: the listener's height above the road |
+ | `facing` | Listener facing | number | -180 to 180 | -90 | deg | From the car's forward, toward its right: -90 faces the car from its right side |
+-| `autoLevel` | Auto level | choice: True levels, Auto | 0 to 1 | Auto |  | Auto: like a camera's exposure, the level follows what is heard over seconds, so a far camera, the cabin or a quiet engine are as loud as a near one; the balance within a moment stays true. True levels: every camera and engine at its own level |
++| `autoLevel` | Auto level | choice: True levels, Auto | 0 to 1 | True levels |  | Auto: like a camera's exposure, the level follows what is heard over seconds, so a far camera, the cabin or a quiet engine are as loud as a near one; the balance within a moment stays true. True levels (the default): every camera and engine at its own level, one fixed staging for all |
+ 
+ ## `spec.voices`
+ 
+diff --git a/docs/models/listen.md b/docs/models/listen.md
+index a53a01b2..23d0f743 100644
+--- a/docs/models/listen.md
++++ b/docs/models/listen.md
+@@ -79,7 +79,7 @@ whose bay no geometry gives; the ground's notch near 1 kHz). A build states a ca
+ 
+ | Camera | Where (r: DISTANCE's 0.5 to 30 m) | Ears |
+ |---|---|---|
+-| Tailpipe | (0 or 0.4, -r, 0.7), facing the car | ORTF |
++| Tailpipe | (0.4 or the right-hand mouth 0.55, -max(0.25, 0.293 r), 0.01): a boundary microphone on the ground in line with the mouth, facing the car (since 27 Nov; before, (0 or 0.4, -r, 0.7)) | ORTF, the ground folded into each capsule |
+ | Rear | (0, -2 - r, 1.2) | ORTF |
+ | Side | (0.9 + r, 1.3, 1.2), facing across | ORTF |
+ | Engine bay | (0, bay + r/2, 1.4), facing back, the bonnet open | ORTF |
+@@ -148,13 +148,18 @@ dB under the reference's mix (P's measure, 20:10). Then a limiter at 0.7 whose a
+ it above 0.7) and whose release is 250 ms; a soft ceiling past 0.75 toward 0.95, a guard; and a clamp at 0.99 after
+ the resampler, whose ripple on a limited peak measures 0.73 to 0.75 (48 kHz). `tel.sound.limiter` is the deepest
+ reduction over the last 0.4 s; `tel.sound.ceilingParts` counts the parts the ceiling bent. X-004 (a turbo six's
+-launch with eight switches on): no guard trip. Between the compressor and the limiter sits the auto level (below), on
+-by default; with it off (`spec.sound.autoLevel` 0, True levels) the stage is as described here and a build's own
+-level (spec.sound.level, -24 to +12 dB) is where it is brought to the others.
++launch with eight switches on): no guard trip. Between the compressor and the limiter sits the level: since the owner's
++ruling of 27 Nov ("true levels with a fixed gain") true levels by default (`spec.sound.autoLevel` 0), one fixed staging
++of +3.7 dB for every build, camera and distance, a level match at one named point (first.json at the default camera,
++the boundary microphone, at its steady mid load, beside its reference; docs/plan/places-sound.md), and a build's own
++level (spec.sound.level, -24 to +12 dB) acting before the compressor as the reference's does. The auto level (below)
++stays on the Auto setting, as it was.
+ 
+ ## The ground's comb (the "fixed mode near 2.3 kHz")
+ 
+-The colour heard near 2.3 to 2.6 kHz on first.json at the opening camera, the same at every engine speed, is the
++(Until 27 Nov; since then the Tailpipe camera is a boundary microphone on the ground, where the image and the direct
++path are one and there is no comb: docs/plan/places-sound.md. Rear and Side keep the standing listener's comb.)
++The colour heard near 2.3 to 2.6 kHz on first.json at the opening camera, the same at every engine speed, was the
+ ground's reflection, not a pipe mode, the body, or a filter (asked with G, 25 Nov). At the Tailpipe camera's default
+ place the listener is 1.71 m behind the pipe and 0.7 m up, the pipe 0.35 m up: the direct path is 1.745 m, the ground
+ image's 2.007 m, 0.262 m longer. The two add in phase every c / 0.262 = 1325 Hz and cancel half-way between, from
+@@ -173,6 +178,9 @@ jitter of the image's path (a few millimetres) that softens the deep notches abo
+ 
+ ## Auto level (`spec.sound.autoLevel`)
+ 
++(Since 27 Nov the Auto setting, no longer the default: the owner chose true levels with one staging, docs/plan/places-sound.md.
++What follows is the Auto setting as designed.)
++
+ The ruling (lead, 20:13): at the defaults a free rev peaks at 0.3 to 0.6 of full scale and the idle is plainly
+ heard; a far camera or the cabin is not left 20 to 30 dB down; within a setting, the levels stay true. Of the two
+ schemes offered, a fixed make-up gain with trims, or an exposure, this is the exposure, for three reasons. The
+diff --git a/sim/listen/listen.fm b/sim/listen/listen.fm
+index c4c2417e..acf60fd9 100644
+--- a/sim/listen/listen.fm
++++ b/sim/listen/listen.fm
+@@ -1061,6 +1061,12 @@ module Listen
+             sD[i] = kHead * expf(-0.115129255f * (over * 0.4f - 5.0f));
+         }
+         int bent = 0;
++        // True levels (the default since the owner's ruling of 27 Nov, "true levels with a fixed gain"): one fixed staging
++        // for every build, camera and distance, a level match at one named point: first.json at the default camera (the
++        // boundary microphone) at its steady mid load (the dyno at 45 % of the redline, throttle 0.3) stands beside its
++        // reference's level; without it, 3.5 to 3.7 dB under at idle, mid and pull (docs/plan/places-sound.md). On Auto
++        // the exposure sets the level and the staging is 1 (Auto as it was)
++        const float stage = ss->autoLevel == 0 ? 1.531f : 1.0f;
+         // the auto level (an exposure, autoLevel below): this part's peak before it is taken first, so its gain is
+         // already falling toward 0.4 / P (over 1 ms; up over 0.5 s) when the part that raised P is heard
+         float partPk = 0.0f;
+@@ -1069,7 +1075,7 @@ module Listen
+         autoLevel(partPk, m);
+         for (int i = 0; i < m; ++i)
+         {
+-            const float gc = sD[i];
++            const float gc = sD[i] * stage;
+             float L = sA[i] * gc;
+             float R = sB[i] * gc;
+             autoS += (autoT - autoS) * (autoT < autoS ? autoKd : autoK);
+diff --git a/sim/listen/scene.fm b/sim/listen/scene.fm
+index 8c5f41fe..9f234fb6 100644
+--- a/sim/listen/scene.fm
++++ b/sim/listen/scene.fm
+@@ -377,9 +377,13 @@ module Scene
+         v->fy = 1.0f;
+         if (c == CAM_TAILPIPE)
+         {
+-            v->lx = pipes == 2 ? 0.0f : 0.4f;
+-            v->ly = -r;
+-            v->lz = 0.7f;
++            // a boundary microphone on the ground behind the (right-hand) mouth, in line with it: the direct and the
++            // ground's paths are one there, so no comb (docs/plan/places-sound.md: the shipped spot, 1.71 m back at
++            // 0.70 m, put a 15 dB notch at 657 Hz in a four's body). 0.5 m back at the dial's default (0.29 of its
++            // distance), at least 0.25 m; the standing listener's comb is Rear's and Side's
++            v->lx = pipes == 2 ? 0.55f : 0.4f;
++            v->ly = -fmaxf(0.25f, 0.293f * r);
++            v->lz = 0.01f;
+         }
+         else if (c == CAM_REAR)
+         {
+@@ -598,10 +602,13 @@ module Scene
+                 const float fa = airFc(dist);
+                 const float fcj = 1.0f / sqrtf(1.0f / (fa * fa) + 1.0f / (pat[1] * pat[1]) + 1.0f / (fh * fh)
+                                                + 1.0f / (hiCut * hiCut));
+-                target(v, j0 + m, tret * rate, pat[0] * gm * inv * (v->cabin != 0 ? tau[s] : 1.0f), fcj);
++                // (a listener on the ground, a boundary microphone: the ground's image and the direct path are one, so
++                // the ground adds to each capsule's own path, coherently, and has no tap of its own)
++                const float onGround = v->cabin == 0 && v->lz < 0.05f ? 1.0f + groundR : 1.0f;
++                target(v, j0 + m, tret * rate, onGround * pat[0] * gm * inv * (v->cabin != 0 ? tau[s] : 1.0f), fcj);
+             }
+-            // the ground's image, heard at the ears' middle: none in the cabin
+-            if (v->cabin != 0 || groundR <= 0.0f)
++            // the ground's image, heard at the ears' middle: none in the cabin, none on the ground (above)
++            if (v->cabin != 0 || groundR <= 0.0f || v->lz < 0.05f)
+             {
+                 target(v, j0 + 2, v->d[j0 + 0], 0.0f, v->fc[j0 + 2] > 0.0f ? v->fc[j0 + 2] : hiCut);
+             }
+diff --git a/sim/spec/sound.fm b/sim/spec/sound.fm
+index 2ca1d17f..320d1de1 100644
+--- a/sim/spec/sound.fm
++++ b/sim/spec/sound.fm
+@@ -56,8 +56,9 @@ module SoundSpec
+         [[ui::help("Camera Free: the listener's height above the road")]];
+     float facing [[fminus::range(-180, 180)]] [[fminus::default(-90)]] [[ui::label("Listener facing")]]
+         [[ui::unit("deg")]] [[ui::help("From the car's forward, toward its right: -90 faces the car from its right side")]];
+-    // model 1's last stage: like a camera's exposure, bring what is heard to one loudness over seconds
+-    int autoLevel [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Auto level")]]
++    // model 1's last stage: true levels at one fixed staging (the owner's ruling, 27 Nov), or, on Auto, like a camera's
++    // exposure, bring what is heard to one loudness over seconds
++    int autoLevel [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Auto level")]]
+         [[ui::choices("True levels", "Auto")]]
+-        [[ui::help("Auto: like a camera's exposure, the level follows what is heard over seconds, so a far camera, the cabin or a quiet engine are as loud as a near one; the balance within a moment stays true. True levels: every camera and engine at its own level")]];
++        [[ui::help("Auto: like a camera's exposure, the level follows what is heard over seconds, so a far camera, the cabin or a quiet engine are as loud as a near one; the balance within a moment stays true. True levels (the default): every camera and engine at its own level, one fixed staging for all")]];
+ };
+diff --git a/tests/sim/listen/EngineTest.cpp b/tests/sim/listen/EngineTest.cpp
+index 3d0296ce..22e0364f 100644
+--- a/tests/sim/listen/EngineTest.cpp
++++ b/tests/sim/listen/EngineTest.cpp
+@@ -4,6 +4,7 @@
+ 
+ #include <algorithm>
+ #include <cmath>
++#include <cstdlib>
+ #include <cstdio>
+ #include <string>
+ #include <vector>
+@@ -327,11 +328,29 @@ namespace
+ 
+ namespace
+ {
++    // The idle's rms (dB re full scale), 3 to 5 s from the key
++    double idleRms(Bench& b)
++    {
++        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
++        b.play(1.75);
++        b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
++        b.play(1.25);
++        double p = 0.0;
++        std::size_t n = 0;
++        b.play(2.0, [&] {
++            for (std::size_t i = 0; i < b.left().size(); ++i)
++                p += 0.5 * (double(b.left()[i]) * b.left()[i] + double(b.right()[i]) * b.right()[i]);
++            n += b.left().size();
++        });
++        return 10.0 * std::log10(p / double(n) + 1e-30);
++    }
++
+     void atDefaults(const std::vector<const char*>& builds)
+     {
+     for (const char* name : builds)
+     {
+         Bench b(name);
++        sound(b, "autoLevel", 1);       // the auto level's exposure: on Auto (true levels are the default since 27 Nov)
+         const Rev r = freeRev(b);
+         std::printf("%-34s idle peak %.2f, free rev peak %.2f (its largest %.2f), whole run %.2f, auto level %+.1f dB\n", name,
+                     r.idle, r.rev, r.revMax, r.all, b.tel("sound.autoGain"));
+@@ -353,18 +372,68 @@ namespace
+     }
+ }
+ 
+-TEST_CASE("the level at the defaults: a free rev peaks at 0.3 to 0.6, the idle plainly heard, on builds far apart", "[listen][engine][nightly]")
++TEST_CASE("the auto level at the defaults: a free rev peaks at 0.3 to 0.6, the idle plainly heard, on builds far apart", "[listen][engine][nightly]")
+ {
+     // first.json and three archetypes whose true levels span some 25 dB (the kei triple, the V12, the tractor), each
+-    // at its own defaults (model 1, camera Rear, place Field, asphalt, the auto level on)
++    // at its own defaults (model 1, place Field, asphalt) on Auto
+     atDefaults({"first", "archetypes/kei-660-triple-turbo", "archetypes/v12-65", "archetypes/tractor-15-inline-six"});
+ }
+ 
+-TEST_CASE("the level at the defaults, quick: first.json and the tractor (a quiet idle, a loud let-off)", "[listen][engine][sim]")
++TEST_CASE("the auto level at the defaults, quick: first.json and the tractor (a quiet idle, a loud let-off)", "[listen][engine][sim]")
+ {
+     atDefaults({"first", "archetypes/tractor-15-inline-six"});
+ }
+ 
++TEST_CASE("true levels at the defaults: first.json at the default camera beside its reference, its range kept", "[listen][engine][sim]")
++{
++    // The owner's ruling (27 Nov): true levels with one fixed staging, a level match at one named point (first.json at
++    // the default camera, the boundary microphone, its steady mid load: listen.fm). Here the free rev, not the point it
++    // was set on: the idle's peak and the rev's typical peak each within 2 dB of the reference's at its own defaults, and
++    // the rev's rise over the idle within 2 dB of the reference's. On Auto (the default before) the rev is exposed down
++    // and the idle up: each build to one loudness, so a loud build's idle comes out far nearer first.json's than its reference's (TEE_LISTEN_PROOF=1 runs it on Auto: see the commit)
++    double idle[2];
++    double rev[2];
++    for (int m = 0; m < 2; ++m)
++    {
++        Bench b("first");
++        sound(b, "model", m == 0 ? 0 : 1);
++        if (m == 1 && std::getenv("TEE_LISTEN_PROOF") != nullptr)
++            sound(b, "autoLevel", 1);
++        const Rev r = freeRev(b);
++        CHECK(r.finite);
++        CHECK(r.all < 1.0);
++        idle[m] = 20.0 * std::log10(r.idle);
++        rev[m] = 20.0 * std::log10(r.rev);
++    }
++    std::printf("first.json at its defaults: idle peak %.1f / %.1f dBFS, the rev's typical peak %.1f / %.1f dBFS (reference / "
++                "Places): the rise %.1f / %.1f dB\n", idle[0], idle[1], rev[0], rev[1], rev[0] - idle[0], rev[1] - idle[1]);
++    CHECK(std::fabs(idle[1] - idle[0]) < 2.0);
++    CHECK(std::fabs(rev[1] - rev[0]) < 2.0);
++    CHECK(std::fabs((rev[1] - idle[1]) - (rev[0] - idle[0])) < 2.0);
++    // and a loud build keeps its loudness against first.json: the big-block V8's idle over first.json's, within 2 dB of
++    // the reference's difference (the whole idle's rms, 3 to 5 s from the key)
++    double v8[2];
++    for (int m = 0; m < 2; ++m)
++    {
++        Bench b("archetypes/big-block-74-pushrod-v8");
++        sound(b, "model", m == 0 ? 0 : 1);
++        if (m == 1 && std::getenv("TEE_LISTEN_PROOF") != nullptr)
++            sound(b, "autoLevel", 1);
++        v8[m] = idleRms(b);
++    }
++    double fi[2];
++    for (int m = 0; m < 2; ++m)
++    {
++        Bench b("first");
++        sound(b, "model", m == 0 ? 0 : 1);
++        if (m == 1 && std::getenv("TEE_LISTEN_PROOF") != nullptr)
++            sound(b, "autoLevel", 1);
++        fi[m] = idleRms(b);
++    }
++    std::printf("the V8's idle over first.json's: %+.1f dB under the reference, %+.1f under Places\n", v8[0] - fi[0], v8[1] - fi[1]);
++    CHECK(std::fabs((v8[1] - fi[1]) - (v8[0] - fi[0])) < 2.0);
++}
++
+ TEST_CASE("the auto level: cameras near and far brought together; off, each its true level", "[listen][engine][sim]")
+ {
+     // With true levels the cabin is under the Rear. With the auto level, each camera is exposed for its own loudest
+@@ -687,6 +756,7 @@ TEST_CASE("the auto level after a start: the same idle whether the starter is he
+     for (int k = 0; k < 2; ++k)
+     {
+         Bench b("first");
++        sound(b, "autoLevel", 1);       // the auto level's own case: on Auto (true levels are the default since 27 Nov)
+         b.write("spec.voices.starterLevel", k == 0 ? 0.0 : -60.0);
+         b.write("spec.voices.rev", b.field("spec.voices.rev") + 1);
+         b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+@@ -718,6 +788,7 @@ namespace
+     double liftBody(int bang, const char* name = "archetypes/inline-five-turbo-rally", int limiter = -1)
+     {
+         Bench b(name);
++        sound(b, "autoLevel", 1);       // the auto level's own case: on Auto
+         const int i = b.player().specIndex("exhaust.bang");
+         REQUIRE(i >= 0);
+         b.player().setSpec(static_cast<std::size_t>(i), double(bang), 0);
+diff --git a/tests/sim/listen/ListenerTest.cpp b/tests/sim/listen/ListenerTest.cpp
+index f374eff2..c1de27ea 100644
+--- a/tests/sim/listen/ListenerTest.cpp
++++ b/tests/sim/listen/ListenerTest.cpp
+@@ -178,21 +178,23 @@ TEST_CASE("the level falls 6 dB a doubling of the distance", "[listen]")
+     rig.set("ss.camera", 0);
+     rig.set("ss.ground", 2);
+     rig.set("ln.sc.windOff", 1);
+-    // The property: the level falls as 1 / the path, from each tailpipe to each capsule. What the pair hears of it is
+-    // the geometry's: the two pipes 0.55 m either side and 0.35 m under the pair's 0.7 m, its cardioids 17 cm apart and
+-    // turned 55 degrees out, so close up the pipes stand off the capsules' axes and the step is under 6.02 dB. That
+-    // prediction (the band 100 Hz to 1.5 kHz is under the pipes' beam) is -5.58, -5.88, -5.97, -6.00 dB a doubling;
+-    // measured -5.05, -5.68, -5.81, -5.95. The margin, 1 dB about the prediction, takes the rest of the distance
+-    // dial (it moves the highs and the room's share as the reference's DISTANCE does: 0.53 dB at the first doubling);
+-    // a level that did not fall as 1 / r (a 1 / r^2 or a constant) would miss it by 6 dB a doubling
++    // The property: the level falls as 1 / the path, from the tailpipe to each capsule. Since 27 Nov the Tailpipe camera
++    // is a boundary microphone on the ground (1 cm up) in line with the right-hand pipe, 0.293 of the dial's distance
++    // behind it (scene.fm), the pipe 0.35 m up, the cardioids 17 cm apart and turned 55 degrees out. The in-line pipe
++    // alone is heard: its angle off its axis stays within some 20 degrees, so its beam (the piston law on the rig's
++    // white noise) holds while the distance changes; the other pipe, 1.1 m across, comes onto the camera's line as it
++    // walks back and its highs grow with it (physical, and not this property). The margin, 1 dB about the prediction,
++    // takes the rest of the distance dial; a level that did not fall as 1 / r (a 1 / r^2 or a constant) would miss it
++    // by 6 dB a doubling
+     auto predicted = [](double r) {
+         double p = 0.0;
++        const double back = std::max(0.25, 0.293 * r);
+         for (double side : {-1.0, 1.0})
+         {
+             const double ax = side * 55.0 * 3.14159265358979 / 180.0;
+-            for (double px : {-0.55, 0.55})
++            for (double px : {0.55})
+             {
+-                const double dx = px - side * 0.085, dy = r, dz = 0.35 - 0.7;
++                const double dx = px - (0.55 + side * 0.085), dy = back, dz = 0.35 - 0.01;
+                 const double d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                 const double g = 0.5 + 0.5 * (std::sin(ax) * dx + std::cos(ax) * dy) / d;
+                 p += (g / d) * (g / d);
+@@ -205,7 +207,7 @@ TEST_CASE("the level falls 6 dB a doubling of the distance", "[listen]")
+     for (double r : {2.0, 4.0, 8.0, 16.0, 30.0})
+     {
+         rig.set("distance", dialFor(r));
+-        const double p = dB(heard(rig, kTails));
++        const double p = dB(heard(rig, kTailR));
+         if (r > 2.0)
+         {
+             const double oct = std::log2(r / prevR);
+@@ -226,17 +228,22 @@ TEST_CASE("the reference's five views are presets of the new model, within the s
+     const char* names[] = {"exhaust", "intake", "valvetrain", "block", "headers", "turbo", "starter", "combustion", "tyres"};
+     double sum = 0.0;
+     int count = 0;
++    // (true levels carry one fixed staging, +3.70 dB after the last stage's compressor (listen.fm, the owner's ruling
++    // of 27 Nov): a uniform gain, not the views' geometry, so it is taken out here. And since 27 Nov the Tailpipe camera
++    // is a boundary microphone, no longer the reference's EXHAUST view: the four others are its presets; Tailpipe's own
++    // property is the next case's)
++    const double kStagingDb = 20.0 * std::log10(1.531);
+     for (int k = 0; k < 9; ++k)
+     {
+         rig.set("driven", srcs[k] == kRoad ? 1 : 0);
+-        for (int v = 0; v < 5; ++v)
++        for (int v = 1; v < 5; ++v)
+         {
+             rig.set("view", v);
+             rig.set("ss.camera", v);
+             rig.set("ss.model", 0);
+             const double a = dB(heard(rig, srcs[k]));
+             rig.set("ss.model", 1);
+-            const double b = dB(heard(rig, srcs[k]));
++            const double b = dB(heard(rig, srcs[k])) - kStagingDb;
+             INFO(names[k] << " in view " << v << ": " << b - a << " dB from the reference's");
+             // the exhaust within 1.5 dB; the rest within 7 dB (the reference's table is not geometric: its REAR hears
+             // the bay better than its EXHAUST, 2 m nearer)
+@@ -264,7 +271,45 @@ TEST_CASE("the reference's five views are presets of the new model, within the s
+         rig.play(1.0);
+         p[m] = rig.power();
+     }
+-    CHECK(std::fabs(dB(p[1] / p[0])) < 1.0);
++    CHECK(std::fabs(dB(p[1] / p[0]) - kStagingDb) < 1.0);
++}
++
++TEST_CASE("the Tailpipe camera, a boundary microphone: the ground adds no comb", "[listen]")
++{
++    // On the ground the direct path and the ground's image are one, so the image adds to the direct at every frequency
++    // and cancels it at none (docs/plan/places-sound.md). The property: from 300 Hz to 6 kHz the response with asphalt
++    // never falls under the response with no ground by more than 1 dB. At the spot it replaced (1.71 m back, 0.70 m up)
++    // the first notch fell some 15 dB at 657 Hz, so the case bites
++    Rig rig;
++    rig.set("ss.model", 1);
++    rig.set("ss.camera", 0);
++    rig.set("ln.sc.windOff", 1);
++    rig.set("src", kTailL);
++    std::vector<float> h[2];
++    for (int g = 0; g < 2; ++g)
++    {
++        rig.set("ss.ground", g == 0 ? 0 : 2);
++        rig.set("sig", 3);
++        rig.reset();
++        rig.clear();
++        rig.play(0.1, false);
++        rig.set("sig", 2);
++        rig.play(8192.0 / kRate);
++        h[g] = rig.left();
++    }
++    double least = 1e9;
++    double at = 0.0;
++    for (double f = 300.0; f <= 6000.0; f += 10.0)
++    {
++        const double d = 20.0 * std::log10(magnitude(h[0], f) / magnitude(h[1], f));
++        if (d < least)
++        {
++            least = d;
++            at = f;
++        }
++    }
++    std::printf("Tailpipe, asphalt against no ground: least %.1f dB at %.0f Hz\n", least, at);
++    CHECK(least > -1.0);
+ }
+ 
+ TEST_CASE("the trackside and chase cameras: each source against the exhaust as the nearest reference view has it", "[listen]")
