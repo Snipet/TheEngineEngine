@@ -2825,6 +2825,35 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 18:16 UTC: X-065, THE SOAK ON 3ba103f4 ENDED RED, AND EVERY RED ROW HAS THE PLACES LISTENER ON.** The lead's
+  read of the job's log (run 46032401939, linux-x64-soak, 16:54 to 18:09; 4373 s against 4251; 221 of 228;
+  `ui.build.reverse` passed, 43 s). Seven tests, eleven assertions, all the click judge at
+  `tests/sim/combo/Report.cpp:75` ("excess over its firing periods ... which decides"):
+  - nightly shards 2, 8, 13, 14, 15 and 16 of 16, seven triples, each with `sound.model`:
+    valve.model+boost.model+sound.model / turbo-six / pull (shift 3-2: 3.39 against 2.67);
+    intake.model+boost.model+sound.model / turbo-six / pull (shift 2-3: 2.71 against 2.67);
+    engine.wallHeat+sound.model+voices.model, engine.custom+exhaust.model+sound.model,
+    fuel.model+ecu.model+sound.model, intake.model+exhaust.model+sound.model / turbo-six / tour (the limiter: 3.16,
+    3.07, 3.18, 3.00 against 2.97); boost.model+fuel.model+sound.model / turbo-six-mild / pull (shift 3-2: 3.12
+    against 3.04);
+  - the archetype corpus, as built, two builds whose sound is Places: rotary-twin-na-side-port / tour (the limiter,
+    three instants: 2.54, 2.47, 2.62 against 2.35) and supercharged-v8-62 / tour (the limiter: 3.55 against 3.35).
+  - None of these rows is in `Known.h`; their neighbours without `sound.model` are (X-048, X-052, X-044, X-043).
+  - **Not established:** the cause. Item 20 (2f6bbbeb: true levels, the staging gain, the boundary microphone and
+    its fold) is the day's only commit that touches that listener. Each soak row is ONE draw, which is not
+    evidence by the lead's own rule. Asked of L: old against new at 17 draws a row, then which part of item 20,
+    then whether a person hears it. Asked of the steward: the last soak before the window, by row.
+  - `main`'s gate is the three jobs, and `main` (40463d37) holds this sim tree (22314cde): this is a finding on
+    what the owner has now. `sim/` stays closed; a cure waits for a window, and it does not bring auto level back
+    (the owner's ruling for true levels stands).
+- **27 Nov 18:16 UTC: THE NAMED RED IS OVER: card A's cure is in at 3db7ed07** (ef77de5 merged on B's fix; gated trees
+  unchanged). Card A's tier of record: 598 of 598 on 899259e9 + ef77de5 (plain tree, libsecret and libcurl
+  found); on the merged state, everything built and the assistant's and the shell's suites 92 of 92. The lead's
+  own tree at 3db7ed07 (plain, app OFF, NO libsecret, libcurl found): the same 92 of 92, the key-read case green
+  there; with the reason copied at construction again it fails at `ChatTest.cpp:824` and `:833`; restored. **The
+  prediction for 899259e9's Windows held exactly:** 587 of 588, `assistant.sim` at `ChatTest.cpp(820)` and
+  `(829)`, nothing else (the lead's read of the log). **The hold protects 3db7ed07** (18:14: Windows started
+  18:11:33; Linux and macOS pending). `main` moves to it on three greens. Then J2's carry, card A's item 3.
 - **27 Nov 18:06 UTC: THE TIP BUILDS AGAIN: B's fix is in at f61531fa** (76ce9d97 under two merges; gated trees
   unchanged). B's tier of record, in a tree configured by the plain preset (app OFF, no libsecret, no libcurl):
   591 of 592, the named red only; its app-on tree's shell suites 61 of 61. The lead's own plain tree at f61531fa:
