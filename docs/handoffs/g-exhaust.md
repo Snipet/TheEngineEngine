@@ -241,3 +241,13 @@ and rho are low by that factor:
 
 At the default no archetype may move, so the change would be a builder switch (model 1, hidden, as `portMean`),
 with test 2 setting the reference's. It is a reference fault, not an X-046 item.
+
+## Item 17 (X-051) waits for the next window (27 Nov; the lead's ruling of 13:21)
+
+The converged valve solve is built and measured but not landed. See docs/plan/x051-valve-solve.md, "the real code,
+as measured". Kept on G's scratch trees only: local 7f7219ea (item 17, on dfd86fcd) and 708e8f6a (item 6's port
+mass mean rebased on it, the one conflict in sim/spec/exhaust.fm resolved by keeping both switches; its tests not
+yet run there). Reason: the converged root on the pipes' 8000 Pa pressure floor triples how often the flat-plane
+V8's top point fails the predictor's settle floor (X-060: 6 of 51 nudges on the tip, 16 of 51 under item 17).
+Item 17 lands with or after the cure of that floor: the pipes' linear rarefaction below zero pressure, the next
+window's design (G's, docs first). X-061 (the rally five's lift, 2 of 51 on both trees) is not item 17's.
