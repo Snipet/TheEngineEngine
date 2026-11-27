@@ -62,7 +62,7 @@ module EcuIn
     bool upshift;       // a gear went up since the last time
     float carSpeed;     // m/s
     float slip;         // the driven wheels' slip (card I)
-    float dogCut;       // seconds of cut card I asks (a dog box's shift; 0 none)
+    float dogCut;       // above 0 while card I asks a dog box's cut (its size not read: launch.fm)
     float blip;         // the plate card I asks for a downshift (0 none)
     float coolant;      // K
     float warm;         // 0 at the air outside, 1 at the thermostat
