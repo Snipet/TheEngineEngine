@@ -434,6 +434,70 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     camSweep(25.0, 3);
 }
 
+// A cam bake cancelled inside a curve (the CalibrationBakeService cancels the bake in progress on any edit of the build:
+// the owner's app on 25 and 26 Nov, and the nightly's ui.build.bake.pictures on 26 Nov). predictCurve returned true on a
+// cancel with only the points it had finished, and bakeIntakeCam checked the flag only between curves: a cancel in a
+// sweep's last curve left that advance's row short (or empty), read at the best-advance search as if whole (a read
+// from address 0). Cancelled on the first point of the sweep's last curve, the bake must say "cancelled", not crash.
+namespace
+{
+    // the flag raised on point number `cancelAt` (1 the first) of the whole bake, its points in a known order (one
+    // thread, one share, two points a curve: the sweep's curves 2 points each, a stage row's curve one point a row)
+    void camBakeCancelledAt(const char* archetype, int cancelAt)
+    {
+        std::string error;
+        const auto sim = compiled(simDir(), {}, error);
+        REQUIRE(sim != nullptr);
+        Build build(sim->fields());
+        std::vector<std::string> warnings;
+        REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes" / archetype,
+                               BuildPart::Whole, warnings, error));
+        unbaked(build);
+        std::atomic<bool> cancel{false};
+        std::atomic<int> points{0};
+        CamBakeOptions options;
+        options.step = 50.0;        // two cells (0 and the range's end)
+        options.halfSteps = false;
+        options.accept = false;
+        options.predict.points = options.predict.coarse = 2;
+        options.predict.threads = 1;    // the points in a known order
+        options.predict.shares = 1;
+        options.predict.onPoint = [&] {
+            if (points.fetch_add(1) + 1 == cancelAt)
+                cancel = true;
+        };
+        CamBakeResult r;
+        const bool ok = bakeIntakeCam(sim, build, options, r, error, &cancel);
+        INFO(archetype << ": " << error << ", " << points.load() << " points measured");
+        REQUIRE(cancel.load());   // the cancel was met inside the curve it was meant for
+        CHECK_FALSE(ok);
+        CHECK(error == "cancelled");
+    }
+    // (the stage rows ran: a build with spec.valve.stages and a phaser to sweep; the archetype two-stage-cam-20 has no
+    // phaser range, so its cam bake sweeps nothing)
+} // namespace
+
+TEST_CASE("a cam bake cancelled inside its sweep's last curve says cancelled: the V12 (an intake phaser)",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    camBakeCancelledAt("v12-65.json", 3);   // the sweep's two cells of two points: the second curve's first point
+}
+
+// The same in the stage rows (a two-stage build: insertRows, a row just under and one just over the change, measured at
+// each advance): a cancel in the second advance's rows left its row empty while the first's was whole, and insertRows
+// read both by the first's size (the owner's crash at 15:21 on 26 Nov)
+TEST_CASE("a cam bake cancelled inside its stage rows says cancelled: the turbo four (two-stage cams and an intake phaser)",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    // the sweep: 2 curves of 2 points (1 to 4); the stage rows at the first advance: 2 points (5, 6); the second
+    // advance's first: 7
+    camBakeCancelledAt("turbo-four-20-gdi.json", 7);
+}
+
 namespace
 {
     // The predicted curve against the stepped dyno with the exhaust's heat settled (both the steady state) at the
@@ -1258,6 +1322,108 @@ TEST_CASE("the calibration baked in the background: the spark, the cam on that s
     CHECK(bakes.consider(build) != KnockBakeState::Current);
     CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
     CHECK(build.get("ecu.maps.camInAuto") == 1.0);
+}
+
+// The CalibrationBakeService under the owner's hand: an edit lands while a bake runs, in each of its phases (the spark
+// map; the cam's sweep, its last curve; the cam's stage rows; its half steps; its acceptance; the spark map again), and
+// at last the service goes while it bakes. Each edit cancels the bake in progress (the build changed) and asks one of the
+// edited build: the app stays up and the service bakes the next build, never Failed. (The owner's app on 25 and 26 Nov
+// died in bakeIntakeCam on such an edit.) The turbo four: two-stage cams and an intake phaser, so every phase runs.
+TEST_CASE("the calibration bake service survives an edit in every phase of a bake and bakes the next build",
+          "[engine][sim][bake][nightly]")
+{
+    // the default run's guards beside it: "a cam bake cancelled inside its sweep's last curve says cancelled" and
+    // "... inside its stage rows says cancelled" (the two crashes, on the bake's own functions)
+    // Before the fix this case read past a short row (a cancel lands after a curve's first point, so the row is short,
+    // not empty): no segfault in a plain build, but built with -D_GLIBCXX_ASSERTIONS it aborted at the cam's sweep
+    // ("__n < this->size()"); the two default cases' rows are empty and segfault in any build. With the fix it passes in
+    // both builds.
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    std::vector<std::string> warnings;
+    Build base(sim->fields());
+    REQUIRE(base.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
+                          BuildPart::Whole, warnings, error));
+    unbaked(base);
+    // (the service counts each stage's points itself, progress(); it owns the bakes' onPoint)
+    CalibrationBakeOptions options;   // small: every phase in a few points
+    options.debounceSeconds = 0.0;
+    options.spark.speeds = 2;
+    options.spark.pedals = {1.0};
+    options.spark.boostSteps = 1;
+    options.spark.corrections = 1;
+    options.spark.predict.threads = 1;
+    options.cam.step = 50.0;
+    options.cam.predict.points = options.cam.predict.coarse = 2;
+    options.cam.predict.threads = 1;
+    options.cam.predict.shares = 1;
+    struct Phase
+    {
+        const char* stage;   // the service's stage() while it runs
+        int after;           // the edit once this many of the stage's points are measured
+        const char* name;
+    };
+    // the cam's points, one thread and one share: the sweep 2 curves of 2 (1 to 4), the stage rows 2 advances of 2 (5
+    // to 8), then its half steps and its acceptance's two curves
+    const Phase phases[] = {{"spark map", 1, "the spark map"},       {"cam", 3, "the cam's sweep, its last curve"},
+                            {"cam", 7, "the cam's stage rows"},       {"cam", 9, "the cam's half steps"},
+                            {"cam", 11, "the cam's half steps or acceptance"},
+                            {"cam", 13, "the cam's acceptance"},      {"spark map again", 1, "the spark map again"}};
+    auto service = std::make_unique<CalibrationBakeService>(sim, options);
+    int edits = 0;
+    const auto edited = [&](int n) {
+        auto b = std::make_unique<Build>(sim->fields());
+        std::vector<std::string> w;
+        std::string e;
+        REQUIRE(b->load(base.save(), BuildPart::Whole, w, e));
+        b->set("engine.compression", base.get("engine.compression") - 0.1 * n);   // a build of its own: a bake of its own
+        return b;
+    };
+    auto build = edited(edits);
+    service->consider(*build);
+    for (const Phase& phase : phases)
+    {
+        INFO("an edit in " << phase.name);
+        // wait for the stage, then for its points (the stage's own count, from its start)
+        bool reached = false;
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(600);
+        while (std::chrono::steady_clock::now() < until)
+        {
+            REQUIRE(service->state() != KnockBakeState::Failed);
+            if (service->state() == KnockBakeState::Ready)
+                break;   // this bake ended before the phase (a phase this build's grid did not need)
+            if (service->stage() == phase.stage && service->progress().done >= phase.after)
+            {
+                reached = true;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+        const int at = service->progress().done;
+        std::printf("calibration bake: %s %s (the stage's points %d)\n", phase.name,
+                    reached ? "edited" : "not reached: the bake ended first", at);
+        // the edit, as the owner makes one: the bake in progress set aside, a bake of the edited build asked
+        build = edited(++edits);
+        service->consider(*build);
+        // the service bakes the next build: its spark map under way, a point of it measured (a state, not a time)
+        const auto next = std::chrono::steady_clock::now() + std::chrono::seconds(180);
+        bool baking = false;
+        while (!baking && service->state() != KnockBakeState::Failed && std::chrono::steady_clock::now() < next)
+        {
+            baking = service->state() == KnockBakeState::Baking && service->stage() == "spark map"
+                     && service->progress().done > 0;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        CHECK(service->state() != KnockBakeState::Failed);
+        CHECK(baking);
+        CHECK(reached);   // every phase is met: a test that edits before its phase tests nothing
+    }
+    // and the service goes while it bakes (its destructor's cancel): no crash, no hang
+    service.reset();
+    SUCCEED("the service went while baking");
 }
 
 TEST_CASE("a prediction asked while a calibration bake runs goes first: its time within a stated factor of its time "
