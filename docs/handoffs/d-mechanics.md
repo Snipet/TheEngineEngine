@@ -213,5 +213,16 @@ diesel-mechanical-classic 2267.9 against 2364.9; diesel-marine-v12 1890.0 agains
 tests/sim/diesel/RedlineTest.cpp:130 ([!mayfail]) checks the same three as GearsTest's X-057 case ([!shouldfail]). The lead's ruling (12:37): redlineFor itself, min(today's value, the governed high idle) for a stated
 governor, the idle + 1500 floor not holding the cap up.
 
+The steward's ecu.fm change (12:55, local, for my review): redlineFor computes today's value as before, then for a
+stated governor only returns min(that, high), high = ecu.highIdle if above 0, else ratedSpeed x (1 + max(droop,
+0.005)) (heavy.fm:201-203 without its fallback onto the redline). Their null (48 shipped builds driven, audio hash and
+engine.redline): diesel-v8-truck 2330.55 -> 2014.33, diesel-mechanical-classic 2364.92 -> 2267.88, diesel-marine-v12
+2361.48 -> 1890.04 rpm; the other 45 bit-identical.
+
+In item 19's push (the lead, 12:55): GearsTest's X-057 case loses its [!shouldfail] mark (it reads what the ECU holds,
+and item 19 turns it green); D2's full form (tests/sim/diesel/RedlineTest.cpp:130, which reads the files and stays
+failing for the three since the files still state nothing) is restated on the ECU's value or dropped in favour of
+GearsTest's; D2's gating form (the builds that shift by their redline) stays.
+
 Numbered for the list, not for now: X-058 (X's), archetypes/v6-35-twin-turbo-pickup, an automatic put into D at rest,
 the "start" window, 1 of 17 over its bound (3.57 against 3.22), 45 ms after the lever and before first is in.
