@@ -162,6 +162,7 @@ namespace tee::assistant
     private:
         struct Round;
         void turn(std::string text);
+        void turnBody(std::string text);
         bool round(Round& r, const std::string& requestBody);
         std::string buildRequest() const;
         nlohmann::json toolDefinitions() const;

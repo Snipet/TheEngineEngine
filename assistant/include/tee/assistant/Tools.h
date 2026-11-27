@@ -24,6 +24,7 @@
 #pragma once
 
 #include "tee/assistant/Inbox.h"
+#include "tee/assistant/Json.h"
 
 #include <nlohmann/json.hpp>
 
@@ -97,7 +98,7 @@ namespace tee::assistant
     {
         bool isError = false;
         nlohmann::json value;        // the structured answer ({"error": "..."} for an error)
-        std::string text() const { return value.dump(); }
+        std::string text() const { return dumpText(value); }
     };
 
     struct ToolInfo
