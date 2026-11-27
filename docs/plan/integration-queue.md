@@ -2825,6 +2825,26 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 18:36 UTC: X-066 CORRECTED: THE ENTRY BELOW OVERSTATES IT, AND THE LEAD TOLD THE OWNER THE OVERSTATEMENT.**
+  The 18:25 entry says a `set_fields` made while the window is minimised is not heard until the window ticks.
+  That is wrong for the ordinary case. The lead had read that `flush()` is called only from `SimAdapter::frame`
+  and had NOT read what a set does: `Build::attach` "sends every value to host now and each change after"
+  (`host/include/tee/Build.h:131-132`), `Build::set` sends at once (`host/src/Build.cpp:391`, `:481-490`), and
+  `flush()` only re-sends what the host refused because its queue was full (`:503-510`). So in an app whose
+  simulator is adopted (the app the owner minimises after using it), Claude's change is heard at once, minimised
+  or not. What X-066 is: (a) an app minimised before its simulator was ever adopted has no simulator for the
+  tools and sends nothing until a frame; (b) a write the host refused waits for a frame. B's cure (48a26516,
+  read by the lead from the patch file at e57abecf: the engine's frame before and after the jobs in the drain)
+  covers (a), with cases broken by B; for (b) B is asked to MEASURE whether a whole build loaded while minimised
+  leaves writes waiting, and if so to make the wake ask again until none is. The lead's lesson: "confirmed in
+  the code" means the whole path was read, not the line that fits.
+  - The lead's five points on `scripts/run-wake.sh` before it lands: its timing is not portable to macOS
+    (`date +%s.%N`, `bc`: the macOS run would fail for a reason that is not the wake); every folder the app
+    touches under the run's own; ticks moved is a failure on Linux; the app's log on "no answer"; a wording slip.
+  - J2's tier for the carry on the merged state 2680d5a9 (plain tree, no libsecret): 592 of 592; `assistant.sim`
+    34 cases green there: card A's cure measured on three containers (card A's, the lead's, J2's).
+  - 3db7ed07's jobs at 18:33: Linux green; Windows running; macOS waiting behind f61531fa's macOS job (started
+    18:18:12). J2 and card A hold until it has started.
 - **27 Nov 18:25 UTC: X-066, A WINDOW THAT DOES NOT TICK NEVER ADOPTS THE SIMULATOR AND NEVER SENDS THE DOCUMENT'S
   CHANGES TO THE ENGINE** (B's finding while writing the window test; the lead read the code). `SimAdapter::adopt`
   and `build_->flush()` run only from `SimAdapter::frame` (`shell/player/SimAdapter.cpp:314-330`), called from the

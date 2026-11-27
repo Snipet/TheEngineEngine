@@ -52,6 +52,9 @@ namespace tee::assistant::wire
 {
     inline constexpr const char* kNoLink = "Claude Desktop's link is for macOS and Linux in this version";
     inline constexpr std::size_t kMaxLine = 4u * 1024u * 1024u;   // a request or a reply; the tools' are far smaller
+    // The bridge's longest wait for the app's answer to a call: inside the MCP client's own timeout (60 s by default in
+    // the MCP SDK), so the client is always answered, in words, by this server rather than timing out.
+    inline constexpr double kCallSeconds = 55.0;
 
     // The base the link's folder lies in, from the system and never the environment (see above): "" when the system
     // has none to give (then the folder is /tmp/TheEngineEngine-mcp-<uid>).

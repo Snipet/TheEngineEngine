@@ -59,6 +59,7 @@ namespace tee::test
         // the owner, as a script: each question's answer (std::nullopt: never answered), and what to do before
         // answering, on the frame's thread
         std::vector<std::string> questions;
+        std::vector<std::shared_ptr<const std::atomic<bool>>> withdrawals;   // each question's flag, as asked
         std::optional<bool> answer;
         std::function<void()> whileAsked;
         std::vector<std::shared_ptr<std::promise<bool>>> pending;
@@ -87,8 +88,9 @@ namespace tee::test
                       [this]() -> SimHost* { return sim->ready() ? &sim->host() : nullptr; },
                       [this]() { return sim->ready() ? sim->host().sim() : std::shared_ptr<Sim>(); },
                       [this]() { return clock; },
-                      [this](const std::string& q) {
+                      [this](const std::string& q, std::shared_ptr<const std::atomic<bool>> withdrawn) {
                           questions.push_back(q);
+                          withdrawals.push_back(std::move(withdrawn));
                           auto p = std::make_shared<std::promise<bool>>();
                           if (whileAsked)
                               whileAsked();

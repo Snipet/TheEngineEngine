@@ -36,8 +36,8 @@ namespace
     namespace wire = tee::assistant::wire;
     using Clock = std::chrono::steady_clock;
 
-    constexpr const char* kVersion = "0.2.2";
-    constexpr double kCallSeconds = 110.0;   // the longest tool (a dyno: 60 s, an asked load: 60 s) and some
+    constexpr const char* kVersion = "0.2.3";
+    constexpr double kCallSeconds = wire::kCallSeconds;   // inside the client's 60 s (McpWire.h)
 
     const char* const kInstructions =
         "TheEngineEngine is a desktop app that simulates a car engine as physics and plays its sound. These tools reach "
