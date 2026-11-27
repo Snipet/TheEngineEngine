@@ -19,6 +19,27 @@ namespace tee::input
         stateHandle_ = telemetry.findValue(telemetry::kState);
         gearHandle_ = telemetry.findValue(telemetry::kGear);
         drivenHandle_ = telemetry.findValue(telemetry::kDriven);
+        carSpeedHandle_ = telemetry.findValue(telemetry::kCarSpeed);
+        // the build's fields, where the telemetry's source is a Player (the simulator, the reference, the tone: each is a
+        // ParamSource too): the gearbox a press drives (Driver::setGearbox)
+        params_ = dynamic_cast<const ParamSource*>(&telemetry);
+    }
+
+    Gearbox Controls::gearboxOf(const ParamSource& params)
+    {
+        // sim/spec/car.fm: `gearbox` is read only with `model` 1 (the vehicle model); sim/vehicle/vspec.fm's VEH_*
+        const int model = params.findParam("car.model"), box = params.findParam("car.gearbox");
+        if (model < 0 || box < 0 || std::lround(params.get(model)) != 1)
+            return Gearbox::shifts;
+        switch (std::lround(params.get(box)))
+        {
+            case 3:     // VEH_AUTOMATIC
+            case 4:     // VEH_CVT
+                return Gearbox::selector;
+            case 5:     // VEH_EIGHTEEN
+                return Gearbox::eighteen;
+            default: return Gearbox::shifts;
+        }
     }
 
     bool Controls::key(int key, bool down)
@@ -84,7 +105,19 @@ namespace tee::input
             seen.gearKnown = true;
             seen.gear = static_cast<int>(std::lround(read(gearHandle_)));
         }
+        if (carSpeedHandle_ >= 0 && driven)
+            seen.kmh = static_cast<float>(std::fabs(read(carSpeedHandle_)) * 3.6);
+        if (params_ != nullptr)
+            driver_.setGearbox(gearboxOf(*params_));
         sink_->setControls(driver_.advance(dt, seen));
+    }
+
+    std::string Controls::status() const
+    {
+        if (driver_.gearbox() != Gearbox::eighteen)
+            return status_;
+        const std::string note = "eighteen-speed: the clutch is yours (Left Shift, or the wheel's pedal)";
+        return status_.empty() ? note : status_ + "   " + note;
     }
 
     AppServices Controls::services()
@@ -92,7 +125,7 @@ namespace tee::input
         AppServices s;
         s.panelControls = [this](const PanelControls& p) { panel(p); };
         s.controls = [this] { return driver_.frame(); };
-        s.status = [this] { return status_; };
+        s.status = [this] { return status(); };
         return s;
     }
 }

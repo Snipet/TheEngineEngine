@@ -43,7 +43,7 @@ namespace tee::input
     void Driver::setSettings(const DriverSettings& s)
     {
         settings_ = s;
-        if (settings_.autoClutch)
+        if (settings_.autoClutch && gearbox_ == Gearbox::shifts)
             lever_ = 0;             // the lever goes back to neutral: the gearbox keeps the gear it is in
         else
             seeking_ = false;
@@ -88,12 +88,23 @@ namespace tee::input
         }
         if (action == Action::shiftUp)
         {
+            if (gearbox_ == Gearbox::selector)
+                select_ = std::min(select_ + 1, 1);
+            else if (gearbox_ == Gearbox::eighteen)
+                eighteenStep(1);
             ++shiftUp_;
             seeking_ = false;       // the driver's own shift ends a gear key's
             return;
         }
         if (action == Action::shiftDown)
         {
+            if (gearbox_ == Gearbox::selector)
+            {
+                if (select_ != 1 || kmh_ < kCrawlKmh)       // out of D only at a crawl: never into N at speed
+                    select_ = std::max(select_ - 1, -1);
+            }
+            else if (gearbox_ == Gearbox::eighteen)
+                eighteenStep(-1);
             ++shiftDown_;
             seeking_ = false;
             return;
@@ -112,6 +123,19 @@ namespace tee::input
     void Driver::requestGear(int gear)
     {
         gear = std::clamp(gear, -1, 6);
+        if (gearbox_ == Gearbox::selector)
+        {
+            select_ = gear > 0 ? 1 : gear < 0 ? -1 : 0;     // a forward gate is D
+            seeking_ = false;
+            return;
+        }
+        if (gearbox_ == Gearbox::eighteen)
+        {
+            if (gear <= 5)                                   // 1 to 4 the positions, 5 the L slot, 6 nothing
+                lever_ = gear;
+            seeking_ = false;
+            return;
+        }
         if (settings_.autoClutch)
         {
             seek_ = gear;
@@ -181,6 +205,59 @@ namespace tee::input
         settings_.mode = mode;
     }
 
+    namespace
+    {
+        constexpr int kLeverL = 5;                  // roadranger.fm's RR_LEVER_L: the low-low slot (gears 1 and 2)
+        // roadranger.fm's gearOf: the gear a lever position, range and split make (0: none)
+        int eighteenGear(int lever, int range, int split)
+        {
+            if (lever == kLeverL)
+                return range == 0 ? 1 + split : 0;
+            if (lever < 1 || lever > 4)
+                return 0;
+            return range == 0 ? 1 + 2 * lever + split : 9 + 2 * lever + split;
+        }
+    }
+
+    void Driver::eighteenStep(int by)
+    {
+        const int range = (latched_ & kButtonRange) != 0 ? 1 : 0, split = (latched_ & kButtonSplitter) != 0 ? 1 : 0;
+        const int now = eighteenGear(lever_, range, split);
+        // from neutral (or reverse) a step up is the first gear; a step down nothing
+        const int want = now == 0 ? (by > 0 ? 1 : 0) : now + by;
+        if (want < 1 || want > 18)
+            return;                                 // refused at the ends
+        int lever = 0, r = 0, s = 0;
+        if (want <= 2)
+        {
+            lever = kLeverL;
+            s = want - 1;
+        }
+        else if (want <= 10)
+        {
+            lever = (want - 3) / 2 + 1;
+            s = (want - 3) % 2;
+        }
+        else
+        {
+            lever = (want - 11) / 2 + 1;
+            s = (want - 11) % 2;
+            r = 1;
+        }
+        lever_ = lever;
+        latched_ = (latched_ & ~(kButtonRange | kButtonSplitter)) | (r != 0 ? kButtonRange : 0) | (s != 0 ? kButtonSplitter : 0);
+    }
+
+    void Driver::setGearbox(Gearbox g)
+    {
+        if (g == gearbox_)
+            return;
+        gearbox_ = g;
+        select_ = 0;
+        lever_ = 0;
+        seeking_ = false;
+    }
+
     void Driver::release(Source source)
     {
         if (source >= Source::count)
@@ -209,6 +286,7 @@ namespace tee::input
         if (!(dt > 0.0f))
             dt = 0.0f;
         dt = std::min(dt, 0.25f);   // a frame that took long does not slam a pedal
+        kmh_ = seen.kmh;
 
         throttle_ = ease(throttle_, held(Action::throttle), settings_.throttle, dt);
         brake_ = ease(brake_, held(Action::brake), settings_.brake, dt);
@@ -273,7 +351,10 @@ namespace tee::input
         frame_.clutch = std::max({ clutch_, padClutch_, wheelClutch_, clutchStripHeld_ ? clutchStrip_ : 0.0f });
         frame_.handbrake = std::max(handbrake_, handbrakeStripHeld_ ? handbrakeStrip_ : 0.0f);
         frame_.steer = padSteer_;
-        frame_.lever = settings_.autoClutch ? 0 : lever_;
+        frame_.lever = gearbox_ == Gearbox::selector ? select_
+                     : gearbox_ == Gearbox::eighteen ? lever_
+                     : settings_.autoClutch        ? 0
+                                                   : lever_;
         frame_.shiftUp = shiftUp_;
         frame_.shiftDown = shiftDown_;
         frame_.buttons = latched_;

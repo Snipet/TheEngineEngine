@@ -2583,7 +2583,76 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
   its redline, content, which moves its bake key: P either way); what else reads redW (the auto gearing, the
   launch, the downshift's refusal, the lights). Item 19, or ahead of 18 if the integrator agrees the owner
   cannot drive a shipped build without it.
+- **CONFIRMED by the lead's own run (11:50; the tip's simulator through tee-render, a scratch scenario: the lever at
+  1 from 2.5 s, full throttle from 3 s, 42 s; predicted first: gear 1 throughout, about 2220 rpm, 13 to 14 m/s):**
+  diesel-pickup-tuned gear 1 at every reading, 13.86 m/s and 2221 rpm at 42 s. The archetype
+  pickup-diesel-67-inline-six in the same scenario: 2 by 9 s, 3 by 12 s, 6 by 27 s, 53 m/s at 42 s. So the box
+  and the lever work, and this build's shift point is out of its engine's reach. redW itself is still unmeasured.
 - **B's push (the gears by gearbox kind) is NOT held for it:** the selector works; this is what it uncovered.
+
+## 27 Nov 11:52 UTC: X-057 MEASURED AND RULED (content now through D2; the rule in the window); the pull in neutral confirmed (X)
+
+- **X-057, the integrator's numbers (its own probe):** on diesel-pickup-tuned the vehicle holds redW 3265 rpm (the
+  reference's redline for 6.7 L: the build states no `engine.redlineSpeed`) and idleW 712; the automatic's upshift
+  at full pedal is 2775 rpm of road-derived input; the governor holds the engine at 2226 and the input at 1996.
+  The same redline sets the auto final drive (1.97: top gear geared for 198 km/h at a speed the engine cannot
+  reach). ONE shipped build exposed: the two archetype diesels state their redline at their high idle.
+- **Ruled:** (ii) NOW, D2's file and tests: the build states a redline its engine reaches (or D2 corrects the rated
+  speed if 2100 rpm was a slip, with its source); the test first (D at full pedal reaches second within a stated
+  time). By the lead's read the build carries no baked table (no maps or knock tables in its `ecu`), so no bake;
+  D2 confirms or stops. (i) in its FULL form only (the ECU's `redlineFor`: a governed engine's redline is its
+  governed high idle, so the lights, the vehicle and the key move together) is the window's item 19, AHEAD of
+  18; the vehicle-only half is not taken.
+- **The pull in neutral, CONFIRMED by X's `car.gear`:** automatic, CVT and truck sat in gear 0 at 0 m/s through the
+  pull. None of the 13 such shipped builds was in a nightly or default pull or launch case, so the mislabel was
+  in the survey's rows only (corrected). Tests only, X pushing: lever 1 for Automatic and CVT on the pull and the
+  launch; a fast-3 case that fails with the lever in N. On the automatics' real pull: 0 of 17 at every event on
+  the six corpus automatics and the CVT, NO NEW ROW, but WEAK on four of them (bounds 6.7 to 17 against a top of
+  3.67): the references read excesses of 8 to 12. The lead's hypothesis, for X to test: the reference run is
+  `car.model` 0, the reference's manual with first slammed in by the lever: not a fair twin under the lever.
+  No automatic goes on a nightly pull until that is read. Trucks: rows named "in neutral (no driver)" now; one
+  nightly pull-away on the tractor allowed after B's push, with conditions (no stall on 17 nudges, no shifts,
+  its cost stated).
+
+## 27 Nov 11:55 UTC: THE PLACES MODE'S SOUND (the owner's report): L's read, its correction, what is ruled
+
+One session's measurements throughout (L, tee-render, scratch trees for the probes, nothing pushed); the lead has
+not repeated them. first.json at the Places defaults (Tailpipe, Field, asphalt, auto level on) against the
+reference at its defaults, then four builds chosen before looking (big-block V8, truck-15l-six, the 600 bike,
+the rotary twin).
+
+- **A CORRECTION OF RECORD (L's, and the lead passed the wrong figures to the owner):** every LUFS figure of L's
+  first two reports was wrong (the K-weighting ran along the wrong axis). Corrected, Places minus reference on
+  first.json: idle -0.8, mid -3.9, pull -6.0 LU; the pull is 10.0 LU over the idle where the reference has 15.2
+  (NOT 0.8 against 5.7). The comb's, the octaves' and the top octave's figures stand.
+- **The three causes, as they now read:**
+  1. THE COMB: the ground tap summed with the direct at fixed gain (asphalt 0.9, a path 0.262 m longer at the
+     default geometry): notches from 659 Hz every 1310 Hz, 11 to 17 dB deep, gone with ground None. It takes the
+     500 Hz octave 7 to 11 dB under the reference.
+  2. THE HIGHS: the top octave 4 to 9 dB proud of the note's body on the five builds. Not a noise bed: the
+     exhaust's own broadband part. The reference stands 0.5 m back and 35 degrees off the pipe's axis, where the
+     piston law that already exists cuts from about 9.7 kHz; Places' Tailpipe camera stands at 1.7 m, 12 degrees
+     off, where it cuts almost nothing.
+  3. THE LEVEL: the auto level brings EVERY BUILD to one loudness. At mid load the reference spans 21.5 LU over
+     the five builds and Places 3.4: the V8 and the truck come out 15 to 19 LU under their references, the
+     rotary 10 over at idle. Within one build the range narrows by about a third.
+- **Withdrawn by L on the lead's questions:** the ground tap's 0.5 gain (chosen for the notch depth: built from
+  its target); the 9 kHz pole at the pipe's mouth (the camera's geometry is the cause); the 2.2 in the half
+  exposure is a level match at one named point and evidence of nothing. Refuted by L's own measure: a higher
+  target and floor (louder everywhere, the spread unchanged).
+- **RULED:** (a) the default camera spot at the reference's own (distance 0: 0.5 m, 35 degrees off the axis),
+  as a DEFAULT and named one, approved in principle to land now if it is content only: every shipped build
+  that opens at Tailpipe at the same spot; no bake key holding it (the gate run, not reasoned); the cases on
+  the defaults restated, not loosened. It brings the top octave to +2.0 on first.json and leaves a comb (ripple
+  9.2 to 7.4 dB). (b) The ground's coherence: NOT yet. First the thing that needs no constant: whether the
+  reflected ray carries its own departure angle through the piston law, and the camera's height against the
+  pipe's (the first notch's place is the geometry's). Sources cited before any corner from a jet's extent.
+  (c) The level is THE OWNER'S: three forms to be heard side by side: as shipped (every build one loudness),
+  half, and the level set by the camera's position and not by the signal (each build its own loudness, the
+  limiter for the peaks), which L measures now. The owner ruled on 25 Nov that the idle's loudness stays as
+  designed; this reopens it on new evidence. (d) The Driver camera duller than the reference's Cabin by 7 to
+  13 dB above 4 kHz: its own item, a measured cabin transfer from sources first.
+- (b) and (c) are `sim/` (scene.fm, listen.fm): the window and a bake.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
@@ -2693,8 +2762,10 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
      (synced, or the revs over the edge); the pull's and tour's rows to confirm it, not a reading. Two tests:
      rest, two presses (the engine over 0.85 x idle, the car under 0.5 km/h: fails today); a synced 1-2 at
      1500 rpm on the overrun keeps robot 1.0 (passes today, fails on the first cure). Behind 16, 17 and 15.
- 19. the integrator, a read first (27 Nov): X-057, an automatic behind a governor that holds the engine under
-     the schedule's shift point never upshifts (diesel-pickup-tuned: stuck in first at 50 km/h).
+ 19. AHEAD OF 18 (27 Nov): X-057's rule, the integrator with the steward: a governed engine's redline is its
+     governed high idle (`redlineFor`, the full form: the lights, the vehicle and the key together). The one
+     shipped build that met it (diesel-pickup-tuned) is cured in content by D2 outside the window; after that
+     every shipped build is to be bit-identical under the rule.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
