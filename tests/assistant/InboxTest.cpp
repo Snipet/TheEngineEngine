@@ -138,6 +138,40 @@ TEST_CASE("assistant: closing answers every waiting job without running it, and 
     CHECK(inbox.drain() == 0);
 }
 
+TEST_CASE("assistant: each post wakes the app once, on the posting thread, outside the inbox's lock", "[assistant]")
+{
+    // Claude Desktop's calls while the window is minimised (it does not tick): the app drains on the wake instead
+    Inbox inbox;
+    std::atomic<int> wakes{0};
+    std::thread::id wokeOn;
+    bool lockFree = false;
+    inbox.setWake([&] {
+        ++wakes;
+        wokeOn = std::this_thread::get_id();
+        // the inbox can be asked from the hook: its lock is not held (under it, this would not answer within 1 s)
+        auto asked = std::async(std::launch::async, [&] { return inbox.waiting(); });
+        lockFree = asked.wait_for(std::chrono::seconds(1)) == std::future_status::ready;
+    });
+    std::thread::id poster;
+    std::thread t([&] {
+        poster = std::this_thread::get_id();
+        inbox.post([]() -> std::optional<Reply> { return Reply::of(1); });
+    });
+    t.join();
+    CHECK(wakes == 1);
+    CHECK(wokeOn == poster);
+    CHECK(lockFree);
+    CHECK(inbox.waiting() == 1);
+    // the wake drains it (as the app's main thread does), and a second post wakes once more
+    CHECK(inbox.drain() == 1);
+    inbox.post([]() -> std::optional<Reply> { return Reply::of(2); });
+    CHECK(wakes == 2);
+    // a refused post (closed, or full) wakes nobody: there is nothing to drain
+    inbox.close();
+    inbox.post([]() -> std::optional<Reply> { return Reply::of(3); });
+    CHECK(wakes == 2);
+}
+
 TEST_CASE("assistant: a build's name is a name, never a path", "[assistant]")
 {
     std::string why;
