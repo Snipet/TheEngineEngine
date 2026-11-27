@@ -662,3 +662,70 @@ TEST_CASE("assistant: the system prompt is the app's own: short, and built from 
                 CHECK(s.find(f.label) == std::string::npos);
         }
 }
+
+TEST_CASE("assistant: New chat empties the conversation, and waits out a turn that is running", "[assistant][sharedsim]")
+{
+    Bench b("chat-clear");
+    CHECK_FALSE(b.chat->canClear());   // nothing yet
+    b.transport.script.push_back(ok(Stream().text("A V8 is open.").end("end_turn")));
+    b.say("What is open?");
+    CHECK(b.chat->canClear());
+    b.chat->clear();
+    CHECK(b.chat->items().empty());
+    CHECK(b.chat->history().empty());
+    CHECK_FALSE(b.chat->canClear());
+    // the next message starts a conversation of its own: nothing of the old one is sent
+    b.transport.script.push_back(ok(Stream().text("Hello.").end("end_turn")));
+    b.say("Hi");
+    REQUIRE(b.transport.count() == 2);
+    CHECK(b.transport.body(1)["messages"].size() == 1);
+    // pressed while Claude answers: the turn is stopped, and the chat empties as it ends, never under it
+    Scripted s = ok(Stream().text("A long"));
+    s.chunks.resize(5);
+    s.hang = true;
+    b.transport.script.push_back(s);
+    bool cleared = false;
+    b.say("Tell me a long story.", [&] {
+        if (!cleared && b.transport.count() == 3)
+        {
+            b.chat->clear();
+            cleared = true;
+            CHECK(b.chat->busy());   // not yet: the turn is ending
+        }
+    });
+    CHECK(cleared);
+    CHECK(b.chat->items().empty());
+    CHECK(b.chat->history().empty());
+    CHECK_FALSE(b.chat->busy());
+}
+
+TEST_CASE("assistant: a conversation too long for Claude says so in words, and the message goes back to the box",
+          "[assistant][sharedsim]")
+{
+    Bench b("chat-toolong");
+    b.transport.script.push_back(ok(Stream().text("A V8 is open.").end("end_turn")));
+    b.say("What is open?");
+    const json before = b.chat->history();
+    // the API's answer to input over the model's window: 400 invalid_request_error, "prompt is too long: ..."
+    b.transport.script.push_back(Scripted{
+        400, {}, {json({{"type", "error"},
+                         {"error", {{"type", "invalid_request_error"}, {"message", "prompt is too long: 1000301 tokens > 1000000 maximum"}}}})
+                      .dump()}});
+    b.say("And the cam?");
+    CHECK(b.transport.count() == 2);   // not retried: it can only fail again
+    const auto items = b.chat->items();
+    REQUIRE_FALSE(items.empty());
+    CHECK(items.back().kind == ChatItem::Kind::Notice);
+    CHECK(items.back().error);
+    CHECK(items.back().text.find("longer than Claude can read") != std::string::npos);
+    CHECK(items.back().text.find("New chat") != std::string::npos);
+    // what is sent is as before the message that could not be read; the message is handed back once
+    CHECK(b.chat->history() == before);
+    CHECK(b.chat->takeReturned() == "And the cam?");
+    CHECK(b.chat->takeReturned().empty());
+    // any other 400 keeps its own words
+    b.transport.script.push_back(status(400, "invalid_request_error"));
+    b.say("Once more");
+    CHECK(b.chat->items().back().text.find("longer than Claude") == std::string::npos);
+    CHECK(b.chat->takeReturned().empty());
+}

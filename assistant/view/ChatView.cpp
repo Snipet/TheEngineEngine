@@ -12,6 +12,7 @@ namespace tee::assistant::view
     {
         constexpr float kPad = 12.0f;          // the column's inset
         constexpr float kGap = 10.0f;          // between blocks
+        constexpr float kNewChatRowH = 34.0f;  // the row "New chat" sits in, over the conversation (only when shown)
         constexpr float kBubblePad = 8.0f;     // inside the user's bubble
         constexpr float kComposerH = 40.0f;    // the message box's row
         constexpr float kSendW = 56.0f;
@@ -77,7 +78,15 @@ namespace tee::assistant::view
     funkgui::Rect ChatView::conversation() const noexcept
     {
         const float bottom = composer().y - kGap - (asking_ ? questionH_ + kGap : 0.0f);
-        return {bounds_.x, bounds_.y, bounds_.w, std::max(0.0f, bottom - bounds_.y)};
+        const float top = bounds_.y + (newChatShown_ ? kNewChatRowH : 0.0f);   // under "New chat", when it is there
+        return {bounds_.x, top, bounds_.w, std::max(0.0f, bottom - top)};
+    }
+
+    std::optional<funkgui::Rect> ChatView::newChatButton() const
+    {
+        if (!newChatShown_)
+            return std::nullopt;
+        return funkgui::Rect{bounds_.right() - kPad - 84.0f, bounds_.y + 6.0f, 84.0f, kNewChatRowH - 10.0f};
     }
 
     void ChatView::relayout()
@@ -95,7 +104,13 @@ namespace tee::assistant::view
             question = port_->question();
             busy_ = port_->busy();
             canChat = port_->ready(why);
+            newChatShown_ = port_->canClear();
+            // a message the API could not take comes back to the box (unless the owner has typed since)
+            if (std::string back = port_->takeReturned(); !back.empty() && draft_.empty())
+                draft_ = std::move(back);
         }
+        else
+            newChatShown_ = false;
         for (const ChatItem& item : items)
         {
             Block b;
@@ -265,6 +280,13 @@ namespace tee::assistant::view
         const float top = area.y - scroll_.offset;
         if (emptyShown_)
             markdown::draw(c, th, p, empty_, metrics_, bounds_.x, top, area);
+        if (const auto nc = newChatButton(); nc.has_value())
+        {
+            const bool hotNew = nc->contains(pointer_);
+            c.rrect(nc->x, nc->y, nc->w, nc->h, 6.0f, hotNew ? p.accent : p.raised, 0.0f, {});
+            markdown::drawText(c, "New chat", nc->x + 12.0f, nc->y, nc->h, markdown::Role::smallStrong,
+                               hotNew ? p.onAccent : p.text);
+        }
         if (const auto ak = addKeyButton(); ak.has_value())
         {
             const bool hotKey = ak->contains(pointer_);
@@ -299,8 +321,10 @@ namespace tee::assistant::view
     funkgui::Cursor ChatView::cursorAt(funkgui::Point pt) const
     {
         const auto ak = addKeyButton();
-        return sendButton().contains(pt) || (ak.has_value() && ak->contains(pt)) ? funkgui::Cursor::pointingHand
-                                                                                  : funkgui::Cursor::normal;
+        const auto nc = newChatButton();
+        return sendButton().contains(pt) || (ak.has_value() && ak->contains(pt)) || (nc.has_value() && nc->contains(pt))
+                   ? funkgui::Cursor::pointingHand
+                   : funkgui::Cursor::normal;
     }
 
     void ChatView::pointerDown(const funkgui::PointerEvent& e, funkgui::GestureController&, funkgui::HostServices&)
@@ -321,6 +345,13 @@ namespace tee::assistant::view
         if (const auto ak = addKeyButton(); ak.has_value() && ak->contains(pt))
         {
             hooks_.addKey();
+            return;
+        }
+        if (const auto nc = newChatButton(); nc.has_value() && nc->contains(pt) && port_ != nullptr)
+        {
+            port_->clear();
+            hint_.clear();
+            seen_ = ~0ull;   // laid out again at the next tick
             return;
         }
         scroll_.press(pt, conversation());
@@ -435,6 +466,15 @@ namespace tee::assistant::view
         send.bounds = sendButton();
         send.title = busy_ ? "Stop Claude" : "Send";
         out.push_back(send);
+        if (const auto nc = newChatButton(); nc.has_value())
+        {
+            funkgui::A11yItem fresh;
+            fresh.id = a11yBase_ + 4;
+            fresh.role = funkgui::A11yRole::button;
+            fresh.bounds = *nc;
+            fresh.title = "New chat";
+            out.push_back(fresh);
+        }
         if (const auto ak = addKeyButton(); ak.has_value())
         {
             funkgui::A11yItem add;
@@ -451,6 +491,12 @@ namespace tee::assistant::view
         if (id == a11yBase_ + 3 && addKeyButton().has_value())
         {
             hooks_.addKey();
+            return true;
+        }
+        if (id == a11yBase_ + 4 && newChatButton().has_value() && port_ != nullptr)
+        {
+            port_->clear();
+            seen_ = ~0ull;
             return true;
         }
         if (id != a11yBase_ + 2)
@@ -471,7 +517,7 @@ namespace tee::assistant::view
     uint64_t ChatView::drawKey() const
     {
         tee::ui::DrawKey k;
-        k.mix(seen_).mix(addKeyShown_ ? 1 : 0).mix(draft_).mix(hint_).mix(scroll_.key()).mix(bounds_).mix(pointer_).mix(busy_ ? 1 : 0);
+        k.mix(seen_).mix(addKeyShown_ ? 1 : 0).mix(newChatShown_ ? 1 : 0).mix(draft_).mix(hint_).mix(scroll_.key()).mix(bounds_).mix(pointer_).mix(busy_ ? 1 : 0);
         return k.h;
     }
 
