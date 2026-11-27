@@ -2752,7 +2752,9 @@ the rotary twin).
 - A sim/ item's acceptance is its own Linux green plus its evidence, and the lead's second measurement of it.
 - The three platforms are read on the FROZEN commit, and again on the baked commit before main.
 - The exception: a push with platform-sensitive files (host/ C++, the build) waits for its three platforms.
-- P starts the bake when the frozen commit's three fast jobs are green.
+- ~~P starts the bake when the frozen commit's three fast jobs are green.~~ Corrected (the lead, 15:34): P starts on the
+  frozen TREES (sim, host, tools as named in the FREEZE STATE), not on the frozen commit's three jobs. The jobs are
+  still read, and every red outside the known list goes to the lead.
 - The soak runs beside the bake on the frozen commit, read against 4251 s and `Known.h`. main does not move past a new
   soak red that the bake did not explain.
 
@@ -2775,6 +2777,51 @@ the steward would use, if the owner allows it:
 - Cancel an in-flight job only when its commit is an ancestor of the protected tip, and the tip's own job on that
   platform is still waiting. That frees exactly the runner the tip needs, and loses no result the tip will not give.
 - Record each cancel here.
+
+## 27 Nov: CI's record, the window's lessons (the steward)
+
+**The known red of the window (ruled 12:53).**
+
+- A shipped bake's key holds the program's source hash, so any byte under sim/ makes a shipped table "not current".
+- The cases that assert a shipped bake current on the program are listed by name, read from the code and not from one
+  run. They are host.sim.bakes' five, on the ShippedV12 fixture: they stop at tests/host/EngineTest.cpp:1043.
+- ui.build's build.bake.stale was a sixth from J2's carry until J2 restated it at f6a5d10f to wait for the bake to land.
+- Re-read with J2's carry in: there is no seventh. The nightly's two ".pictures" cases do their own bake.
+- A sim/ item's acceptance: one whole default tier on the merged state, green except that list, plus its evidence and
+  the lead's second measurement. A red outside the list is a red.
+- P's proof on the baked commit: the five green by name.
+- Every branch job from d28b3412 (item 16) on read the five and nothing else, except efec3052's macOS job (below).
+
+**Item 16's tier on a 4-core container.**
+
+- 586 to 637 s for the whole default tier (dev preset, 3 test jobs), with nothing else running.
+- Two runs sharing a build tree, or the evidence runs beside it, cost a tier. Run one thing at a time.
+- Code landing under a running tier means merging and running the whole tier again (twice for item 16). Docs alone do
+  not.
+
+**A long path breaks a socket.**
+
+- A Unix socket's path is limited to 108 bytes on Linux and 104 on macOS, the NUL counted.
+- McpTest's link folders live under <source>/out/assistant/. From a scratchpad tree they came to 126 to 130 bytes and
+  assistant.sim failed ("the link's path is too long"); from /home/user/w16 they came to 51.
+- On the hosted macOS runner, A's new case (McpTest.cpp:694, 51260f68) nests one folder deeper: 109 bytes. It failed
+  on efec3052's macOS job alone, since Linux's runner path is 4 bytes shorter: 105 against 108.
+- A's fix puts every socket-making case under a short mkdtemp folder, and checks the length against 104 on every
+  platform.
+- The lesson: run a tier of record from a short path, and test a socket's path against the smaller limit everywhere.
+
+**A draw on macOS, not waved off.**
+
+- "the service runs the newest request only, and answers a repeat from its cache" (tests/host/DynoTest.cpp:98) failed
+  once, on efec3052's macOS job, in 0.17 s:
+  - :116 the torque 150 N m off (another request's curve);
+  - :117 the cache key not matching;
+  - :118 the next request refused.
+- Nothing in it had changed since f600af2e, and it has passed everywhere else.
+- It is C's to measure and explain. It is not re-run to green, and not waved off.
+
+**The soak:** main's scheduled soak at 35a733d1, run 46001412173: 227 of 227, 4512 s, +261 s over 4251, inside the line.
+It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
