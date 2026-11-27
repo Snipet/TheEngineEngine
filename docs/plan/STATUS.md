@@ -43,6 +43,19 @@
 
 ## Landed
 
+- **27 Nov 19:42 UTC: `main` at 233d7154.** Run 46051766042: Windows, Linux and macOS green (the steward's counts
+  before Windows ended: Linux 599, macOS 598; the lead read the three jobs' conclusions). Gated trees unchanged:
+  `sim` 22314cde, `host` ef1715f6, `tools` 7c3e4d59. In it, past 3db7ed07:
+  - **Card A's item 3** (f97c88cc): every tool Claude Desktop calls ends inside 55 s (the MCP client's own limit
+    is 60); the owner has 40 s to answer a question, and a question the tool has stopped waiting for is taken
+    off the screen (U1's flag); a dyno run is given 40 s; the Claude Desktop extension is 0.2.3: installed again
+    from this build's `.mcpb`. A case holds the frame's clock still and checks every tool still ends by its
+    real-time limit. The lead's own build and break of it.
+  - **U1's air patch in SETTINGS** (J2's carry): 4 px under each row whose line wraps to two; four goldens
+    blessed on the lead's own look, no other moved.
+  - NOT in it, on the branch at 4524113b (the next candidate): B's window test of the wake and X-066's cure;
+    card A's X-063 (a name that is not UTF-8 no longer ends the app); the steward's `Known.h` (X-065's two rows
+    and the seven sometimes-rows in, three cured pairs out, each combo row's excess printed).
 - **27 Nov 19:05 UTC: `main` at 3db7ed07.** Run 46047427666: Windows 588 of 588, Linux 598 of 598, macOS 597 of 597
   (the steward's read by case; the lead read the three jobs' conclusions). Gated trees unchanged: `sim` 22314cde,
   `host` ef1715f6, `tools` 7c3e4d59. In it, past 40463d37:
