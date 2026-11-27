@@ -62,7 +62,8 @@ namespace tee::app
         // Once a frame, before the Panel ticks (the Scope's copy made stale); empty: nothing to do.
         std::function<void()> frame;
         // The assistant's inbox drained on its own (the jobs its tools posted), for a window that does not tick
-        // (minimised: app/AssistantWake.h); the frames clock does not move. Empty: no assistant.
+        // (minimised: app/AssistantWake.h), with the engine's frame before and after (the simulator adopted, a job's
+        // change sent to it: X-066); the frames clock does not move. Empty: no assistant.
         std::function<void()> drainAssistant;
         // Waits up to `seconds` for the dyno's first predicted curve (a picture that should show it); false: none
         // came (`error`: the dyno's own words), or there is no dyno. Empty function: no frame.

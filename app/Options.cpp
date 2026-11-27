@@ -120,6 +120,11 @@ namespace tee::app
                 if (!whole(o.frames, 0, 10000000))
                     return false;
             }
+            else if (arg == "--minimise-after")
+            {
+                if (!whole(o.minimiseAfter, 1, 100000))
+                    return false;
+            }
             else if (arg == "--shot")
             {
                 if (!value(o.shot))
@@ -270,6 +275,8 @@ namespace tee::app
              "  --set ID=VALUE         a parameter, after the preset; may be given many times\n"
              "  --checks               compile with the loop budget and the bounds checks\n"
              "  --frames N             run N frames, then exit\n"
+             "  --minimise-after N     the window minimised after N frames (hidden if not honoured), what SDL\n"
+             "                         says of it and the ticks twice a second, closed 20 s on (scripts/run-wake.sh)\n"
              "  --shot FILE.png        write the last frame's picture\n"
              "  --seconds S            render S seconds with no audio device, then exit\n"
              "  --wav FILE.wav         write what was rendered (with --seconds, or --frames in tee-headless)\n"
