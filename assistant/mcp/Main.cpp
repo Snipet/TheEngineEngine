@@ -14,7 +14,8 @@
 //   ping           answered here
 //
 // One thread, one poll() over stdin and the app's socket. stdout carries the protocol only; what went wrong goes to
-// stderr (Claude Desktop keeps it in its MCP logs), never a path, never the owner's anything.
+// stderr (Claude Desktop keeps it in its MCP logs: ~/Library/Logs/Claude/mcp*.log), never the owner's anything; the one
+// path it names is the link's folder, so that a log can tell a folder the two ends do not share from a closed app.
 #include "tee/assistant/McpWire.h"
 
 #include <nlohmann/json.hpp>
@@ -35,7 +36,7 @@ namespace
     namespace wire = tee::assistant::wire;
     using Clock = std::chrono::steady_clock;
 
-    constexpr const char* kVersion = "0.1.0";
+    constexpr const char* kVersion = "0.2.0";
     constexpr double kCallSeconds = 110.0;   // the longest tool (a dyno: 60 s, an asked load: 60 s) and some
 
     const char* const kInstructions =
@@ -143,9 +144,17 @@ namespace
             std::string why;
             app_ = wire::connectTo(dir_, why);
             if (app_ < 0)
+            {
+                // said once a change (it is tried every 2 s): the folder looked in, so a log can tell a folder the two
+                // ends do not share from an app that is closed
+                if (why != lastWhy_)
+                    std::fprintf(stderr, "tee-mcp: the app is not reachable at %s/app.sock: %s\n", dir_.c_str(), why.c_str());
+                lastWhy_ = why;
                 return false;
+            }
+            lastWhy_.clear();
             appLines_ = wire::Lines();
-            std::fprintf(stderr, "tee-mcp: connected to the app\n");
+            std::fprintf(stderr, "tee-mcp: connected to the app at %s/app.sock\n", dir_.c_str());
             return true;
         }
 
@@ -334,6 +343,7 @@ namespace
         }
 
         std::string dir_;
+        std::string lastWhy_;
         int app_ = -1;
         wire::Lines client_, appLines_;
         long nextId_ = 1;
@@ -347,6 +357,11 @@ namespace
 
 int main(int argc, char** argv)
 {
+    // Claude Desktop passes none. --version; --where: the folder it would look in, and nothing else (a diagnosis, and
+    // the tests' check that it is found the same in a bare environment); --base DIR: the folder under DIR in place of
+    // the system's base (the tests', so that they never touch the real per-user folder).
+    std::string base;
+    bool where = false;
     for (int i = 1; i < argc; ++i)
     {
         const std::string a = argv[i];
@@ -355,15 +370,31 @@ int main(int argc, char** argv)
             std::printf("tee-mcp %s\n", kVersion);
             return 0;
         }
-        std::fprintf(stderr, "tee-mcp: the MCP server Claude Desktop starts; it takes no arguments but --version\n");
-        return 2;
+        if (a == "--where")
+            where = true;
+        else if (a == "--base" && i + 1 < argc && argv[i + 1][0] == '/')
+            base = argv[++i];
+        else
+        {
+            std::fprintf(stderr, "tee-mcp: the MCP server Claude Desktop starts; it takes no arguments (--version, --where "
+                                 "and --base DIR are for a person or a test)\n");
+            return 2;
+        }
     }
 #if defined(_WIN32)
+    (void)where;
     std::fprintf(stderr, "tee-mcp: %s\n", wire::kNoLink);
     return 1;
 #else
+    const std::string dir = base.empty() ? wire::folder() : wire::folderIn(base);
+    if (where)
+    {
+        std::printf("%s\n", dir.c_str());
+        return 0;
+    }
     std::signal(SIGPIPE, SIG_IGN);
-    Server server(wire::folder());
+    std::fprintf(stderr, "tee-mcp %s: the app's link is looked for at %s/app.sock\n", kVersion, dir.c_str());
+    Server server(dir);
     return server.run();
 #endif
 }

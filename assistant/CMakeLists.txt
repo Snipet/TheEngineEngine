@@ -66,7 +66,7 @@ if(NOT WIN32)
   # The extension: Claude Desktop installs it with a double click and starts server/tee-mcp from it. Its version goes
   # up with every change to the bridge or its manifest (Claude Desktop updates an installed extension only to a newer
   # one). The manifest's shape is TestingPlayground's at 47bac40 (manifest_version 0.3).
-  set(TEE_MCPB_VERSION "0.1.0")
+  set(TEE_MCPB_VERSION "0.2.0")
   if(APPLE)
     set(_tee_mcpb_platform "darwin")
   else()

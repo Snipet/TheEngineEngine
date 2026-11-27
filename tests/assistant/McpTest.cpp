@@ -55,6 +55,90 @@ namespace
         return dir.string();
     }
 
+    // The environment Claude Desktop gives a local server's binary: the MCP SDK's stdio transport passes only these
+    // (getDefaultEnvironment, DEFAULT_INHERITED_ENV_VARS off Windows) and the manifest's "env", which is empty.
+    std::vector<std::string> bareEnvironment()
+    {
+        std::vector<std::string> env;
+        for (const char* k : {"HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER"})
+            if (const char* v = std::getenv(k))
+                env.push_back(std::string(k) + "=" + v);
+        return env;
+    }
+
+    // tee-mcp run under exactly `env` with `args`; its stdout, stderr and exit status once it ends (stdin closed).
+    struct Ran
+    {
+        std::string out, err;
+        int status = -1;
+    };
+    Ran runBare(const std::vector<std::string>& args)
+    {
+        int o[2], e[2];
+        REQUIRE(pipe(o) == 0);
+        REQUIRE(pipe(e) == 0);
+        const std::vector<std::string> env = bareEnvironment();
+        const pid_t pid = fork();
+        REQUIRE(pid >= 0);
+        if (pid == 0)
+        {
+            dup2(o[1], 1);
+            dup2(e[1], 2);
+            close(o[0]);
+            close(e[0]);
+            std::vector<char*> av{const_cast<char*>("tee-mcp")}, ev;
+            for (const auto& a : args)
+                av.push_back(const_cast<char*>(a.c_str()));
+            av.push_back(nullptr);
+            for (const auto& v : env)
+                ev.push_back(const_cast<char*>(v.c_str()));
+            ev.push_back(nullptr);
+            execve(TEE_MCP_EXE, av.data(), ev.data());
+            _exit(127);
+        }
+        close(o[1]);
+        close(e[1]);
+        Ran r;
+        char buf[4096];
+        for (ssize_t n; (n = read(o[0], buf, sizeof buf)) > 0;)
+            r.out.append(buf, static_cast<std::size_t>(n));
+        for (ssize_t n; (n = read(e[0], buf, sizeof buf)) > 0;)
+            r.err.append(buf, static_cast<std::size_t>(n));
+        close(o[0]);
+        close(e[0]);
+        int status = 0;
+        waitpid(pid, &status, 0);
+        r.status = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+        return r;
+    }
+
+    // Sets an environment variable for its lifetime (unset: null), and puts the old value back.
+    struct EnvFor
+    {
+        std::string key;
+        bool had = false;
+        std::string was;
+        EnvFor(std::string k, const char* value) : key(std::move(k))
+        {
+            if (const char* v = std::getenv(key.c_str()))
+            {
+                had = true;
+                was = v;
+            }
+            if (value != nullptr)
+                setenv(key.c_str(), value, 1);
+            else
+                unsetenv(key.c_str());
+        }
+        ~EnvFor()
+        {
+            if (had)
+                setenv(key.c_str(), was.c_str(), 1);
+            else
+                unsetenv(key.c_str());
+        }
+    };
+
     // tee-mcp as Claude Desktop starts it: its stdin and stdout pipes, TEE_MCP_DIR the test's folder.
     struct Bridge
     {
@@ -85,6 +169,63 @@ namespace
             out = fromChild[0];
         }
 
+        // As Claude Desktop really starts it: the bare environment (bareEnvironment(): no TEE_MCP_DIR, no TMPDIR, no
+        // XDG_RUNTIME_DIR), `args` its arguments; its stderr kept (errText()).
+        Bridge(const std::vector<std::string>& args, bool bare)
+        {
+            REQUIRE(bare);
+            int toChild[2], fromChild[2], errPipe[2];
+            REQUIRE(pipe(toChild) == 0);
+            REQUIRE(pipe(fromChild) == 0);
+            REQUIRE(pipe(errPipe) == 0);
+            const std::vector<std::string> env = bareEnvironment();
+            pid = fork();
+            REQUIRE(pid >= 0);
+            if (pid == 0)
+            {
+                dup2(toChild[0], 0);
+                dup2(fromChild[1], 1);
+                dup2(errPipe[1], 2);
+                close(toChild[1]);
+                close(fromChild[0]);
+                close(errPipe[0]);
+                std::vector<char*> av{const_cast<char*>("tee-mcp")}, ev;
+                for (const auto& a : args)
+                    av.push_back(const_cast<char*>(a.c_str()));
+                av.push_back(nullptr);
+                for (const auto& v : env)
+                    ev.push_back(const_cast<char*>(v.c_str()));
+                ev.push_back(nullptr);
+                execve(TEE_MCP_EXE, av.data(), ev.data());
+                _exit(127);
+            }
+            close(toChild[0]);
+            close(fromChild[1]);
+            close(errPipe[1]);
+            in = toChild[1];
+            out = fromChild[0];
+            err = errPipe[0];
+        }
+
+        // What it has written to stderr so far (a bare bridge's).
+        std::string errText()
+        {
+            for (;;)
+            {
+                pollfd p{err, POLLIN, 0};
+                if (err < 0 || ::poll(&p, 1, 0) <= 0)
+                    break;
+                char buf[4096];
+                const ssize_t n = read(err, buf, sizeof buf);
+                if (n <= 0)
+                    break;
+                errs.append(buf, static_cast<std::size_t>(n));
+            }
+            return errs;
+        }
+        int err = -1;
+        std::string errs;
+
         ~Bridge()
         {
             if (in >= 0)
@@ -98,6 +239,8 @@ namespace
                 waitpid(pid, &status, 0);
             }
             close(out);
+            if (err >= 0)
+                close(err);
         }
 
         void send(const json& msg)
@@ -163,7 +306,7 @@ namespace
         Cards cards;
         McpLink link;
         App(const std::string& name, const std::string& dir, long user = -1)
-            : rig(name), link(*rig.tools, drivers, cards, [this] { return rig.clock; }, McpLinkOptions{dir, user, "0.1.0"})
+            : rig(name), link(*rig.tools, drivers, cards, [this] { return rig.clock; }, McpLinkOptions{dir, user, "0.2.0", {}})
         {
         }
         ~App() { link.stop(); }
@@ -356,7 +499,7 @@ TEST_CASE("assistant: shutting down with a call waiting on the frame cancels it 
     Rig rig("mcp-shutdown");
     auto session = std::make_unique<Session>(SessionParts{
         *rig.file, *rig.library, [&]() -> SimHost* { return &rig.sim->host(); },
-        [&] { return rig.sim->host().sim(); }, [&] { return rig.clock; }, nullptr, nullptr, McpLinkOptions{dir, -1, "0.1.0"}});
+        [&] { return rig.sim->host().sim(); }, [&] { return rig.clock; }, nullptr, nullptr, McpLinkOptions{dir, -1, "0.2.0", {}}});
     std::string why;
     REQUIRE(session->allowDesktop(true, why));
     CHECK(session->desktopAllowed());
@@ -428,7 +571,7 @@ TEST_CASE("assistant: the switch off is the shipped default and costs nothing: n
         // as the app's frame makes it (app/Offline.cpp, Kept), the switch off
         Session session(SessionParts{*rig.file, *rig.library, [&]() -> SimHost* { return &rig.sim->host(); },
                                      [&] { return rig.sim->host().sim(); }, [&] { return rig.clock; }, nullptr, nullptr,
-                                     McpLinkOptions{dir.string(), -1, "0.1.0"}});
+                                     McpLinkOptions{dir.string(), -1, "0.2.0", {}}});
         for (int i = 0; i < 30; ++i)
         {
             session.frame(false);
@@ -518,6 +661,82 @@ TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app 
     Bridge bridge(dir);
     CHECK(bridge.ask(&app.rig, 1, "ping").contains("result"));
     CHECK(watch.count() == before);
+}
+
+// Finding 1 (27 Nov): Claude Desktop starts tee-mcp with the bare environment, where the app has its session's (a
+// TMPDIR on macOS, an XDG_RUNTIME_DIR on Linux). The folder must come out the same in both, or the bridge looks where
+// the app is not and says "not open" with the app open and the switch on. The app's environment is given a TMPDIR and
+// an XDG_RUNTIME_DIR of this test's own folder, and nothing of the folder may follow them.
+TEST_CASE("assistant: the link's folder is found the same in Claude Desktop's bare environment as in the app's",
+          "[assistant]")
+{
+    const std::string made = linkFolder("env");   // a folder of the test's own: never the folder's base, if all is well
+    const EnvFor noDir("TEE_MCP_DIR", nullptr);
+    const EnvFor tmp("TMPDIR", made.c_str());
+    const EnvFor xdg("XDG_RUNTIME_DIR", made.c_str());
+    const std::string inApp = wire::folder();      // computed only: --where and folder() make nothing
+    const Ran bare = runBare({"--where"});
+    INFO("the app's folder: " << inApp << "; the bridge's in the bare environment: " << bare.out << bare.err);
+    REQUIRE(bare.status == 0);
+    std::string where = bare.out;
+    while (!where.empty() && (where.back() == '\n' || where.back() == '\r'))
+        where.pop_back();
+    CHECK(where == inApp);
+    CHECK(inApp.find(made) == std::string::npos);  // the environment steers nothing
+    CHECK(inApp == wire::folderIn(wire::systemBase()));
+}
+
+// The whole of Claude Desktop's path in its bare environment: the app's link at its default folder under a base this
+// test made (McpLinkOptions::base, tee-mcp --base: the seam names the base only, so the real per-user folder is never
+// touched), tee-mcp with nothing but the six variables: initialize, the tools listed, one call answered. And before the
+// app listens, the bridge says on stderr (Claude Desktop's log) the folder it looked in.
+TEST_CASE("assistant: tee-mcp in Claude Desktop's bare environment reaches the app at the link's default folder",
+          "[assistant][sharedsim]")
+{
+    const std::string base = linkFolder("bare-base");
+    const std::string folder = wire::folderIn(base);
+    const EnvFor noDir("TEE_MCP_DIR", nullptr);
+    Rig rig("mcp-bare");
+    Drivers drivers;
+    Cards cards;
+    McpLink link(*rig.tools, drivers, cards, [&] { return rig.clock; }, McpLinkOptions{"", -1, "0.2.0", base});
+    Bridge bridge({"--base", base}, true);
+    const json init = bridge.ask(&rig, 1, "initialize", {{"protocolVersion", "2025-11-25"}}, 10.0);
+    REQUIRE(init.contains("result"));
+    bridge.send({{"jsonrpc", "2.0"}, {"method", "notifications/initialized"}});
+    // the app not listening yet: none, and the log names where it looked
+    CHECK(bridge.ask(&rig, 2, "tools/list", json::object(), 10.0)["result"]["tools"].empty());
+    {
+        std::string said;
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while (said.find(folder + "/app.sock") == std::string::npos && std::chrono::steady_clock::now() < until)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            said = bridge.errText();
+        }
+        INFO(said);
+        CHECK(said.find(folder + "/app.sock") != std::string::npos);
+    }
+    std::string why;
+    REQUIRE(link.start(why));
+    CHECK(fs::exists(wire::socketIn(folder)));
+    // listed once the app is there (the bridge tells its client the list changed; asked again here)
+    json tools;
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    for (int id = 3; std::chrono::steady_clock::now() < until; ++id)
+    {
+        tools = bridge.ask(&rig, id, "tools/list", json::object(), 5.0)["result"]["tools"];
+        if (!tools.empty())
+            break;
+        rig.frame();
+    }
+    INFO(bridge.errText());
+    REQUIRE(tools.size() == rig.tools->list().size());
+    const json call = bridge.ask(&rig, 100, "tools/call", {{"name", "get_status"}}, 30.0);
+    REQUIRE(call.contains("result"));
+    CHECK(call["result"]["isError"] == false);
+    CHECK(bridge.errText().find("connected to the app at " + folder) != std::string::npos);
+    link.stop();
 }
 
 #endif

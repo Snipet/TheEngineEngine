@@ -3,9 +3,16 @@
 // bridge stays small. The design is TestingPlayground's (Source/mcp/McpProtocol.h at 47bac40), rewritten, with a check
 // of the peer's user that it does not have (docs/plan/w3-a-assistant.md, "The MCP path").
 //
-//   the folder   private to the user (0700, the user's own, no symlink; anything else is refused, never repaired):
-//                Linux: $XDG_RUNTIME_DIR/TheEngineEngine-mcp, else /tmp/TheEngineEngine-mcp-<uid>; macOS:
-//                $TMPDIR/TheEngineEngine-mcp ($TMPDIR is the user's own there); TEE_MCP_DIR when set (the tests').
+//   the folder   private to the user (0700, the user's own, no symlink; anything else is refused, never repaired), and
+//                found from the system, never from the environment: Claude Desktop starts the bridge with a bare one
+//                (HOME, LOGNAME, PATH, SHELL, TERM, USER: the MCP SDK's stdio transport, getDefaultEnvironment), the
+//                app has its session's, and both ends must land on the same folder.
+//                macOS: confstr(_CS_DARWIN_USER_TEMP_DIR), the per-user /var/folders/../T/ (Libc's gen/confstr.c asks
+//                the system's dirhelper; only when that fails does it read TMPDIR), + "/TheEngineEngine-mcp";
+//                Linux: /run/user/<uid> when it is a folder, not a link, the user's own and closed to others,
+//                + "/TheEngineEngine-mcp"; else (either system) /tmp/TheEngineEngine-mcp-<uid>.
+//                TEE_MCP_DIR, when set, names the folder itself (the tests'); a base may be named instead of the
+//                system's (McpLinkOptions::base, tee-mcp --base: the tests', to keep out of the real per-user folder).
 //                In it one socket, app.sock, which exists only while the app's "Allow Claude Desktop" is on.
 //   the peer     each end checks the other's user (SO_PEERCRED on Linux, getpeereid on macOS): another user's
 //                connection is closed unanswered.
@@ -45,24 +52,49 @@ namespace tee::assistant::wire
     inline constexpr const char* kNoLink = "Claude Desktop's link is for macOS and Linux in this version";
     inline constexpr std::size_t kMaxLine = 4u * 1024u * 1024u;   // a request or a reply; the tools' are far smaller
 
-    // The folder of the link (not made here).
+    // The base the link's folder lies in, from the system and never the environment (see above): "" when the system
+    // has none to give (then the folder is /tmp/TheEngineEngine-mcp-<uid>).
+    inline std::string systemBase()
+    {
+#if defined(_WIN32)
+        return {};
+#elif defined(__APPLE__)
+        char buf[1024];
+        const std::size_t n = confstr(_CS_DARWIN_USER_TEMP_DIR, buf, sizeof buf);
+        if (n == 0 || n > sizeof buf)
+            return {};
+        std::string base(buf);
+        while (base.size() > 1 && base.back() == '/')
+            base.pop_back();
+        return base;
+#else
+        const std::string run = "/run/user/" + std::to_string(static_cast<unsigned long>(geteuid()));
+        struct stat st{};
+        if (lstat(run.c_str(), &st) != 0 || !S_ISDIR(st.st_mode) || st.st_uid != geteuid() || (st.st_mode & 077) != 0)
+            return {};
+        return run;
+#endif
+    }
+
+    // The link's folder under `base` (the system's, or one a test names): base/TheEngineEngine-mcp, or with no base
+    // /tmp/TheEngineEngine-mcp-<uid>.
+    inline std::string folderIn(const std::string& base)
+    {
+        if (!base.empty())
+            return base + "/TheEngineEngine-mcp";
+#if defined(_WIN32)
+        return {};
+#else
+        return "/tmp/TheEngineEngine-mcp-" + std::to_string(static_cast<unsigned long>(geteuid()));
+#endif
+    }
+
+    // The folder of the link (not made here): TEE_MCP_DIR when set, else under the system's base.
     inline std::string folder()
     {
         if (const char* d = std::getenv("TEE_MCP_DIR"); d != nullptr && *d != '\0')
             return d;
-#if defined(_WIN32)
-        return {};
-#elif defined(__APPLE__)
-        const char* t = std::getenv("TMPDIR");
-        std::string base = t != nullptr && *t != '\0' ? t : "/tmp";
-        if (base.back() == '/')
-            base.pop_back();
-        return base + "/TheEngineEngine-mcp";
-#else
-        if (const char* x = std::getenv("XDG_RUNTIME_DIR"); x != nullptr && *x == '/')
-            return std::string(x) + "/TheEngineEngine-mcp";
-        return "/tmp/TheEngineEngine-mcp-" + std::to_string(static_cast<unsigned long>(geteuid()));
-#endif
+        return folderIn(systemBase());
     }
 
     inline std::string socketIn(const std::string& dir)

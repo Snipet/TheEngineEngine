@@ -150,7 +150,7 @@ namespace tee::assistant
     {
         if (listen_ >= 0)
             return true;
-        dir_ = options_.folder.empty() ? wire::folder() : options_.folder;
+        dir_ = !options_.folder.empty() ? options_.folder : !options_.base.empty() ? wire::folderIn(options_.base) : wire::folder();
         if (!wire::makePrivate(dir_, why))
             return false;
         path_ = wire::socketIn(dir_);
