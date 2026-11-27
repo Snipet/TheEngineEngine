@@ -989,3 +989,30 @@ TEST_CASE("X-056: a synced low-revs upshift on the overrun", "[.x056coast]")
                     coast, w, idle, b.field("car.m1.box.synced"), b.field("car.m1.box.robot"), x * x * (3.0 - 2.0 * x));
     }
 }
+
+// X-057 (B's trace, 27 Nov): the tuned diesel pickup in D at full throttle, the redline the vehicle holds, the
+// automatic's shift point, the governor (hidden: "[.x057]")
+TEST_CASE("X-057: a governed diesel's automatic and its shift point", "[.x057]")
+{
+    for (const char* build : {"diesel-pickup-tuned", "archetypes/pickup-diesel-67-inline-six"})
+    {
+        Bench b(build);
+        b.start();
+        b.ctl().mode = 1;
+        b.ctl().lever = 1;
+        b.ctl().throttle = 1.0f;
+        b.play(20.0);
+        const double k = 9.5492966;
+        const double idleW = b.field("car.m1.idleW"), redW = b.field("car.m1.redW");
+        const double wUp = std::min(idleW + 0.9 * (redW - idleW), 0.85 * redW);
+        const int n = int(b.field("car.m1.box.n"));
+        const double fd = b.field("car.m1.box.fd"), r1 = b.field("car.m1.box.r[0]"), rTop = b.field("car.m1.box.r[" + std::to_string(n - 1) + "]");
+        const double radius = b.field("car.m1.radius");
+        const double v = b.tel("car.speed");
+        std::printf("%s: gear %g at %.1f km/h, engine %.0f rpm; the vehicle's idleW %.0f rpm, redW %.0f rpm; wUp at full pedal %.0f rpm; the input in first "
+                    "at this speed %.0f rpm; ecu.redRpm %.0f, rated %.0f rpm; gears %d, first %.2f, top %.2f, final %.2f; top gear at %.0f rpm: %.0f km/h\n",
+                    build, b.tel("car.gear"), v * 3.6, b.tel("engine.speed") * k, idleW * k, redW * k, wUp * k, v / radius * r1 * fd * k,
+                    b.field("ecu.redRpm"), b.field("spec.ecu.ratedSpeed") * k, n, r1, rTop, fd, b.tel("engine.speed") * k,
+                    b.tel("engine.speed") / (rTop * fd) * radius * 3.6);
+    }
+}
