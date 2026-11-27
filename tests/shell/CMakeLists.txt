@@ -107,7 +107,8 @@ endif()
 # The application's own panel in a test (app::makePanel, as tee-headless makes it, through tee_app_gui): the whole chain
 # of the assistant's load over unsaved work (its tool, the frame's dialog, a click, the document) in one process.
 if(TARGET tee_ui_build AND NOT TEE_PLACEHOLDER_PANEL AND COMMAND tee_app_gui)
-  add_executable(tee-shell-app-tests "${CMAKE_CURRENT_SOURCE_DIR}/app/AskChainTest.cpp")
+  add_executable(tee-shell-app-tests "${CMAKE_CURRENT_SOURCE_DIR}/app/AskChainTest.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/AssistantWakeTest.cpp")
   target_link_libraries(tee-shell-app-tests PRIVATE FunkGui::core Catch2::Catch2WithMain)
   tee_app_gui(tee-shell-app-tests)
   if(TEE_BUILD_APP)

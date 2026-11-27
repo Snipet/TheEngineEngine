@@ -12,6 +12,7 @@
 //
 // It is a console program on Windows for now: what it prints (the compile's time, the audio device, an error) is
 // what a person testing it is asked for (docs/checkpoints/M1.md).
+#include "AssistantWake.h"
 #include "Engine.h"
 #include "InputProbe.h"
 #include "Launch.h"
@@ -446,7 +447,18 @@ namespace
         options.title = "TheEngineEngine";
         options.themeIndex = o.themeGiven ? o.theme : -1;
         options.hidden = o.info;
+        // the assistant's wake (app/AssistantWake.h): made once SDL runs (the host's), served first of every event
+        std::unique_ptr<app::AssistantWake> assistantWake;
         options.rawEvent = [&](const SDL_Event& e) {
+            if (assistantWake && assistantWake->take(e))
+            {
+                // a tool posted: its job drained here, the window ticking or not; jobs left waiting: again a little later
+                if (shown.drainAssistant)
+                    shown.drainAssistant();
+                if (shown.assistant != nullptr && shown.assistant->waiting() > 0)
+                    assistantWake->again();
+                return true;
+            }
             if (commands.event(e))
                 return true;
             if (device.handleEvent(e))
@@ -658,6 +670,12 @@ namespace
 
         funkgui::desktop::DesktopHost host(*panel, std::move(options));
         commands.attach(&host);
+        if (shown.assistant != nullptr && shown.drainAssistant)
+        {
+            assistantWake = std::make_unique<app::AssistantWake>();
+            if (assistantWake->usable())
+                shown.assistant->setWake(assistantWake->wake());
+        }
         if (shown.window)
         {
             shown.window->saveText = [&commands](const std::string& name, const std::string& text, std::string& error) {
@@ -822,6 +840,8 @@ namespace
         }
         else
             code = host.run();
+        if (shown.assistant != nullptr)
+            shown.assistant->setWake({});   // the window's loop is over: a post now has nothing to wake
         if (scriptCheckCount > 0)
             std::printf("checks: %d, %d failed\n", scriptCheckCount, scriptFailures);
         if (scriptFailures > 0)
