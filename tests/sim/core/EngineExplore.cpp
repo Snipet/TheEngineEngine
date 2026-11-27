@@ -1057,3 +1057,31 @@ TEST_CASE("X-056: the overrun 1-2's robot, step by step", "[.x056guard]")
                         b.field("car.m1.box.gear"), b.field("car.m1.box.synced"), b.field("car.m1.box.robot"), b.tel("engine.speed") * 9.5492966);
     });
 }
+
+// X-056, the lead's timing (27 Nov): up, up, down at rest with the first press after a wait from the start, as the
+// application's trace (E at 3.2 s, E at 3.9 s, Q at 5.0 s) (hidden: "[.x056lead]")
+TEST_CASE("X-056: rest, up, up, down at the lead's timing", "[.x056lead]")
+{
+    for (double wait : {0.2, 1.0, 2.0, 3.0, 3.2})
+    {
+        Bench b("archetypes/inline-five-turbo-rally");
+        b.start();
+        b.ctl().mode = 1;
+        b.play(wait);
+        const double idle0 = b.field("ecu.idleRpm"), rpm0 = b.tel("engine.speed") * 9.5492966;
+        b.ctl().shiftUp += 1;
+        b.play(0.7);
+        b.ctl().shiftUp += 1;
+        double min2 = 1e9;
+        b.play(1.1, [&] { min2 = std::min(min2, b.tel("engine.speed") * 9.5492966); });
+        b.ctl().shiftDown += 1;
+        int least = 9;
+        double minD = 1e9;
+        b.play(1.0, [&] {
+            least = std::min(least, int(b.field("ecu.state")));
+            minD = std::min(minD, b.tel("engine.speed") * 9.5492966);
+        });
+        std::printf("first press %.1f s after start (engine %.0f rpm, idle %.0f): after the up to 2 down to %.0f rpm; after the down to %.0f rpm, "
+                    "least state %d, now %g\n", wait, rpm0, idle0, min2, minD, least, b.field("ecu.state"));
+    }
+}

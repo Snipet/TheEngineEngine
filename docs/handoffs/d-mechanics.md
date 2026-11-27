@@ -169,6 +169,20 @@ Tests (all through the application's path, the shipped archetypes/inline-five-tu
    0 at 5.15 s, stalled for good). Test: at rest, up, up, down; the engine still running one second after the down.
    Fails today.
 
+Case 3 measured on the Bench (27 Nov, tests/sim/core/GearsTest.cpp and the hidden "[.x056lead]"): it does NOT stall.
+With the same spacing as the lead's trace (0.7 s between the ups, 1.1 s from the second up to the down) and the first
+press 0.2, 1.0, 2.0, 3.0 or 3.2 s after the Bench's start, the engine falls to 316-402 rpm after the up to 2 and to
+156-294 rpm after the down, and the state stays 2 (running) throughout. What differs between the two paths that can be
+named without guessing: the idle the engine sits at (the Bench 1249-1257 rpm before the first press; the application's
+trace 1024 rpm in first and 1074 rpm after recovering) and the start (the Bench's start() against the application's
+key and cranking). Whether the downshift's blip reaches the engine the same way through the shell's frame is not
+measured. Open; GearsTest marks case 3 on its dip (never under 0.85 x idle) as well as on still running, and it fails
+today on the dip. The cure's prediction below covers both paths.
+
+After the guard's shift (case 2), synced in second near 1000 rpm on the overrun, the robot slips between 0.28 and 0.57
+("[.x056guard]"): the clutch letting go as the revs fall under the idle. The lead: not numbered; it gets a number only
+if X's judge or an ear finds it.
+
 Prediction for the held-value cure, to check when the window opens: the robot stays 0 through all three shifts of
 case 3 (and both of case 1), since each begins with the launch's clutch open at rest, and so the engine neither dips
 on the up to 2 nor stalls on the down to 1.
@@ -189,6 +203,14 @@ Null, corrected: every shipped build bit-identical except those three, by name. 
 (the band and the lights; diesel-v8-truck and the classic are eighteen-speeds with stated ratios, so their shift points;
 the marine V12 has no gearbox) and whether anything keyed on the redline is baked for them (D2 found no baked table in
 any of its builds; to check).
+
+The six ecu.model 0 builds that state a governor, measured on 3ca7b90c ("[.x057figs]", 2.0 s after start; none states
+highIdle, so the high idle is ratedSpeed x (1 + droop)): diesel-v8-truck 2014.3 against ecu.redRpm 2338.7 today;
+diesel-mechanical-classic 2267.9 against 2364.9; diesel-marine-v12 1890.0 against 2361.5; truck-15l-six and its bobtail
+2225.9 against 2186.6 (under: bit-identical under the min rule); diesel-pickup-tuned 2225.9 against 3264.8 (D2's
+content correction, rated 2900 rpm, is on neither this branch nor main yet: until it lands, the min rule moves the
+pickup too). The lead's ruling (12:37): redlineFor itself, min(today's value, the governed high idle) for a stated
+governor, the idle + 1500 floor not holding the cap up.
 
 Numbered for the list, not for now: X-058 (X's), archetypes/v6-35-twin-turbo-pickup, an automatic put into D at rest,
 the "start" window, 1 of 17 over its bound (3.57 against 3.22), 45 ms after the lever and before first is in.
