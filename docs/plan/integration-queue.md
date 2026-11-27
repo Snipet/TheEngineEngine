@@ -2825,6 +2825,22 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 19:04 UTC: X-065: THE LIMITER IS THE CAUSE, MEASURED, AND THE CURE IS DESIGNED FOR THE NEXT WINDOW.** L's
+  "quiet" probe (the new tree with the staging at an eighth, so the output limiter is out of play, the new spot
+  and the fold kept; 17 draws): rotary 0 of 17, median 1.58 (bound 2.35); V8 0 of 17, median 2.63 (bound 3.35),
+  equal to the tree with true levels turned back. Predicted 0 of 17 on both before the run. On first.json's tour
+  the limiter never acts on the new tree.
+  - The design is on the branch, docs only: `docs/plan/x065-limiter.md` (7ae41c17): a look-ahead limiter in the
+    Places listener's last stage (2 ms; the gain down when the peak arrives; no sample above the ceiling, as now;
+    the release, the ceiling and the +3.7 dB staging unchanged), with sources and six predictions written first
+    (both rows 0 of 17; the limiter's depth unchanged within 1 dB, so the density stays and the papery edge on
+    each pulse goes; first.json a pure 2 ms delay; every Places camera delayed alike; the other listener
+    bit-exact; `host.sim.bakes` red until the re-bake, as any sim change).
+  - **It joins the next window's list** (with item 15, item 17 and X-060, item 19 and X-059, X-058).
+  - **For the owner, with L's clips (old tree, new tree, the quiet probe; rotary and V8; matched and unmatched;
+    sent to them from L's session):** whether a loud build limited 12 to 19 dB at the rev limiter in Places, with
+    the edge gone, is what they want from true levels, or whether a loud build should also be turned down (a
+    ceiling per build that only falls: levelling by another name, so their ruling to change).
 - **27 Nov 19:01 UTC: X-065 MEASURED BY L (17 draws a row, the tree just before 2f6bbbeb against 3ba103f4): IT IS TWO
   ROWS, NOT NINE, AND IT IS A REAL CHANGE IN THE SOUND.** L's two predictions were wrong and are said so.
   - The seven triples are not item 20's: over of 17, old then new: 2-1, 1-2, 0-1, 0-0, 0-0, 1-0, 1-2 (5 of 119 red
