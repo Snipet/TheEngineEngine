@@ -2825,6 +2825,19 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 18:01 UTC: X-064, TWO OF THE ASSISTANT'S LIMITS ARE ON THE FRAME'S CLOCK** (B found the clock; card A read
+  every limit; the lead read `app/Offline.cpp:151`, `Tools.h:59`, `:63`, `Tools.cpp:684`). The clock is the frame
+  count at 60 a second: still in a minimised window, a fifth of the rate in an occluded one.
+  - On real time, so untouched: a job's ticket (2 s; a job the frame has not begun is abandoned at the deadline),
+    `set_fields`' ticket (7 s), the owner's answer, the predicted curve and the dyno (40, 20, 40 s), the
+    transport's limits, the bridge's 55 s. **So every tool's call ends in real time with the clock still: item 3's
+    bound holds, by card A's reading; its held-clock case goes with item 3's push.**
+  - On the frame's clock: (i) the gesture wait, 5 s: it cannot end while minimised (25 s occluded), the 7 s ticket
+    always wins, and the reply then says "timed out before the app took it" for what was a control being held;
+    (ii) a turn's limit, 300 s: it does not hold as written while minimised or occluded (the chat's turn stays
+    bounded by 24 calls and the requests' own limits). Neither leaves a call hanging.
+  - Cure approved in design (card A): both on a real clock inside `Tools`, one a test can hold and step. Its own
+    push, last in the order: card A's key-store cure, J2's carry, item 3, X-063, X-064.
 - **27 Nov 17:53 UTC: CI CONFIRMED B's BREAK** (the steward's read of run 46044044673: linux-x64 failed at "Build first"
   on `app/AssistantWake.h:12`, no test ran), and CI's trees are on record from a log and the workflow: the TESTS
   tree is the plain preset (`build.yml:327`; status line "Release, tools ON, tests ON, app OFF"), the application's
