@@ -43,6 +43,25 @@
 
 ## Landed
 
+- **27 Nov 17:13 UTC: `main` at 3ba103f4: THE BAKED COMMIT of today's window.** Run 46032401939: Linux (595 of 595),
+  macOS and Windows green on that commit; its soak running. Trees: `sim` 22314cde, `host` ef1715f6, `tools`
+  7c3e4d59. The bake moved no table's values (28 knock-limit tables, 14 cam maps, first.json's two: bit-identical,
+  only their keys). In it, past f77a46e6: (item 16, the steward) the shift's ignition cut lasts as long as the
+  vehicle asks (the paddle robot 110 to 60 ms, `car.model` 1's paddle manual and sequential 210 to 60, the
+  truck 200 to 150, the bike its set length): the three-cylinder's and the kei's upshift clicks CURED (0 of
+  17; the V8 pull's 1-2 at 1 of 17, not cured). (Item 18, the integrator) a dog shift holds the automatic
+  clutch where it was: X-056 cured, the rally five no longer stalls on shifts at rest. (Item 20, L, THE OWNER'S
+  RULING "true levels with a fixed gain") Places: true levels the default with one staging (+3.7 dB), the
+  Tailpipe camera a boundary microphone on the ground 0.5 m behind the mouth (the comb gone, the body of the
+  note whole, the top octave in line). (C) the bake at the standard day whatever air a build states; X-062
+  cured: the dyno service no longer hands back a superseded request's curve. (U1 through J2) the bake's words
+  in the status line, the ribbon and TUNE; a CLUTCH row in SETTINGS and the settings page scrolling where it
+  does not fit. (Card A, from the owner's quality check of the Claude integration) the link's folder found
+  without the environment (Claude Desktop's bridge and the app meet; the extension is 0.2.1: reinstall it),
+  the words about cards corrected, a wake hook, docs/manual/claude.md. Tests: X's (the automatics' pull in D,
+  a tractor pull-away nightly), the integrator's gears, D2's redlines. NOT in it (on the branch or held):
+  U1's withdrawn question and notes (40463d37), card A's seven commits and item 3, B's wake for a minimised
+  window (its permission the owner's). Left the window: items 15, 17 (X-060), 19 (X-059).
 - **27 Nov 13:28 UTC: `main` at f77a46e6: the H-shifter as a manual's lever, the bake across edits, the tuned pickup.**
   Run 46000962256: Linux, macOS and Windows green on that commit. `sim` f23337cc and `tools` 7c3e4d59 unchanged;
   `host` 86ea14da to 29bcbaa5 by C's Bake.h and Bake.cpp alone (three shipped builds rebaked byte-identical, and

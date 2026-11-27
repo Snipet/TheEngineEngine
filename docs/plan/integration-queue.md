@@ -2825,6 +2825,27 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:23 UTC: U1's air patch (40d461d5) has the lead's word, four goldens blessed** (frame.desktop.off,
+  .connected, .refused, frame.ask; no other). 4 px of air under each settings row whose line wraps to two
+  (`ui/app/AppFrame.cpp`: CLAUDE DESKTOP and WHEEL at 46, the clutch's own 4 removed). The lead's look, on c0efd215
+  in its own build: old against new differs only inside the settings column in all four pictures. Beyond air: in
+  the rig (desktop and wheel served, no clutch) the page goes from fitting at pitch 21 to scrolling at 25, TIME,
+  FLOW and FRACTION off the first page; accepted because the shipped app always serves the clutch row
+  (`app/Offline.cpp:278`), where the page already scrolls at 1100 x 700 and grows by 4 px only. The restated
+  check (`FrameTests.cpp:1301`: every stepper shown lies in the room) bites: with the clip's hide removed it fails
+  three times there (bottoms 632, 657, 682) and frame.clutch fails at 1356, 1374, 1419, 1420. To come: J2's
+  carry (the patch, then the four golden files; one green whole tier, no known red), after card A's stack has its
+  three jobs started. A nit for U1's list, not this patch's: frame.ask's dialog lies over the first letters of
+  the settings column with nothing dimmed behind it.
+- **27 Nov 17:15 UTC: THE OWNER, on their Mac with the real G29: "I was able to verify the shifter-clutch logic is
+  correct".** The first run of the H-shifter as a manual's lever on the owner's machine (B's f8fb8d9b, in `main`
+  since 13:28). Proved there: the shifter and the clutch on a manual. Still unproved on a Mac until they say:
+  the automatics' selector from the gates, the trucks, the three-way setting's other two modes.
+- **27 Nov 17:13 UTC: `main` IS AT 3ba103f4, the baked commit** (run 46032401939: Linux, macOS and Windows green).
+  **The trees `main` is gated on: sim 22314cde, host ef1715f6, tools 7c3e4d59.** Before it: f77a46e6 (13:28),
+  35a733d1 (12:19), 7ff344bc (09:02). `sim/`, `host/`, `tools/` are closed until the next window. A whole
+  default tier has NO known red. On the branch past it: J2's 40463d37 (U1's withdrawn question and notes: 590
+  of 590); to come: card A's seven commits and item 3; B's wake if its permission allows.
 - **27 Nov 16:55 UTC: THE FREEZE IS OVER. THE BAKED COMMIT IS 3ba103f4** (P's fcc5ff53 under two merges, pushed 16:17).
   Its trees: **sim 22314cde, host ef1715f6, tools 7c3e4d59**. The bake (15:39 to 16:00): all 31 idle within their
   bands warm and cold, before and after; NO TABLE'S VALUES MOVED: the 28 knock-limit tables, the 14 intake cam
