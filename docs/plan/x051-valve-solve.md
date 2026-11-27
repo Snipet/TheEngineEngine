@@ -257,6 +257,20 @@ and g(q) = min(1 + gk q, 1.6) (`gk` = 0.59 z / (1.4 x 101325)).
 - **The list of rows whose verdict changes** is part of the change: each entered or released by X on the spread,
   never by a single draw.
 
+## The real code: predictions before its first run (27 Nov, G; a local worktree, nothing pushed)
+
+The window's form (`flowPasses` verbatim, `flowConv` the secant, `flow` choosing by the cylinder's flag; the switch
+`spec.exhaust.valveSolve`; the instruments `tel.exhaust.valveChatter`, `valveFloored`, `valveRanOut`; the owner's
+lines in engine.fm `applyModels` and `writeTelemetry` and in cylinder.fm `reset`; the intake's half not yet: `vI`
+keeps the passes until N1's field). Before its first run:
+1. ref.null (every case) and test 2 (its 3 layouts; 17 nightly) identical to the bit.
+2. The hazard's case (`the valve's converged solve keeps a root it hits exactly`) passes.
+3. The combo turbo six's pull, 0 to 5 s, the builder: chatter about 270 on the passes (the scratch counter's 76 over
+   the start and 198 in the low gear) and 0 converged; with exhaust.model 0 the switch not heard.
+4. The nine shipped boosted builds (nightly): chatter 0 on the cold start, the pull and the lug. "Unfinished" may not
+   be 0: the scratch trees' histogram had solves of 15 or more evaluations.
+5. The other exhaust cases under the builder move within their bounds; a red one is explained, never loosened.
+
 ## Acceptance, written before code
 
 1. **The null, to the bit,** with both models off or both switches off: ref.null (every preset, the layouts, the

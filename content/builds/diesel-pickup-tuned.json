@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Tuned 6.7 L pickup",
-  "notes": "Card D2. A pickup's 6.7 L inline six (107 x 124 mm, 17.3:1, one turbo) on a common rail (1800 bar, a 3 % pilot) tuned: 30 % over-fuel with the smoke limiter removed, so it smokes while the turbo spools ('rolling coal' as a consequence), injection 3 degrees early, a straight pipe; an exhaust brake by the turbine's vanes (off at its switch). A 3.6 t pickup, automatic. Air at 300 K, 101325 Pa. Its valves (25 Nov): the pickup archetype's events (pickup-diesel-67-inline-six: the same 6.7 L; that archetype's judgement). Before, the reference's cam dial at 0.9999 (300 deg on a lobe separation of 106: 88 deg of overlap), which under a turbine's back pressure blows the exhaust back into the intake (card D2's truck fixture, N2's truck-valve-events.md). Its idle trim -350 -> 0: the ECU raised a 0.9999 cam's idle by 350 rpm (idle.fm), which the old trim took back.",
+  "notes": "Card D2. A pickup's 6.7 L inline six (107 x 124 mm, 17.3:1, one turbo) on a common rail (1800 bar, a 3 % pilot) tuned: 30 % over-fuel with the smoke limiter removed, so it smokes while the turbo spools ('rolling coal' as a consequence), injection 3 degrees early, a straight pipe; an exhaust brake by the turbine's vanes (off at its switch). A 3.6 t pickup, automatic. Air at 300 K, 101325 Pa. Its valves (25 Nov): the pickup archetype's events (pickup-diesel-67-inline-six: the same 6.7 L; that archetype's judgement). Before, the reference's cam dial at 0.9999 (300 deg on a lobe separation of 106: 88 deg of overlap), which under a turbine's back pressure blows the exhaust back into the intake (card D2's truck fixture, N2's truck-valve-events.md). Its idle trim -350 -> 0: the ECU raised a 0.9999 cam's idle by 350 rpm (idle.fm), which the old trim took back. Its rated speed and drivetrain (27 Nov, X-057): ecu.ratedSpeed 303.7 rad/s (2900 rpm), the 6.7 L class's (makers' figures, 260 to 310 kW at 2800 to 3000 rpm; the pickup archetype's figure); until then 219.9 (2100 rpm), a 14 L truck's rating copied across without a source. Its redline at its governed high idle, 3074 rpm (rated x 1.06; redlineTrim -191 from the reference's 3265 for 6.7 L), a speed its engine reaches: on the reference's 3265 the automatic's full-pedal upshift waited for 2775 rpm and it never left first. Its six ratios and 3.42 final drive the pickup archetype's (the same class; that archetype's judgement), not derived from a redline (autoGearing off): the 1-2 at 36 km/h, 0-100 km/h in some 13 s, like the archetype's. What moved with it (BuildsTest, 300 K, 101325 Pa): most power 224 kW at 1796 rpm -> 320 kW at 2613 rpm, most torque 1190 -> 1222 N m, idle 781 rpm unchanged.",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -11,7 +11,7 @@
       "compression": 17.3,
       "flywheel": 1,
       "idleTrim": 0,
-      "redlineTrim": 0,
+      "redlineTrim": -191,
       "rough": 0,
       "benchLoad": 0
     },
@@ -66,7 +66,7 @@
       "brakeSwitch": "Off",
       "exhaustBrake": "Turbine vanes",
       "fuelBoost": 75000,
-      "ratedSpeed": 219.9,
+      "ratedSpeed": 303.7,
       "afc": 0
     },
     "car": {
@@ -85,7 +85,16 @@
       "brakeDecel": 0.9,
       "gearbox": "Automatic",
       "gears": 6,
-      "autoGearing": true
+      "autoGearing": false,
+      "finalDrive": 3.42,
+      "ratio": [
+        3.23,
+        2.19,
+        1.41,
+        1.0,
+        0.82,
+        0.62
+      ]
     },
     "env": {
       "temperature": 300,
