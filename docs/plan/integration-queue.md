@@ -2487,6 +2487,86 @@ engines only where a source shows such an engine drawn split.
 - `main` moves when the lead has checked the trees (sim and tools unchanged; host changed by C's commits
   alone), built it and run the new cases, and three jobs are green.
 
+## 27 Nov 11:26 UTC: TWO REPORTS FROM THE OWNER'S OWN USE: shifting on any box but a manual; the Places mode's sound
+
+- **"In my testing on MacOS from last night, shifting in any form/input does not work for any transmission
+  other than a manual"** (the owner, 27 Nov; their build `main` at 6e67ac62). B reproduces it through the
+  application's own path (the Driver, the adapter) on one shipped build of each gearbox kind and says where
+  a press is lost; a failing test first at the level of the owner's hands (an action in, a gear out, per
+  kind). The integrator reads the vehicle's side (each kind's conditions for a press to change gear; the
+  counters across a load and a change of kind; what puts an automatic in drive). On paper the shell counts
+  presses and every kind in gearbox.fm takes them (the lead's ten-minute read, not a diagnosis). A lead from
+  X's survey of 26 Nov, not flagged then: the five automatics and the CVT "run the pull in one gear against
+  the limiter".
+- **"The Places mode in the Listen view doesn't sound as good as the reference. The Places mode causes some
+  comb-filter effects, and it brings out the noise and quiets the engine sound"** (the owner, 27 Nov). L's,
+  ahead of anything else: reproduce against the reference; the combing's delay and the path that makes it,
+  proved by removing that one path on a scratch tree; which noise comes forward, component by component, and
+  how much of it is level and compression (the reference sits on its limiter; Places has headroom and an
+  auto level near -12 to -14.5 dB) against the mix itself; the loudness out of the box; then a proposal and
+  clips for the owner (the reference, Places as shipped, Places with the fixes, at matched loudness). No
+  code under `sim/` yet.
+- **The bake across edits (C), the rule as built:** provenance in place of a load flag (a stale table keeps
+  playing only if the service saw those exact values current on this program); unfit by a field change
+  (cylinders, layout, cycle; the redline's fields; the idle speed; the boost's class and layout; the fuel's
+  kind; each model switch the keys hold); undo reads current at once; the debounce the larger of 1.5 s and
+  5 % of the expected bake, ceiling 15 s; the predicted curve runs on the build as it stands.
+- **Asked of the owner again, since a fault under `sim/` in either report needs it:** the three sessions whose
+  pushes are refused (the integrator, N2, P): approve inside them, have the lead carry, or fresh sessions.
+
+## 27 Nov 11:35 UTC: SHIFTING ON ANY BOX BUT A MANUAL: reproduced (B), the shell half ruled, the sim half X-056
+
+**Reproduced** by B in the application's own path (tee-headless, DRIVE, the default settings: the automatic clutch
+on; E twice at rest, the throttle, E at speed, Q), `car.gear` after each. Manual: 0, 1, 2, 3, 2. Dual clutch
+(shipped, and the coupe set to it): the same. Automatic (diesel-pickup-tuned, the only shipped one) and a coupe
+set to CVT: 0 throughout, the engine free in neutral. Eighteen-speed (truck-15l-six): 0 throughout. The coupe
+set to Sequential: 0, 1, 2 at a standstill, then the engine stalls.
+
+**The cause, confirmed by the lead's own read of the code.** `shell/input/Driver.cpp:276` sends `lever = 0`
+whenever the automatic clutch is on (the default). The automatic and the CVT take R, N, D from the lever alone
+(`sim/vehicle/gearbox.fm:333`) and ignore the counters by design; the eighteen-speed is driven by the lever, the
+buttons and the clutch pedal (`vehicle.fm:611`). So all three sit in neutral whatever is pressed. Of the six
+shipped builds that state a gearbox, four are Eighteen-speed and one is Automatic: five of six. The Dual clutch
+failing for the owner is NOT reproduced and stays open until they say which build, input and mode.
+
+**Ruled (B, `shell/` only, a failing test first per kind, no `sim/` change, no `[soak]`):**
+- The Driver learns the gearbox kind and `car.model` from the build; under `car.model` 0 nothing moves (a test).
+- Automatic and CVT: a selector, a ladder R, N, D held on the lever. A shift up steps towards D; a shift down
+  steps towards R, and from D only at a crawl (above it the press does nothing: a press hoping for a kickdown
+  must not find neutral at speed). N: N at any speed. Keys 1 to 6 and the shifter's forward gates: D. The
+  reverse gate: R. Out of every gate: N.
+- Eighteen-speed: mapped, not refused. The lever passes through whatever the automatic clutch says, and the
+  clutch is the driver's. Keys and gates 1 to 4: the lever's positions; 5: the L slot; reverse; N. A shift up
+  or down: the next gear of the eighteen in order (the shell sets the lever and the splitter and range bits
+  that gear wants, no pedal, no rev match: a driver who does neither grinds, as the box says). A status line
+  says the clutch is the driver's. NOT built: a truck that works its own clutch on the paddles (a `sim/`
+  feature, an automated eighteen; put to the owner as a want).
+- `docs/controls.md` corrected in the same push (three lines there are false today).
+
+**X-056 (numbered now; the integrator's; `sim/`, so the window):** a Sequential box shifted 1 to 2 at rest
+stalls the engine. B's reading, one trace, unconfirmed: `gearbox.fm:283` `robot = 1.0f` ("a dog shift leaves
+the clutch closed") holds during every dog shift, also where the robotised clutch was open. No shipped build is
+Sequential. The integrator confirms or refutes with its own measurement and designs the smallest cure; item 18.
+
+## 27 Nov 11:36 UTC: CORRECTION to the section above; the integrator's read; the pull in neutral (X)
+
+- **False, and mine to withdraw: "No shipped build is Sequential" and "five of six".** The application opens the
+  shipped folder recursively, archetypes included. By the lead's grep of `content/builds/*.json` and
+  `content/builds/archetypes/*.json`: Automatic 7, Dual clutch 7, Eighteen-speed 5, Sequential 1
+  (`archetypes/inline-five-turbo-rally`), CVT 1 (`archetypes/economy-four-15`), the rest Manual. So **13 shipped
+  builds sit in neutral** under the automatic clutch, and X-056 touches a shipped build (it still needs a shift
+  pressed twice at rest; it stays item 18).
+- **The integrator's own probe of the sim (the second measurement):** from rest in DRIVE, presses move the
+  manual (lever 0), the sequential and the dual clutch; the automatic and the CVT ignore presses and drive on
+  lever 1; the eighteen-speed moves by neither alone. The counters cannot swallow more than one step's press.
+  The sim does what its code says for every kind: the fault is the lever the shell never sends.
+- **Not taken:** the counters as a selector inside `gearbox.fm`, or a manual mode on the automatic. A feature
+  for the owner to want.
+- **For X (tests only):** the combo pull drives by shift-up presses and sets no lever (Combo.cpp:206-221), so on
+  an automatic, a CVT and an eighteen-speed it has been revving in NEUTRAL, where the survey says "one gear on
+  the limiter". X confirms by `car.gear`, gives the automatic and CVT a real pull (lever 1), and proposes what
+  the truck rows should be; rows by the evidence rule; the soak's cost stated before it lands.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
@@ -2584,6 +2664,17 @@ engines only where a source shows such an engine drawn split.
      behind a hidden switch with the reference's three passes for the null. The line that hands the switch
      to the cylinder's valves is its file's owner's. Acceptance: the null to the bit; the sometimes rows by
      the evidence rule on the real code; the gate warm and cold on all 31; Q's cost; clips for the owner.
+ 18. the integrator (27 Nov; the design held here, its notes being local): X-056, a dog shift shuts the
+     robotised clutch (gearbox.fm:283, `robot = 1.0f`) where it was open or slipping. CONFIRMED by the
+     integrator's own trace on the shipped rally five: at rest 1-2 the engine to 382 rpm and the car shoved to
+     3 km/h (B's coupe stalled); an early 1-2 on a slipping launch to 719 rpm; a 2-1 at a crawl to 947 rpm.
+     The first cure (`robot = launch`) was REFUTED by the lead's question, measured: the synced latch is
+     cleared through every shift (:177), so under idle + 110 rad/s it would open a closed clutch (to 0.11 at
+     1536 rpm on the overrun). THE CURE (11:40): the dog shift holds the clutch where it was when the shift
+     began (begin() keeps robot's value). Equal to today's bits wherever robot was 1.0 at the shift's start
+     (synced, or the revs over the edge); the pull's and tour's rows to confirm it, not a reading. Two tests:
+     rest, two presses (the engine over 0.85 x idle, the car under 0.5 km/h: fails today); a synced 1-2 at
+     1500 rpm on the overrun keeps robot 1.0 (passes today, fails on the first cure). Behind 16, 17 and 15.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
@@ -2591,6 +2682,8 @@ engines only where a source shows such an engine drawn split.
   check that reads "the shipped builds" reads them as the bake's gate does (warm and cold) or says which state
   it did not read; a refusal of a session's permission check is never worked around; no single draw of a combo row is
   evidence for or against a change (26 Nov 07:26).
+- **27 Nov 11:35 UTC: `shell/` carries one ruled change in flight (B: the gears by gearbox kind, the owner's
+  shifting report).** It needs no bake; `main` moves on its three green jobs after the lead has driven it.
 - **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
   baked tables), docs. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead runs.
 - **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**
