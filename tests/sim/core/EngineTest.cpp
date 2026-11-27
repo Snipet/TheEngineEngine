@@ -779,17 +779,6 @@ TEST_CASE("a custom engine written from its table configures as its table does (
     }
 }
 
-namespace
-{
-    // "name[3].rest" -> {"name", 3, "rest"}; false when the path has no index after `name`
-    bool indexAfter(const std::string& path, const std::string& name, int& index)
-    {
-        if (path.rfind(name + "[", 0) != 0)
-            return false;
-        index = std::atoi(path.c_str() + name.size() + 1);
-        return true;
-    }
-} // namespace
 
 TEST_CASE("the application's first build: no configuration field differs between written after init and initialised over it (first.json)", "[core][engine][models]")
 {
@@ -803,9 +792,7 @@ TEST_CASE("the application's first build: no configuration field differs between
     // with its reason. The check that would have caught the intake runners' wall (below).)
     std::vector<unsigned char> snap[2][2];
     const tee::Schema* schema = nullptr;
-    int n = 0, ports = 0, nUsed = 0, nj = 0, nBands = 0, ne = 0, nSides = 0, model = 0;
-    std::set<int> used;
-    std::vector<int> jn;
+    tee::test::core::InUse inUse;
     for (int route = 0; route < 2; ++route)
     {
         Bench b("first");
@@ -828,73 +815,20 @@ TEST_CASE("the application's first build: no configuration field differs between
         b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
         b.play(1.5);
         // (the counts in use: the same on both routes, read on each)
-        const int counts[8] = {int(b.field("lay.n")), int(b.field("lay.ports")), int(b.field("exh.b.net.nUsed")), int(b.field("exh.b.net.nj")),
-                               int(b.field("exh.b.net.nBands")), int(b.field("exh.b.net.ne")), int(b.field("exh.b.nSides")), int(b.field("exh.model"))};
+        const tee::test::core::InUse u = tee::test::core::readInUse([&](const std::string& f) { return b.field(f); });
         if (route == 0)
-        {
-            n = counts[0]; ports = counts[1]; nUsed = counts[2]; nj = counts[3]; nBands = counts[4]; ne = counts[5]; nSides = counts[6]; model = counts[7];
-            for (int k = 0; k < nUsed; ++k)
-                used.insert(int(b.field("exh.b.net.used[" + std::to_string(k) + "]")));
-            for (int j = 0; j < nj; ++j)
-                jn.push_back(int(b.field("exh.b.net.jN[" + std::to_string(j) + "]")));
-        }
+            inUse = u;
         else
-        {
-            const int mine[8] = {n, ports, nUsed, nj, nBands, ne, nSides, model};
-            for (int k = 0; k < 8; ++k)
-                CHECK(counts[k] == mine[k]);
-            for (int k = 0; k < nUsed; ++k)
-                CHECK(used.count(int(b.field("exh.b.net.used[" + std::to_string(k) + "]"))) == 1);
-        }
+            CHECK(u == inUse);
         const auto* d = static_cast<const unsigned char*>(in.data());
         snap[route][0].assign(d, d + in.size());
         b.play(0.5);
         snap[route][1].assign(d, d + in.size());
     }
-    REQUIRE(model == 1);   // (the model-0 exhaust's pipes are then unused: below)
+    REQUIRE(inUse.exhModel == 1);   // (the model-0 exhaust's pipes are then unused: below)
 
-    // The kinds a route may leave different, each with its reason; nullptr: none
-    const auto named = [&](const std::string& p) -> const char* {
-        int i = 0;
-        if (p.size() > 4 && (p.compare(p.size() - 4, 4, ".rev") == 0) )
-            return "a revision count: each route writes the Spec, and builds the exhaust, a different number of times";
-        if (p.rfind("revSeen[", 0) == 0 || p.rfind("modelRev[", 0) == 0 || p == "exh.seenRev" || p == "boost.mach.mapRev")
-            return "a revision count: each route writes the Spec, and builds the exhaust, a different number of times";
-        if ((indexAfter(p, "cyl", i) || indexAfter(p, "geo.fire", i) || indexAfter(p, "geo.tdc", i) || indexAfter(p, "geo.order", i) ||
-             indexAfter(p, "geo.axisX", i) || indexAfter(p, "geo.axisY", i) || indexAfter(p, "geo.z", i) || indexAfter(p, "mm.cph", i) ||
-             indexAfter(p, "mm.sph", i) || indexAfter(p, "lay.fire", i) || indexAfter(p, "lay.bank", i)) && i >= n)
-            return "a cylinder past the build's count: the default V8's, left by route 0, read by nothing";
-        if ((indexAfter(p, "intk.run", i) || indexAfter(p, "intk.endRun", i) || indexAfter(p, "exh.b.net.portD", i)) && i >= ports)
-            return "a port's pipe past the build's count: the default V8's, left by route 0, read by nothing";
-        for (const char* m0 : {"exh.prim[", "exh.ch1[", "exh.ch2[", "exh.pipe[", "exh.tail[", "exh.mid[", "exh.sec[", "exh.cross.", "exh.lanes.",
-                               "exh.laneKind[", "exh.laneIdx[", "exh.endR[", "exh.kMuf[", "exh.kExit[", "exh.kHin", "exh.kHout", "exh.kInM",
-                               "exh.kOutM", "exh.kSin", "exh.kSout", "exh.kXp", "exh.rCat", "exh.rPerf", "exh.tick128"})
-            if (p.rfind(m0, 0) == 0)
-                return "the model-0 exhaust's pipes (the default V8 ran exhaust.model 0): unused under exhaust.model 1";
-        if (indexAfter(p, "exh.b.net.d", i) && used.count(i) == 0)
-            return "a builder's pipe not in use (exh.b.net.used): the default V8's";
-        if (p.rfind("exh.b.net.d[", 0) == 0 && (p.find(".pgIn[") != std::string::npos || p.find(".pgLast") != std::string::npos ||
-                                                p.find(".pgHave") != std::string::npos))
-            return "the passivity check's cache (XBuild::filterFirst): inputs as last checked, refreshed when they move";
-        if (indexAfter(p, "exh.b.net.used", i) && i >= nUsed)
-            return "the builder's list of pipes past its count";
-        for (const char* jf : {"exh.b.net.jKind", "exh.b.net.jN", "exh.b.net.jPop", "exh.b.net.jRef", "exh.b.net.jT", "exh.b.net.jP",
-                               "exh.b.net.jDrive", "exh.b.net.jAdmit", "exh.b.net.jPx"})
-            if (indexAfter(p, jf, i) && i >= nj)
-                return "a junction past the builder's count";
-        for (const char* bf : {"exh.b.net.bD", "exh.b.net.bE", "exh.b.net.bR", "exh.b.net.bT", "exh.b.net.bKf", "exh.b.net.bKr", "exh.b.net.bS",
-                               "exh.b.net.bA", "exh.b.net.bBand", "exh.b.net.bNa", "exh.b.net.bNrho", "exh.b.net.bNin", "exh.b.net.bNout"})
-            if (indexAfter(p, bf, i) && (i / 14 >= nj || i % 14 >= jn[std::size_t(i / 14)]))
-                return "a junction's branch past its count (XN_BR 14 a junction)";
-        for (const char* gf : {"exh.b.net.fnHp", "exh.b.net.fnLp", "exh.b.net.fnLp2", "exh.b.net.fnN", "exh.b.net.fnG", "exh.b.net.drawOrder"})
-            if (indexAfter(p, gf, i) && i >= nBands)
-                return "a noise band past the builder's count";
-        if (indexAfter(p, "exh.b.net.ends", i) && i >= ne)
-            return "an open end past the builder's count";
-        if ((indexAfter(p, "exh.b.jMuf", i) && i / 5 >= nSides) || (indexAfter(p, "exh.b.prevMuf", i) && i >= nSides))
-            return "a muffler's side past the build's count";
-        return nullptr;
-    };
+    // The kinds a route may leave different, each with its reason (FieldDiff.h's inertKind, shared with X's switch case)
+    const auto named = [&](const std::string& p) { return tee::test::core::inertKind(p, inUse); };
     // (the runners' wall, a finding of this case's first form (25 Nov): Duct::set kept the wall's shelves keyed on length
     // and sound speed alone, so route 0's runners kept the default V8's wall; G's cure keys it on the bore and rate too
     // (e7088e2b), taken by the runners under intake.model 1 (N1's line). Named here until then; it went with the cure)
