@@ -1085,3 +1085,55 @@ TEST_CASE("X-056: rest, up, up, down at the lead's timing", "[.x056lead]")
                     "least state %d, now %g\n", wait, rpm0, idle0, min2, minD, least, b.field("ecu.state"));
     }
 }
+
+// Item 19's readers (27 Nov): what a governed build's redline reaches, read on any sim/ tree (TEE_CORE_SIM, for the
+// before and after): the configure's values, a free rev at full pedal (the top speed, the cut, the sound's level), and
+// the dyno at full pedal at three speeds (torque, boost) (hidden: "[.item19readers]")
+TEST_CASE("Item 19: the readers of ecu.redRpm on the governed builds", "[.item19readers]")
+{
+    const double k = 9.5492966;
+    for (const char* build : {"diesel-v8-truck", "diesel-mechanical-classic", "diesel-marine-v12", "truck-15l-six", "diesel-pickup-tuned"})
+    {
+        {
+            Bench b(build);
+            b.start();
+            b.play(0.5);
+            std::printf("%s: ecu.redRpm %.2f, tel engine.redline %.2f, car.m1.redW %.2f rpm, boost.mach.redRpm %.2f, idle %.1f\n", build,
+                        b.field("ecu.redRpm"), b.tel("engine.redline"), b.field("car.m1.redW") * k, b.field("boost.mach.redRpm"), b.field("ecu.idleRpm"));
+            b.ctl().mode = 0;
+            b.ctl().throttle = 1.0f;
+            double top = 0, sum = 0, sq = 0, n = 0, lo = 1e9, tqMin = 1e9;
+            b.play(3.0);
+            b.play(3.0, [&] {
+                const double w = b.tel("engine.speed") * k;
+                top = std::max(top, w);
+                lo = std::min(lo, w);
+                tqMin = std::min(tqMin, b.tel("engine.torque"));
+                for (float x : b.left())
+                {
+                    sq += double(x) * x;
+                    ++n;
+                }
+                sum += w;
+            });
+            std::printf("   free rev, full pedal, 3-6 s: engine %.1f to %.1f rpm, least torque %.1f N m, sound %.2f dBFS\n", lo, top, tqMin,
+                        10.0 * std::log10(sq / std::max(n, 1.0) + 1e-20));
+        }
+        for (double rpm : {1200.0, 1600.0, 1900.0})
+        {
+            Bench b(build);
+            b.start();
+            b.ctl().mode = 2;
+            b.ctl().throttle = 1.0f;
+            b.ctl().dynoSpeed = float(rpm / k);
+            b.play(4.0);
+            double tq = 0, bp = 0, n = 0;
+            b.play(1.0, [&] {
+                tq += b.tel("engine.dynoTorque");
+                bp += b.tel("boost.pressure");
+                ++n;
+            });
+            std::printf("   dyno %.0f rpm full pedal: torque %.2f N m, boost %.0f Pa\n", rpm, tq / n, bp / n);
+        }
+    }
+}
