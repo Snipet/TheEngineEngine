@@ -2802,8 +2802,10 @@ the steward would use, if the owner allows it:
     verified ahead from its patch file), C's standard-day bake under `host/`, FROZEN FOR THE BAKE. Items 15,
     17 and 19 have left this window (17: X-060, the flat-plane V8's top point from 6 to 16 failures in 51 of
     the predictor's settle floor; 19: X-059, the cap moves the turbo's match on three builds).
-  - Not `sim/` and free to land meanwhile (they reach `main` with the baked commit): J2's carry of U1's bake
-    words (`[soak]`), U1's CLUTCH row and the settings' scroll after the lead's look, docs.
+  - IN, not `sim/` (they reach `main` with the baked commit): U1's bake words (0f5dc0c9, `[soak]`), and at
+    f6a5d10f (14:28) U1's CLUTCH row in SETTINGS, the settings page's scroll where its rows do not fit, and the
+    restated build.bake.stale, all carried by J2 after the lead's own look at the pictures. Card A's fixes from
+    the owner's quality check of the Claude integration land as they are ready (assistant/, app/, tests, docs).
 - **THE WINDOW'S RULES OF THE DAY (the steward's advice, taken):** a `sim/` item is accepted on one whole default
   tier on the merged state green EXCEPT the cases that assert a shipped bake is current on this program (the
   key holds the program's source hash: the steward lists them by name here before the first call; first known:
@@ -2822,11 +2824,12 @@ the steward would use, if the owner allows it:
   one undone during the wait starts none; the service may go while it waits". Read and NOT of the kind: every
   other knockLimitCurrent or intakeCamCurrent in EngineTest.cpp (tables baked inside the case, or asserted not
   current), TuneFuelTests.cpp:51, BuildTests' build.bake, the nightly tier, the bake gate (idle figures, not
-  keys). A red outside these is a red. **A SIXTH, by name (14:04, the lead's ruling on J2's question):** ctest
-  `ui.build`, the case `build.bake.stale` (tests/ui/BuildTests.cpp:368-382; it arrives with J2's carry of U1's
-  bake words): it loads first.json and requires its shipped bake current at load, so on a changed `sim/` it
-  reads "baking spark map ..." and fails; the same kind as the five. P's proof on the baked commit:
-  `host.sim.bakes` green with its five passing by name, AND `ui.build`'s `build.bake.stale` green.
+  keys). A red outside these is a red. **The sixth is GONE (14:28):** named at 14:03 (ui.build's
+  `build.bake.stale`, which asserted first.json's shipped bake current at load), and withdrawn at 14:11 for
+  U1's restatement of the case (it waits for the bake to land, the shipped one or its own, and every check
+  after is unchanged), carried by J2 at f6a5d10f: on that commit's tier of record 584 of 585, the only red
+  the five; `ui.build` green in 194 s ("current after 167 s: baked"). THE KNOWN RED IS THE FIVE AND NOTHING
+  ELSE. P's proof on the baked commit: `host.sim.bakes` green with its five passing by name.
 - **Asked of the owner this afternoon, under way (not the window's):** "a quality check on the Claude integration
   (both MCP and in-app interface)... try to find bugs/inaccuracies/integration issues": a fresh reviewer, TEE R
   (session_01LFAGgQVPmQi8n8GgP5YyjZ), read-only on `main` at f77a46e6, findings to the lead marked proved or
