@@ -410,6 +410,22 @@ TEST_CASE("assistant: the curves run on a private copy, and the document and the
     CHECK(rig.call("run_dyno", {{"from_rpm", 3000}, {"to_rpm", 2000}}).isError);
     CHECK(rig.call("run_dyno", {{"from_rpm", 100}, {"to_rpm", 2000}}).isError);
     CHECK(rig.call("run_dyno", {{"from_rpm", 1000}, {"to_rpm", 90000}}).isError);
+    CHECK(rig.call("run_dyno", {{"from_rpm", 100}, {"to_rpm", 7000}}).isError);     // (the reviewer's two)
+    CHECK(rig.call("run_dyno", {{"from_rpm", 1000}, {"to_rpm", 12000}}).isError);
+    // and the bounds are where Claude reads them: in the schema, the same as the handler's
+    const ToolInfo* dyno = nullptr;
+    for (const ToolInfo& t : rig.tools->list())
+        if (t.name == "run_dyno")
+            dyno = &t;
+    REQUIRE(dyno != nullptr);
+    const json& from = dyno->inputSchema["properties"]["from_rpm"];
+    const json& to = dyno->inputSchema["properties"]["to_rpm"];
+    CHECK(from["minimum"] == 500);
+    CHECK(to["maximum"] == 20000);
+    CHECK(from["maximum"] == 19800);
+    CHECK(to["minimum"] == 700);
+    CHECK(from["description"].get<std::string>().find("200 to 10000") != std::string::npos);
+    CHECK(to["description"].get<std::string>().find("200 to 10000") != std::string::npos);
 }
 
 TEST_CASE("assistant: the curves yield to the app's own: never with the ribbon's or the bake's, never deadlocked",

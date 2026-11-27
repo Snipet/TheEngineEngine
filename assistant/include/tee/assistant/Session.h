@@ -69,7 +69,8 @@ namespace tee::assistant
 
         McpLink::View desktop() const { return link_->view(); }
         // What the status line says of Claude Desktop: "" while the switch is off; "Claude Desktop allowed" while on
-        // and nothing connected; "Claude Desktop connected, 3 changes" (running: "Claude Desktop working: set_fields").
+        // and nothing connected; "Claude Desktop connected, 3 changes made" (batches of field changes, not loads or
+        // saves; made, so undoing one in the app does not lower it) (running: "Claude Desktop working: set_fields").
         // Until the frame draws the cards, this is how the owner sees that Claude Desktop changes the build.
         std::string statusNote() const;
         Cards& cards() noexcept { return cards_; }
@@ -80,11 +81,15 @@ namespace tee::assistant
         // platform's (libcurl), its key the system's store's; where either is missing it says why (ChatPort::ready).
         ChatPort& chat() noexcept { return *chat_; }
         // The key dialog's (U1's): a key as typed, checked and saved in the system's store (false, with why: nothing
-        // changed); the saved one's mask ("saved, ending ...abcd"); the key removed. The key is read from the store once
-        // and held in memory after, so the panel never waits on the store while it draws.
+        // changed); the saved one's mask ("saved, ending ...abcd"; "reading..." while it is read); the key removed.
+        // The saved key is read once, on a thread of its own, the first time the chat asks for it: the window never
+        // waits on the store (the Keychain may ask the owner whether this app may use it). A read that fails, or that
+        // the owner refuses, is not tried again until a key is saved or removed.
         bool saveKey(std::string typed, std::string& why);
         std::string keyMask();
         bool removeKey(std::string& why);
+        // Tests: the store the session uses in place of the system's (before the chat is used).
+        void useKeyStore(std::unique_ptr<KeyStore> store);
 
         // Every worker stopped (their calls cancelled and waited for), then the inbox closed. Idempotent.
         void stop();
@@ -96,12 +101,21 @@ namespace tee::assistant
         std::unique_ptr<Tools> tools_;
         std::unique_ptr<McpLink> link_;
         std::unique_ptr<Transport> transport_;
-        std::unique_ptr<KeyStore> keys_;
+        std::shared_ptr<KeyStore> keys_;
         std::string transportWhy_, keysWhy_;
-        mutable std::mutex keyMutex_;
-        std::string key_;
-        bool keyRead_ = false;
-        std::string currentKey();
+        // The saved key, as the reading thread leaves it (shared with that thread, which may outlive the session while
+        // the store holds it, at a Keychain question: it then leaves the session alone).
+        struct KeyState
+        {
+            std::mutex mutex;
+            enum class Step { Unread, Reading, Read, Failed } step = Step::Unread;
+            std::string key, why;
+            bool alive = true;              // the session is there (cleared, under the mutex, as it goes)
+            std::function<void()> changed;  // the chat told (under the mutex, while alive)
+        };
+        std::shared_ptr<KeyState> keyState_ = std::make_shared<KeyState>();
+        std::string currentKey();           // never waits: starts the read once, "" until it is done
+        std::string keyWhy();               // why there is no key now ("" : none is saved)
         std::unique_ptr<Chat> chat_;
         bool stopped_ = false;
         std::atomic<bool> appBusy_{false};

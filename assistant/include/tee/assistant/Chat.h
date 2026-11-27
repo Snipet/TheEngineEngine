@@ -91,6 +91,14 @@ namespace tee::assistant
         virtual void stop() = 0;                             // the turn running cancelled
         virtual std::string question() const = 0;           // Claude's question waiting for the owner ("" none)
         virtual bool answer(const std::string& text) = 0;    // the owner's answer to it
+        // A new chat: the conversation (what is sent, and what is shown) emptied. A turn running is stopped, and the
+        // chat empties once it has ended (never under it).
+        // (Defaults: nothing to clear, nothing returned, so a port that predates them still compiles.)
+        virtual void clear() {}
+        virtual bool canClear() const { return false; }      // there is something to clear (or a turn to stop first)
+        // A message handed back to the owner's box, once ("" none): one the API could not take (the conversation is
+        // longer than Claude can read), so that it is not lost.
+        virtual std::string takeReturned() { return {}; }
     };
 
     struct ChatOptions
@@ -108,6 +116,9 @@ namespace tee::assistant
         // for macOS and Linux in this version"); ready() says it rather than asking for a key it could not keep.
         std::string noTransportWhy;
         std::string noKeyStoreWhy;
+        // Why there is no key now, when the key function gives none ("" : none is saved): "reading your saved key...",
+        // or that it could not be read. May be empty.
+        std::function<std::string()> keyWhy;
         // Waits `seconds` unless `cancel` is raised first (tests give one that does not wait). Empty: the real clock.
         std::function<void(double seconds, const std::atomic<bool>& cancel)> sleep;
     };
@@ -131,9 +142,17 @@ namespace tee::assistant
         void stop() override;
         std::string question() const override;
         bool answer(const std::string& text) override;
+        void clear() override;
+        bool canClear() const override;
+        std::string takeReturned() override;
+
+        // Something the panel shows changed outside a turn (the saved key read): laid out again. Any thread.
+        void refresh();
 
         // The history as it would be sent (a copy), for tests and for nothing else.
         nlohmann::json history() const;
+        // The same in the order it is sent, key for key (the API's own order for what Claude wrote).
+        nlohmann::ordered_json historyAsSent() const;
         // Waits for the turn to end (tests).
         void wait();
 
@@ -159,13 +178,18 @@ namespace tee::assistant
         const std::string toolsJson_;           // made once: byte-stable
 
         mutable std::mutex mutex_;
-        nlohmann::json history_ = nlohmann::json::array();
+        // What is sent, in the API's own key order for what Claude wrote (a tool call's input as it was streamed): an
+        // earlier message is sent again byte for byte, never re-sorted (preserved thinking's check of earlier messages).
+        nlohmann::ordered_json history_ = nlohmann::ordered_json::array();
         std::vector<ChatItem> items_;
         std::uint64_t revision_ = 0;
         std::string question_;
         std::string answer_;
         bool answered_ = false;
         bool busy_ = false;
+        bool clearAfter_ = false;               // clear() during a turn: emptied when it ends
+        std::string returned_;                  // for the owner's box (takeReturned)
+        void clearLocked();                     // (mutex_ held)
 
         std::atomic<bool> cancel_{false};
         std::thread worker_;
@@ -191,4 +215,5 @@ namespace tee::assistant
     // thinking, redacted_thinking, tool_use and any block type not known to be the conversation's own are omitted;
     // the fallback block stays where it is; everything after it is kept. Without a fallback block: unchanged.
     nlohmann::json echoContent(const nlohmann::json& content);
+    nlohmann::ordered_json echoContent(const nlohmann::ordered_json& content);   // (the same, keys in their order)
 }

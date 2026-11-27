@@ -646,6 +646,55 @@ TEST_CASE("assistant: the switch off is the shipped default and costs nothing: n
     }
 }
 
+TEST_CASE("assistant: tee-mcp answers a batch and an over-long request, and goes on", "[assistant]")
+{
+    const LinkDir held("batch");   // no app: the bridge alone
+    Bridge bridge(held.path);
+    // a JSON-RPC batch: one error, id null, and the server still there
+    bridge.send(json::array({{{"jsonrpc", "2.0"}, {"id", 1}, {"method", "ping"}}}));
+    const json batch = bridge.next(nullptr, 10.0);
+    INFO(batch.dump());
+    REQUIRE(batch.is_object());
+    CHECK(batch["error"]["code"] == -32600);
+    CHECK(batch["id"].is_null());
+    CHECK(bridge.ask(nullptr, 2, "ping", json::object(), 10.0).contains("result"));
+    // a request over 4 MB: answered, dropped whole (its tail too), and the next one read
+    const std::string huge = "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"ping\",\"params\":{\"pad\":\""
+                             + std::string(wire::kMaxLine + 1000, 'x') + "\"}}\n";
+    REQUIRE(write(bridge.in, huge.data(), huge.size()) == static_cast<ssize_t>(huge.size()));
+    const json over = bridge.next(nullptr, 20.0);
+    INFO(over.dump());
+    REQUIRE(over.is_object());
+    CHECK(over["error"]["code"] == -32600);
+    CHECK(bridge.ask(nullptr, 4, "ping", json::object(), 10.0).contains("result"));
+}
+
+TEST_CASE("assistant: the status line counts the field changes Claude made, not its loads or saves", "[assistant][sharedsim]")
+{
+    const LinkDir held("status");
+    Rig rig("mcp-status");
+    rig.inbox.close();
+    Session session(SessionParts{*rig.file, *rig.library, [&]() -> SimHost* { return &rig.sim->host(); },
+                                 [&] { return rig.sim->host().sim(); }, [&] { return rig.clock; }, nullptr, nullptr,
+                                 McpLinkOptions{held.path, -1, "0.2.0", {}}});
+    std::string why;
+    REQUIRE(session.allowDesktop(true, why));
+    const int fd = wire::connectTo(held.path, why);
+    REQUIRE(fd >= 0);
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (session.desktop().connections == 0 && std::chrono::steady_clock::now() < until)
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    REQUIRE(session.desktop().connections == 1);
+    session.cards().add({0, "set_fields", "Bore 0.086 m -> 0.0861 m", 7, false});
+    session.cards().add({0, "load_build", "Loaded v10", 0, false});
+    session.cards().add({0, "save_build_as", "Saved as mine", 0, false});
+    CHECK(session.statusNote() == "Claude Desktop connected, 1 change made");
+    session.cards().add({0, "set_fields", "Idle 800 rpm -> 850 rpm", 8, false});
+    CHECK(session.statusNote() == "Claude Desktop connected, 2 changes made");
+    close(fd);
+    session.stop();
+}
+
 TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app with SIGPIPE", "[assistant][sharedsim]")
 {
     const SigpipeWatch watch;

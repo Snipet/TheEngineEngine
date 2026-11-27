@@ -418,7 +418,18 @@ namespace tee::assistant
             {"run_dyno", "Run a dyno sweep",
              "A full-throttle dyno sweep of a private copy of the open build from one engine speed to another (rpm): "
              "torque and power at each point. Takes up to a minute.",
-             object({{"from_rpm", {{"type", "number"}}}, {"to_rpm", {{"type", "number"}}}}, {"from_rpm", "to_rpm"}), true},
+             object({{"from_rpm",
+                      {{"type", "number"},
+                       {"minimum", 500},
+                       {"maximum", 19800},
+                       {"description", "The sweep's lowest speed, rpm: 500 to 19800, and 200 to 10000 below to_rpm"}}},
+                     {"to_rpm",
+                      {{"type", "number"},
+                       {"minimum", 700},
+                       {"maximum", 20000},
+                       {"description", "The sweep's highest speed, rpm: up to 20000, and 200 to 10000 above from_rpm"}}}},
+                    {"from_rpm", "to_rpm"}),
+             true},
         };
     }
 

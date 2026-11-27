@@ -25,21 +25,41 @@ namespace tee::assistant
 
     bool urlAllowed(std::string_view url, std::string& why)
     {
-        const std::string u = lower(std::string(url));
-        if (u.rfind("https://", 0) == 0)
-            return true;
-        if (u.rfind("http://", 0) == 0)
-        {
-            std::string host = u.substr(7);
-            host = host.substr(0, host.find('/'));
-            if (host.rfind("[::1]", 0) == 0)
-                return true;
-            host = host.substr(0, host.find(':'));
-            if (host == "127.0.0.1" || host == "localhost")
-                return true;
-        }
         why = "only https is used (plain http to this machine alone)";
-        return false;
+        const std::string u = lower(std::string(url));
+        const bool secure = u.rfind("https://", 0) == 0;
+        if (!secure && u.rfind("http://", 0) != 0)
+            return false;
+        // the authority: up to the path, the query or the fragment
+        const std::string rest = u.substr(secure ? 8 : 7);
+        const std::string authority = rest.substr(0, rest.find_first_of("/?#"));
+        // no user part ("http://localhost:80@elsewhere/" is elsewhere's), nothing a parser may read another way
+        for (const char c : authority)
+            if (c == '@' || c == '\\' || c == '%' || static_cast<unsigned char>(c) <= ' ' || c == 127)
+            {
+                why = "the address has a part that could name another host: refused";
+                return false;
+            }
+        if (authority.empty())
+            return false;
+        if (secure)
+            return true;
+        // plain http: this machine alone, by its exact names
+        std::string host = authority, port;
+        if (host.rfind("[::1]", 0) == 0)
+        {
+            port = host.substr(5);
+            host = "[::1]";
+        }
+        else if (const auto colon = host.find(':'); colon != std::string::npos)
+        {
+            port = host.substr(colon);
+            host = host.substr(0, colon);
+        }
+        if (!port.empty() && (port.size() < 2 || port[0] != ':'
+                              || port.find_first_not_of("0123456789", 1) != std::string::npos))
+            return false;
+        return host == "127.0.0.1" || host == "localhost" || host == "[::1]";
     }
 
 #if defined(TEE_HAS_CURL)

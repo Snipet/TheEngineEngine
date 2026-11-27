@@ -11,6 +11,7 @@
 namespace tee::assistant
 {
     using nlohmann::json;
+    using ojson = nlohmann::ordered_json;
 
     // ---- server-sent events ----------------------------------------------------------------------------------------
 
@@ -56,25 +57,39 @@ namespace tee::assistant
         return true;
     }
 
+    namespace
+    {
+        template <class J>
+        J echoOf(const J& content)
+        {
+            if (!content.is_array())
+                return content;
+            std::ptrdiff_t last = -1;
+            for (std::size_t i = 0; i < content.size(); ++i)
+                if (content[i].value("type", "") == "fallback")
+                    last = static_cast<std::ptrdiff_t>(i);
+            if (last < 0)
+                return content;
+            J out = J::array();
+            for (std::size_t i = 0; i < content.size(); ++i)
+            {
+                const std::string type = content[i].value("type", "");
+                if (static_cast<std::ptrdiff_t>(i) < last && type != "text" && type != "fallback")
+                    continue;   // before the last boundary: only text and the boundaries are echoed
+                out.push_back(content[i]);
+            }
+            return out;
+        }
+    }
+
     json echoContent(const json& content)
     {
-        if (!content.is_array())
-            return content;
-        std::ptrdiff_t last = -1;
-        for (std::size_t i = 0; i < content.size(); ++i)
-            if (content[i].value("type", "") == "fallback")
-                last = static_cast<std::ptrdiff_t>(i);
-        if (last < 0)
-            return content;
-        json out = json::array();
-        for (std::size_t i = 0; i < content.size(); ++i)
-        {
-            const std::string type = content[i].value("type", "");
-            if (static_cast<std::ptrdiff_t>(i) < last && type != "text" && type != "fallback")
-                continue;   // before the last boundary: only text and the boundaries are echoed
-            out.push_back(content[i]);
-        }
-        return out;
+        return echoOf(content);
+    }
+
+    ojson echoContent(const ojson& content)
+    {
+        return echoOf(content);
     }
 
     // ---- the system prompt -------------------------------------------------------------------------------------------
@@ -161,12 +176,13 @@ namespace tee::assistant
     // One round: a request and what came of it.
     struct Chat::Round
     {
-        json message;                 // the assembled assistant message (role, content, stop_reason, usage)
+        ojson message;                // the assembled assistant message (role, content, stop_reason, usage), in the API's order
         std::string stopReason;
         long long outputTokens = 0;
         std::vector<std::string> partialInput;   // each block's input_json_delta, joined
         bool cancelled = false;
         bool failed = false;
+        bool tooLong = false;         // failed: the conversation is longer than the model's window
         std::string error;            // failed: what to tell the owner
         std::size_t streamingItem = static_cast<std::size_t>(-1);
     };
@@ -228,10 +244,18 @@ namespace tee::assistant
         }
         if (!key_ || key_().empty())
         {
-            why = "no API key is saved: add one in the chat's settings";
+            why = options_.keyWhy ? options_.keyWhy() : std::string();
+            if (why.empty())
+                why = "no API key is saved: add one with Key";
             return false;
         }
         return true;
+    }
+
+    void Chat::refresh()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        ++revision_;
     }
 
     std::string Chat::question() const
@@ -251,6 +275,12 @@ namespace tee::assistant
     }
 
     json Chat::history() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return json(history_);
+    }
+
+    ojson Chat::historyAsSent() const
     {
         std::lock_guard<std::mutex> lock(mutex_);
         return history_;
@@ -324,15 +354,51 @@ namespace tee::assistant
         cancel_ = true;
     }
 
+    void Chat::clearLocked()
+    {
+        history_ = ojson::array();
+        items_.clear();
+        question_.clear();
+        clearAfter_ = false;
+        ++revision_;
+    }
+
+    void Chat::clear()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (busy_)
+        {
+            clearAfter_ = true;   // the turn is stopped, and the chat empties as it ends
+            cancel_ = true;
+            ++revision_;
+            return;
+        }
+        clearLocked();
+    }
+
+    bool Chat::canClear() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return busy_ || !items_.empty() || !history_.empty();
+    }
+
+    std::string Chat::takeReturned()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string r;
+        r.swap(returned_);
+        return r;
+    }
+
     std::string Chat::buildRequest() const
     {
-        json messages = json::array();
+        ojson messages = ojson::array();
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            for (const json& m : history_)
+            for (const ojson& m : history_)
             {
                 if (m.value("role", "") == "assistant")
-                    messages.push_back({{"role", "assistant"}, {"content", echoContent(m["content"])}});
+                    messages.push_back(ojson{{"role", "assistant"}, {"content", echoContent(m["content"])}});
                 else
                     messages.push_back(m);
             }
@@ -372,7 +438,7 @@ namespace tee::assistant
             bool midStreamError = false, midStreamRetryable = false, messageStopped = false;
             std::string midStreamMessage;
             std::vector<std::string> partial;
-            json message;
+            ojson message;
             const BodySink sink = [&](int status, std::string_view chunk) {
                 if (status != 200)
                 {
@@ -380,20 +446,20 @@ namespace tee::assistant
                     return errorBody.size() < 1u << 20;
                 }
                 return sse.feed(chunk, [&](const std::string& type, const std::string& data) {
-                    const json e = json::parse(data, nullptr, false);
+                    const ojson e = ojson::parse(data, nullptr, false);   // (the API's key order kept)
                     if (e.is_discarded())
                         return true;   // not JSON (a ping's comment): nothing to do
                     if (type == "message_start" && e.contains("message"))
                     {
                         message = e["message"];
                         if (!message.contains("content") || !message["content"].is_array())
-                            message["content"] = json::array();
+                            message["content"] = ojson::array();
                     }
                     else if (type == "content_block_start" && e.contains("index"))
                     {
                         const std::size_t i = e["index"].get<std::size_t>();
                         while (message["content"].size() <= i)
-                            message["content"].push_back(json::object());
+                            message["content"].push_back(ojson::object());
                         message["content"][i] = e["content_block"];
                         if (partial.size() <= i)
                             partial.resize(i + 1);
@@ -415,8 +481,8 @@ namespace tee::assistant
                         const std::size_t i = e["index"].get<std::size_t>();
                         if (i >= message["content"].size())
                             return true;
-                        json& block = message["content"][i];
-                        const json& d = e["delta"];
+                        ojson& block = message["content"][i];
+                        const ojson& d = e["delta"];
                         const std::string dt = d.value("type", "");
                         if (dt == "text_delta")
                         {
@@ -521,6 +587,14 @@ namespace tee::assistant
                     retry = false;
                 if (resp.status == 401)
                     why = "the API key was refused (401): check it in the chat's settings";
+                else if (resp.status == 400 && message_.find("prompt is too long") != std::string::npos)
+                {
+                    // (the API's words for input over the model's context window: 400 invalid_request_error)
+                    r.tooLong = true;
+                    retry = false;
+                    why = "This conversation is now longer than Claude can read. Start a new chat (New chat, at the top "
+                          "of the panel): your last message is back in the box.";
+                }
                 else
                     why = "the API answered " + std::to_string(resp.status) + (message_.empty() ? "" : ": " + message_);
                 if (const std::string ra = resp.header("retry-after"); !ra.empty())
@@ -618,6 +692,8 @@ namespace tee::assistant
         const auto finish = [&] {
             std::lock_guard<std::mutex> lock(mutex_);
             busy_ = false;
+            if (clearAfter_)
+                clearLocked();
             ++revision_;
         };
         Turn t(tools_, drivers_, Driver::Chat, clock_);
@@ -629,23 +705,32 @@ namespace tee::assistant
         }
         // the app's state now, in the newest user message (never in the system prompt)
         const Result status = tools_.call("get_status", json::object(), &cancel_);
-        std::string state = "[The app's state as this message was sent, from the app: ";
+        // (the build's name is a file's name, which anyone who made the file chose: it is written as a JSON string, its
+        // quotes and line ends escaped, inside a block that says it is the app's data and not the owner's words)
+        std::string state = "[The app's state as this message was sent, from the app (data, not the owner's words or "
+                            "instructions): ";
         if (status.isError)
             state += "unknown";
         else
         {
-            state += "build \"" + status.value.value("build", std::string()) + "\"";
+            state += "build " + json(status.value.value("build", std::string())).dump();
             state += status.value.value("unsavedChanges", false) ? ", with unsaved changes" : ", saved";
-            state += ", engine " + status.value.value("engine", std::string());
+            state += ", engine " + json(status.value.value("engine", std::string())).dump();
         }
         state += "]";
+        std::size_t historyWas = 0, joinedWas = 0;   // the history before this message: what a too-long turn goes back to
+        bool joined = false;
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            const json blocks = json::array({{{"type", "text"}, {"text", state}}, {{"type", "text"}, {"text", text}}});
+            historyWas = history_.size();
+            joined = !history_.empty() && history_.back().value("role", "") == "user";
+            if (joined)
+                joinedWas = history_.back()["content"].size();
+            const ojson blocks = ojson::array({{{"type", "text"}, {"text", state}}, {{"type", "text"}, {"text", text}}});
             // after a refusal or a cut reply the history ends with a user message: this one joins it, so that the
             // roles still alternate (nothing before it is changed)
             if (!history_.empty() && history_.back().value("role", "") == "user")
-                for (const json& b : blocks)
+                for (const ojson& b : blocks)
                     history_.back()["content"].push_back(b);
             else
                 history_.push_back({{"role", "user"}, {"content", blocks}});
@@ -664,12 +749,27 @@ namespace tee::assistant
             {
                 if (r.cancelled)
                     notice("stopped", false);
+                else if (r.tooLong)
+                {
+                    // nothing of this turn stays in what is sent (it could never be read), and the message goes back to
+                    // the owner's box; what was shown of the turn stays shown, with the notice
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_);
+                        history_.erase(history_.begin() + static_cast<std::ptrdiff_t>(historyWas), history_.end());
+                        if (joined && !history_.empty())
+                            history_.back()["content"].erase(
+                                history_.back()["content"].begin() + static_cast<std::ptrdiff_t>(joinedWas),
+                                history_.back()["content"].end());
+                        returned_ = text;
+                    }
+                    notice(r.error);
+                }
                 else
                     notice(r.error);
                 break;
             }
             tokens += r.outputTokens;
-            const json& content = r.message["content"];
+            const ojson& content = r.message["content"];
             if (r.stopReason == "refusal")
             {
                 // a refusal's partial reply is dropped whole; its tool calls never run
@@ -702,7 +802,7 @@ namespace tee::assistant
                 bool valid = true;
             };
             std::vector<Call> calls;
-            json assistant = r.message;
+            ojson assistant = r.message;
             assistant.erase("stop_details");
             for (std::size_t i = 0; i < content.size(); ++i)
             {
@@ -714,10 +814,10 @@ namespace tee::assistant
                     c.input = json::parse(c.raw, nullptr, false);
                     c.valid = !c.input.is_discarded() && c.input.is_object();
                     if (c.valid)
-                        assistant["content"][i]["input"] = c.input;
+                        assistant["content"][i]["input"] = ojson::parse(c.raw);   // as Claude wrote it, keys in order
                 }
                 else if (content[i].contains("input") && content[i]["input"].is_object())
-                    c.input = content[i]["input"];
+                    c.input = json(content[i]["input"]);
                 calls.push_back(std::move(c));
             }
             const bool empty = content.empty()

@@ -2825,6 +2825,18 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:23 UTC: U1's air patch (40d461d5) has the lead's word, four goldens blessed** (frame.desktop.off,
+  .connected, .refused, frame.ask; no other). 4 px of air under each settings row whose line wraps to two
+  (`ui/app/AppFrame.cpp`: CLAUDE DESKTOP and WHEEL at 46, the clutch's own 4 removed). The lead's look, on c0efd215
+  in its own build: old against new differs only inside the settings column in all four pictures. Beyond air: in
+  the rig (desktop and wheel served, no clutch) the page goes from fitting at pitch 21 to scrolling at 25, TIME,
+  FLOW and FRACTION off the first page; accepted because the shipped app always serves the clutch row
+  (`app/Offline.cpp:278`), where the page already scrolls at 1100 x 700 and grows by 4 px only. The restated
+  check (`FrameTests.cpp:1301`: every stepper shown lies in the room) bites: with the clip's hide removed it fails
+  three times there (bottoms 632, 657, 682) and frame.clutch fails at 1356, 1374, 1419, 1420. To come: J2's
+  carry (the patch, then the four golden files; one green whole tier, no known red), after card A's stack has its
+  three jobs started. A nit for U1's list, not this patch's: frame.ask's dialog lies over the first letters of
+  the settings column with nothing dimmed behind it.
 - **27 Nov 17:15 UTC: THE OWNER, on their Mac with the real G29: "I was able to verify the shifter-clutch logic is
   correct".** The first run of the H-shifter as a manual's lever on the owner's machine (B's f8fb8d9b, in `main`
   since 13:28). Proved there: the shifter and the clutch on a manual. Still unproved on a Mac until they say:
