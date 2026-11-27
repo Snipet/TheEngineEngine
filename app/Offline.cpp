@@ -20,6 +20,7 @@
 #if defined(TEE_HAS_UI_FRAME)
  #include "FrameSources.h"
  #include "GarageLibrary.h"
+ #include "WheelEdit.h"
  #include "app/AppFrame.h"
  #include "app/host/HostSources.h"     // U1's: the Scope and the dyno over card C's host
                   // the interface package's (ui/): the frame, its document over a tee::Build
@@ -300,6 +301,13 @@ namespace tee::app
             shown.panelGoing = [kept] {
                 const std::lock_guard<std::mutex> lock(kept->askMutex);
                 kept->asker = nullptr;
+            };
+            // the wheel's edit buttons (input/g29/G29Input.h) into the frame's edit(), on this thread, the frame's; by
+            // name into the interface's commands (WheelEdit.h); nothing once the frame has gone (its asker cleared)
+            shown.wheelEdit = [kept](input::g29::EditCommand c, bool fine) {
+                const std::optional<ui::EditCommand> u = uiEdit(c);
+                const std::lock_guard<std::mutex> lock(kept->askMutex);
+                return u.has_value() && kept->asker != nullptr && kept->asker->edit(*u, fine);
             };
            #if defined(TEE_HAS_CHAT_VIEW)
             // The key chat: card A's panel on the Session's port, in the frame's column (closed at first); its "Add a

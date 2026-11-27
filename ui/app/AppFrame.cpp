@@ -4,6 +4,7 @@
 #include "app/Look.h"
 #include "app/Placeholders.h"
 #include "kit/inspect/Outline.h"
+#include "kit/widgets/Tables.h"
 
 #include <funkgui/canvas/Canvas.h>
 #include <funkgui/core/Theme.h>
@@ -30,6 +31,27 @@ namespace tee::ui
         const std::string kNone;
 
         std::string firstLine(const std::string& s) { return s.substr(0, s.find('\n')); }
+
+        // A generated page with a workspace's notes on its section (Workspace::sectionNotes) at its top, amber, each in
+        // lines of at most 46 characters (a label's most is 48) broken at spaces.
+        std::string withNotes(std::string gui, const std::vector<std::string>& notes)
+        {
+            const std::size_t open = gui.find('{');
+            if (notes.empty() || open == std::string::npos)
+                return gui;
+            std::string labels;
+            for (const std::string& note : notes)
+                for (std::size_t at = 0; at < note.size();)
+                {
+                    std::size_t end = std::min(note.size(), at + 46);
+                    if (end < note.size())
+                        if (const std::size_t sp = note.rfind(' ', end); sp != std::string::npos && sp > at)
+                            end = sp;
+                    labels += " label \"" + note.substr(at, end - at) + "\" size=small color=yellow ;";
+                    at = end + (end < note.size() && note[end] == ' ' ? 1 : 0);
+                }
+            return gui.insert(open + 1, labels);
+        }
 
         // A quantity's unit as a stepped parameter: its units' index (the units page's steppers).
         class UnitPort final : public funkgui::ParamPort
@@ -658,6 +680,7 @@ namespace tee::ui
         const bool changed = i != shown_ || pages_.empty();
         if (i != shown_)
         {
+            tableFrom_ = tableField_ = -1;   // another workspace's pages
             card_->close();
             workspace(shown_).shownChanged(false);
             selection_.clear();
@@ -702,6 +725,7 @@ namespace tee::ui
         pages_.clear();
         page_ = 0;
         const Workspace& ws = current();
+        inspectorKeySeen_ = ws.inspectorKey();
         const std::string& sel = selection_.path();
         inspectorHead_ = sel.empty() ? std::string(ws.title()) : upper(sel);
         for (char& ch : inspectorHead_)
@@ -730,12 +754,16 @@ namespace tee::ui
                     for (const std::string& sec : sectionsOf(shown_))
                     {
                         std::vector<int> scalars, tables;
+                        const std::vector<std::string> omits = ws.sectionOmits(sec);
                         for (const int f : sectionFields(doc_, sec))
-                            (doc_.info(f).table() ? tables : scalars).push_back(f);
+                            if (std::find(omits.begin(), omits.end(), doc_.info(f).path) == omits.end())
+                                (doc_.info(f).table() ? tables : scalars).push_back(f);
                         const auto split = scalars.empty() ? std::vector<std::vector<int>>{} : splitPages(doc_, scalars, 60);
+                        const std::vector<std::string> notes = ws.sectionNotes(sec);
                         for (std::size_t k = 0; k < split.size(); ++k)
                             pages_.push_back({ upper(sec) + (split.size() > 1 ? " " + std::to_string(k + 1) : std::string()),
-                                               pageGui(doc_, split[k], {}), nullptr, nullptr });
+                                               withNotes(pageGui(doc_, split[k], {}), k == 0 ? notes : std::vector<std::string>{}),
+                                               nullptr, nullptr });
                         for (const int f : tables)
                         {
                             const FieldInfo& info = doc_.info(f);
@@ -866,7 +894,12 @@ namespace tee::ui
             const std::vector<int> fs = fieldsOf(outlineOf(*page.panel, doc_));
             if (std::find(fs.begin(), fs.end(), t.fields.front()) != fs.end())
             {
+                const int from = page_;
                 showInspectorPage(p);
+                tableFrom_ = from;
+                tableField_ = t.fields.front();
+                if (auto* table = dynamic_cast<MapEdit*>(tableItem()))
+                    table->focusFirstCell();   // a controller's first press lands on a cell
                 return;
             }
         }
@@ -1523,6 +1556,12 @@ namespace tee::ui
             makeInspector();
             arrange();
         }
+        // What decides the shown workspace's pages moved (Workspace::inspectorKey: VALVES' model): the pages again.
+        if (current().inspectorKey() != inspectorKeySeen_ && !(gestures() != nullptr && gestures()->dragging()))
+        {
+            makeInspector();
+            arrange();
+        }
         // The selection moved (a part clicked on the stage, ALL): the inspector shows the new one.
         if (selection_.revision() != selectionSeen_)
         {
@@ -1692,6 +1731,109 @@ namespace tee::ui
             return true;
         }
         return Board::key(e);
+    }
+
+    Item* AppFrame::tableItem() const
+    {
+        if (inspectorRows() != nullptr || page_ < 0 || page_ >= inspectorPageCount())
+            return nullptr;
+        const FieldPage* page = pages_[static_cast<std::size_t>(page_)].panel.get();
+        if (page == nullptr)
+            return nullptr;
+        for (const std::unique_ptr<Item>& it : page->items())
+            if (it->shown() && dynamic_cast<MapEdit*>(it.get()) != nullptr)
+                return it.get();
+        return nullptr;
+    }
+
+    bool AppFrame::edit(EditCommand c, bool fine)
+    {
+        if (askOpen() || keyDialogOpen())
+            return false;
+        dirty_ = true;
+        // The item in focus first: the frame's own (a button: none takes one today), then the inspector's.
+        if (focus() >= 0 && item(focus()).edit(c, fine))
+            return true;
+        if (!unitsPage_ && !chatOpen_)
+        {
+            if (RowsPage* rows = inspectorRows())
+            {
+                if (rows->focus() < 0)
+                    rows->focusFirst();   // the first press lands on a row
+                if (rows->edit(c, fine))
+                    return true;
+            }
+            else if (Item* table = tableItem(); table != nullptr && table->edit(c, fine))
+                return true;
+        }
+        switch (c)
+        {
+            case EditCommand::workspacePrev:
+            case EditCommand::workspaceNext:
+            {
+                const int n = workspaceCount();
+                if (n <= 1)
+                    return false;
+                show((shown_ + (c == EditCommand::workspaceNext ? 1 : n - 1)) % n);   // the rail's order, wrapping
+                if (RowsPage* rows = inspectorRows())
+                    rows->focusFirst();
+                return true;
+            }
+            case EditCommand::pagePrev:
+            case EditCommand::pageNext:
+            {
+                if (unitsPage_ || chatOpen_)
+                    return false;
+                const int to = page_ + (c == EditCommand::pageNext ? 1 : -1);
+                if (to < 0 || to >= inspectorPageCount())
+                    return false;   // the ends: stopping, as the tabs do
+                showInspectorPage(to);
+                if (RowsPage* rows = inspectorRows())
+                    rows->focusFirst();
+                else if (auto* table = dynamic_cast<MapEdit*>(tableItem()))
+                    table->focusFirstCell();
+                return true;
+            }
+            case EditCommand::undo:
+                if (!services_.undo)
+                    return false;
+                services_.undo();
+                return true;
+            case EditCommand::redo:
+                if (!services_.redo)
+                    return false;
+                services_.redo();
+                return true;
+            case EditCommand::back:
+                if (card_->isOpen())
+                {
+                    card_->close();
+                    return true;
+                }
+                if (chatOpen_)
+                {
+                    openChat(false);
+                    return true;
+                }
+                if (unitsPage_)
+                {
+                    showUnits(false);
+                    return true;
+                }
+                if (inspectorRows() == nullptr && tableFrom_ >= 0 && tableFrom_ < inspectorPageCount()
+                    && pages_[static_cast<std::size_t>(tableFrom_)].rows)
+                {
+                    // a table's page: back to the rows it was opened from, its row in focus
+                    const int field = tableField_;
+                    showInspectorPage(tableFrom_);
+                    tableFrom_ = tableField_ = -1;
+                    if (RowsPage* rows = inspectorRows(); rows != nullptr && !rows->focusTable(field))
+                        rows->focusFirst();
+                    return true;
+                }
+                return false;
+            default: return false;
+        }
     }
 
     std::vector<int> AppFrame::fieldsShown()

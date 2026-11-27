@@ -27,19 +27,47 @@ expects them on any layout.
 
 **The truck's switches** (Z, X, J) latch like the switches they stand for (a splitter's thumb switch, a range's
 flip lever, a dash switch): they reach the simulator as the held bits of its `ctl.buttons` (BTN_SPLITTER,
-BTN_RANGE, BTN_ENGINE_BRAKE) until pressed again. The eighteen-speed's own lever does not drive the vehicle's
-gearbox yet.
+BTN_RANGE, BTN_ENGINE_BRAKE) until pressed again. On an eighteen-speed a shift press sets them too, for the gear it
+asks (below), and Z and X then toggle from there.
 
 **The start key.** Press it and the starter cranks the engine; it goes on cranking by itself until the engine
 runs (two seconds at the most: an engine that will not catch is left on, not cranking; press again). Hold it for a second while the engine runs and the engine is switched off. A tap is enough to start: a press
 shorter than a frame is still held for 0.15 s.
 
-**The gears.** The automatic clutch is on (there is no switch for it in the window yet). With it, E and Q are the
+**The gears.** The automatic clutch is on (there is no switch for it in the window yet: the simulator's Spec has no
+`car.autoClutch` field; the CAR workspace's gearbox group names one that only the interface's demo document has). With
+it, on a manual, a sequential or a dual clutch, E and Q are the
 paddles of a paddle-shift car: the gearbox works its own clutch, pulls away by itself when the throttle goes down in
 first, and never stalls. A gear key (1 to 6, N) presses the shift up or down for you, once every 0.3 s, until the
 gearbox is in that gear; it gives up after twelve presses (a downshift the gearbox refuses because it would take the
 engine past its redline). With the automatic clutch off, a gear key moves an H-pattern lever and the clutch is yours
 (Left Shift): the Driver has this path and its test, and nothing in the window turns it on yet.
+
+What a press reaches depends on the build's gearbox (read from the build each frame; the reference's vehicle, `model`
+Reference, reads no gearbox and is driven as a manual's paddles whatever the field says):
+
+- **Manual, sequential, dual clutch: the shift counters.** As above: E and Q (and the wheel's paddles) are a shift up
+  and down; a gear key or the wheel's shifter seeks that gear through them. A sequential box shifted at a standstill
+  can stall today (a shift into second, or back down, with the car still: X-056, the simulator's, until its fix lands):
+  pull away in first.
+- **Automatic, CVT: the selector.** The box picks its own gears in D; the controls move its selector, R, N, D, held
+  whatever the automatic clutch says. E (a paddle up) steps towards D: R to N, N to D. Q (a paddle down) steps towards
+  R, and out of D only at a crawl (under 5 km/h): at speed Q does nothing, so a press hoping for a kickdown never drops
+  the car into neutral. N is N at any speed; the reverse key R (the box takes it only at a crawl); 1 to 6 and the
+  shifter's forward gates D; its reverse gate R; out of every gate N.
+- **Eighteen-speed: the lever, and your clutch.** The truck's box has no clutch of its own and no synchromesh in its
+  main box: the lever reaches it whatever the automatic clutch says, and the clutch pedal is yours (Left Shift, or
+  the wheel's pedal); the application works no clutch and matches no revs, so a shift without the clutch, or without
+  the revs matched, grinds as the box says. The keys 1 to 4 (and the shifter's gates 1 to 4) are the lever's
+  positions, 5 the L slot (gears 1 and 2, low range), 6 nothing, reverse R, N neutral. E and Q are the next gear of
+  the eighteen in order, up or down: the lever's position and the splitter and range that gear wants, refused at 1 and
+  18; Z and X then toggle from where the press left them. A truck starts in L (key 5, or the shifter's gate 5) with the
+  clutch down: key 1 is third, and a clutch let up there without throttle stalls it. While an eighteen-speed is loaded
+  the status line says the clutch is yours and where to start.
+
+Until 27 Nov the automatic, the CVT and the eighteen-speed sat in neutral whatever was pressed (the automatic clutch
+held the lever they read at neutral; 13 shipped builds: the owner's report). `tests/shell/GearboxDrivingTest.cpp`
+drives a shipped build of each kind from a standstill by the key and by the wheel's paddle through the simulator.
 
 The times are `tee::input::DriverSettings`; they move to the settings file with the bindings in the shell's
 second slice.
@@ -101,8 +129,12 @@ in hand: the code was written against SDL's documentation and compiled.
 
 **A Logitech G29** (the wheel, its pedals and the Driving Force Shifter on one USB cable) is read on **macOS** (IOKit)
 and **Linux** (the kernel's own driver, hid-lg4ff) with no software of Logitech's installed, and on **Windows** read
-only, as a plain joystick (below). Never yet run with a real wheel in this repository: the owner's run is the first
-(the code is TestingPlayground's, where it drove the owner's G29: `shell/input/g29/SEED.tsv`).
+only, as a plain joystick (below). The code is TestingPlayground's, where it drove the owner's G29
+(`shell/input/g29/SEED.tsv`).
+
+**What is verified where.** macOS: the owner reports (26 Nov, on `main` at b557c4a1) that their G29 "worked well with
+the Mac app": the owner's report, not a test of ours, and it says nothing in particular of the lights or the shifter.
+Linux and Windows: never yet run with a real wheel. No test here opens a device.
 
 - **The switch on the wheel at PS3.** At PS4 it is not read (the status line says to set it to PS3). At PS3, without
   Logitech's software, a G29 starts in a compatibility mode: the application switches it to its full mode once each
@@ -117,17 +149,63 @@ only, as a plain joystick (below). Never yet run with a real wheel in this repos
 |---|---|
 | Throttle, brake, clutch pedals | The pedals: each is the larger of the wheel's and the keys' or a gamepad's (its first 1 % of travel reads released). |
 | Right paddle / left paddle | Shift up / shift down (a press each), by default. |
-| The shifter | The gate it is in: with the automatic clutch off, the H-pattern lever itself (the clutch pedal is yours); with it on, the gear is sought through the gearbox's own shifts, as a gear key does (a sequential or an automatic box too). Out of every gate: neutral. |
+| The shifter | The gate it is in: with the automatic clutch off, the H-pattern lever itself (the clutch pedal is yours); with it on, the gear is sought through the gearbox's own shifts, as a gear key does (a sequential box or a dual clutch too). An automatic or a CVT: a forward gate is D, the reverse gate R, out of every gate N; the eighteen-speed: its lever's position (gates 1 to 4; 5 the L slot). Out of every gate: neutral. |
 | PS button | By default, the start key, held as long as it is held (a press starts a stopped engine; held on a running one, off). |
 | The steering | Read but not driven: the car runs in a straight line. |
 | Its five shift lights | The DRIVE view's own count (the same five steps below the redline), all five flashing on the limiter. |
-| Other buttons | Nothing until one is bound (below). |
+| The other buttons | Editing the engine (below): the inspector's hands, by default. |
+
+**Editing from the wheel.** The buttons the wheel does not drive with edit the engine while it runs: no mode, the
+pedals, paddles, shifter and PS drive exactly as above. Each is a binding (moved as below), by default:
+
+| On the wheel | What it does (once a press) |
+|---|---|
+| D-pad up / down | The inspector's row up / down; held, it repeats after 0.35 s, then about 12 a second |
+| D-pad left / right | The inspector's page before / after (ENGINE 1, ENGINE 2, VOICES, ...) |
+| L2 / R2 | The workspace before / after (GAR, ENG, VLV, AIR, EXH, TUNE, CAR, DYNO, DRV, LSN, SCP) |
+| The red dial, a detent left / right | The focused value down / up a nudge (as the mouse wheel over it: a hundredth of its travel; a choice or a whole number, one step) |
+| Minus / plus | Ten nudges down / up (with SHARE: ten fine ones); held, they repeat as the rows do |
+| SHARE, held | Makes a value's nudge fine (a thousandth, as Shift) |
+| The dial's return, cross | Activate: a switch flips, a group folds or unfolds, a choice steps on, a table opens |
+| Circle | Back: a table closes, else the focus is let go |
+| Square / triangle | Undo / redo |
+| L3 | The focused field to its default |
+| OPTIONS | The "changed only" filter on and off |
+| R3 | Free |
+
+A dial's detent is one nudge, each one counted: the application counts every press the wheel's driver hands it, not
+only what a frame's sample sees, so detents faster than the frames are not lost; at most 8 commands a button a frame.
+Linux: tested with made-up kernel events (three detents between two frames, three nudges). macOS: compiled by CI,
+unproven until the owner turns the dial. Windows: only a frame's sample is known there, so a press counts once a frame.
+Minus and plus repeat as the D-pad's up and down do. Editing from the wheel works where its buttons are read:
+macOS and Linux today; on Windows once the owner's probe has given its table (below). The commands go to the
+frame's `edit()` on the window's thread (`app/WheelEdit.h` names them into the interface's); where there is no frame,
+the console says once "editing from the wheel waits for the frame". The whole chain, a D-pad press to a moved focus
+and a dial's detent to a nudged value, is tested on made-up wheel states (`tests/shell/app/AskChainTest.cpp`); on the
+real wheel it is the owner's to try.
+
+**In the inspector.** The commands act on the inspector's focused row, the one with the orange outline. Until something
+has the focus, the first press gives it to the shown page's first row. Up and down move over every row of the page: a
+group's heading, a field, a table's OPEN row. The view scrolls so the focused row keeps half a row of the pane beyond
+it. The dial and minus/plus nudge the focused value exactly as the mouse wheel over it does: a run of nudges is one step
+of UNDO once the dial has rested half a second, and square undoes it at once (the run is closed first). A switch goes
+on with a nudge up and off with a nudge down. A value the build refuses (a bore under the least stated, 10 mm) is not
+moved. Its row says why in red under it ("Out of range: under the least stated bore, 10 mm (0: derived)") until the
+next nudge, and a long sentence wraps rather than being cut. Activate (the dial's return, cross): a switch flips, a
+choice steps to the next (after the last, the first), a group folds or unfolds, a table's row opens the table on its own
+page with its first cell chosen. On a number, activate does nothing: a number is nudged, not typed, from the wheel. L3
+puts the focused field back to its default (one step of UNDO). OPTIONS shows only what has changed and back again, the
+focus staying on its field. **In a table** (a map, an array of values): up and down move a row (an array on lines: a
+line), left and right a cell (left of the first column is the row's own header). The dial and minus/plus nudge the
+chosen cell: a hundredth of its range, or one whole step for a choice or a whole number. A refused value says why on the
+table's title line. Circle closes the table and puts the focus back on its row. Everywhere else circle lets the focus
+go. (The inspector's side is J2's: `ui/kit/inspect/`.)
 
 **On and off:** the settings page's WHEEL row (on macOS, Linux and Windows; its status line under it), or F9, "Read the racing wheel
 (Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
 the device is left open (shared: another program may read it too) but nothing is read from it or sent to it. The
 status line says what the wheel is doing ("wheel: G29 read", "wheel: set the switch on the wheel to PS3", ...), and the
-console prints each change.
+console prints each change. On, the wheel's buttons also edit the engine (Editing from the wheel, above).
 
 **On Linux** the kernel's hid-lg4ff drives the wheel: it switches a G29 at PS3 to its full mode by itself, and the
 application reads its input device (`/dev/input/event…`, never grabbed), sets the range through hid-lg4ff's `range`
@@ -142,14 +220,17 @@ lights stay dark (the status line says so). A rule that gives them to you, in `/
 
 `evtest` (its own package) shows what the wheel sends there; `tee-wheel-dump` is macOS's.
 
-**The buttons can be moved.** F9, "Wheel buttons": choose an action (start, shift up, shift down, neutral, handbrake,
-splitter, range, engine brake), then press the wheel's button for it within 10 s ("wheel: press the button for ...";
-a button already held counts once it is let go and pressed again). The button takes that action from any button that
-had it and loses whatever it did before; the status line says the new binding, and while it listens the buttons drive
-nothing. "The defaults" puts back the paddles and PS. The bindings are kept in the settings file (`wheelButtons`, as
-`4=shiftup,5=shiftdown,17=start`: a button's bit, the table of `shell/input/g29/G29.h`, and an action's name); a pair it
-cannot read is left out with a line on the console. The pedals, the steering and the shifter are fixed by the wheel's
-table, not bound.
+**The buttons can be moved.** F9, "Wheel buttons": choose a driving action (start, shift up, shift down, neutral,
+handbrake, splitter, range, engine brake) or an edit (the table above), then press the wheel's button for it within
+10 s ("wheel: press the button for ..."; a button already held counts once it is let go and pressed again; SHARE is
+not taken while it is the modifier: the status line says so). The button loses whatever it did before; a driving action is also taken from the
+button that had it (it lives on one), an edit may stay on others too (activate is on two). The status line says the
+new binding, and while it listens the buttons drive and edit nothing. "The defaults" puts back the map above. The
+bindings are kept in the settings file (`wheelButtons`, as `2:4=shiftup,...,18=e.rowup,...`: a button's bit, the table
+of `shell/input/g29/G29.h`, and an action's or an edit's name); a pair it cannot read is left out with a line on the
+console. A `wheelButtons` saved before editing from the wheel (no `2:`) keeps every binding in it and gains each edit
+on a button it left free: driving wins, an edit never takes a button the owner bound. A binding on SHARE makes it the
+owner's, no longer the modifier. The pedals, the steering and the shifter are fixed by the wheel's table, not bound.
 
 **On Windows** the wheel is only read, never written to: Windows sends a device's output reports at the length its
 descriptor gives (17 bytes), and the G29 takes its commands (the switch to its full mode, the range, the spring, the

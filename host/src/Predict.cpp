@@ -1080,6 +1080,16 @@ namespace tee
                 error = firstError;
                 return false;
             }
+            // cancelled before every point was in: no curve. (It returned true with the points it had finished, and a
+            // caller that reads a curve as whole, the cam bake's rows, indexed the missing ones: the owner's app on 25 and
+            // 26 Nov, a read from address 0 in bakeIntakeCam whenever an edit landed while a cam map baked.) The
+            // PredictService discards a cancelled curve by its request number already (request() and cancel() both
+            // raise it), so it sees no change; its destructor's cancel leaves an error no one reads.
+            if (haveAll < n && cancel != nullptr && cancel->load(std::memory_order_relaxed))
+            {
+                error = "cancelled";
+                return false;
+            }
             curve = publish(haveAll == n);
             return true;
         }

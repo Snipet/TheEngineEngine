@@ -437,7 +437,7 @@ namespace tee::app
             for (int i = 0; i < ctx_.wheelButtonCount(); ++i)
                 b.submenu.push_back({ kWheelLearn + i, ctx_.wheelButton(i), true });
             b.submenu.push_back({ .separator = true });
-            b.submenu.push_back({ kWheelDefaults, "The defaults (paddles shift, PS starts)", true });
+            b.submenu.push_back({ kWheelDefaults, "The defaults (paddles shift, PS starts, the rest edit)", true });
             items.push_back(std::move(b));
         }
         if (ctx_.coldStart && ctx_.setColdStart)

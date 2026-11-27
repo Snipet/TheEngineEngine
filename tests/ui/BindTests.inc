@@ -418,3 +418,53 @@
         CHECK(table.selectedColumn() == 0);
         return 0;
     }
+
+    // A table from a controller (EditCommand.h): the first cell chosen, a cell moved by rows and pages, a value nudged
+    // (a hundredth of a map's range, Coarse ten, fine a tenth; a choice a whole step), a burst one undo step after its
+    // rest; false where nothing takes a command.
+    TEST(testTableEdit, "table.edit")
+    {
+        using C = tee::ui::EditCommand;
+        PageRig rig("");
+        const std::string gui = tee::ui::pageGui(rig.doc, { rig.doc.find("boost.duty") }, {});
+        rig.open(gui, 1200, 700);
+        CHECK(rig.page->widgets().size() == 1);
+        auto& map = static_cast<tee::ui::MapEdit&>(*rig.page->items()[static_cast<std::size_t>(rig.page->widgets()[0].item)]);
+        rig.host->tick(2);
+        CHECK(map.focusFirstCell() && map.selectedColumn() == 0 && map.selectedRow() == 0);
+        CHECK(map.edit(C::pagePrev, false) && map.selectedColumn() == -1);   // left of the first column: the y header
+        CHECK(!map.edit(C::pagePrev, false));             // nothing further left
+        CHECK(map.edit(C::pageNext, false) && map.selectedColumn() == 0);
+        CHECK(map.edit(C::pageNext, false) && map.selectedColumn() == 1);
+        CHECK(map.edit(C::rowDown, false) && map.selectedRow() == 1);
+        CHECK(map.edit(C::rowUp, false) && map.selectedRow() == 0);
+        const double z0 = map.shownMap().z[0][1];
+        const int steps = rig.doc.steps();
+        CHECK(map.edit(C::valueUp, false));
+        CHECK_NEAR(map.shownMap().z[0][1], z0 + 0.01, 1e-9);
+        CHECK(map.edit(C::valueUpCoarse, false));
+        CHECK_NEAR(map.shownMap().z[0][1], z0 + 0.11, 1e-9);
+        CHECK(map.edit(C::valueDown, true));
+        CHECK_NEAR(map.shownMap().z[0][1], z0 + 0.109, 1e-9);
+        CHECK_NEAR(rig.doc.map(rig.doc.find("boost.duty")).z[0][1], z0 + 0.109, 1e-9);
+        rig.host->tick(60);                               // the burst rests: one step
+        CHECK_MSG(rig.doc.steps() == steps + 1, std::to_string(rig.doc.steps() - steps));
+        // Undo pressed inside a burst: closed first, so the frame's undo takes it.
+        CHECK(map.edit(C::valueUp, false));
+        CHECK(!map.edit(C::undo, false));
+        rig.doc.undo();
+        CHECK_NEAR(rig.doc.map(rig.doc.find("boost.duty")).z[0][1], z0 + 0.109, 1e-9);
+        for (const C c : { C::activate, C::back, C::toDefault, C::changedOnly, C::undo, C::workspaceNext })
+            CHECK(!map.edit(c, false));
+        // A choice array: a whole step, at its end nothing; the element numbers' header takes nothing.
+        PageRig arr("");
+        arr.doc = tee::ui::MemoryDoc(mockArrayFields());
+        arr.open(tee::ui::pageGui(arr.doc, tee::ui::sectionFields(arr.doc, "cyl"), "cyl"), 1400, 900);
+        auto& table = static_cast<tee::ui::MapEdit&>(*arr.page->items()[static_cast<std::size_t>(arr.page->widgets()[0].item)]);
+        arr.host->tick(2);
+        CHECK(table.focusFirstCell());
+        CHECK(arr.value("cyl.fireRev[0]") == 0.0 && table.edit(C::valueUp, false) && arr.value("cyl.fireRev[0]") == 1.0);
+        CHECK(!table.edit(C::valueUp, false));            // Second is the last
+        CHECK(table.edit(C::rowUp, false) && table.selectedRow() == -1 && !table.edit(C::valueUp, false));
+        return 0;
+    }

@@ -15,6 +15,25 @@
 // neutral and the gearbox works its own clutch: the keys alone can drive. With it off, a gear key moves the H-pattern
 // lever and the clutch is the driver's (its key).
 //
+// Which gears a press reaches depends on the gearbox (setGearbox: the Controls read it from the build each frame;
+// the reference's vehicle, car.model 0, reads no gearbox and is always `shifts`):
+//   shifts     a manual's paddles, a sequential box, a dual clutch: as above (the shift presses)
+//   selector   an automatic and a CVT, which read only the lever as R, N, D (sim/vehicle/gearbox.fm), held on the
+//              lever whatever the automatic clutch says. A shift up is a step towards D (R to N, N to D); a shift down
+//              a step towards R, and out of D only at a crawl (under kCrawlKmh: above it a shift down does nothing, so
+//              a press hoping for a kickdown never drops the car into neutral at speed). The N key: N at any speed; the
+//              reverse key: R (the box refuses it above a crawl); 1 to 6 and the shifter's forward gates: D; its
+//              reverse gate R; out of every gate N. No gear key seeks.
+//   eighteen   the eighteen-speed (sim/vehicle/roadranger.fm), which reads only the lever's positions (1 to 4, 5 the
+//              L slot, -1 reverse), the splitter and range bits and the clutch pedal: the lever is sent whatever the
+//              automatic clutch says, and the clutch is the driver's (nothing here moves a pedal or matches revs: a
+//              driver who does neither grinds, as the box says). Keys and gates 1 to 4: the lever's positions; 5: the
+//              L slot; 6: nothing; reverse -1; N 0. A shift up or down: the next gear of the eighteen in order (the
+//              lever, the splitter and the range that gear wants: roadranger.fm's gearOf), refused at 1 and 18; Z and
+//              X then toggle from where the press left them.
+// Before 27 Nov the lever was zeroed for every box while the automatic clutch was on, so the automatic, the CVT and
+// the eighteen-speed sat in neutral whatever was pressed (the owner's report; tests/shell/GearboxDrivingTest.cpp).
+//
 // UI thread only.
 #pragma once
 
@@ -28,6 +47,10 @@ namespace tee::input
 {
     // ctl.buttons' bits (sim/spec/controls.fm, BTN_*) the driver's toggles set.
     inline constexpr int kButtonSplitter = 16, kButtonRange = 32, kButtonEngineBrake = 64;
+
+    // What a press of the gears reaches (the comment above).
+    enum class Gearbox : std::uint8_t { shifts, selector, eighteen };
+    inline constexpr float kCrawlKmh = 5.0f;   // the automatic's own crawl (gearbox.fm: into R only under it)
 
     // Who holds an action: each source lets go of only what it pressed.
     enum class Source : std::uint8_t { keyboard, gamepad, panel, script, wheel, count };
@@ -60,6 +83,7 @@ namespace tee::input
         bool running = false;
         bool gearKnown = false;     // false: no gearbox to ask (the gear keys then do nothing with the automatic clutch)
         int gear = 0;
+        float kmh = 0.0f;           // the car's speed (car.speed), for the selector's step out of D
     };
 
     class Driver
@@ -108,6 +132,10 @@ namespace tee::input
         // The frame's mode from now on (ControlsFrame::mode: MODE_BENCH 0, MODE_DRIVE 1, MODE_DYNO_ENGINE 2).
         void setMode(int mode);
 
+        // The gearbox the presses drive (a change: the selector and the lever back to neutral, as the box goes).
+        void setGearbox(Gearbox g);
+        Gearbox gearbox() const noexcept { return gearbox_; }
+
         // Everything a source holds is let go (the window lost the keyboard; a gamepad was unplugged).
         void release(Source);
 
@@ -146,6 +174,10 @@ namespace tee::input
         // the gears
         int shiftUp_ = 0, shiftDown_ = 0;
         int lever_ = 0;
+        Gearbox gearbox_ = Gearbox::shifts;
+        int select_ = 0;            // the selector's R -1, N 0, D 1 (Gearbox::selector)
+        float kmh_ = 0.0f;          // the car's speed as last seen (advance)
+        void eighteenStep(int by);  // the next gear of the eighteen, up (1) or down (-1)
         int seek_ = 0;              // the gear a key asked for (seeking_ says whether one did)
         bool seeking_ = false;
         float seekWait_ = 0;

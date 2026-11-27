@@ -112,6 +112,8 @@ namespace tee::ui
         void select(std::string path) { selection_.select(std::move(path)); }
         int inspectorPageCount() const noexcept { return static_cast<int>(pages_.size()); }
         int inspectorPageIndex() const noexcept { return page_; }
+        // A page's .gui text, as the inspector shows it (for tests); "" past the last.
+        std::string inspectorGui(int i) const { return i >= 0 && i < inspectorPageCount() ? pages_[static_cast<std::size_t>(i)].gui : std::string(); }
         const std::string& inspectorTitle(int p) const;
         FieldPage* inspector() const;                        // the page shown (nullptr: the units page)
         // The shown page as Rows (J2's RowsPage, the owner's pick, 25 Nov): what the inspector shows and gives the
@@ -164,6 +166,14 @@ namespace tee::ui
         AskDialog* askDialog() const noexcept { return askDialog_; }
         bool ribbonFolded() const noexcept { return folded_; }
         void foldRibbon(bool folded);
+
+        // A game controller's command (kit/gui/EditCommand.h: the owner's card, 26 Nov; card B maps the G29's buttons), on
+        // the interface's thread; true when something took it. Offered first to the item in focus: the frame's own, then
+        // the inspector's (the rows, given the focus first when nothing has it: RowsPage::focusFirst; a table's page: its
+        // table). What comes back false the frame does: the workspaces in the rail's order, wrapping; the inspector's
+        // pages, stopping at the ends; undo and redo as the buttons; back closes the part card, the chat, the settings,
+        // or leaves a table's page for the rows it was opened from (its row in focus). False while a dialog asks.
+        bool edit(EditCommand c, bool fine = false);
 
         // The builds on disk (GARAGE's; the shell's implementation): ticked once a frame. None: GARAGE uses its own.
         void setLibrary(garage::Library* library);
@@ -223,6 +233,7 @@ namespace tee::ui
         };
         funkgui::Panel* inspectorPane() const;               // the shown page's rows, else its FieldPage
         void openTable(const RowsPage::Table& t);            // a table's row in Rows: its own page
+        Item* tableItem() const;                             // the shown table page's table (nullptr: none)
         void makeWorkspaces();
         void makeCockpit();
         void makeInspector();                                // the pages for the current workspace and selection
@@ -252,8 +263,10 @@ namespace tee::ui
         // the inspector
         std::vector<Page> pages_;
         int page_ = 0;
+        int tableFrom_ = -1, tableField_ = -1;               // openTable's: the Rows page it left, the table's first field
         bool unitsPage_ = false, folded_ = false;
         std::uint32_t selectionSeen_ = 0, unitsSeen_ = 0;
+        std::uint64_t inspectorKeySeen_ = 0;   // the shown workspace's inspectorKey() the pages were made for
         std::string inspectorHead_, pagesFor_;
         std::vector<Button*> tabs_;
         Button *clear_ = nullptr, *fold_ = nullptr, *unitsButton_ = nullptr;

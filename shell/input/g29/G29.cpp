@@ -178,12 +178,24 @@ namespace tee::input::g29
             if (row.button > 0 ? down(row.button) : (pad_ & padBit(row.pad)) != 0)
                 mask |= 1u << i;
         }
+        const std::uint32_t rose = mask & ~now_.buttons;
+        for (int b = 0; b < 32; ++b)
+            if (((rose >> b) & 1u) != 0 && presses_[static_cast<std::size_t>(b)] < 255)
+                ++presses_[static_cast<std::size_t>(b)];
         now_.buttons = mask;
+    }
+
+    Presses Map::takePresses() noexcept
+    {
+        const Presses p = presses_;
+        presses_.fill(0);
+        return p;
     }
 
     void Map::rest() noexcept
     {
         now_ = State{};
+        presses_.fill(0);
         held_ = 0;
         pad_ = 0;
     }

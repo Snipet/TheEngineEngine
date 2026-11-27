@@ -43,6 +43,128 @@
 
 ## Landed
 
+- **27 Nov 09:02 UTC: `main` at 7ff344bc** (from ddacdf97, fast-forward; run 45955671762 on that commit: Linux,
+  Windows and macOS green; sim f23337cc, host 86ea14da, tools 7c3e4d59 unchanged). Tests only: the nightly's
+  `ui.build.bake.pictures` waits on the bake's state and not on a clock (U1, carried by J2): the load ends at
+  "baked" for as long as the state moves, a stall is 120 s unmoved; a second launch is done with no stage of
+  baking; the ribbon's first curve comes within ten points of the bake's start (a promptness check: the bake's
+  yield to the predictor is guarded in the host's own default case, which fails without it). The soak with X's
+  reference store read 71 minutes on a reference runner, 6 over d586682c's 65 with the twin and the shipped
+  pulls in (93 before the store): under the line of 10, so nothing leaves the soak.
+- **27 Nov 07:16 UTC: `main` at ddacdf97** (from dc2f7db3, fast-forward; run 45951143037 on that commit: Linux,
+  Windows and macOS green; sim f23337cc, host 86ea14da, tools 7c3e4d59 unchanged). Tests and docs only: the
+  nightly bound's reference sets are kept across one job's processes (X: 360 sets were being played for 57
+  distinct ones; every nightly figure identical to the digit with the store off and on; 28 % of combo's time
+  saved locally). The soak on the crash fix (dc2f7db3) read 226 of 227: `ui.build.bake.pictures` passed, the
+  one red is N2-38, standing; its wall was 28 minutes over d586682c's on a reference runner, which the store
+  is expected to bring under the line of 10 (the soak on this commit measures it).
+- **27 Nov 05:08 UTC: `main` at dc2f7db3: THE CRASH ON AN EDIT DURING A CAM BAKE IS FIXED** (from 57265b5f,
+  fast-forward; run 45941160063 on that commit: Linux 584, macOS 583, Windows 576, all green). The owner's Mac
+  build of `main` had died six times on 25 and 26 Nov in `tee::bakeIntakeCam` (host/src/Bake.cpp:354, and in
+  `insertRows`) whenever an edit landed while a cam map baked: `predictCurve` returned true on a cancel with a
+  partial curve and the cam bake indexed the missing points. C's a86b38c6: a cancelled curve returns false
+  ("cancelled"), and the bakes index only whole curves; two default-tier cases that segfaulted before (the
+  lead ran them: pass on the fix, fail on `main`'s old host) and a nightly case that edits during every phase.
+  **`host/` is now 86ea14da, changed from the bake's 2e7c1bec by that commit alone; no bake was needed:** three
+  shipped builds re-baked with the fixed code are byte-identical to the committed tables (1180, 1488 and 757
+  bytes; the keys too). `sim/` f23337cc and `tools/` 7c3e4d59 unchanged. Not changed by it: an edit that moves
+  a bake's key still cancels the bake and starts a new one from nothing after 1.5 s (C's design for that is
+  docs/plan/bake-across-edits.md, the owner's choice).
+- **26 Nov 20:32 UTC: `main` at 57265b5f** (from 6e67ac62, fast-forward; run 45877287272 on that commit: Linux,
+  Windows and macOS green; the baked trees unchanged). Tests and docs only: the nightly's shipped-pull case
+  gains the flat-plane 3.9 twin-turbo V8 as its fourth build (X-055: at its limiter 7 of 17, a hard fuel-cut
+  bounce read as the worst of some forty episodes); X's survey of all 31 shipped builds on the pull is in
+  docs/measurements/combo/. Nothing an owner sees or hears moved.
+- **26 Nov 18:30 UTC: `main` at 6e67ac62** (from d6615852, fast-forward; run 45858950535 on that commit: Linux,
+  Windows and macOS green; the baked trees unchanged). Tests and docs only (a hidden proof case's mode; the
+  queue's corrections of record; the designs' pages). Nothing an owner sees or hears moved. Measured since and
+  NOT in `main` as code (each waits for a bake): with the shift's cut at its real length every shipped build
+  that clicks at a full-throttle upshift reads 0 of 17 (the three-cylinder 1.0 turbo from 6 and 8, the kei 660
+  from 2), X's survey of all 31 on the pull; the flat-plane twin-turbo V8's limiter (7 of 17) is a hard
+  fuel-cut bounce read as the worst of some forty episodes, and is not the valve solve's.
+- **26 Nov 16:31 UTC: `main` at d6615852** (from 3f892823, fast-forward; run 45855822711 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). Tests, the combo corpus and docs only: the
+  five combo builds state lab cams lift-matched to their dials (bit-identical with the valvetrain's model off),
+  so a valve row compares model with model; their fair twin `turbo-six-mild` joins the nightly; `Known.h`
+  changed entry by entry (four rows that measured a cam swap left; the twin's eight entered); a nightly case
+  plays three SHIPPED boosted builds on the pull. What that case found, not cured in `main`: the three-cylinder
+  1.0 turbo is over at its 1-2 upshift in 6 of 17 copies and at its 2-3 in 8 of 17, the kei 660 triple at its
+  1-2 in 2 of 17; on a probe with the shift's cut at its real length (60 ms where `main` cuts 210) all three
+  read 0 of 17: item 16 (X-047), designed, waiting for a bake. Nothing an owner sees or hears moved.
+- **26 Nov 13:41 UTC: `main` at 3f892823** (from 389ee865, fast-forward; run 45823175500 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). Tests and docs only: the combo judge reads
+  clicks PER EVENT (the start, a flip, each shift, each limiter episode, each cut, each lift, the rest; no window's
+  edge moves a figure), `Known.h` carries the event, and the rows it uncovered are entered (X-044 gains five;
+  X-052 at the limiter; X-053 a model switched while running). The designs for the next window's first sim
+  changes are in `docs/plan/`: `x051-valve-solve.md` (the exhaust valve's flow solved to convergence by a
+  warm-started secant, cheaper than today's three passes) and `x047-shift-cut.md` (the engine cut while the
+  vehicle asks and no longer). Nothing an owner sees or hears moved.
+- **26 Nov 12:25 UTC: `main` at 389ee865** (from 317404d9, fast-forward; run 45811515179 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). New in `main`, `ui/` only: X-050's
+  interface form. On a build running the Lab valvetrain with a piston engine the reference's cam dial, which
+  nothing reads there, is no longer offered (VALVES' MODEL section and the generated valve page); on a rotary
+  it stays and is named for its ports; on a Reference build the lab's fields say they take effect with the
+  Lab model (the generated page and the head), and ENGINE says there is no lift figure. The inspector's
+  pages now follow the valvetrain model the moment it is switched, not at the next click.
+- **26 Nov 11:53 UTC: `main` at 317404d9** (from 5278e3e9, fast-forward; run 45806986323 on that commit: Linux,
+  Windows and macOS green; the same bake, the baked trees unchanged). Scripts, tests and docs only: the cloud
+  bootstrap retries its package install once after one more index update (a mirror's 404 had failed a Linux
+  job before Build); `tests/sim/combo/spread.sh` plays every copy on a second sim tree too (a cure's before and
+  after from one invocation). Nothing an owner sees or hears moved.
+- **26 Nov 11:01 UTC: `main` at 5278e3e9** (from 3c42b4d2, fast-forward; run 45796819517 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). Tests and
+  docs only: the nightly's click bound is twice the reference's LOWEST excess over five fixed nudged copies (the
+  default tier keeps its single draw); what it found, all on the turbo six's pull, entered as sometimes rows
+  (X-043 widened to the pull, X-048, X-049); the six older rows' counts under it. Found since and NOT cured in
+  `main` (each waits for a window and a bake): X-046 (the engine never reads the air's pressure; said in the
+  Air workspace), X-047 (a shift's cut lasts the vehicle's window plus its number: 210 ms where 60 is meant),
+  X-050 (the cam dial does nothing on a Lab piston build; the interface's form on its way), X-051 (the exhaust
+  valve's flow solve does not converge on a first pulse into emptied pipes: the click after a cut).
+- **26 Nov 09:16 UTC: `main` at 3c42b4d2** (from 5cd03815, fast-forward; run 45781892920 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). New in `main`:
+  the dyno says knock once when it is the curve's state (three quarters of its measured points and four at the
+  least: ticks under the plot and the legend's tick, no ring on each point; a curve that knocks at a few points
+  keeps its rings), carries the cursor down through the boost band with a dot on each curve, and draws a peak's
+  ring over its disc; five dyno goldens moved by the band's cursor line and dots alone. Tests: `Known.h`'s six
+  click rows restated as sometimes rows with their rates over 17 nudged copies (words only); the spread script
+  (tests/sim/combo/spread.sh); eachSwitch's default-block runs to `[nightly]` with the field case as the
+  default-run guard. Docs: X-047's design (`docs/plan/x047-shift-cut.md`).
+- **26 Nov 08:18 UTC: `main` at 5cd03815** (from 07a08dc0, fast-forward; run 45778173063 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged). New in `main`:
+  the Air workspace says when the Air pressure field is off its default that it moves the car's drag only and the
+  engine breathes sea-level air (X-046: the engine never reads `env.pressure`; item 15 of the next window is its
+  cure), and the workspace's printed absolutes are the engine's own, over 101325. Docs: the queue's sections of
+  26 Nov to 07:49, G's and C's notes for item 15. Not in it yet, on the branch: the dyno's knock as the curve's
+  state and the cursor through the boost band (a5a58e90), `Known.h`'s six sometimes rows, eachSwitch's runs to
+  `[nightly]`.
+- **26 Nov 07:50 UTC: `main` at 07a08dc0** (from d586682c, fast-forward; run 45771252603 on that commit: Linux,
+  Windows and macOS green; the same bake, sim f23337cc / host 2e7c1bec / tools 7c3e4d59 unchanged, so no table
+  moved). New in `main`, `ui/` and tests only: the dyno marks the points its program distrusts (a dashed ring and
+  NOT SETTLED for a step not settled, forced or still spooling; a boost's ripple said in the cursor's words) and
+  carries the predicted boost in the cursor card and a band; the boost card's notes; the reloader's test waits
+  on what an edit means (the flake of 26 Nov cured); the dips after a start's flare are a test on the shipped
+  builds; `Known.h` as of fb32d4fc. Not in it yet: the Air workspace's line for X-046 (the Air pressure field
+  moves the car's drag only), on the branch at b02ea957, its CI running.
+- **26 Nov 04:36 UTC: `main` at d586682c** (from b557c4a1, fast-forward; run 45752116326 on that commit: Linux
+  581 of 581, Windows 573 of 573, macOS green; every build re-baked on sim f23337cc / host 2e7c1bec / tools
+  7c3e4d59, 28 knock tables and 14 cam maps, all 31 gated warm and cold). New in `main`: the exhaust's heat settle
+  on a cycle's mean and weighted as the running path (a predicted point lands on a 90 s hold's within 1 %); the
+  burns' gas booked hot (the rally five's port 7.5 to 5.0 bar); a pipe's wall keyed on its bore and the rate
+  under the new models; a stopped engine reporting the loaded engine before the key; the stepped dyno approached
+  from below; a custom one-bank engine keeping its split exhaust, its headers split by firing order for twins a
+  bank each; the auto level's key for dense bangs; `boost.mismatch` bit 128 with the AIR page's words for it and
+  for bit 16; a bore under its least refused at input with its sentence in Rows and in table cells; the
+  inspector's wheel through the shared scroll rule (the owner's report: it scrolled a thirteenth of the others);
+  EDITING FROM THE G29 (the owner's request: the wheel's free buttons as the inspector's hands; B, U1, J2;
+  proven on made-up states only, the real wheel is the owner's to try). The first bake of this window stopped at
+  its own gate (the 3.0 twin turbo's warm idle, sd 54 against 25): the idle cure 98d0dc4d was the cause and was
+  reverted for the bake; its real cure is the next window's. Table P2 by P's numbers (the table's docs are local
+  to P, whose push is refused): 110 of 847 missed, 30 of 204 cited (113 on Table P); in: the 3.5 TT pickup's
+  peak torque, the rally five's speed of peak torque, the two-stage's sharpest point, the 3.2's VE at its
+  torque peak; out: the boxer's speed of peak torque (3509 against 3600 to 4400); the two-stage 192.3 / 189.5 /
+  197.4 N m about its switch, crossing 5921 rpm; first.json 226 N m at 1500, 389 at 1800, peak 391.8 against
+  333 to 368; the 2.0's 1750 rpm row 248.7 against 304. Left for the next window: no wheel without a path (a
+  dial reaches a turbo with no gas), the idle's cure, the gate loop's limit cycle, the rest of the queue's list.
 - **25 Nov 23:25 UTC: `main` at b557c4a1** (from 43006034, fast-forward; Linux 604 of 604, macOS 603 of 603,
   Windows green; every build re-baked, knock 6 and cam 4; Table P 113 of 847 missed). New in `main`: the diesel
   package (the compressor map fitted to the cited maps, the torque ceiling, the engine brake retuned); the

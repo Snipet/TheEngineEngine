@@ -17,7 +17,7 @@ namespace combo
         {
             int n = 0;
             for (const Failure& f : v.failures)
-                if (known(c, build, scenario, f.check) != nullptr || shiftCutRuled(c, f))
+                if (known(c, build, scenario, f.check, f.event) != nullptr || shiftCutRuled(c, f))
                     ++n;
             return n;
         }
@@ -65,7 +65,7 @@ namespace combo
                 ++knownCount;
                 WARN("ruled (the lead, 23:15): " << c << " / " << build << " / " << scenario << ": " << f.detail);
             }
-            else if (const Known* k = known(c, build, scenario, f.check))
+            else if (const Known* k = known(c, build, scenario, f.check, f.event))
             {
                 ++knownCount;
                 WARN("known " << k->id << " (" << k->date << ", " << k->owner << "): " << c << " / " << build << " / "

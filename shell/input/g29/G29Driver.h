@@ -110,6 +110,7 @@ namespace tee::input::g29
         bool present() const noexcept;                      // a G29 connected, in any mode, or a switch's news
         bool reading() const noexcept { return reading_ != nullptr; }
         const State& state() const noexcept { return map_.state(); }   // at rest while not reading
+        Presses takePresses() noexcept { return map_.takePresses(); }   // each bit's presses since the last take
         std::string status() const;                         // a short line, "" when there is none
 
     private:
