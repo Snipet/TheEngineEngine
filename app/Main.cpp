@@ -307,15 +307,17 @@ namespace
                 now.audioQuality = q == 1 ? "economy" : "full";
             };
         }
-        // the automatic clutch: the Driver's setting, at once, and the settings file's when the window closes
-        const auto setAutoClutch = [&controls, &now](bool on) {
+        // the clutch: the Driver's setting, at once, and the settings file's when the window closes
+        const auto setClutchMode = [&controls, &now](int m) {
             input::DriverSettings s = controls.driver().settings();
-            s.autoClutch = on;
+            input::setClutchMode(s, static_cast<input::ClutchMode>(std::clamp(m, 0, 2)));
             controls.driver().setSettings(s);
-            now.driver.autoClutch = on;
+            now.driver.autoClutch = s.autoClutch;
+            now.driver.shifterLever = s.shifterLever;
         };
-        commandsContext.autoClutch = [&controls] { return controls.driver().settings().autoClutch; };
-        commandsContext.setAutoClutch = setAutoClutch;
+        const auto clutchMode = [&controls] { return static_cast<int>(input::clutchModeOf(controls.driver().settings())); };
+        commandsContext.clutchMode = clutchMode;
+        commandsContext.setClutchMode = setClutchMode;
         commandsContext.autoClutchSays = [&controls] { return controls.clutchLine(); };
         commandsContext.coldStart = [&now] { return now.coldStart; };
         commandsContext.setColdStart = [&now](bool cold) { now.coldStart = cold; };
@@ -527,6 +529,7 @@ namespace
                 }
             }
             const input::g29::Presses presses = wheel.takePresses();
+            wheelInput.setClutchAxis(wheel.clutchAxis());
             wheelInput.apply(wheel.state(), wheel.reading(), controls.driver(), !wheelLearn.active(), dt, &presses);
             // its edit commands to the frame (the inspector's hands), on this thread, the frame's; none to take them
             // yet (the frame's edit() not served): said once, dropped
@@ -681,8 +684,8 @@ namespace
             };
             shown.window->coldStart = [&now] { return now.coldStart; };
             shown.window->setColdStart = [&now](bool cold) { now.coldStart = cold; };
-            shown.window->autoClutch = [&controls] { return controls.driver().settings().autoClutch; };
-            shown.window->setAutoClutch = setAutoClutch;
+            shown.window->clutchMode = clutchMode;
+            shown.window->setClutchMode = setClutchMode;
             shown.window->autoClutchSays = [&controls] { return controls.clutchLine(); };
             shown.window->desktopChosen = [&now](bool on) { now.allowClaudeDesktop = on; };
         }

@@ -71,10 +71,11 @@ namespace tee::app
             std::function<void(int)> learnWheelButton;
             std::function<bool()> coldStart;                    // the engine starts cold (the settings'; none: no item)
             std::function<void(bool)> setColdStart;
-            // The automatic clutch (the settings' driver.autoClutch, at once) and what it means for the gearbox loaded
-            // (Controls::clutchLine). None: no item.
-            std::function<bool()> autoClutch;
-            std::function<void(bool)> setAutoClutch;
+            // The clutch (input::ClutchMode: 0 the shifter's is yours, 1 automatic, 2 yours; the settings' driver.autoClutch
+            // and driver.shifterLever, at once) and what it means for the gearbox loaded (Controls::clutchLine). None: no
+            // item.
+            std::function<int()> clutchMode;
+            std::function<void(int)> setClutchMode;
             std::function<std::string()> autoClutchSays;
         };
 

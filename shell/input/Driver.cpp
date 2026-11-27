@@ -38,15 +38,43 @@ namespace tee::input
         }
     }
 
+    ClutchMode clutchModeOf(const DriverSettings& s) noexcept
+    {
+        return !s.autoClutch ? ClutchMode::yours : s.shifterLever ? ClutchMode::shifter : ClutchMode::automatic;
+    }
+
+    void setClutchMode(DriverSettings& s, ClutchMode m) noexcept
+    {
+        s.autoClutch = m != ClutchMode::yours;
+        s.shifterLever = m == ClutchMode::shifter;
+    }
+
     Driver::Driver(const DriverSettings& s) : settings_(s) {}
 
     void Driver::setSettings(const DriverSettings& s)
     {
         settings_ = s;
-        if (settings_.autoClutch && gearbox_ == Gearbox::shifts)
+        if (settings_.autoClutch && (gearbox_ == Gearbox::manual || gearbox_ == Gearbox::shifts))
             lever_ = 0;             // the lever goes back to neutral: the gearbox keeps the gear it is in
         else
             seeking_ = false;
+        if (clutchModeOf(settings_) != ClutchMode::shifter)
+            gateLever_ = 0;         // the shifter's gate no longer the lever
+    }
+
+    void Driver::shifterGate(int gate, bool clutchPedal)
+    {
+        gate = std::clamp(gate, -1, 6);
+        const bool lever = gearbox_ == Gearbox::manual && clutchModeOf(settings_) == ClutchMode::shifter;
+        gateSought_ = lever && !clutchPedal && gate != 0;
+        if (lever && clutchPedal)
+        {
+            gateLever_ = gate;
+            seeking_ = false;
+            return;
+        }
+        gateLever_ = 0;
+        requestGear(gate);
     }
 
     bool Driver::held(Action a) const noexcept
@@ -86,6 +114,9 @@ namespace tee::input
             startLatchFresh_ = true;    // the next advance's dt is time before the press: it does not count
             return;
         }
+        // a manual with the shifter in a gate: the shift presses do nothing, as in a car
+        if ((action == Action::shiftUp || action == Action::shiftDown) && gearbox_ == Gearbox::manual && gateLever_ != 0)
+            return;
         if (action == Action::shiftUp)
         {
             if (gearbox_ == Gearbox::selector)
@@ -256,6 +287,7 @@ namespace tee::input
         gearbox_ = g;
         select_ = 0;
         lever_ = 0;
+        gateLever_ = 0;
         seeking_ = false;
     }
 
@@ -271,6 +303,8 @@ namespace tee::input
         {
             wheelThrottle_ = wheelBrake_ = wheelClutch_ = 0.0f;
             wheelPedals_ = false;
+            gateLever_ = 0;         // unplugged mid-drive: the lever to neutral (as setSettings does)
+            gateSought_ = false;
         }
         if (source == Source::panel)
             stripHeld_ = brakeStripHeld_ = clutchStripHeld_ = handbrakeStripHeld_ = false;
@@ -357,8 +391,9 @@ namespace tee::input
         frame_.steer = padSteer_;
         frame_.lever = gearbox_ == Gearbox::selector ? select_
                      : gearbox_ == Gearbox::eighteen ? lever_
-                     : settings_.autoClutch        ? 0
-                                                   : lever_;
+                     : gateLever_ != 0               ? gateLever_
+                     : settings_.autoClutch          ? 0
+                                                     : lever_;
         frame_.shiftUp = shiftUp_;
         frame_.shiftDown = shiftDown_;
         frame_.buttons = latched_;

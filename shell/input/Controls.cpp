@@ -20,6 +20,7 @@ namespace tee::input
         gearHandle_ = telemetry.findValue(telemetry::kGear);
         drivenHandle_ = telemetry.findValue(telemetry::kDriven);
         carSpeedHandle_ = telemetry.findValue(telemetry::kCarSpeed);
+        shiftHandle_ = telemetry.findValue(telemetry::kShift);
         // the build's fields, where the telemetry's source is a Player (the simulator, the reference, the tone: each is a
         // ParamSource too): the gearbox a press drives (Driver::setGearbox)
         params_ = dynamic_cast<const ParamSource*>(&telemetry);
@@ -36,17 +37,18 @@ namespace tee::input
     std::string Controls::clutchLine() const
     {
         // one whole sentence each, at most about 90 characters (the SETTINGS row's small line, U1's)
+        const ClutchMode m = clutchModeOf(driver_.settings());
         switch (boxKind_)
         {
-            case 1: return "Sequential: it works its own clutch either way.";
-            case 2: return "Dual clutch: it works its own clutch either way.";
-            case 3: return "Automatic: its selector, R N D, either way.";
-            case 4: return "CVT: its selector, R N D, either way.";
-            case 5: return "Eighteen-speed: the clutch is always yours.";
+            case 1: return "Sequential: it works its own clutch; the shifter's gates are sought.";
+            case 2: return "Dual clutch: it works its own clutch; the shifter's gates are sought.";
+            case 3: return "Automatic: its selector, R N D, whatever this says.";
+            case 4: return "CVT: its selector, R N D, whatever this says.";
+            case 5: return "Eighteen-speed: the lever is the shifter's and the clutch always yours.";
             default:
-                return driver_.settings().autoClutch
-                           ? "Manual: E, Q and the gear keys shift; the gearbox works the clutch."
-                           : "Manual: the shifter and gear keys move the lever; the clutch is yours.";
+                return m == ClutchMode::shifter   ? "Manual: the shifter is the lever, its clutch yours; keys and paddles shift."
+                       : m == ClutchMode::automatic ? "Manual: everything shifts for you, the shifter too; no clutch to work."
+                                                    : "Manual: the shifter and the keys move the lever; the clutch is yours.";
         }
     }
 
@@ -55,15 +57,18 @@ namespace tee::input
         // sim/spec/car.fm: `gearbox` is read only with `model` 1 (the vehicle model); sim/vehicle/vspec.fm's VEH_*
         const int model = params.findParam("car.model"), box = params.findParam("car.gearbox");
         if (model < 0 || box < 0 || std::lround(params.get(model)) != 1)
-            return Gearbox::shifts;
+            return Gearbox::manual;                 // the reference's car: a manual's lever
         switch (std::lround(params.get(box)))
         {
+            case 1:     // VEH_SEQUENTIAL
+            case 2:     // VEH_DUALCLUTCH
+                return Gearbox::shifts;
             case 3:     // VEH_AUTOMATIC
             case 4:     // VEH_CVT
                 return Gearbox::selector;
             case 5:     // VEH_EIGHTEEN
                 return Gearbox::eighteen;
-            default: return Gearbox::shifts;
+            default: return Gearbox::manual;
         }
     }
 
@@ -132,6 +137,8 @@ namespace tee::input
         }
         if (carSpeedHandle_ >= 0 && driven)
             seen.kmh = static_cast<float>(std::fabs(read(carSpeedHandle_)) * 3.6);
+        refused_ = shiftHandle_ >= 0 && driven && std::lround(read(shiftHandle_)) == 3;
+        inGearAtRest_ = driven && seen.gearKnown && seen.gear != 0 && seen.kmh < 1.0f && driver_.gateLever() != 0;
         if (params_ != nullptr)
         {
             driver_.setGearbox(gearboxOf(*params_));
@@ -142,8 +149,18 @@ namespace tee::input
 
     std::string Controls::status() const
     {
+        // what the gears ask of the driver now, first: a gate refused, in gear at rest by the shifter, a gate sought
+        std::string ask;
+        if (driver_.gateLever() != 0 && refused_)
+            ask = "the gear did not go in: the clutch down, or the revs matched";
+        else if (inGearAtRest_ && driver_.frame().clutch < 0.5f)
+            ask = "in gear (the shifter): the clutch, to pull away";
+        else if (driver_.gateSought())
+            ask = "the shifter's gates are sought: this wheel shows no clutch pedal";
+        if (!ask.empty())
+            return status_.empty() ? ask : status_ + "   " + ask;
         // a manual (or the reference's car) with the automatic clutch off and no wheel's pedals: say which key the clutch is
-        if ((boxKind_ <= 0) && !driver_.settings().autoClutch && !driver_.wheelPedals())
+        if ((boxKind_ <= 0) && clutchModeOf(driver_.settings()) == ClutchMode::yours && !driver_.wheelPedals())
         {
             const std::string note = "clutch: yours (Left Shift)";
             return status_.empty() ? note : status_ + "   " + note;

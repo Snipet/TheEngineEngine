@@ -39,6 +39,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     s.bindings = { { input::key::kA, input::Action::throttle }, { 200, input::Action::brake } };   // one with no name
     s.driver.throttle = { 0.5f, 0.25f };
     s.driver.autoClutch = false;
+    s.driver.shifterLever = false;
     s.driver.offHold = 2.0f;
     s.units = settings::Units::imperial;
     s.unitChoices = "pressure=psi\npower=hp\n";
@@ -69,6 +70,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     CHECK(l.settings.driver.throttle.rise == Catch::Approx(0.5f));
     CHECK(l.settings.driver.throttle.fall == Catch::Approx(0.25f));
     CHECK_FALSE(l.settings.driver.autoClutch);
+    CHECK_FALSE(l.settings.driver.shifterLever);
     CHECK(l.settings.driver.offHold == Catch::Approx(2.0f));
     CHECK(l.settings.units == settings::Units::imperial);
     CHECK(l.settings.unitChoices == "pressure=psi\npower=hp\n");
@@ -92,6 +94,7 @@ TEST_CASE("shell: no settings file, and one that says little, give the defaults"
     CHECK(none.settings.audioBuffer == 256);
     CHECK(none.settings.bindings.size() == input::defaultBindings().size());
     CHECK(none.settings.driver.autoClutch);
+    CHECK(none.settings.driver.shifterLever);                        // the default: the shifter's clutch is yours
     CHECK_FALSE(none.settings.allowClaudeDesktop);   // off unless the owner turned it on
 
     write(dir / "settings.json", R"({"format": "tee-settings", "version": 1, "audio": {"buffer": 128}, "unknown": [1, 2]})");

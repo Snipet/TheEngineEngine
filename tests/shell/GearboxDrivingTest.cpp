@@ -16,6 +16,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstdio>
+
 #include <string>
 #include <vector>
 
@@ -173,7 +175,7 @@ TEST_CASE("gearbox: the reference's vehicle (car.model 0) is driven as before, w
         REQUIRE(b.set("spec.car.model", 0));
         REQUIRE(b.set("spec.car.gearbox", 3));
     });
-    CHECK(car.controls->driver().gearbox() == input::Gearbox::shifts);
+    CHECK(car.controls->driver().gearbox() == input::Gearbox::manual);
     const int ups = car.controls->driver().frame().shiftUp;
     car.controls->key(input::key::kE, true);
     car.frames(6);
@@ -192,12 +194,12 @@ TEST_CASE("gearbox: the automatic clutch's line per kind, and a manual with it o
         const char* build;
         const char* says;
     } lines[] = {
-        { "cars/rwd-v8-coupe.json", "Manual: E, Q and the gear keys shift" },
+        { "cars/rwd-v8-coupe.json", "Manual: the shifter is the lever" },
         { "archetypes/inline-five-turbo-rally.json", "Sequential: it works its own clutch" },
         { "cars/awd-turbo-six.json", "Dual clutch: it works its own clutch" },
         { "diesel-pickup-tuned.json", "Automatic: its selector" },
         { "archetypes/economy-four-15.json", "CVT: its selector" },
-        { "truck-15l-six.json", "Eighteen-speed: the clutch is always yours" },
+        { "truck-15l-six.json", "Eighteen-speed: the lever is the shifter" },
     };
     for (const auto& l : lines)
     {
@@ -212,7 +214,7 @@ TEST_CASE("gearbox: the automatic clutch's line per kind, and a manual with it o
     off.autoClutch = false;
     car.controls->driver().setSettings(off);
     car.frames(2);
-    CHECK(car.controls->clutchLine().find("the clutch is yours") != std::string::npos);
+    CHECK(car.controls->clutchLine().find("the clutch is yours") != std::string::npos);   // Yours
     CHECK(car.controls->services().status().find("clutch: yours (Left Shift)") != std::string::npos);
     // a wheel's pedals read: its clutch pedal is there, nothing to say
     car.controls->driver().setWheel(0.0f, 0.0f, 0.0f);
@@ -224,4 +226,152 @@ TEST_CASE("gearbox: the automatic clutch's line per kind, and a manual with it o
     car.controls->driver().requestGear(1);
     car.frames(30);
     CHECK(car.geared() == 1);
+}
+
+namespace
+{
+    // A G29 on the car: its pedals and shifter injected a frame at a time, as RacingWheel::state() gives them.
+    struct Wheel
+    {
+        Car& car;
+        input::g29::Input input;
+        input::g29::State s;
+        explicit Wheel(Car& c, bool clutchAxis = true) : car(c) { input.setClutchAxis(clutchAxis); }
+        void frames(int n)
+        {
+            for (int i = 0; i < n; ++i)
+            {
+                input.apply(s, true, car.controls->driver());
+                car.frames(1);
+            }
+        }
+        void clutch(bool down) { s.v14[3] = down ? input::g29::kMost : 0; }
+        // frames until car.gear is `g` (at most `most`): the count, or -1
+        int until(int g, int most)
+        {
+            for (int f = 0; f < most; ++f)
+            {
+                if (car.geared() == g)
+                    return f;
+                frames(1);
+            }
+            return -1;
+        }
+    };
+
+    void setMode(Car& car, input::ClutchMode m)
+    {
+        input::DriverSettings s = car.controls->driver().settings();
+        input::setClutchMode(s, m);
+        car.controls->driver().setSettings(s);
+    }
+}
+
+TEST_CASE("gearbox: a G29's H-shifter on a manual is the lever at once by default; Automatic seeks (the owner's delay)",
+          "[shell][sim][sharedsim]")
+{
+    int took[2] = { -1, -1 };
+    for (int i = 0; i < 2; ++i)
+    {
+        Car car("cars/rwd-v8-coupe.json");
+        setMode(car, i == 0 ? input::ClutchMode::shifter : input::ClutchMode::automatic);
+        Wheel wheel(car);
+        wheel.clutch(true);
+        wheel.frames(30);
+        wheel.s.gear = 1;                                           // the shifter into first's gate
+        took[i] = wheel.until(1, 300);
+        INFO((i == 0 ? "shifter" : "automatic") << ": frames from the gate to car.gear 1: " << took[i]);
+        CHECK(took[i] >= 0);
+        // second, through neutral
+        wheel.s.gear = 0;
+        wheel.frames(20);
+        wheel.s.gear = 2;
+        const int second = wheel.until(2, 300);
+        INFO("to second: " << second);
+        CHECK(second >= 0);
+        std::printf("  gate to gear, %s: first %d frames, second %d frames (60 a second)\n",
+                    i == 0 ? "the shifter's lever" : "automatic (sought)", took[i], second);
+    }
+    CHECK(took[0] < took[1]);                                       // the lever is quicker than the seek
+    CHECK(took[0] <= 3);                                            // within a few frames: no delay of its own
+}
+
+TEST_CASE("gearbox: with the shifter's lever a manual stalls when the clutch is let up in first at rest with no throttle",
+          "[shell][sim][sharedsim]")
+{
+    Car car("cars/rwd-v8-coupe.json");
+    Wheel wheel(car);
+    wheel.clutch(true);
+    wheel.frames(30);
+    wheel.s.gear = 1;
+    wheel.frames(30);
+    REQUIRE(car.geared() == 1);
+    wheel.clutch(false);                                            // let up at once, no throttle
+    bool stalled = false;
+    for (int f = 0; f < 240 && !stalled; ++f)
+    {
+        wheel.frames(1);
+        stalled = car.sim->value(car.state) != 2.0;
+    }
+    std::printf("  clutch let up in first at rest, no throttle: %s\n", stalled ? "stalled" : "still running after 4 s");
+    CHECK(stalled);
+}
+
+TEST_CASE("gearbox: the shifter's edges: in a gate before the start, a gate refused at speed, a wheel with no clutch pedal",
+          "[shell][sim][sharedsim]")
+{
+    {
+        // in a gate before the start: in gear, and the status line asks for the clutch (nothing hidden)
+        Car car("cars/rwd-v8-coupe.json");
+        Wheel wheel(car);
+        wheel.clutch(true);
+        wheel.frames(10);
+        wheel.s.gear = 1;
+        wheel.frames(20);
+        wheel.clutch(false);
+        wheel.frames(10);
+        INFO(car.controls->services().status());
+        CHECK((car.geared() == 1 || car.sim->value(car.state) != 2.0));
+        if (car.sim->value(car.state) == 2.0 && car.geared() == 1)
+            CHECK(car.controls->services().status().find("in gear (the shifter): the clutch") != std::string::npos);
+    }
+    {
+        // a gate taken at speed with the clutch up: the box refuses it, and the status line says it did not go in
+        Car car("cars/rwd-v8-coupe.json");
+        Wheel wheel(car);
+        wheel.clutch(true);
+        wheel.frames(20);
+        wheel.s.gear = 1;
+        wheel.frames(10);
+        wheel.s.v14[1] = input::g29::kMost / 3;                      // some throttle
+        for (int k = 0; k < 40; ++k)                                 // the clutch let up over two thirds of a second
+        {
+            wheel.s.v14[3] = input::g29::kMost - k * input::g29::kMost / 40;
+            wheel.frames(1);
+        }
+        wheel.clutch(false);
+        wheel.frames(120);
+        REQUIRE(car.sim->value(car.state) == 2.0);
+        wheel.s.v14[1] = 0;
+        wheel.s.gear = 0;
+        wheel.frames(10);
+        wheel.s.gear = 4;                                            // fourth, the clutch up, the revs far off
+        bool said = false;
+        for (int f = 0; f < 30 && !said; ++f)
+        {
+            wheel.frames(1);
+            said = car.controls->services().status().find("did not go in") != std::string::npos;
+        }
+        INFO("gear " << car.geared());
+        CHECK(said);
+        CHECK(car.geared() != 4);
+    }
+    {
+        // a wheel with no clutch pedal: the gate sought (the automatic's way), and said
+        Car car("cars/rwd-v8-coupe.json");
+        Wheel wheel(car, false);
+        wheel.s.gear = 1;
+        CHECK(wheel.until(1, 300) >= 0);
+        CHECK(car.controls->services().status().find("no clutch pedal") != std::string::npos);
+    }
 }

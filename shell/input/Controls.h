@@ -67,6 +67,8 @@ namespace tee::input
         int stateHandle_ = -1, gearHandle_ = -1, drivenHandle_ = -1, carSpeedHandle_ = -1;
         const ParamSource* params_ = nullptr;           // the build's fields, where the source has them
         int boxKind_ = -1;                              // boxKindOf, as last read
+        int shiftHandle_ = -1;                          // car.shift (3: a gear refused)
+        bool refused_ = false, inGearAtRest_ = false;
         Driver driver_;
         std::vector<Binding> bindings_;
         std::string status_;
