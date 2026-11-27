@@ -43,6 +43,14 @@
 
 ## Landed
 
+- **27 Nov 17:42 UTC: `main` at 40463d37.** Run 46039773867: Linux, macOS and Windows green on that commit. Gated
+  trees unchanged: `sim` 22314cde, `host` ef1715f6, `tools` 7c3e4d59. In it, past 3ba103f4 (J2's carry of U1's
+  two patches; 590 of 590 on J2's tier): a question Claude asked that Claude has since withdrawn takes its card
+  down instead of waiting for an answer nobody is waiting for (`AppFrame::ask`'s `withdrawn` flag,
+  `ui/app/AppFrame.{h,cpp}`, `tests/ui/views/FrameTests.cpp`), and three notes in `tests/ui/BuildTests.cpp`. Not
+  re-run by the lead beyond reading the diff's list of files. NOT in it: card A's seven commits from the owner's
+  quality check of the Claude integration (899259e9: one new case red where a build has no key store, the cure
+  to come), B's wake for a minimised window, U1's air patch.
 - **27 Nov 17:13 UTC: `main` at 3ba103f4: THE BAKED COMMIT of today's window.** Run 46032401939: Linux (595 of 595),
   macOS and Windows green on that commit; its soak running. Trees: `sim` 22314cde, `host` ef1715f6, `tools`
   7c3e4d59. The bake moved no table's values (28 knock-limit tables, 14 cam maps, first.json's two: bit-identical,

@@ -252,6 +252,14 @@ namespace tee::assistant
         return true;
     }
 
+    void Chat::useTransport(Transport* transport)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        transport_ = transport;
+        options_.noTransportWhy.clear();
+        ++revision_;
+    }
+
     void Chat::refresh()
     {
         std::lock_guard<std::mutex> lock(mutex_);

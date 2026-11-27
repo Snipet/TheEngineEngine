@@ -148,6 +148,9 @@ namespace tee::assistant
 
         // Something the panel shows changed outside a turn (the saved key read): laid out again. Any thread.
         void refresh();
+        // Tests: the transport the chat uses in place of the one it was made with (and the reason there was none goes
+        // with it). Before the chat is used.
+        void useTransport(Transport* transport);
 
         // The history as it would be sent (a copy), for tests and for nothing else.
         nlohmann::json history() const;

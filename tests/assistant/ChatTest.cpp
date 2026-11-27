@@ -783,6 +783,9 @@ namespace
 TEST_CASE("assistant: the saved key is read off the window's thread, once, and a refusal is not asked again",
           "[assistant][sharedsim]")
 {
+    // On every configuration: the store and the transport are the test's, so what the build has (the Keychain,
+    // libsecret, libcurl, or none of them: Windows, a Linux without the headers) says nothing here. Run on a build with
+    // both and on one configured with neither (CMAKE_DISABLE_FIND_PACKAGE_PkgConfig, TEE_ASSISTANT_CURL=OFF).
     Rig rig("chat-keyread");
     const auto partsFor = [&rig] {
         return SessionParts{*rig.file, *rig.library, [&rig]() -> SimHost* { return &rig.sim->host(); },
@@ -796,6 +799,7 @@ TEST_CASE("assistant: the saved key is read off the window's thread, once, and a
         auto owned = std::make_unique<GatedStore>();
         GatedStore& store = *owned;
         session.useKeyStore(std::move(owned));
+        session.useTransport(std::make_unique<ScriptedTransport>());   // (whatever the build has: Windows has none)
         const std::uint64_t rev = session.chat().revision();
         std::string why;
         // asked as the panel asks, on its own thread here so that a read made on the asker's thread (the old way) fails
@@ -838,6 +842,7 @@ TEST_CASE("assistant: the saved key is read off the window's thread, once, and a
         store.refuse = true;
         store.release.set_value();
         session.useKeyStore(std::move(owned));
+        session.useTransport(std::make_unique<ScriptedTransport>());   // (whatever the build has: Windows has none)
         std::string why;
         REQUIRE(within(5.0, [&] {
             session.chat().ready(why);
@@ -858,6 +863,7 @@ TEST_CASE("assistant: the saved key is read off the window's thread, once, and a
         {
             Session session(partsFor());
             session.useKeyStore(std::move(owned));
+        session.useTransport(std::make_unique<ScriptedTransport>());   // (whatever the build has: Windows has none)
             std::string why;
             session.chat().ready(why);
             REQUIRE(within(5.0, [&] { return store.loads.load() == 1; }));

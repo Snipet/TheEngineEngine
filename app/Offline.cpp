@@ -231,14 +231,18 @@ namespace tee::app
             frameServices.saveKey = [kept](std::string typed, std::string& why) { return kept->assistant.saveKey(std::move(typed), why); };
             frameServices.keyMask = [kept] { return kept->assistant.keyMask(); };
             frameServices.removeKey = [kept](std::string& why) { return kept->assistant.removeKey(why); };
-            shown.frame = [kept] {
-                kept->bake.tick();
-                // the app's own heavy work (the ribbon's curve, the bake baking or checking), sampled here on the frame's
-                // thread for the assistant's curves to yield to
+            // the app's own heavy work (the ribbon's curve, the bake baking or checking), sampled on the frame's thread
+            // for the assistant's curves to yield to
+            const auto appBusy = [kept] {
                 const std::string bake = kept->bake.state();
-                kept->assistant.frame(kept->dyno.busy() || bake.rfind("baking", 0) == 0 || bake.rfind("checking", 0) == 0);
+                return kept->dyno.busy() || bake.rfind("baking", 0) == 0 || bake.rfind("checking", 0) == 0;
+            };
+            shown.frame = [kept, appBusy] {
+                kept->bake.tick();
+                kept->assistant.frame(appBusy());
                 kept->frames.store(kept->frames.load() + 1.0);
             };
+            shown.drainAssistant = [kept, appBusy] { kept->assistant.frame(appBusy()); };
             if (window)
             {
                 const auto hooks = std::make_shared<Shown::WindowHooks>();

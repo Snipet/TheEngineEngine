@@ -2825,6 +2825,151 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 18:16 UTC: X-065, THE SOAK ON 3ba103f4 ENDED RED, AND EVERY RED ROW HAS THE PLACES LISTENER ON.** The lead's
+  read of the job's log (run 46032401939, linux-x64-soak, 16:54 to 18:09; 4373 s against 4251; 221 of 228;
+  `ui.build.reverse` passed, 43 s). Seven tests, eleven assertions, all the click judge at
+  `tests/sim/combo/Report.cpp:75` ("excess over its firing periods ... which decides"):
+  - nightly shards 2, 8, 13, 14, 15 and 16 of 16, seven triples, each with `sound.model`:
+    valve.model+boost.model+sound.model / turbo-six / pull (shift 3-2: 3.39 against 2.67);
+    intake.model+boost.model+sound.model / turbo-six / pull (shift 2-3: 2.71 against 2.67);
+    engine.wallHeat+sound.model+voices.model, engine.custom+exhaust.model+sound.model,
+    fuel.model+ecu.model+sound.model, intake.model+exhaust.model+sound.model / turbo-six / tour (the limiter: 3.16,
+    3.07, 3.18, 3.00 against 2.97); boost.model+fuel.model+sound.model / turbo-six-mild / pull (shift 3-2: 3.12
+    against 3.04);
+  - the archetype corpus, as built, two builds whose sound is Places: rotary-twin-na-side-port / tour (the limiter,
+    three instants: 2.54, 2.47, 2.62 against 2.35) and supercharged-v8-62 / tour (the limiter: 3.55 against 3.35).
+  - None of these rows is in `Known.h`; their neighbours without `sound.model` are (X-048, X-052, X-044, X-043).
+  - **Not established:** the cause. Item 20 (2f6bbbeb: true levels, the staging gain, the boundary microphone and
+    its fold) is the day's only commit that touches that listener. Each soak row is ONE draw, which is not
+    evidence by the lead's own rule. Asked of L: old against new at 17 draws a row, then which part of item 20,
+    then whether a person hears it. Asked of the steward: the last soak before the window, by row.
+  - `main`'s gate is the three jobs, and `main` (40463d37) holds this sim tree (22314cde): this is a finding on
+    what the owner has now. `sim/` stays closed; a cure waits for a window, and it does not bring auto level back
+    (the owner's ruling for true levels stands).
+- **27 Nov 18:16 UTC: THE NAMED RED IS OVER: card A's cure is in at 3db7ed07** (ef77de5 merged on B's fix; gated trees
+  unchanged). Card A's tier of record: 598 of 598 on 899259e9 + ef77de5 (plain tree, libsecret and libcurl
+  found); on the merged state, everything built and the assistant's and the shell's suites 92 of 92. The lead's
+  own tree at 3db7ed07 (plain, app OFF, NO libsecret, libcurl found): the same 92 of 92, the key-read case green
+  there; with the reason copied at construction again it fails at `ChatTest.cpp:824` and `:833`; restored. **The
+  prediction for 899259e9's Windows held exactly:** 587 of 588, `assistant.sim` at `ChatTest.cpp(820)` and
+  `(829)`, nothing else (the lead's read of the log). **The hold protects 3db7ed07** (18:14: Windows started
+  18:11:33; Linux and macOS pending). `main` moves to it on three greens. Then J2's carry, card A's item 3.
+- **27 Nov 18:06 UTC: THE TIP BUILDS AGAIN: B's fix is in at f61531fa** (76ce9d97 under two merges; gated trees
+  unchanged). B's tier of record, in a tree configured by the plain preset (app OFF, no libsecret, no libcurl):
+  591 of 592, the named red only; its app-on tree's shell suites 61 of 61. The lead's own plain tree at f61531fa:
+  everything builds, the shell's tests 25 of 25; with `AssistantWake::post` made to push nothing, three of the
+  wake's four cases fail (`AssistantWakeTest.cpp:72`, `:74`; `:181`, `:182`; `:209`, `:212`); restored. In the fix
+  besides the build: the timer's hold has one owner (its callback; a timer pending when SDL's timers quit leaves
+  one small block at exit), and a case for a job that says "not yet". 899259e9's CI at 18:05: Linux and macOS
+  green, Windows running. Card A's cure goes next, at once; the hold then protects card A's tip.
+- **27 Nov 18:01 UTC: X-064, TWO OF THE ASSISTANT'S LIMITS ARE ON THE FRAME'S CLOCK** (B found the clock; card A read
+  every limit; the lead read `app/Offline.cpp:151`, `Tools.h:59`, `:63`, `Tools.cpp:684`). The clock is the frame
+  count at 60 a second: still in a minimised window, a fifth of the rate in an occluded one.
+  - On real time, so untouched: a job's ticket (2 s; a job the frame has not begun is abandoned at the deadline),
+    `set_fields`' ticket (7 s), the owner's answer, the predicted curve and the dyno (40, 20, 40 s), the
+    transport's limits, the bridge's 55 s. **So every tool's call ends in real time with the clock still: item 3's
+    bound holds, by card A's reading; its held-clock case goes with item 3's push.**
+  - On the frame's clock: (i) the gesture wait, 5 s: it cannot end while minimised (25 s occluded), the 7 s ticket
+    always wins, and the reply then says "timed out before the app took it" for what was a control being held;
+    (ii) a turn's limit, 300 s: it does not hold as written while minimised or occluded (the chat's turn stays
+    bounded by 24 calls and the requests' own limits). Neither leaves a call hanging.
+  - Cure approved in design (card A): both on a real clock inside `Tools`, one a test can hold and step. Its own
+    push, last in the order: card A's key-store cure, J2's carry, item 3, X-063, X-064.
+- **27 Nov 17:53 UTC: CI CONFIRMED B's BREAK** (the steward's read of run 46044044673: linux-x64 failed at "Build first"
+  on `app/AssistantWake.h:12`, no test ran), and CI's trees are on record from a log and the workflow: the TESTS
+  tree is the plain preset (`build.yml:327`; status line "Release, tools ON, tests ON, app OFF"), the application's
+  tree has the app and no tests (`:348`). What each platform's tests tree finds for the assistant (the steward):
+  Linux libsecret 0.21.4 and libcurl 8.5.0; macOS the Keychain and libcurl 8.7.1; Windows neither.
+  - B's fix (to be pushed on its plain tree's whole tier): SDL3 linked to `tee-shell-app-tests` in every tree, so
+    the wake's cases run where CI runs; the timer's hold has one owner (its callback); a case for the "not yet"
+    path (`AssistantWakeTest.cpp:188`).
+  - J2's tier for U1's air carry: 591 of 592 on 899259e9 + air + bless, plain tree without libsecret, the named red
+    only; no golden moved beyond the four.
+  - **A question put to card A, which holds its item 3's push (B's finding, confirmed by the lead in the code):** the
+    assistant's clock in the app is the frame count at 60 a second (`app/Offline.cpp:151`, `:243`). It stands
+    still in a minimised window and runs at a fifth in an occluded one (FunkGui's idle rate, 12 Hz). The owner's
+    answer is on real time (`Tools.h:59`); a turn's limit and the gesture wait are on the frame's clock
+    (`Tools.h:63`, `Tools.cpp:684`). Asked: every limit and its clock, and a case with the clock held still that
+    every tool's call ends within item 3's 55 s of real time. A limit that can never end while minimised is a
+    finding to number.
+  - Not tonight, B's next item: a test of `app/Main.cpp`'s own wake lines with the real window (about half a day;
+    CI's tests tree has no `TheEngineEngine` target, so it may belong in the artefact's own run).
+- **27 Nov 17:49 UTC: X-063, A BUILD WHOSE NAME IS NOT VALID UTF-8 ENDS THE APP** (card A's probe, asked for by the
+  lead after reading acbaae6; not yet re-run by the lead). Every `dump()` in `assistant/` is nlohmann's strict
+  one and nothing there catches: a name "v8\xFF" through the chat's state line ends the chat's worker with
+  `type_error.316` and the process with it; the same through Claude Desktop's link ends the link's poll thread
+  (SIGABRT, both). How a bad name gets in: a build's name falls back to its file's stem
+  (`files/BuildFiles.cpp:103`), and the library's names are stems (`:265`, `:270`). Reach: Linux (a file name
+  is any bytes); not macOS's own disk (APFS keeps names as UTF-8); not Windows in this version (no link, no chat).
+  Cure approved in design, card A's, as its own push after its item 3: (a) one helper with the replace handler for
+  every serialisation in `assistant/`, and a test that finds any `.dump(` outside it; (b) a last guard in the
+  link's per-request handling and in `Chat::turn`, each leaving a state the owner can go on from. Conditions
+  in the lead's message of this time.
+- **27 Nov 17:49 UTC: card A measured B's break on its own plain tree** (the same error at
+  `app/AssistantWake.h:12`). Order ruled: B's build fix; then card A's cure (ef77de5) at once behind it (its tier
+  of record: the whole default tier on 899259e9 + ef77de5 in a plain tree with libsecret and libcurl, plus a tree
+  with neither; on the merged state: everything built, the assistant's and the shell's suites), without waiting
+  for the fix's jobs, since that commit cannot gate `main`; card A's tip is then the protected one and `main`'s
+  next candidate.
+- **27 Nov 17:48 UTC: THE BRANCH TIP DOES NOT BUILD IN THE DEFAULT TREE (B's d0949cf2). DO NOT BASE A TIER ON IT
+  until B's fix is in.** The lead's checkout at f4580ae4, unmodified, configured by the plain `dev` preset
+  (`TEE_BUILD_APP` OFF, its default): `tests/shell/app/AssistantWakeTest.cpp` fails to compile,
+  "app/AssistantWake.h:12:10: fatal error: 'SDL3/SDL.h' file not found". `tests/shell/CMakeLists.txt:109-117` adds
+  the case to `tee-shell-app-tests` always and gives that target SDL's headers only under `TEE_BUILD_APP`. B's
+  tree has the app on; CI's tests tree is the plain preset (`build.yml:327`). **Prediction, written with run
+  46044044673's three jobs still pending: all three fail at the build step.** B fixes forward at once, without
+  waiting for jobs (they are its own and lost). `main` is untouched: it is at 40463d37, which builds.
+  - **THE RULE FROM NOW ON: the tier of record runs in a tree configured as CI configures it** (the plain preset
+    and the deps dir, nothing else). A tier in any other tree is extra. Every report names its tree:
+    `TEE_BUILD_APP`, and whether libsecret and libcurl were found. Two breaks in one hour came from a tier that was
+    green only on its author's configuration: card A's key-read case (a tree with libsecret) and B's wake (a tree
+    with the app on).
+  - The lead's part in it: it allowed B's push on B's tier without asking what tree it ran in, and read the code
+    only after the push. A change the lead has not read is now read from a patch or a pushed side ref before it
+    lands when it touches CMake or a platform part.
+  - The lead's read of the wake itself (60d4c56c): the loop agrees with FunkGui 0.28.0's `DesktopHost::pump` (every
+    event goes to `rawEvent` first, minimised or not); post and take lose no wake; the timer's "stale once fired"
+    note holds for SDL 3.4.20. NOT covered by any case: `app/Main.cpp`'s own lines (the `setWake` call,
+    `rawEvent`'s branch: the case copies that loop), and the 75 ms path through a job that says "not yet". Asked of
+    B: whether a window test under Xvfb can cover the first. A real minimised window on macOS is the owner's.
+  - Order now: B's build fix; card A's cure (ef77de5: proved by card A on a tree with neither libsecret nor
+    libcurl); J2's carry of U1's air patch; card A's item 3.
+- **27 Nov 17:42 UTC: `main` IS AT 40463d37** (run 46039773867: Linux, macOS and Windows green; gated trees
+  unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 3ba103f4 (17:13).
+- **27 Nov 17:42 UTC: THE HOLD IS LIFTED** (899259e9's three jobs started, windows-x64 at 17:41:51), **AND ONE RED IS
+  NAMED until card A's cure lands:** on a build with no system key store (no libsecret headers; Windows, by the
+  lead's prediction), a whole default tier may show `assistant.sim` red with exactly
+  `tests/assistant/ChatTest.cpp:820` and `:829` failing and nothing else ("test cases: 34 | 33 passed | 1
+  failed", two assertions). A push may go on such a tier. Any other red is a red. Seen so far on those two lines
+  only: the lead's build, B's tier (596 of 597), J2's container expected. It ends when the cure is on the branch.
+  - The order of code-bearing pushes, each after the tip before it has its three jobs started: B's wake (60d4c56c
+    and its docs; the owner approved B's push), J2's carry of U1's air patch, card A's cure, card A's item 3
+    (b9da7e6).
+  - `main` cannot move to a commit that is red on Windows: it waits for the cure's three greens.
+  - Put to the owner: whether the chat should use the API's server-side compaction for long conversations (card
+    A's paragraph; nothing is built until they say).
+- **27 Nov 17:39 UTC: card A's seven commits are in at 899259e9 (run 46042046822), AND ONE OF ITS NEW CASES IS RED
+  WHERE THE BUILD HAS NO SYSTEM KEY STORE.** Gated trees unchanged (sim 22314cde, host ef1715f6, tools 7c3e4d59).
+  - The lead's own build of 899259e9: the assistant's tests 30 of 31. `assistant.sim` fails at
+    `tests/assistant/ChatTest.cpp:820` and `:829` (127ae3c's key-read case): "this build has no system key store
+    (libsecret's headers were missing when it was configured)". Cause, read in the code: the session copies the
+    "no key store" reason into the chat when it is made, and `useKeyStore` does not take it back, so `Chat::ready`
+    answers before it asks for the key. Card A's 598 of 598 is true on a container that has libsecret-1-dev; CI's
+    Linux installs it. **Prediction, written before any Windows result: windows-x64 red on the same two lines**
+    (no store and no transport there); Linux and macOS green.
+  - Card A cures it as its own push BEFORE its item 3: the case to run and pass on Windows and on Linux without
+    libsecret's headers, not skipped; the cure proved on a tree configured without them.
+  - **`main` does not move to 899259e9 if Windows is red; it waits for the cure's three greens.** It may move to
+    40463d37 (J2's carry of U1's withdrawn question) on its Windows job: Linux and macOS are green there.
+  - What the lead read and broke on the stack: 46baadb (`urlAllowed`) sound, and with the '@' test removed
+    `TransportTest.cpp:27` fails; acbaae6 (the build's name as a JSON string under a label) and with the old line
+    back `ChatTest.cpp:882` and `:893` fail; 127ae3c's locks read (key state, then chat; no path holds the chat's
+    lock around the key's provider). Not yet run by the lead beyond the suite: d64da73, 38d1fe7, 2023a2a, d4c3ce8.
+  - A question put to card A, a finding if its probe is red: every `dump()` in `assistant/` is the strict one and
+    nothing there catches, so a string that is not UTF-8 in a tool's result (a name, a path on Windows) would throw
+    on the chat's or the link's thread.
+  - **THE HOLD IS ON for code-bearing pushes until 899259e9's three jobs have started** (17:39: Linux and macOS
+    started, Windows waiting). Then, in order: card A's cure, J2's carry of U1's air patch, card A's item 3.
 - **27 Nov 17:23 UTC: U1's air patch (40d461d5) has the lead's word, four goldens blessed** (frame.desktop.off,
   .connected, .refused, frame.ask; no other). 4 px of air under each settings row whose line wraps to two
   (`ui/app/AppFrame.cpp`: CLAUDE DESKTOP and WHEEL at 46, the clutch's own 4 removed). The lead's look, on c0efd215
