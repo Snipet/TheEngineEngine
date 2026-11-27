@@ -6,6 +6,7 @@
 #include "Combo.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <string>
 
@@ -52,5 +53,35 @@ TEST_CASE("the pull drives an automatic and a CVT in D, and moves no other box's
         CHECK(r.tel("car.speed").at(8.0) > 5.0);
         if (std::string(stem) == "twin-turbo-hot-vee-v8-40")
             CHECK(r.tel("car.gear").at(8.0) >= 2.0);   // the automatic's own upshifts (1-2 near 6.0 s)
+    }
+}
+
+// The reference driven its own way (the lead's ruling, 27 Nov 12:07): a build's reference (every switch off: car.model 0,
+// the reference's own car, which reads no `gearbox`) is the manual the presses drive with the lever in N. Under the
+// lever's 1 it was an H-pattern dropped into first with no clutch, and it stalled: the automatics' wide bounds (up to
+// 17.02) were a stalled engine's. So a reference never moves the lever, and a reference that stalls while driven throws.
+TEST_CASE("a lever-driven build's reference drives on its presses, and a stalled reference throws", "[fast][fast-3][combo]")
+{
+    const std::string cvt = corpusFile("economy-four-15");
+    auto everyOff = [](tee::test::Scenario sc) {
+        sc.at(0.0);
+        for (const Switch& w : switches())
+            sc.spec(w.path, 0);
+        return sc;
+    };
+    {
+        Times tm;
+        const tee::test::Run r = everyOff(referenceScenario(Kind::Pull, cvt, tm)).run(tm.driveTo);
+        CHECK(r.tel("car.gear").at(8.0) >= 2.0);    // its own upshift on the press at 6.5 s: a manual on its presses
+        CHECK(r.tel("car.speed").at(8.0) > 5.0);
+        CHECK_NOTHROW(requireReferenceRuns(r, tm, "economy-four-15 pull"));
+    }
+    {
+        // the guard's bite: the same reference under the case's scenario (the lever to D, its first slammed in) stalls
+        Times tm;
+        const tee::test::Run r = everyOff(scenario(Kind::Pull, cvt, 0u, tm)).run(tm.driveTo);
+        CHECK(r.tel("engine.speed").at(5.0) < 1.0);
+        CHECK_THROWS_WITH(requireReferenceRuns(r, tm, "economy-four-15 pull"),
+                          Catch::Matchers::ContainsSubstring("stalled while driven"));
     }
 }

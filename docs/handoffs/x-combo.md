@@ -215,3 +215,10 @@ the truck off the pull; or (b) the smallest honest scenario, a pull-away in one 
 clutch brake stops the input shaft), the lever to position 1 (low range, gear 3: roadranger.fm), the clutch let up as
 the throttle opens, held in that gear to the stop, no shifts (a shift needs a float or a double clutch: a driver, not
 a timeline). (b) judges the pull-away and the governed run in gear, not the shifts.
+
+27 Nov 12:07, the lead's ruling, done: a reference never moves the lever (referenceScenario), since a reference's own car
+(car.model 0) is a manual and lever 1 dropped it into first with no clutch: it stalled, and the automatics' wide bounds
+were a stalled engine's. Every played reference that stalls while driven throws (requireReferenceRuns). X-058 (the
+automatic put into gear at rest, v6-35-twin-turbo-pickup's start, 1 of 17) numbered and recorded in
+docs/measurements/combo/2026-11-27-automatic-pull.md; no case's path, not in Known.h. Next: the tractor's one nightly
+pull-away (the lead's 3(b)): 17 nudges without a stall, no shifts, its cost stated before it lands with [soak].
