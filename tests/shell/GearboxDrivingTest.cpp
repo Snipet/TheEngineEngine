@@ -111,6 +111,7 @@ TEST_CASE("gearbox: each shipped kind takes a forward gear from a standstill by 
         CHECK(car.geared() == 0);                                     // at rest in neutral
         // the status line says what the box asks of the driver: on an eighteen-speed, the clutch is theirs
         CHECK((car.controls->services().status().find("the clutch is yours") != std::string::npos) == k.clutch);
+        CHECK((car.controls->services().status().find("start in L (key 5)") != std::string::npos) == k.clutch);
         if (k.clutch)
         {
             car.controls->key(input::key::kLeftShift, true);

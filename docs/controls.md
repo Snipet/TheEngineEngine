@@ -59,8 +59,9 @@ Reference, reads no gearbox and is driven as a manual's paddles whatever the fie
   the revs matched, grinds as the box says. The keys 1 to 4 (and the shifter's gates 1 to 4) are the lever's
   positions, 5 the L slot (gears 1 and 2, low range), 6 nothing, reverse R, N neutral. E and Q are the next gear of
   the eighteen in order, up or down: the lever's position and the splitter and range that gear wants, refused at 1 and
-  18; Z and X then toggle from where the press left them. While an eighteen-speed is loaded the status line says the
-  clutch is yours.
+  18; Z and X then toggle from where the press left them. A truck starts in L (key 5, or the shifter's gate 5) with the
+  clutch down: key 1 is third, and a clutch let up there without throttle stalls it. While an eighteen-speed is loaded
+  the status line says the clutch is yours and where to start.
 
 Until 27 Nov the automatic, the CVT and the eighteen-speed sat in neutral whatever was pressed (the automatic clutch
 held the lever they read at neutral; 13 shipped builds: the owner's report). `tests/shell/GearboxDrivingTest.cpp`
