@@ -84,14 +84,27 @@ namespace tee::assistant
 
     Ticket Inbox::post(Job job)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (closed_)
-            return Ticket(answered(kClosing));
-        if (queue_.size() >= kCapacity)
-            return Ticket(answered(kBusy));
-        auto s = std::make_shared<Ticket::State>();
-        queue_.push_back({std::move(job), s});
+        std::function<void()> wake;
+        std::shared_ptr<Ticket::State> s;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (closed_)
+                return Ticket(answered(kClosing));
+            if (queue_.size() >= kCapacity)
+                return Ticket(answered(kBusy));
+            s = std::make_shared<Ticket::State>();
+            queue_.push_back({std::move(job), s});
+            wake = wake_;
+        }
+        if (wake)
+            wake();   // (outside the lock: the hook may ask the inbox anything; it never runs a job itself)
         return Ticket(std::move(s));
+    }
+
+    void Inbox::setWake(std::function<void()> wake)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        wake_ = std::move(wake);
     }
 
     std::size_t Inbox::waiting() const

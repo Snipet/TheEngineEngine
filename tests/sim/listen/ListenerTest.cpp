@@ -178,21 +178,23 @@ TEST_CASE("the level falls 6 dB a doubling of the distance", "[listen]")
     rig.set("ss.camera", 0);
     rig.set("ss.ground", 2);
     rig.set("ln.sc.windOff", 1);
-    // The property: the level falls as 1 / the path, from each tailpipe to each capsule. What the pair hears of it is
-    // the geometry's: the two pipes 0.55 m either side and 0.35 m under the pair's 0.7 m, its cardioids 17 cm apart and
-    // turned 55 degrees out, so close up the pipes stand off the capsules' axes and the step is under 6.02 dB. That
-    // prediction (the band 100 Hz to 1.5 kHz is under the pipes' beam) is -5.58, -5.88, -5.97, -6.00 dB a doubling;
-    // measured -5.05, -5.68, -5.81, -5.95. The margin, 1 dB about the prediction, takes the rest of the distance
-    // dial (it moves the highs and the room's share as the reference's DISTANCE does: 0.53 dB at the first doubling);
-    // a level that did not fall as 1 / r (a 1 / r^2 or a constant) would miss it by 6 dB a doubling
+    // The property: the level falls as 1 / the path, from the tailpipe to each capsule. Since 27 Nov the Tailpipe camera
+    // is a boundary microphone on the ground (1 cm up) in line with the right-hand pipe, 0.293 of the dial's distance
+    // behind it (scene.fm), the pipe 0.35 m up, the cardioids 17 cm apart and turned 55 degrees out. The in-line pipe
+    // alone is heard: its angle off its axis stays within some 20 degrees, so its beam (the piston law on the rig's
+    // white noise) holds while the distance changes; the other pipe, 1.1 m across, comes onto the camera's line as it
+    // walks back and its highs grow with it (physical, and not this property). The margin, 1 dB about the prediction,
+    // takes the rest of the distance dial; a level that did not fall as 1 / r (a 1 / r^2 or a constant) would miss it
+    // by 6 dB a doubling
     auto predicted = [](double r) {
         double p = 0.0;
+        const double back = std::max(0.25, 0.293 * r);
         for (double side : {-1.0, 1.0})
         {
             const double ax = side * 55.0 * 3.14159265358979 / 180.0;
-            for (double px : {-0.55, 0.55})
+            for (double px : {0.55})
             {
-                const double dx = px - side * 0.085, dy = r, dz = 0.35 - 0.7;
+                const double dx = px - (0.55 + side * 0.085), dy = back, dz = 0.35 - 0.01;
                 const double d = std::sqrt(dx * dx + dy * dy + dz * dz);
                 const double g = 0.5 + 0.5 * (std::sin(ax) * dx + std::cos(ax) * dy) / d;
                 p += (g / d) * (g / d);
@@ -205,7 +207,7 @@ TEST_CASE("the level falls 6 dB a doubling of the distance", "[listen]")
     for (double r : {2.0, 4.0, 8.0, 16.0, 30.0})
     {
         rig.set("distance", dialFor(r));
-        const double p = dB(heard(rig, kTails));
+        const double p = dB(heard(rig, kTailR));
         if (r > 2.0)
         {
             const double oct = std::log2(r / prevR);
@@ -226,17 +228,22 @@ TEST_CASE("the reference's five views are presets of the new model, within the s
     const char* names[] = {"exhaust", "intake", "valvetrain", "block", "headers", "turbo", "starter", "combustion", "tyres"};
     double sum = 0.0;
     int count = 0;
+    // (true levels carry one fixed staging, +3.70 dB after the last stage's compressor (listen.fm, the owner's ruling
+    // of 27 Nov): a uniform gain, not the views' geometry, so it is taken out here. And since 27 Nov the Tailpipe camera
+    // is a boundary microphone, no longer the reference's EXHAUST view: the four others are its presets; Tailpipe's own
+    // property is the next case's)
+    const double kStagingDb = 20.0 * std::log10(1.531);
     for (int k = 0; k < 9; ++k)
     {
         rig.set("driven", srcs[k] == kRoad ? 1 : 0);
-        for (int v = 0; v < 5; ++v)
+        for (int v = 1; v < 5; ++v)
         {
             rig.set("view", v);
             rig.set("ss.camera", v);
             rig.set("ss.model", 0);
             const double a = dB(heard(rig, srcs[k]));
             rig.set("ss.model", 1);
-            const double b = dB(heard(rig, srcs[k]));
+            const double b = dB(heard(rig, srcs[k])) - kStagingDb;
             INFO(names[k] << " in view " << v << ": " << b - a << " dB from the reference's");
             // the exhaust within 1.5 dB; the rest within 7 dB (the reference's table is not geometric: its REAR hears
             // the bay better than its EXHAUST, 2 m nearer)
@@ -264,7 +271,45 @@ TEST_CASE("the reference's five views are presets of the new model, within the s
         rig.play(1.0);
         p[m] = rig.power();
     }
-    CHECK(std::fabs(dB(p[1] / p[0])) < 1.0);
+    CHECK(std::fabs(dB(p[1] / p[0]) - kStagingDb) < 1.0);
+}
+
+TEST_CASE("the Tailpipe camera, a boundary microphone: the ground adds no comb", "[listen]")
+{
+    // On the ground the direct path and the ground's image are one, so the image adds to the direct at every frequency
+    // and cancels it at none (docs/plan/places-sound.md). The property: from 300 Hz to 6 kHz the response with asphalt
+    // never falls under the response with no ground by more than 1 dB. At the spot it replaced (1.71 m back, 0.70 m up)
+    // the first notch fell some 15 dB at 657 Hz, so the case bites
+    Rig rig;
+    rig.set("ss.model", 1);
+    rig.set("ss.camera", 0);
+    rig.set("ln.sc.windOff", 1);
+    rig.set("src", kTailL);
+    std::vector<float> h[2];
+    for (int g = 0; g < 2; ++g)
+    {
+        rig.set("ss.ground", g == 0 ? 0 : 2);
+        rig.set("sig", 3);
+        rig.reset();
+        rig.clear();
+        rig.play(0.1, false);
+        rig.set("sig", 2);
+        rig.play(8192.0 / kRate);
+        h[g] = rig.left();
+    }
+    double least = 1e9;
+    double at = 0.0;
+    for (double f = 300.0; f <= 6000.0; f += 10.0)
+    {
+        const double d = 20.0 * std::log10(magnitude(h[0], f) / magnitude(h[1], f));
+        if (d < least)
+        {
+            least = d;
+            at = f;
+        }
+    }
+    std::printf("Tailpipe, asphalt against no ground: least %.1f dB at %.0f Hz\n", least, at);
+    CHECK(least > -1.0);
 }
 
 TEST_CASE("the trackside and chase cameras: each source against the exhaust as the nearest reference view has it", "[listen]")

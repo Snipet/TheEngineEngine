@@ -79,7 +79,7 @@ whose bay no geometry gives; the ground's notch near 1 kHz). A build states a ca
 
 | Camera | Where (r: DISTANCE's 0.5 to 30 m) | Ears |
 |---|---|---|
-| Tailpipe | (0 or 0.4, -r, 0.7), facing the car | ORTF |
+| Tailpipe | (0.4 or the right-hand mouth 0.55, -max(0.25, 0.293 r), 0.01): a boundary microphone on the ground in line with the mouth, facing the car (since 27 Nov; before, (0 or 0.4, -r, 0.7)) | ORTF, the ground folded into each capsule |
 | Rear | (0, -2 - r, 1.2) | ORTF |
 | Side | (0.9 + r, 1.3, 1.2), facing across | ORTF |
 | Engine bay | (0, bay + r/2, 1.4), facing back, the bonnet open | ORTF |
@@ -148,13 +148,18 @@ dB under the reference's mix (P's measure, 20:10). Then a limiter at 0.7 whose a
 it above 0.7) and whose release is 250 ms; a soft ceiling past 0.75 toward 0.95, a guard; and a clamp at 0.99 after
 the resampler, whose ripple on a limited peak measures 0.73 to 0.75 (48 kHz). `tel.sound.limiter` is the deepest
 reduction over the last 0.4 s; `tel.sound.ceilingParts` counts the parts the ceiling bent. X-004 (a turbo six's
-launch with eight switches on): no guard trip. Between the compressor and the limiter sits the auto level (below), on
-by default; with it off (`spec.sound.autoLevel` 0, True levels) the stage is as described here and a build's own
-level (spec.sound.level, -24 to +12 dB) is where it is brought to the others.
+launch with eight switches on): no guard trip. Between the compressor and the limiter sits the level: since the owner's
+ruling of 27 Nov ("true levels with a fixed gain") true levels by default (`spec.sound.autoLevel` 0), one fixed staging
+of +3.7 dB for every build, camera and distance, a level match at one named point (first.json at the default camera,
+the boundary microphone, at its steady mid load, beside its reference; docs/plan/places-sound.md), and a build's own
+level (spec.sound.level, -24 to +12 dB) acting before the compressor as the reference's does. The auto level (below)
+stays on the Auto setting, as it was.
 
 ## The ground's comb (the "fixed mode near 2.3 kHz")
 
-The colour heard near 2.3 to 2.6 kHz on first.json at the opening camera, the same at every engine speed, is the
+(Until 27 Nov; since then the Tailpipe camera is a boundary microphone on the ground, where the image and the direct
+path are one and there is no comb: docs/plan/places-sound.md. Rear and Side keep the standing listener's comb.)
+The colour heard near 2.3 to 2.6 kHz on first.json at the opening camera, the same at every engine speed, was the
 ground's reflection, not a pipe mode, the body, or a filter (asked with G, 25 Nov). At the Tailpipe camera's default
 place the listener is 1.71 m behind the pipe and 0.7 m up, the pipe 0.35 m up: the direct path is 1.745 m, the ground
 image's 2.007 m, 0.262 m longer. The two add in phase every c / 0.262 = 1325 Hz and cancel half-way between, from
@@ -172,6 +177,9 @@ a reflection that falls with frequency on asphalt as on grass (some 0.95 to 0.8 
 jitter of the image's path (a few millimetres) that softens the deep notches above 2 kHz.
 
 ## Auto level (`spec.sound.autoLevel`)
+
+(Since 27 Nov the Auto setting, no longer the default: the owner chose true levels with one staging, docs/plan/places-sound.md.
+What follows is the Auto setting as designed.)
 
 The ruling (lead, 20:13): at the defaults a free rev peaks at 0.3 to 0.6 of full scale and the idle is plainly
 heard; a far camera or the cabin is not left 20 to 30 dB down; within a setting, the levels stay true. Of the two

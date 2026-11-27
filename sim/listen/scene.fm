@@ -377,9 +377,13 @@ module Scene
         v->fy = 1.0f;
         if (c == CAM_TAILPIPE)
         {
-            v->lx = pipes == 2 ? 0.0f : 0.4f;
-            v->ly = -r;
-            v->lz = 0.7f;
+            // a boundary microphone on the ground behind the (right-hand) mouth, in line with it: the direct and the
+            // ground's paths are one there, so no comb (docs/plan/places-sound.md: the shipped spot, 1.71 m back at
+            // 0.70 m, put a 15 dB notch at 657 Hz in a four's body). 0.5 m back at the dial's default (0.29 of its
+            // distance), at least 0.25 m; the standing listener's comb is Rear's and Side's
+            v->lx = pipes == 2 ? 0.55f : 0.4f;
+            v->ly = -fmaxf(0.25f, 0.293f * r);
+            v->lz = 0.01f;
         }
         else if (c == CAM_REAR)
         {
@@ -598,10 +602,13 @@ module Scene
                 const float fa = airFc(dist);
                 const float fcj = 1.0f / sqrtf(1.0f / (fa * fa) + 1.0f / (pat[1] * pat[1]) + 1.0f / (fh * fh)
                                                + 1.0f / (hiCut * hiCut));
-                target(v, j0 + m, tret * rate, pat[0] * gm * inv * (v->cabin != 0 ? tau[s] : 1.0f), fcj);
+                // (a listener on the ground, a boundary microphone: the ground's image and the direct path are one, so
+                // the ground adds to each capsule's own path, coherently, and has no tap of its own)
+                const float onGround = v->cabin == 0 && v->lz < 0.05f ? 1.0f + groundR : 1.0f;
+                target(v, j0 + m, tret * rate, onGround * pat[0] * gm * inv * (v->cabin != 0 ? tau[s] : 1.0f), fcj);
             }
-            // the ground's image, heard at the ears' middle: none in the cabin
-            if (v->cabin != 0 || groundR <= 0.0f)
+            // the ground's image, heard at the ears' middle: none in the cabin, none on the ground (above)
+            if (v->cabin != 0 || groundR <= 0.0f || v->lz < 0.05f)
             {
                 target(v, j0 + 2, v->d[j0 + 0], 0.0f, v->fc[j0 + 2] > 0.0f ? v->fc[j0 + 2] : hiCut);
             }
