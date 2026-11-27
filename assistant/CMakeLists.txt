@@ -66,7 +66,7 @@ if(NOT WIN32)
   # The extension: Claude Desktop installs it with a double click and starts server/tee-mcp from it. Its version goes
   # up with every change to the bridge or its manifest (Claude Desktop updates an installed extension only to a newer
   # one). The manifest's shape is TestingPlayground's at 47bac40 (manifest_version 0.3).
-  set(TEE_MCPB_VERSION "0.2.0")
+  set(TEE_MCPB_VERSION "0.2.1")
   if(APPLE)
     set(_tee_mcpb_platform "darwin")
   else()
@@ -79,7 +79,7 @@ if(NOT WIN32)
   "display_name": "TheEngineEngine",
   "version": "@TEE_MCPB_VERSION@",
   "description": "Ask Claude about the engine open in TheEngineEngine: it reads the build, changes it a step at a time and measures its torque curve.",
-  "long_description": "Open TheEngineEngine and turn on 'Allow Claude Desktop' in it, then talk to Claude about the engine on the bench. Claude reads the build, explains its fields, changes them (each change one step you can undo in the app, where it shows as a card), loads a build from the library or saves the open one under a new name, and measures its torque curve on a private copy. Loading over unsaved changes asks you in the app first. Nothing leaves your computer except your conversation with Claude: the extension talks to the app through a private local connection.",
+  "long_description": "Open TheEngineEngine and turn on 'Allow Claude Desktop' in it, then talk to Claude about the engine on the bench. Claude reads the build, explains its fields, changes them (each batch of changes one step of the app's own Undo; the app's status line counts them), loads a build from the library or saves the open one under a new name, and measures its torque curve on a private copy. Loading over unsaved changes asks you in the app first. Nothing leaves your computer except your conversation with Claude: the extension talks to the app through a private local connection.",
   "author": { "name": "TheEngineEngine" },
   "server": {
     "type": "binary",

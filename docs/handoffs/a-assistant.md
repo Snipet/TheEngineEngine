@@ -16,11 +16,12 @@ try on their Mac is the first.**
    looked in ("the app is not reachable at .../TheEngineEngine-mcp/app.sock: ..."); `tee-mcp --where`, run in a
    Terminal, prints the folder it would use.
 
-**Extension 0.2.0 (27 Nov): reinstall it.** 0.1.0 looked for the app in a folder taken from its environment, which
-Claude Desktop does not pass: with the app open and the switch on it still said "not open". 0.2.0 finds the folder
+**Extension 0.2.1 (27 Nov): reinstall it.** 0.1.0 looked for the app in a folder taken from its environment, which
+Claude Desktop does not pass: with the app open and the switch on it still said "not open". 0.2.0 and later find the folder
 from the system (the per-user temporary folder), the same from both ends. Build `tee-mcpb` again and double-click the
 new `TheEngineEngine.mcpb` (Claude Desktop replaces an installed extension only with a newer version), and use an app
-built from the same commit.
+built from the same commit. (0.2.1 also tells Claude what the app really shows: each change is one step of the
+app's Undo, counted on the status line; no card is drawn yet.)
 
 **What you will see.** Claude reads the build and the library, changes fields (each batch one step the app's Undo takes
 back whole), loads a build only when the open one is saved, saves under a new name (never over one), and runs the two
