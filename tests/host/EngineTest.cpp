@@ -1682,11 +1682,14 @@ TEST_CASE("the calibration baked in the background: the spark, the cam on that s
     INFO("stages seen: " << stages.size());
     CHECK(stages.count("cam") == 1);
 
-    // an edit of what moves both (the compression): both stale, both set aside, a bake asked
+    // an edit of what moves both (the compression): both stale, a bake asked; both seen current here and the edit
+    // moving neither's axes, so both play on while it bakes (the owner's choice 27 Nov: before, both were set aside)
     build.set("engine.compression", build.get("engine.compression") - 0.5);
     CHECK(bakes.consider(build) != KnockBakeState::Current);
-    CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
-    CHECK(build.get("ecu.maps.camInAuto") == 1.0);
+    CHECK(build.get("ecu.maps.knockLimitAuto") == 0.0);
+    CHECK(build.get("ecu.maps.camInAuto") == 0.0);
+    CHECK(bakes.status().sparkStale);
+    CHECK(bakes.status().camStale);
 }
 
 // The CalibrationBakeService under the owner's hand: an edit lands while a bake runs, in each of its phases (the spark
