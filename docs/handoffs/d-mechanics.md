@@ -172,3 +172,23 @@ Tests (all through the application's path, the shipped archetypes/inline-five-tu
 Prediction for the held-value cure, to check when the window opens: the robot stays 0 through all three shifts of
 case 3 (and both of case 1), since each begins with the launch's clutch open at rest, and so the engine neither dips
 on the up to 2 nor stalls on the down to 1.
+
+## Queue item 19, X-057: redlineFor at a governor's high idle (next window; notes, nothing under sim/ yet)
+
+Read in code (12:15 UTC), D2's two facts hold:
+- ecu.fm:125-130: on ecu.model 0, redlineFor returns fmaxf(base, idleRpm + 1500): a floor at idle + 1500 rpm. Under
+  model 1, a stated limiter speed (at least idle + 200).
+- engine.fm:786-789: spec.engine.redlineSpeed is read only when customUse != 0.
+
+So three governed builds cannot state a redline at their high idle in content (D2's numbers, high idle against the
+floor): diesel-v8-truck 2014 against 2324, diesel-mechanical-classic 2268 against 2355, diesel-marine-v12 1890 against
+2208. The pickup is cured in content by D2; the two 15 L trucks already sit under their high idle (2188 against 2226).
+The rule must let a governed engine's redline go beneath the idle + 1500 floor.
+
+Null, corrected: every shipped build bit-identical except those three, by name. For each the design says what moves
+(the band and the lights; diesel-v8-truck and the classic are eighteen-speeds with stated ratios, so their shift points;
+the marine V12 has no gearbox) and whether anything keyed on the redline is baked for them (D2 found no baked table in
+any of its builds; to check).
+
+Numbered for the list, not for now: X-058 (X's), archetypes/v6-35-twin-turbo-pickup, an automatic put into D at rest,
+the "start" window, 1 of 17 over its bound (3.57 against 3.22), 45 ms after the lever and before first is in.
