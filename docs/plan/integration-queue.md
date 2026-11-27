@@ -2825,6 +2825,26 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 20:17 UTC: THE WAKE'S RUN ON THE PACKED APPLICATION PASSED ON LINUX IN CI, AND THE TIP TO PROTECT IS
+  3ccb826b.**
+  - 120cc19d (the steward's block in `build.yml`, run 46059778564), linux-x64 GREEN, 600 of 600. The step's lines,
+    read by the lead in the job's log: "run-wake: answered in 0.12 s; window: minimised=1 hidden=0 occluded=1;
+    ticks 30 before the call, 30 after the answer; simulator compiling at the call" and "run-wake: simulator ready
+    while minimised, 5.5 s after the minimise; ticks 30 (reported)". The packed application, minimised for real
+    under openbox, answers Claude Desktop's bridge with no frame ticked, and adopts its simulator there (X-066's
+    cure). Its macOS and Windows jobs are running: their lines are owed.
+  - T1 (4524113b) read on all three by the steward: Linux 600 of 600, Windows 590 of 590, macOS 598 of 599 with
+    the named red only (`McpTest.cpp:908`, `:909`). Not a candidate, as expected.
+  - **3ccb826b is card A's push and `main`'s next candidate**: 01788ba (the not-UTF-8 case checks the file was
+    made; where the file system refuses the name it says so and passes; both branches proved on Linux) and X-064
+    (the tools' limits and a turn's on a real clock a test can hold; the session no longer reads the frame's
+    clock; the dyno's words on a timeout say what to do). Card A's record: 600 of 600 on 6bfb90d2 + the first
+    X-064 commit; on the final stack, everything built and the assistant's and the shell's suites 94 of 94. The
+    lead's own tree at 3ccb826b: the same 94 of 94; with the gesture's wait given a clock that stands still,
+    `ToolsTest.cpp:466` and `:494` fail; restored. Its three jobs at 20:16: Linux running, macOS and Windows
+    pending. Waiting behind it: B's small push (two comments; the frame-count clock taken out of
+    `app/Offline.cpp`).
+  - `main`'s own run on 233d7154 is green on all three: the owner's builds of it exist.
 - **27 Nov 19:54 UTC: A RED ON macOS FROM X-063's OWN CASE; `main`'s NEXT CANDIDATE IS NO LONGER T1.** The steward's
   read of 6bfb90d2's macOS job (run 46055531270): 598 of 599; `assistant.sim` fails "a whole build whose file
   name is not UTF-8 is listed replaced, and loading it says why it cannot (X-063)" at
