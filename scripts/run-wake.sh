@@ -106,8 +106,7 @@ if grep '"id":2' "$work/mcp.first.out" | grep -q '"isError":true'; then
   echo "run-wake: FAILED: the call answered with an error:"; grep '"id":2' "$work/mcp.first.out" | cut -c1-400
   exit 1
 fi
-printf 'run-wake: answered in %s s; window: %s%s; ticks %s before the call, %s after the answer; simulator %s at the call\n' \
-  "$took" "$flags" "$hidden" "$ticksBefore" "$ticksAfter" "${simulator:-not said}"
+# the property first (Linux: no tick between the call and the answer), then the line that says the run passed
 if [ "$ticksBefore" != "$ticksAfter" ]; then
   if [ "$(uname -s)" = Linux ] && [ -z "$hidden" ]; then
     echo "run-wake: FAILED: the window ticked between the call and the answer ($ticksBefore, then $ticksAfter): minimised for real here, so this run shows nothing of the wake"
@@ -115,6 +114,8 @@ if [ "$ticksBefore" != "$ticksAfter" ]; then
   fi
   echo "run-wake: note: the window ticked meanwhile, so this run does not show a drain without a frame (reported here, not required)"
 fi
+printf 'run-wake: answered in %s s; window: %s%s; ticks %s before the call, %s after the answer; simulator %s at the call\n' \
+  "$took" "$flags" "$hidden" "$ticksBefore" "$ticksAfter" "${simulator:-not said}"
 
 # Reported, not required (X-066): the simulator adopted while the window still does not tick. A minimised window adopts
 # it only in a drain, so the script asks again about once a second until the app's line says simulator=ready, for 15 s

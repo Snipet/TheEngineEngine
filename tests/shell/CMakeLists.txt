@@ -186,7 +186,8 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
                 $<TARGET_FILE:TheEngineEngine> $<TARGET_FILE:tee-mcp>
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
       set_tests_properties(shell.window.wake PROPERTIES TIMEOUT 300 LABELS "shell;window" RUN_SERIAL TRUE
-        PASS_REGULAR_EXPRESSION "run-wake: answered in [0-9.]+ s; window: minimised=1")
+        PASS_REGULAR_EXPRESSION "run-wake: answered in [0-9.]+ s; window: minimised=1"
+        FAIL_REGULAR_EXPRESSION "run-wake: FAILED")
     endif()
     # The launch (app/Launch.h): a launch with no settings that names the first build (content/builds/first.json: a
     # scripted run opens none unless named) shows its notes' first line ("Try first: ...") and ends with its name and
