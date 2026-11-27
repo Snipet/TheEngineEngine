@@ -2823,6 +2823,77 @@ the steward would use, if the owner allows it:
 **The soak:** main's scheduled soak at 35a733d1, run 46001412173: 227 of 227, 4512 s, +261 s over 4251, inside the line.
 It ran while the day's fast jobs crowded the runners.
 
+## 27 Nov: CI's record, the day's moves of main and three reds green only where their author ran them (the steward)
+
+**Each move of `main` today, with its run and its three counts (tests passed: Linux, macOS, Windows).** The times are
+the queue's "main at" commits. Every run listed was green on all three platforms.
+
+| `main` at | the queue's note | run | Linux | macOS | Windows |
+|---|---|---|---|---|---|
+| dc2f7db3 | 05:08 | 45943949711 | 584 | 583 | 576 |
+| ddacdf97 | 07:16 | 45957367261 | 584 | 583 | 576 |
+| 7ff344bc | 09:02 | 45970379456 | 584 | 583 | 576 |
+| 35a733d1 | 12:20 | 45997700123 | 586 | 585 | 578 |
+| f77a46e6 | 13:28 | 46000962256 | 588 | 587 | 580 |
+| 3ba103f4, the baked commit | 17:13 | 46032401939 | 595 | 594 | 586 |
+| 40463d37 | 17:42 | 46039773867 | 596 | 595 | 587 |
+| 3db7ed07 | 19:05:21 | 46047427666 | 598 | 597 | 588 |
+| 233d7154 | 19:42:35 | 46051766042 | 599 | 598 | 589 |
+| 3ccb826b | 20:47:44 | 46061873957 | 600 | 599 | 590 |
+
+On 3ba103f4 host.sim.bakes was green on all three: the window's known red ended there, its five by name.
+
+**Three reds green only where their author ran them, and the rule each left.**
+
+1. **Card A's key-read case (899259e9).**
+   - It was red on Windows alone: tests/assistant/ChatTest.cpp:820 and :829, assistant.sim, 1 of 26 cases.
+   - The case assumes a system key store. The author's tree had one; CI's Windows tree has none. CI's tests trees
+     have:
+
+     | platform | key store | HTTP |
+     |---|---|---|
+     | Linux | libsecret 0.21.4 | libcurl 8.5.0 |
+     | macOS | the Keychain | libcurl 8.7.1 |
+     | Windows | none in this version | none in this version |
+
+   - The lead predicted the red before the job ended, and it held exactly. Card A cured it at 3db7ed07, proved
+     green on Windows at 588.
+   - The rule (the lead, 17:48): a tier of record runs in a tree configured as CI configures its tests tree, and
+     every report names its tree (TEE_BUILD_APP, libsecret, libcurl).
+2. **B's wake case (d0949cf2).**
+   - It was red at the BUILD step on all three platforms: tests/shell/app/AssistantWakeTest.cpp reaches SDL3/SDL.h
+     ("app/AssistantWake.h:12:10: fatal error: 'SDL3/SDL.h' file not found").
+   - tee-shell-app-tests gets SDL3 only with TEE_BUILD_APP=ON. CI's tests tree has the app OFF ("tools ON, tests
+     ON, app OFF"). The step with the app ON ("Configure the application", build-app) builds and runs no test. The
+     author's tree had the app ON.
+   - The lead predicted it from a plain dev tree before any job ended. B fixed it forward.
+   - The rule is the same as 1's. A steward's misreading on the way: the app-ON configure line is the application
+     tree's, not the tests'. Read which step a line comes from.
+   - An agent's plain dev tree is CI's Linux tests tree in every option that matters. The one difference is the
+     preset (dev here, release on CI), written down and not chased.
+3. **Card A's not-UTF-8 file name case (6bfb90d2, X-063).**
+   - It was red on macOS alone: tests/assistant/McpTest.cpp:908 and :909, assistant.sim, 1 case.
+   - The case wrote a file named "v8" + 0xFF + ".json" with an unchecked write. macOS's APFS keeps names as valid
+     UTF-8, so the file was never made and there was nothing to list. Linux and Windows were green.
+   - It was a named red on 4524113b and 120cc19d (each read by line: that case alone). It was cured at 01788bad, and
+     3ccb826b is green on all three.
+   - The rule (the lead's ruling): a case that needs something a platform's file system may refuse checks that the
+     precondition holds, and where it does not, says so in the log and ends without failing; not an #if on the
+     operating system.
+
+What the three share: each case passed where its author ran it, and failed where the author's tree differed from CI's
+in one thing (a key store, the app option, a file system). Each was caught by a platform job, named by line, and cured
+forward. None was re-run to green.
+
+**B's wake run in CI** (the block at ab2cbac4, from docs/handoffs/b-run-wake-ci.md at 3e35f7a9; first run 46059778564 on
+120cc19d). "Run the application" was green on all three:
+
+- Linux: "run-wake: answered in 0.12 s; window: minimised=1 hidden=0 occluded=1; ticks 30 before the call, 30 after the
+  answer; simulator compiling at the call".
+- macOS: "run-wake: answered in 0.06 s; window: minimised=1 hidden=0 occluded=1; ticks 30 before the call, 30 after the
+  answer; simulator compiling at the call". The first automated evidence on the owner's platform.
+- Windows: "run-wake: no link on this platform (Windows): nothing to call; not a failure".
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 20:47 UTC: `main` IS AT 3ccb826b** (run 46061873957: Linux 600, Windows 590, macOS 599, all green;
