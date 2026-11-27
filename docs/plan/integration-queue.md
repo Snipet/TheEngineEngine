@@ -2825,6 +2825,23 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:49 UTC: X-063, A BUILD WHOSE NAME IS NOT VALID UTF-8 ENDS THE APP** (card A's probe, asked for by the
+  lead after reading acbaae6; not yet re-run by the lead). Every `dump()` in `assistant/` is nlohmann's strict
+  one and nothing there catches: a name "v8\xFF" through the chat's state line ends the chat's worker with
+  `type_error.316` and the process with it; the same through Claude Desktop's link ends the link's poll thread
+  (SIGABRT, both). How a bad name gets in: a build's name falls back to its file's stem
+  (`files/BuildFiles.cpp:103`), and the library's names are stems (`:265`, `:270`). Reach: Linux (a file name
+  is any bytes); not macOS's own disk (APFS keeps names as UTF-8); not Windows in this version (no link, no chat).
+  Cure approved in design, card A's, as its own push after its item 3: (a) one helper with the replace handler for
+  every serialisation in `assistant/`, and a test that finds any `.dump(` outside it; (b) a last guard in the
+  link's per-request handling and in `Chat::turn`, each leaving a state the owner can go on from. Conditions
+  in the lead's message of this time.
+- **27 Nov 17:49 UTC: card A measured B's break on its own plain tree** (the same error at
+  `app/AssistantWake.h:12`). Order ruled: B's build fix; then card A's cure (ef77de5) at once behind it (its tier
+  of record: the whole default tier on 899259e9 + ef77de5 in a plain tree with libsecret and libcurl, plus a tree
+  with neither; on the merged state: everything built, the assistant's and the shell's suites), without waiting
+  for the fix's jobs, since that commit cannot gate `main`; card A's tip is then the protected one and `main`'s
+  next candidate.
 - **27 Nov 17:48 UTC: THE BRANCH TIP DOES NOT BUILD IN THE DEFAULT TREE (B's d0949cf2). DO NOT BASE A TIER ON IT
   until B's fix is in.** The lead's checkout at f4580ae4, unmodified, configured by the plain `dev` preset
   (`TEE_BUILD_APP` OFF, its default): `tests/shell/app/AssistantWakeTest.cpp` fails to compile,
