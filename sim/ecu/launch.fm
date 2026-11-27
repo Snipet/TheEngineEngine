@@ -6,8 +6,12 @@
 // turbine ahead of the clutch's release (the "two-step"). It lets go as the clutch comes up (under half way) or the
 // car moves. Flat-shift: through an upshift made with the clutch while the accelerator stays floored, the same cut
 // holds the speed the engine had when the clutch went down (so it does not flare) until the clutch comes up. A dog
-// box's cut (card I asks it for so many seconds, the box shifting without a clutch) cuts every spark; a downshift's
-// blip (card I asks a plate) opens the throttle at least that far. When a dog box's cut ends the spark comes back
+// box's cut (card I asks it while the box shifts without a clutch) cuts every spark; a downshift's blip (card I asks a
+// plate) opens the throttle at least that far. The cut lasts while card I asks, and no longer: the vehicle asks for
+// the window its gearbox unloads the dogs in (60 ms; the truck's 150; the bike's quickshiftCut), and the number it
+// hands is not a length (X-047, docs/plan/x047-shift-cut.md: re-armed with that number every step it was asked, the
+// cut ran the window and the number again, 210 ms on model 1's 60 ms shift against a real quickshifter's 40 to 60, and
+// the bike's twice its setting). When a dog box's cut ends the spark comes back
 // retarded and with a share of its firings still cut, both falling to nothing over kReinstateTime: a ramped torque
 // reinstatement, as an ECU's quickshifter does, for the driveline and against the bang (the soak of 2026-11-24: the
 // first firing after a cut on a full charge, a step 2 to 4 times the click bound). It cures that under fuel.model 1;
@@ -30,7 +34,7 @@ module LaunchControl
     float share;
     bool sparkCut;
     float plateMin;     // the blip: the plate at least this open
-    float dogLeft;      // seconds of a dog box's cut left
+    bool dogCut;        // a dog box's cut, while card I asks
     float reinstate;    // seconds of the reinstatement's ramp left (after a dog box's cut)
     SoftHold soft;
 
@@ -43,14 +47,14 @@ module LaunchControl
         share = 0.0f;
         sparkCut = false;
         plateMin = 0.0f;
-        dogLeft = 0.0f;
+        dogCut = false;
         reinstate = 0.0f;
     }
 
     // Every 16 samples. on: launch control fitted (ecu.launch.on); button: the launch button held; the pedals (0 to 1:
     // the accelerator, the clutch's 1 on the floor), the car's speed (m/s), the speed (rpm, rpm/s), the launch speed
-    // (rpm), the most retard (degrees); flat: the flat-shift fitted; upshift: a gear went up this step; dog: seconds of
-    // cut card I asks (0 none); blip: the plate card I asks (0 none)
+    // (rpm), the most retard (degrees); flat: the flat-shift fitted; upshift: a gear went up this step; dog: above 0 while
+    // card I asks a dog box's cut (its size not read); blip: the plate card I asks (0 none)
     void control(bool on, bool button, float pedal, float clutch, float carSpeed, float rpm, float rate, float launchRpm,
                  float most, bool flat, bool upshift, float dog, float blip, float d16)
     {
@@ -76,18 +80,18 @@ module LaunchControl
             retard = soft.retard;
             share = soft.share;
         }
-        const bool wasCut = dogLeft > 0.0f;
-        dogLeft = dog > 0.0f ? dog : fmaxf(dogLeft - d16, 0.0f);
-        if (wasCut && dogLeft <= 0.0f)
+        const bool wasCut = dogCut;
+        dogCut = dog > 0.0f;
+        if (wasCut && !dogCut)
             reinstate = kReinstateTime;
-        else if (dogLeft > 0.0f)
+        else if (dogCut)
             reinstate = 0.0f;
         else
             reinstate = fmaxf(reinstate - d16, 0.0f);
         // (the retard softens a burn where the spark sets it, fuel.model 1; the share thins the firings as they return)
         retard += kReinstateRetard * reinstate / kReinstateTime;
         share = fmaxf(share, kReinstateShare * reinstate / kReinstateTime);
-        sparkCut = dogLeft > 0.0f || ((launching || shifting) && rpm > holdRpm);
+        sparkCut = dogCut || ((launching || shifting) && rpm > holdRpm);
         plateMin = fmaxf(blip, 0.0f);
     }
 };
