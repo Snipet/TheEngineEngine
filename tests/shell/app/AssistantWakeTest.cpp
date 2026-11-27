@@ -22,6 +22,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <future>
@@ -91,7 +92,7 @@ TEST_CASE("the assistant's wake: one event pending, taken, and again a little la
     wake.again();
     CHECK(wake.againPending());
     CHECK(queued(wake.type()) == 0);
-    REQUIRE(next(wake.type(), 2000, e));
+    REQUIRE(next(wake.type(), 5000, e));   // the timer fired at all (bounded generously: a loaded runner is late, X-067)
     const double ms = std::chrono::duration<double, std::milli>(Clock::now() - asked).count();
     CHECK(ms >= 50.0);
     CHECK(wake.take(e));
@@ -119,6 +120,7 @@ namespace
         std::unique_ptr<Events> events;
         std::unique_ptr<app::AssistantWake> wake;
         int drains = 0;
+        std::atomic<int> posts{ 0 };   // the jobs posted (the wake called by a tool)
 
         // `adopted` false: the simulator's compile is waited for but not adopted (a window minimised before its first
         // frame after the compile: only a drain can adopt it)
@@ -149,7 +151,11 @@ namespace
             wake = std::make_unique<app::AssistantWake>();
             REQUIRE(wake->usable());
             SDL_FlushEvent(wake->type());
-            shown.assistant->setWake(wake->wake());
+            // the wake as the app sets it, each post counted (on the posting thread) on its way
+            shown.assistant->setWake([this, w = wake->wake()] {
+                posts.fetch_add(1);
+                w();
+            });
         }
         ~Minimised()
         {
@@ -166,8 +172,14 @@ namespace
         // The loop for `ms`, or until `f` is answered.
         void serve(std::future<assistant::Result>& f, int ms)
         {
+            serveUntil(f, ms, [] { return false; });
+        }
+        // The loop for `ms`, or until `f` is answered or `done()`.
+        template <class Done>
+        void serveUntil(std::future<assistant::Result>& f, int ms, Done done)
+        {
             const auto until = Clock::now() + std::chrono::milliseconds(ms);
-            while (f.wait_for(std::chrono::seconds(0)) != std::future_status::ready && Clock::now() < until)
+            while (f.wait_for(std::chrono::seconds(0)) != std::future_status::ready && !done() && Clock::now() < until)
             {
                 SDL_Event e{};
                 if (!SDL_WaitEventTimeout(&e, 20) || !wake->take(e))
@@ -218,13 +230,19 @@ TEST_CASE("the assistant's wake: a job that says not yet is drained again, no fr
         }
     REQUIRE(field != nullptr);
 
+    // What this asserts: while the job says "not yet", a second drain comes with nothing posted after the first, so
+    // from the wake's own timer (again()). Not a rate: an earlier form wanted 3 drains in 400 ms (the timer is 75 ms),
+    // and a loaded macOS runner gave 2 (X-067). The waits are bounded in real time, generously, and stay inside the
+    // batch's own wait for the control (gestureSeconds, 5 s: past it the batch is refused).
     build.beginGesture();   // the owner holds a knob
     auto call = m.call("set_fields", { { "changes", { { { "path", field->path.substr(5) }, { "value", want } } } } });
-    m.serve(call, 400);
+    m.serveUntil(call, 2000, [&] { return m.drains >= 2; });
     CHECK_FALSE(answered(call));
-    CHECK(m.drains >= 3);   // the first wake, then the timer's: about 5 in 400 ms
+    CHECK(m.posts.load() == 1);   // the call's one post
+    CHECK(m.drains >= 2);         // the first from that post, the next from the timer
     build.endGesture();     // let go: only the timer can drain it now (nothing posts)
-    m.serve(call, 5000);
+    m.serve(call, 3000);
+    CHECK(m.posts.load() == 1);
     REQUIRE(answered(call));
     const assistant::Result r = call.get();
     INFO(r.value.dump());
