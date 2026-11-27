@@ -2825,6 +2825,20 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:42 UTC: `main` IS AT 40463d37** (run 46039773867: Linux, macOS and Windows green; gated trees
+  unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 3ba103f4 (17:13).
+- **27 Nov 17:42 UTC: THE HOLD IS LIFTED** (899259e9's three jobs started, windows-x64 at 17:41:51), **AND ONE RED IS
+  NAMED until card A's cure lands:** on a build with no system key store (no libsecret headers; Windows, by the
+  lead's prediction), a whole default tier may show `assistant.sim` red with exactly
+  `tests/assistant/ChatTest.cpp:820` and `:829` failing and nothing else ("test cases: 34 | 33 passed | 1
+  failed", two assertions). A push may go on such a tier. Any other red is a red. Seen so far on those two lines
+  only: the lead's build, B's tier (596 of 597), J2's container expected. It ends when the cure is on the branch.
+  - The order of code-bearing pushes, each after the tip before it has its three jobs started: B's wake (60d4c56c
+    and its docs; the owner approved B's push), J2's carry of U1's air patch, card A's cure, card A's item 3
+    (b9da7e6).
+  - `main` cannot move to a commit that is red on Windows: it waits for the cure's three greens.
+  - Put to the owner: whether the chat should use the API's server-side compaction for long conversations (card
+    A's paragraph; nothing is built until they say).
 - **27 Nov 17:39 UTC: card A's seven commits are in at 899259e9 (run 46042046822), AND ONE OF ITS NEW CASES IS RED
   WHERE THE BUILD HAS NO SYSTEM KEY STORE.** Gated trees unchanged (sim 22314cde, host ef1715f6, tools 7c3e4d59).
   - The lead's own build of 899259e9: the assistant's tests 30 of 31. `assistant.sim` fails at
