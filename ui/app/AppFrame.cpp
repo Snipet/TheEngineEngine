@@ -1451,7 +1451,7 @@ namespace tee::ui
         {
             settingsHeads_.push_back({ "CLAUDE DESKTOP", y + 2.0f });
             desktopNoteY_ = y + 16.0f;   // its line, wrapped to two at most under the heading (left of the buttons)
-            y += 42.0f;
+            y += 46.0f;                  // and 4 px of air under its second line before the next heading
         }
         // WHEEL: Off or On (card B's G29; only where the shell reads a wheel), its status under the heading.
         const bool wheel = on && services_.wheelOn && services_.setWheelOn && services_.wheelStatus;
@@ -1462,15 +1462,13 @@ namespace tee::ui
         {
             settingsHeads_.push_back({ "WHEEL", y + 2.0f });
             wheelNoteY_ = y + 16.0f;
-            y += 42.0f;
+            y += 46.0f;   // its line, two at most, then 4 px of air before the next heading
         }
         // CLUTCH: three ways (card B's), across the whole column under its heading (three do not fit beside it), what
         // it means on the gearbox loaded under them, two lines at most.
         const bool clutch = on && services_.clutchMode && services_.setClutchMode && services_.autoClutchSays;
         const float cw = (w - 12.0f) / 3.0f;
         clutchNoteY_ = -1.0f;
-        if (clutch)
-            y += 4.0f;   // air under the row above (WHEEL's line, wrapped to two, ends where this heading would begin)
         for (std::size_t m = 0; m < clutch_.size(); ++m)
             clutch_[m]->setPlace({ x + static_cast<float>(m) * (cw + 6.0f), y + 16.0f, cw, 26.0f }, clutch);
         if (clutch)

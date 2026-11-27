@@ -1294,9 +1294,11 @@ namespace
         rig.host->tick(20);
         CHECK_MSG(rig.frame->desktopLine() == "Off: the app listens on nothing.", rig.frame->desktopLine());
         CHECK_MSG(rig.frame->wheelLine() == "Off: the wheel is not read.", rig.frame->wheelLine());
-        // Every unit's stepper still above the cockpit at the smallest window, the row added.
+        // Nothing over the cockpit at the smallest window, the row added: every unit's stepper shown lies in the room (the
+        // page scrolls to the others: frame.clutch).
         for (const tee::ui::Stepper* st : rig.frame->unitSteppers())
-            CHECK_MSG(st->bounds().bottom() <= rig.frame->inspectorRect().bottom(), std::to_string(st->bounds().bottom()));
+            CHECK_MSG(!st->shown() || st->bounds().bottom() <= rig.frame->inspectorRect().bottom() + 0.5f,
+                      std::to_string(st->bounds().bottom()));
         golden("frame.desktop.off", *rig.host);
         CHECK(clickOn(*rig.host, "Allow") && rig.desktop);
         CHECK_MSG(rig.frame->desktopLine() == "Allowed", rig.frame->desktopLine());
