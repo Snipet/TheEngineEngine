@@ -2789,8 +2789,29 @@ the steward would use, if the owner allows it:
   host.sim.bakes' five at EngineTest.cpp:1043), its evidence, and the lead's second measurement. The three
   platforms are read on the FROZEN commit; P starts when its three fast jobs are green; the soak runs beside
   the bake; THE BAKED COMMIT MUST SHOW EVERY ONE OF THOSE CASES GREEN, by name, before `main` moves. Order: 16,
-  (17 if G is ready: it has two unexplained moves and does not hold the bake), 15, 19, 18, 20, C's standard-day
-  bake under `host/`, then the list as it stands.
+  15, 18, 20 (17 if G is ready: it has two unexplained moves and does not hold the bake), C's standard-day
+  bake under `host/`, then the list as it stands. **ITEM 19 HAS LEFT THIS WINDOW (13:06):** see X-059 below.
+- **THE WINDOW'S KNOWN RED, by name (the steward, from the code, 27 Nov):** ctest `host.sim.bakes`
+  (tee-host-tests "[sim][bake]~[nightly]"), the five cases on the ShippedV12 fixture (tests/host/EngineTest.cpp:
+  1033), which loads archetypes/v12-65.json and REQUIREs knockLimitCurrent at :1043 and intakeCamCurrent at
+  :1044 ("as shipped: baked on this program"): "an edit keeps the stale tables playing and undone is current at
+  once"; "an edit of a table's axes or meaning sets it aside, and says which field"; "a loaded build plays on no
+  table this service did not see current; a first launch as before"; "the wait for the edits to rest: the
+  floor, a share of the expected bake at the measured rate, the ceiling"; "edits a little apart start one bake;
+  one undone during the wait starts none; the service may go while it waits". Read and NOT of the kind: every
+  other knockLimitCurrent or intakeCamCurrent in EngineTest.cpp (tables baked inside the case, or asserted not
+  current), TuneFuelTests.cpp:51, BuildTests' build.bake, the nightly tier, the bake gate (idle figures, not
+  keys). A red outside these five is a red. P's proof on the baked commit: `host.sim.bakes` green, these five
+  passing by name.
+- **X-059 (numbered 13:06; N2's, with D2):** `boost.applyMachine` sizes the turbo from `ecu.redRpm` (machine.fm:464),
+  where a governed diesel's design speed is its rated speed (as `designSpeed` takes it, engine.fm:526). So item
+  19's cap, reviewed by the integrator on the steward's change, moves three shipped engines' full-pedal torque
+  at 1200 rpm through the match: diesel-v8-truck +11.8 % (boost 108 to 135 kPa), diesel-marine-v12 +19.8 %
+  (+6.1 % at 1600), diesel-mechanical-classic +2.0 %, within 0.3 % at 1900 rpm. The steward's null had hashed
+  the audio and printed the redline and had not read torque. Not a red band moving: three engines D2 validated
+  pulling differently. The rule and the match land together in the NEXT window, from sources (N2: what a
+  governed diesel's machine is matched to; D2: what the three make at low speed), the builds re-read against
+  their targets. No second redline inside the ECU meanwhile. The integrator's X-057 case keeps its mark.
 - **Verified by the lead ahead of its call: item 20** (L's patch file on b6bdee76, sha256 0582ec86...26c1: its four
   evidence cases pass, 474 assertions; the old default fails EngineTest.cpp:411 and :434; the old scene.fm fails
   ListenerTest.cpp:312 at -9.2 dB, 620 Hz; ref.null 11 of 11 with the patch).
@@ -2902,7 +2923,7 @@ the steward would use, if the owner allows it:
      (synced, or the revs over the edge); the pull's and tour's rows to confirm it, not a reading. Two tests:
      rest, two presses (the engine over 0.85 x idle, the car under 0.5 km/h: fails today); a synced 1-2 at
      1500 rpm on the overrun keeps robot 1.0 (passes today, fails on the first cure). Behind 16, 17 and 15.
- 19. AHEAD OF 18 (27 Nov): X-057's rule, the integrator with the steward: a governed engine's redline is its
+ 19. LEFT THIS WINDOW (13:06, for X-059: the cap moves the turbo's match; see the freeze state's head). Was: X-057's rule, the integrator with the steward: a governed engine's redline is its
      governed high idle (`redlineFor`, the full form: the lights, the vehicle and the key together). The one
      shipped build that met it (diesel-pickup-tuned) is cured in content by D2 outside the window; after that
      every shipped build is to be bit-identical under the rule BUT THREE, by name (diesel-v8-truck,
