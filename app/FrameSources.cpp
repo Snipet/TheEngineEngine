@@ -95,6 +95,11 @@ namespace tee::app
         return inner_ ? inner_->stillKnocking() : std::vector<std::vector<bool>>();
     }
 
+    ui::BakeStatus LateBake::status() const
+    {
+        return inner_ ? inner_->status() : ui::bakeStatusOf(std::string("waiting to bake"));
+    }
+
     std::string LateBake::state() const
     {
         return inner_ ? inner_->state() : std::string("waiting to bake");

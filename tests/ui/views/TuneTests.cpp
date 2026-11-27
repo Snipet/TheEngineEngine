@@ -335,7 +335,7 @@ namespace
         CHECK(doc.steps() == steps + 1);
         CHECK(tee::ui::tuneShownMap(*rig.ws) == 7);
         t = tee::ui::tuneFuelText(*rig.ws);
-        CHECK_MSG(has(t, "Premium (93) | AKI 93   RON 98   MON 88 | Premium (91) to Premium (93): the knock-limit table re-bakes (baking spark map 3 of 9)."), t);
+        CHECK_MSG(has(t, "Premium (93) | AKI 93   RON 98   MON 88 | Premium (91) to Premium (93): the knock-limit table re-bakes (baking the spark map 3 of 9)."), t);
         picture("tune.fuel.baking", *rig.host);
         // The bake lands: the table (baked before at 4 deg everywhere, now 3 off boost and 1 on it) in degrees.
         const int kl = doc.find("ecu.maps.knockLimit"), kla = doc.find("ecu.maps.knockLimitAuto");
@@ -459,7 +459,7 @@ namespace
         CHECK(doc.steps() == steps + 1);
         CHECK(tee::ui::tuneShownMap(*rig.ws) == 7);
         t = tee::ui::tuneFuelText(*rig.ws);
-        CHECK_MSG(has(t, "Premium (91) | AKI 95   RON 100   MON 90 | Premium (91) to Premium (91) at 95: the knock-limit table re-bakes (baking spark map 1 of 9)."), t);
+        CHECK_MSG(has(t, "Premium (91) | AKI 95   RON 100   MON 90 | Premium (91) to Premium (91) at 95: the knock-limit table re-bakes (baking the spark map 1 of 9)."), t);
         CHECK_MSG(!has(t, "EXTRAPOLATED"), t);
         // 97: RON 102, past the fit: marked in words.
         rig.host->click(field.centreX(), field.centreY());

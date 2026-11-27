@@ -305,6 +305,58 @@ namespace tee::ui
             + (p.total > 0 ? " " + std::to_string(p.done) + " of " + std::to_string(p.total) : std::string());
     }
 
+    BakeStatus ServiceBake::status() const
+    {
+        BakeStatus b;
+        if (!applyError_.empty())
+        {
+            b.phase = BakeStatus::Phase::failed;
+            b.error = applyError_;
+            return b;
+        }
+        const tee::BakeStatus h = bakes_.status();
+        switch (h.state)
+        {
+            case tee::KnockBakeState::NoTable: b.phase = BakeStatus::Phase::none; break;
+            case tee::KnockBakeState::Current:
+            case tee::KnockBakeState::Ready:
+                b.phase = bakes_.lastWasChecked() ? BakeStatus::Phase::checked : BakeStatus::Phase::baked;
+                break;
+            case tee::KnockBakeState::Waiting: b.phase = BakeStatus::Phase::resting; break;
+            case tee::KnockBakeState::Baking: b.phase = BakeStatus::Phase::baking; break;
+            case tee::KnockBakeState::Checking: b.phase = BakeStatus::Phase::checking; break;
+            case tee::KnockBakeState::Failed:
+                b.phase = BakeStatus::Phase::failed;
+                b.error = bakes_.error();
+                break;
+        }
+        if (h.waiting)
+            b.phase = BakeStatus::Phase::resting;
+        if (b.phase == BakeStatus::Phase::baking || b.phase == BakeStatus::Phase::checking)
+        {
+            b.stage = h.stage;
+            b.done = h.done;
+            b.total = h.total;
+        }
+        // A table plays while stale and not set aside; set aside (today's behaviour: the Auto switch, the formula) said
+        // only when no stale table plays.
+        b.staleSpark = h.sparkStale && h.sparkSetAsideBy.empty();
+        b.staleCam = h.camStale && h.camSetAsideBy.empty();
+        b.setAside = (!h.sparkSetAsideBy.empty() || !h.camSetAsideBy.empty()) && !b.staleSpark && !b.staleCam;
+        // The field that restarted it by its label as the inspector names it ("Compression" -> "compression").
+        if (h.restarted && !h.restartedBy.empty())
+        {
+            const tee::FieldInfo* f = build_.fields().find(h.restartedBy);
+            std::string name = f != nullptr && !f->label.empty() ? f->label : h.restartedBy.substr(h.restartedBy.rfind('.') + 1);
+            if (name.size() > 1 && name[0] >= 'A' && name[0] <= 'Z' && !(name[1] >= 'A' && name[1] <= 'Z'))
+                name[0] = static_cast<char>(name[0] - 'A' + 'a');   // "Compression" -> "compression"; "ECU" stays
+            b.restartedBy = name;
+        }
+        for (const std::string& k : h.kept)
+            b.kept += (b.kept.empty() ? "" : " and ") + k;
+        return b;
+    }
+
     std::vector<std::vector<bool>> ServiceBake::stillKnocking() const
     {
         tee::BakedFields last;

@@ -112,6 +112,9 @@ namespace tee::ui
         void select(std::string path) { selection_.select(std::move(path)); }
         int inspectorPageCount() const noexcept { return static_cast<int>(pages_.size()); }
         int inspectorPageIndex() const noexcept { return page_; }
+        // The ribbon's caption while the engine plays on tables from before an edit ("ON THE OLD TABLES UNTIL BAKED"; ""
+        // otherwise): the predicted curve is the new build on the old calibration and moves when the bake lands.
+        std::string ribbonStaleCaption() const;
         // A page's .gui text, as the inspector shows it (for tests); "" past the last.
         std::string inspectorGui(int i) const { return i >= 0 && i < inspectorPageCount() ? pages_[static_cast<std::size_t>(i)].gui : std::string(); }
         const std::string& inspectorTitle(int p) const;
@@ -313,6 +316,7 @@ namespace tee::ui
         std::vector<Button*> rail_;
         Widget* railMarks_ = nullptr;
         Label *name_ = nullptr, *sentence_ = nullptr, *status_ = nullptr;
+        Label* staleLine_ = nullptr;   // under the status line while the engine plays on tables from before an edit
         Bar *level_ = nullptr, *limiter_ = nullptr;
         LoadMeter* load_ = nullptr;       // the simulator's peak share of a core, its verdict, the dropouts
         LoadAdvice* advice_ = nullptr;    // the sentence while the build does not fit at this quality
@@ -324,8 +328,8 @@ namespace tee::ui
         void closeTryFirst();
         void writeHelp();                // hover help for the frame's own items
         std::string bakeWords() const;   // the bake's state as the status line says it (empty: nothing to say)
-        static std::string bakeWordsOf(const std::string& state);   // the same, a state without its count
-        bool bakeShown_ = false;
+        BakeStatus bakeStatus() const;   // FrameServices::bakeStatus, else its sparkMap parsed (BakeStatus.h)
+        bool bakeShown_ = false, staleShown_ = false;   // the bake's words and its stale line, as last laid out
         Button *undo_ = nullptr, *redo_ = nullptr;
         // the cockpit
         Button* start_ = nullptr;

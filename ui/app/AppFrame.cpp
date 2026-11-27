@@ -224,6 +224,18 @@ namespace tee::ui
             }
             return line;
         }, kWidgetSmall, Label::Ink::label, funkgui::Align::right);
+        // Under it, while the bake runs with the engine on the tables from before an edit (card C's option 1): which,
+        // in the label's ink (information, not a warning), cut at whole words to its room.
+        staleLine_ = &make<Label>([this] {
+            std::string line = bakeStaleLine(bakeStatus());
+            const float room = staleLine_ != nullptr ? staleLine_->bounds().w : 0.0f;
+            while (!line.empty() && funkgui::text::width(funkgui::FontService::get().atlas(), line.c_str(), kWidgetSmall) > room)
+            {
+                const std::size_t cut = line.rfind(' ');
+                line = cut == std::string::npos ? std::string() : line.substr(0, cut);
+            }
+            return line;
+        }, kWidgetSmall, Label::Ink::label, funkgui::Align::right);
         // The load: the peak share of a core, its verdict and the dropouts; while the build does not fit, the sentence
         // and QUALITY one click away (it never switches by itself: Economy changes the sound, the owner's choice).
         load_ = &make<LoadMeter>(LoadSources{ services_.simLoadPeak, services_.simLoad, services_.loadFits, services_.dropouts });
@@ -433,43 +445,24 @@ namespace tee::ui
             pedals_[i]->setHelp(kPedalHelp[i]);
     }
 
-    std::string AppFrame::bakeWords() const
+    BakeStatus AppFrame::bakeStatus() const
     {
-        // FrameServices::sparkMap's state (ServiceBake) as a sentence while the bake works or failed; empty otherwise.
-        std::string s = services_.sparkMap ? services_.sparkMap() : std::string();
-        // "baking cam 23 of 42": the stage, then its count kept as it is
-        std::string count;
-        if (s.rfind("baking ", 0) == 0 || s.rfind("checking ", 0) == 0)
-            if (const std::size_t d = s.find_first_of("0123456789"); d != std::string::npos && d > 7)
-            {
-                count = " " + s.substr(d);
-                s = s.substr(0, d - 1);
-            }
-        if (!count.empty())
-        {
-            const std::string w = bakeWordsOf(s);
-            return w.empty() ? std::string() : w + count;
-        }
-        return bakeWordsOf(s);
+        if (services_.bakeStatus)
+            return services_.bakeStatus();
+        return bakeStatusOf(services_.sparkMap ? services_.sparkMap() : std::string());
     }
 
-    std::string AppFrame::bakeWordsOf(const std::string& s)
+    std::string AppFrame::ribbonStaleCaption() const
     {
-        if (s == "waiting to bake")
-            return "Calibration: waiting for the edits to rest";
-        if (s.rfind("checking", 0) == 0)   // a cached bake checked on this program: seconds, not minutes
-            return "Checking the calibration";
-        if (s == "baking spark map")
-            return "Baking the spark map";
-        if (s == "baking spark map again")
-            return "Baking the spark map again";
-        if (s == "baking cam")
-            return "Baking the cam";
-        if (s.rfind("baking", 0) == 0)
-            return "Baking the calibration";
-        if (s == "bake failed")
-            return "Calibration bake failed";
-        return {};
+        const BakeStatus b = bakeStatus();
+        return b.stale() && !b.setAside && b.working() ? std::string("ON THE OLD TABLES UNTIL BAKED") : std::string();
+    }
+
+    std::string AppFrame::bakeWords() const
+    {
+        // The bake's state as the status line says it while the bake works or failed (BakeStatus.h's words); empty
+        // otherwise.
+        return bakeLine(bakeStatus());
     }
 
     void AppFrame::closeTryFirst()
@@ -1202,6 +1195,7 @@ namespace tee::ui
         const float left = railWidth() + 16.0f;
         float statusW = 0.0f;
         bakeShown_ = !bakeWords().empty();
+        staleShown_ = !bakeStaleLine(bakeStatus()).empty();
         if (load_->verdict() < 1)
         {
             // The build does not fit (tight or over): the sentence and QUALITY in the status line's place, the name and
@@ -1211,6 +1205,7 @@ namespace tee::ui
             statusW = std::clamp(x - left - 170.0f, 120.0f, 330.0f);
             advice_->setPlace({ x - statusW, 6.0f, statusW, 34.0f }, true);
             status_->setPlace({}, false);
+            staleLine_->setPlace({}, false);
         }
         else
         {
@@ -1219,7 +1214,14 @@ namespace tee::ui
             statusW = std::clamp(x - left - 420.0f, 0.0f, 300.0f);
             if (bakeShown_)   // the bake's words have room at the smallest window (the name keeps 170 px)
                 statusW = std::max(statusW, std::min(200.0f, x - left - 182.0f));
-            status_->setPlace({ x - statusW, 18.0f, statusW, 14.0f }, statusW > 60.0f);
+            // across an edit (old tables in play, or a reason after the count: card C's options 1 and 2), up to 420 px, the
+            // name keeping 200
+            if (staleShown_ || bakeWords().find("   ") != std::string::npos)
+                statusW = std::max(statusW, std::min(420.0f, x - left - 200.0f));
+            // two lines while old tables play (the bake, then which tables), else the one line where it always was
+            const bool two = staleShown_;
+            status_->setPlace({ x - statusW, two ? 9.0f : 18.0f, statusW, 14.0f }, statusW > 60.0f);
+            staleLine_->setPlace({ x - statusW, 27.0f, statusW, 14.0f }, two && statusW > 60.0f);
         }
         const float room = std::max(80.0f, x - statusW - 12.0f - left);
         name_->setPlace({ left, 6.0f, room, 22.0f }, true);
@@ -1485,7 +1487,12 @@ namespace tee::ui
             c.text("DYNO", rib.x + 14.0f, rib.y + 10.0f, look::kCaps, p.text);
             // The caption, or the predicted curve's knock-limited span while it has one (its points ringed on the plot).
             const std::string knock = ribbon_->knockText(true);
-            if (knock.empty())
+            // While the engine plays on tables from before an edit the curve is the new build on the old calibration
+            // (C: the predictor runs on the build as it stands) and moves when the bake lands: said in the caption's
+            // place, quietly; the knock rings stay on the plot and in the cursor's words.
+            if (const std::string old = ribbonStaleCaption(); !old.empty())
+                c.text(fitText(c, old, look::kCaps, rib.w - 56.0f - 70.0f).c_str(), rib.x + 56.0f, rib.y + 10.0f, look::kCaps, p.label);
+            else if (knock.empty())
                 c.text("PREDICTED, THE LAST CURVE GHOSTED", rib.x + 56.0f, rib.y + 10.0f, look::kCaps, p.label);
             else
                 c.text(fitText(c, knock, look::kCaps, folded_ ? 200.0f : rib.w - 56.0f - 70.0f).c_str(), rib.x + 56.0f, rib.y + 10.0f, look::kCaps, p.warning);
@@ -1598,8 +1605,8 @@ namespace tee::ui
             else if (sawRunning_ && std::isfinite(st) && !tryFirstNotes_.empty())
                 closeTryFirst();
         }
-        if (bakeWords().empty() == bakeShown_)
-            arrange();   // a bake began or ended: the status line's room
+        if (bakeWords().empty() == bakeShown_ || bakeStaleLine(bakeStatus()).empty() == staleShown_)
+            arrange();   // a bake began or ended, or old tables came into play or left: the status line's room
         if ((load_->verdict() < 1) != advice_->shown())
             arrange();   // the build stopped fitting, or fits again: the sentence comes or goes by itself
         if (engineBrakeState(*ctx_).shown != brake_->shown())

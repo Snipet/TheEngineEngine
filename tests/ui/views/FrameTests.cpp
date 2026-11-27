@@ -6,6 +6,7 @@
 #include "ViewKit.h"
 
 #include "app/AppFrame.h"
+#include "views/tune/Tune.h"
 #include "kit/widgets/Tables.h"
 
 #include <funkgui/text/FontService.h>
@@ -33,6 +34,8 @@ namespace
         int tryFirstDone = 0;
         bool cold = false;      // FrameServices::coldStart (the settings' ENGINE START)
         std::string spark;      // FrameServices::sparkMap: the calibration bake's state ("" none)
+        tee::ui::BakeStatus bake;   // FrameServices::bakeStatus, served when `bakeServed` (else sparkMap's string)
+        bool bakeServed = false;
         int mode = 0;
         // Card A's Session as the frame sees it (FrameServices::desktopAllowed ... removeKey), served when `assistant`:
         // the switch (a refusal's words in `refuseWith`), the status line, the key store (what was saved, never shown).
@@ -76,6 +79,7 @@ namespace
             s.tryFirst = [this] { return notes; };
             s.coldStart = [this] { return cold; };
             s.sparkMap = [this] { return spark; };
+            s.bakeStatus = [this] { return bakeServed ? bake : tee::ui::bakeStatusOf(spark); };
             s.setColdStart = [this](bool c) { cold = c; };
             s.tryFirstDone = [this] { ++tryFirstDone; notes.clear(); };
             s.mode = [this] { return mode; };
@@ -608,6 +612,129 @@ namespace
             rig.host->tick(3);
             CHECK(!said(rig, "Baking") && !said(rig, "Checking"));
         }
+        return 0;
+    }
+
+    // The bake across edits (card C's options 1 and 2, the owner's yes, 27 Nov; the words U1's): while the new tables bake
+    // the engine plays on the ones from before the edit, said as information on a line of its own under the status line
+    // (the label's ink, not a warning), and a bake waits for the edits to rest, its seconds said. Made-up states:
+    // BakeStatus's words exact; both lines on any workspace at both window sizes, a reason dropped whole when short of
+    // room; TUNE's line over its maps.
+    VIEW_TEST(testFrameBakeStale, "frame.bake.stale")
+    {
+        using B = tee::ui::BakeStatus;
+        const auto made = [](B::Phase ph, const char* stage, int done, int total, bool spark, bool cam) {
+            B b;
+            b.phase = ph;
+            b.stage = stage;
+            b.done = done;
+            b.total = total;
+            b.staleSpark = spark;
+            b.staleCam = cam;
+            return b;
+        };
+        const B rest = made(B::Phase::resting, "", 0, 0, true, true);
+        CHECK_MSG(tee::ui::bakeLine(rest) == "Bakes once your edits rest", tee::ui::bakeLine(rest));
+        CHECK_MSG(tee::ui::bakeStaleLine(rest) == "Old tables in use until baked", tee::ui::bakeStaleLine(rest));
+        const B baking = made(B::Phase::baking, "spark map", 12, 80, true, true);
+        CHECK_MSG(tee::ui::bakeLine(baking) == "Baking the spark map 12 of 80", tee::ui::bakeLine(baking));
+        B restarted = made(B::Phase::baking, "spark map", 0, 80, true, true);
+        restarted.restartedBy = "compression";
+        CHECK_MSG(tee::ui::bakeLine(restarted) == "Baking the spark map 0 of 80   restarted: compression changed", tee::ui::bakeLine(restarted));
+        B kept = made(B::Phase::baking, "cam", 3, 56, false, true);
+        kept.kept = "spark map";
+        CHECK_MSG(tee::ui::bakeLine(kept) == "Baking the cam 3 of 56   spark map kept, unchanged by the edit", tee::ui::bakeLine(kept));
+        CHECK_MSG(tee::ui::bakeStaleLine(kept) == "Old cam in use until baked", tee::ui::bakeStaleLine(kept));
+        CHECK(tee::ui::bakeStaleLine(made(B::Phase::baking, "spark map", 1, 80, true, false)) == "Old spark map in use until baked");
+        B aside = baking;   // a stale table not fit (another build loaded): set aside, today's words alone
+        aside.setAside = true;
+        CHECK_MSG(tee::ui::bakeLine(aside) == "Baking the spark map 12 of 80" && tee::ui::bakeStaleLine(aside).empty(), tee::ui::bakeStaleLine(aside));
+        CHECK(tee::ui::bakeLine(made(B::Phase::baked, "", 0, 0, false, false)).empty());
+        CHECK(tee::ui::bakeStaleLine(made(B::Phase::baked, "", 0, 0, true, true)).empty());   // landed: nothing stale said
+        CHECK(tee::ui::bakeLine(made(B::Phase::checked, "", 0, 0, false, false)).empty());
+        CHECK(tee::ui::bakeLine(made(B::Phase::failed, "", 0, 0, false, false)) == "Calibration bake failed");
+        // The old states, as a string, keep their words (frame.bake's).
+        CHECK(tee::ui::bakeLine(tee::ui::bakeStatusOf("waiting to bake")) == "Bakes once your edits rest");
+        CHECK(tee::ui::bakeLine(tee::ui::bakeStatusOf("baking cam 23 of 42")) == "Baking the cam 23 of 42");
+
+        // The status line and the line under it, on any workspace, at the largest and the smallest window; pictures at
+        // both densities (out/ui/frame.bake.*.png). Short of room, a field goes whole, never part of one.
+        const auto shown = [](FrameRig& rig, const std::string& words) {
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.visible && it.value.find(words) != std::string::npos)
+                    return true;
+            return false;
+        };
+        for (const float dpi : { 2.0f, 1.0f })
+            for (const int w : { 1600, 1100 })
+            {
+                const std::string sfx = std::string(w == 1100 ? ".small" : "") + (dpi < 1.5f ? ".dpi1" : "");
+                FrameRig rig(w, w == 1600 ? 1000 : 700, dpi);
+                rig.bakeServed = true;
+                rig.showWorkspace("drive");
+                rig.bake = baking;
+                rig.host->tick(3);
+                CHECK_MSG(shown(rig, "Baking the spark map 12 of 80") && shown(rig, "Old tables in use until baked"), sfx);
+                picture("frame.bake.stale" + sfx, *rig.host);
+                rig.bake = rest;
+                rig.host->tick(3);
+                CHECK_MSG(shown(rig, "Bakes once your edits rest") && shown(rig, "Old tables in use until baked"), sfx);
+                rig.bake = restarted;
+                rig.showWorkspace("dyno");
+                rig.host->tick(3);
+                CHECK_MSG(shown(rig, "Baking the spark map 0 of 80"), sfx);
+                CHECK_MSG(shown(rig, "restarted: compression changed") || !shown(rig, "restarted"), sfx);
+                picture("frame.bake.restarted" + sfx, *rig.host);
+                rig.bake = kept;
+                rig.host->tick(3);
+                CHECK_MSG(shown(rig, "Baking the cam 3 of 56") && shown(rig, "Old cam in use until baked"), sfx);
+                CHECK_MSG(shown(rig, "spark map kept, unchanged by the edit") || !shown(rig, "kept"), sfx);
+                std::printf("  %d at %.0f: the kept reason %s\n", w, dpi, shown(rig, "kept") ? "said" : "dropped (no room)");
+                picture("frame.bake.kept" + sfx, *rig.host);
+                // The ribbon (not on DRIVE or DYNO): its caption says the curve is on the old tables while they play.
+                rig.showWorkspace("engine");
+                rig.host->tick(3);
+                CHECK_MSG(rig.frame->ribbonStaleCaption() == "ON THE OLD TABLES UNTIL BAKED", rig.frame->ribbonStaleCaption());
+                picture("frame.bake.ribbon" + sfx, *rig.host);
+                rig.bake = made(B::Phase::baked, "", 0, 0, false, false);   // landed: both lines and the caption go
+                rig.host->tick(3);
+                CHECK(!shown(rig, "Baking") && !shown(rig, "in use until baked") && rig.frame->ribbonStaleCaption().empty());
+            }
+
+        // TUNE over the knock limit and the intake cam: a table in use from before the edit says so after "in use".
+        StageRig tune(tee::ui::makeTuneWorkspace, 1100, 700, 2.0f, 4.6);
+        tee::ui::FrameServices svc;
+        B now = baking;
+        svc.bakeStatus = [&now] { return now; };
+        tune.demo.ctx.services = &svc;
+        tune.demo.engine.set("ecu.knockTable", 1.0);
+        // a baked table (its Auto switch off), as a stale one in play always is: the map's own header agrees with the line
+        if (const int kla = tune.demo.doc.find("ecu.maps.knockLimitAuto"); kla >= 0)
+            tune.demo.doc.set(kla, 0.0);
+        tee::ui::tuneChoose(*tune.ws, 7);
+        tune.settle();
+        std::string w = tee::ui::tuneBakeWords(*tune.ws);
+        CHECK_MSG(w == "Knock limit: baking the spark map 12 of 80; old table in use", w);
+        picture("tune.bake.stale", *tune.host);
+        now.staleSpark = false;
+        tune.settle();
+        w = tee::ui::tuneBakeWords(*tune.ws);
+        CHECK_MSG(w == "Knock limit: baking the spark map 12 of 80; in use", w);
+        // No telemetry (no engine running, as in the application's bake before a start): the service's word says it.
+        now.staleSpark = true;
+        tune.demo.engine.forget("ecu.knockTable");
+        tune.demo.ctx.live.reset();
+        tune.settle();
+        w = tee::ui::tuneBakeWords(*tune.ws);
+        CHECK_MSG(w == "Knock limit: baking the spark map 12 of 80; old table in use", w);
+        now = kept;   // the cam baking, its old table in use meanwhile
+        const int camAuto = tune.demo.doc.find("ecu.maps.camInAuto");
+        if (camAuto >= 0)
+            tune.demo.doc.set(camAuto, 0.0);
+        tee::ui::tuneChoose(*tune.ws, 3);
+        tune.settle();
+        w = tee::ui::tuneBakeWords(*tune.ws);
+        CHECK_MSG(camAuto < 0 || w == "Intake cam: baking the cam 3 of 56; old table in use", w);
         return 0;
     }
 

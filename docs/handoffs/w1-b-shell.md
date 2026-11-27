@@ -112,3 +112,8 @@ cacheDirectory` = `settings::cacheDirectory()/bakes`: `TEE_CACHE_DIR` when set, 
 `--shot`, `--seconds`) uses none unless `TEE_CACHE_DIR` names one, so no test writes outside a folder it made. The bake
 yields to the ribbon's PredictService (ServiceDyno's) once U1's ServiceBake takes it; GARAGE's library curves are a
 DynoService (no PredictService) and simply share the cores.
+
+**Added by U1 for B, 27 Nov 2026** (card C's bake across edits, options 1 and 2, the owner's yes; the interface's words
+U1's): `app/FrameSources` `LateBake::status()` (the bake as `ui::BakeStatus` fields: ServiceBake::status() once the
+program is in, "waiting to bake" parsed before), and `app/Offline.cpp` serves it as `frameServices.bakeStatus`, beside
+`sparkMap`. Two lines; nothing else in `app/` changed. The frame and TUNE say the bake from it (ui/app/BakeStatus.h).

@@ -216,6 +216,7 @@ namespace tee::app
             addShellServices(frameServices, *engine.sim, controls);
             addFileServices(frameServices, kept->file, kept->library);
             frameServices.sparkMap = [kept] { return kept->bake.state(); };
+            frameServices.bakeStatus = [kept] { return kept->bake.status(); };   // U1, 27 Nov: the bake across edits' words
             frameServices.driveStyle = [kept] { return kept->driveStyle; };
             frameServices.setDriveStyle = [kept](int s) { kept->driveStyle = s; };
             frameServices.stillKnocking = [kept] { return kept->bake.stillKnocking(); };

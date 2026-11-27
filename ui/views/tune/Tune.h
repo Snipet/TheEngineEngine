@@ -17,4 +17,6 @@ namespace tee::ui
     funkgui::Rect tuneFuelButton(Workspace& w, int dir);
     std::string tuneFuelText(Workspace& w);
     int tuneShownMap(Workspace& w);
+    // The bake's words over the map shown ("Knock limit: baking the spark map 3 of 9; in use"; "" none; U1 for U4, 27 Nov).
+    std::string tuneBakeWords(Workspace& w);
 }

@@ -366,6 +366,7 @@ namespace tee::ui
             const Widget* b = dir < 0 ? static_cast<const Widget*>(fuelPrev_) : dir == 1 ? fuelNext_ : dir == 2 ? static_cast<const Widget*>(octane_) : ownOctane_;
             return b->shown() ? b->bounds() : funkgui::Rect{};
         }
+        std::string bakeWordsProbe() const { return bakeWords(); }
         std::string fuelText() const
         {
             const FuelWords w = fuelWords();
@@ -1082,7 +1083,10 @@ namespace tee::ui
                 const bool done = baked && !sameMap(now, knockFrom_) && (state.empty() || state.rfind("baked", 0) == 0 || state == "calibration checked");
                 if (!done)
                 {
-                    w.effect = from + "the knock-limit table re-bakes (" + (state.empty() ? std::string("-") : state) + ")." + untestedWords;
+                    // the bake in the frame's words (BakeStatus.h; U1 for U4, 27 Nov), else the host's own ("no table")
+                    const std::string said = bakeState(bakeStatusOf(ctx_.services));
+                    w.effect = from + "the knock-limit table re-bakes ("
+                               + (!said.empty() ? said : state.empty() ? std::string("-") : state) + ")." + untestedWords;
                     return w;
                 }
                 double sum[2] = { 0.0, 0.0 };
@@ -1249,13 +1253,23 @@ namespace tee::ui
             double inUse = std::nan("");
             if (knock)
                 inUse = ctx_.live.get("ecu.knockTable");
-            else if (const int f = slots_[static_cast<std::size_t>(kCamIn)].autoField; f >= 0 && !state.empty())
+            else if (const int f = slots_[static_cast<std::size_t>(kCamIn)].autoField; f >= 0 && (!state.empty() || bakeStatusOf(ctx_.services).phase != BakeStatus::Phase::none))
                 inUse = ctx_.doc.get(f) >= 0.5 ? 0.0 : 1.0;
-            if (state.empty() && !std::isfinite(inUse))
+            if (state.empty() && bakeStatusOf(ctx_.services).phase == BakeStatus::Phase::none && !std::isfinite(inUse))
                 return {};
-            std::string w = std::string(knock ? "Knock limit: " : "Intake cam: ") + (state.empty() ? std::string("-") : state);
+            // The bake in the frame's words (BakeStatus.h; U1 for U4, 27 Nov), else the host's own ("no table"); a table
+            // in use from before an edit while the new one bakes (card C's bake across edits) says so: information, the
+            // label's ink, not a warning.
+            const BakeStatus b = bakeStatusOf(ctx_.services);
+            const std::string said = bakeState(b);
+            const bool stale = !b.setAside && (knock ? b.staleSpark : b.staleCam);
+            // No telemetry to say it (no engine running): the service's own word that the old table plays is enough.
+            if (!std::isfinite(inUse) && stale)
+                inUse = 1.0;
+            std::string w = std::string(knock ? "Knock limit: " : "Intake cam: ")
+                            + (!said.empty() ? said : state.empty() ? std::string("-") : state);
             if (std::isfinite(inUse))
-                w += inUse >= 0.5 ? "; in use" : "; not in use";
+                w += inUse >= 0.5 ? (stale ? "; old table in use" : "; in use") : "; not in use";
             if (knock)
             {
                 const int n = stillKnockingCount();
@@ -1622,6 +1636,11 @@ namespace tee::ui
     {
         auto* t = dynamic_cast<TuneWorkspace*>(&w);
         return t != nullptr ? t->fuelText() : std::string();
+    }
+    std::string tuneBakeWords(Workspace& w)
+    {
+        auto* t = dynamic_cast<TuneWorkspace*>(&w);
+        return t != nullptr ? t->bakeWordsProbe() : std::string();
     }
     int tuneShownMap(Workspace& w)
     {

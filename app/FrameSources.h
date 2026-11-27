@@ -104,6 +104,7 @@ namespace tee::app
         ~LateBake();
         void tick();
         std::string state() const;
+        ui::BakeStatus status() const;   // the same as fields (U1, 27 Nov: the bake across edits' words); before a program, resting
         std::vector<std::vector<bool>> stillKnocking() const;
 
     private:

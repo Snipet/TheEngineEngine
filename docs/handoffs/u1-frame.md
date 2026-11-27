@@ -39,3 +39,20 @@ names, `DemoEngine::hold`. **FunkGui**: no issue met.
 **For a person to look at**: `out/ui/sheet.frame.png`, `frame.drive.png`, `frame.air.png` (placeholder + inspector +
 ribbon), `frame.engine.paper.png`; on a Mac: the application, DRIVE while revving (the rpm bar's shift lights, the
 pedals dragged), an edit on AIR and the ribbon answering.
+
+**27 Nov 2026, the bake across edits (card C's options 1 and 2, the owner's yes; the words U1's, the lead's ruling):**
+`ui/app/BakeStatus.h` is the bake as fields (phase; stage and count; the old tables still playing, spark and cam; set
+aside; the field that restarted it, by its label; the stages kept), from `ServiceBake::status()` (C's `tee::BakeStatus`
+mapped) or a state string parsed. Words: `bakeLine` (the status line: "Baking the spark map 12 of 80", "Bakes once
+your edits rest" with no number, the lead's ruling: the rest is a debounce, not counted down; then a reason as a field
+dropped whole when short of room: "restarted: compression changed", "spark map kept, unchanged by the edit"),
+`bakeStaleLine` (a second small line under it only while old tables play: "Old tables in use until baked"), all in
+the label's ink. While either is said the status line may take up to 420 px (the name keeps 200); old states keep
+their words and place. The ribbon's caption while old tables play: "ON THE OLD TABLES UNTIL BAKED" (the predictor
+runs on the build as it stands: C). TUNE says the same (U4's handoff). Tests: `frame.bake.stale` (made-up states),
+`build.bake.stale` (the real service on first.json: an edit keeps the old tables, an edit of the cylinders sets them
+aside), and the nightly `build.bake.pictures` (an edit's whole course on the bake's state).
+The lead's look (27 Nov, 12:42: the patch's text applied, built, the pictures drawn, the bite repeated) was on the text
+before two mends the lead then asked for, which the lead took as described and did not draw again: tune.bake.stale's rig
+given a baked table, and TUNE's "old table in use" said from the service's own word when no telemetry says it (U4's
+handoff). J2's tier covers them.
