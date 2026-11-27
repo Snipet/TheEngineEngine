@@ -2825,6 +2825,20 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 19:22 UTC: X-063's CURE IS ON THE BRANCH AT 6bfb90d2** (card A's 4c1a2d67, second behind B's stack; gated
+  trees unchanged). One helper, `dumpText` (`assistant/include/tee/assistant/Json.h`), writes every JSON text
+  in `assistant/` with a bad byte as U+FFFD; a test reads all of `assistant/` and fails on any `.dump(`
+  elsewhere; a last guard ends a faulty call or turn, not the app; a build whose file name is not UTF-8 is
+  listed with U+FFFD and loading it says "rename its file". Card A's tier of record: 600 of 600 on f97c88cc +
+  the cure (plain tree, libsecret and libcurl found); merged with 233d7154, 322 of 322 of the assistant's, the
+  shell's and the ui's; merged with B's 3e35f7a9, everything built and 94 of 94 of the assistant's and the
+  shell's. The lead's own tree at 6bfb90d2: the same 94 of 94; a bare `.dump()` added in
+  `assistant/view/ChatView.cpp` fails `InboxTest.cpp:236`, which names the file and line; the helper made strict
+  again fails `ChatTest.cpp:972` and the process does not end (the guards hold); both restored.
+  - Also on the branch, docs only: B's note for the owner's try of the wake on their Mac
+    (`docs/handoffs/b-owner-mac-wake.md`), given to the owner in short.
+  - CI at 19:21: 233d7154 Linux green, macOS and Windows running; 6bfb90d2 Linux started, Windows and macOS
+    pending. Next in the train: the steward's `Known.h` push; then, apart, the block in `build.yml`; then X-064.
 - **27 Nov 19:13 UTC: B's STACK IS ON THE BRANCH AT 3e35f7a9** (the wake's window test: `--minimise-after`,
   `scripts/run-wake.sh` and its ctest copy; X-066's cure: the engine's frame around the jobs in the drain).
   233d7154's three jobs had all started before it (Windows at 19:12:16Z). B's tier of record on 233d7154 + the
