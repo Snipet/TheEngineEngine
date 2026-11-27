@@ -2453,11 +2453,12 @@ engines only where a source shows such an engine drawn split.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **27 Nov 05:08 UTC: `main` IS AT dc2f7db3** (the crash fix a86b38c6; run 45941160063: Linux, macOS and Windows
-  green on that commit). **The trees `main` is gated on are now sim f23337cc, host 86ea14da, tools 7c3e4d59:**
-  host moved from the bake's 2e7c1bec by C's one commit, with three shipped builds re-baked byte-identical as
-  the reason no bake was needed. Before it: 57265b5f (26 Nov 20:32), 6e67ac62, d6615852, 3f892823, 389ee865,
-  317404d9, 5278e3e9, 3c42b4d2, 5cd03815, 07a08dc0, d586682c (04:36).
+- **27 Nov 07:16 UTC: `main` IS AT ddacdf97** (run 45951143037: Linux, macOS and Windows green on that commit;
+  tests and docs only past the crash fix). **The trees `main` is gated on: sim f23337cc, host 86ea14da, tools
+  7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked
+  byte-identical). Before it: dc2f7db3 (27 Nov 05:08, the crash fix), 57265b5f (26 Nov 20:32), 6e67ac62,
+  d6615852, 3f892823, 389ee865, 317404d9, 5278e3e9, 3c42b4d2, 5cd03815, 07a08dc0, d586682c (04:36). Next:
+  7ff344bc (U1's bake.pictures on the bake's state, carried by J2; tests only) when its three jobs are green.
 - **`host/` IS CLOSED AGAIN** (opened 27 Nov 03:43 for the crash fix alone). `sim/`, `host/` and `tools/` wait
   for a bake as before; the next thing under `host/` is the owner's choice on docs/plan/bake-across-edits.md.
 - **THE WINDOW'S ORDER, as ruled on 26 Nov and corrected at 17:39 (each needs a bake to follow, so P):** item 16

@@ -43,6 +43,13 @@
 
 ## Landed
 
+- **27 Nov 07:16 UTC: `main` at ddacdf97** (from dc2f7db3, fast-forward; run 45951143037 on that commit: Linux,
+  Windows and macOS green; sim f23337cc, host 86ea14da, tools 7c3e4d59 unchanged). Tests and docs only: the
+  nightly bound's reference sets are kept across one job's processes (X: 360 sets were being played for 57
+  distinct ones; every nightly figure identical to the digit with the store off and on; 28 % of combo's time
+  saved locally). The soak on the crash fix (dc2f7db3) read 226 of 227: `ui.build.bake.pictures` passed, the
+  one red is N2-38, standing; its wall was 28 minutes over d586682c's on a reference runner, which the store
+  is expected to bring under the line of 10 (the soak on this commit measures it).
 - **27 Nov 05:08 UTC: `main` at dc2f7db3: THE CRASH ON AN EDIT DURING A CAM BAKE IS FIXED** (from 57265b5f,
   fast-forward; run 45941160063 on that commit: Linux 584, macOS 583, Windows 576, all green). The owner's Mac
   build of `main` had died six times on 25 and 26 Nov in `tee::bakeIntakeCam` (host/src/Bake.cpp:354, and in
