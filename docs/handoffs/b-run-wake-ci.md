@@ -17,9 +17,13 @@ and do not fail the job. `limited`, `run` (Xvfb on Linux) and `rc` are the step'
           fi
 ```
 
-What a passing run prints, one line (Linux, Xvfb with openbox, 27 Nov):
+What a passing run prints (Linux, Xvfb with openbox, 27 Nov): the first line is required, the second reported:
 
     run-wake: answered in 0.11 s; window: minimised=1 hidden=0 occluded=1; ticks 30 before the call, 30 after the answer; simulator compiling at the call
+    run-wake: simulator ready while minimised, 6.5 s after the minimise; ticks 30 (reported)
+
+(cold, `TEE_CACHE_DIR` empty, eight busy loops on four cores: 0.13 s, and ready 12.1 s after the minimise, ticks 30;
+the second line waits 15 s at most and says so if the simulator is not ready by then, without failing.)
 
 What the script waits on: the app's first `minimise:` report (SDL says the window is down; printed on the main thread
 whether it ticks or not) and the link's socket (opened at launch, before the simulator is ready), then one second more.
@@ -31,7 +35,8 @@ Windows (no link in this version: the script says so and passes). Proof that it 
 `shown.assistant->setWake(...)` in app/Main.cpp made a no-op: the call answered "timed out before the app took it:
 nothing was done", exit 1 (the commit before the wake has no `--minimise-after` to run it with).
 
-Found on the way, for the lead: while the window does not tick, the simulator is never adopted
-(`SimAdapter::adopt()` runs only from `SimAdapter::frame()`, the frame's), so it stays "compiling" however long the
-compile took, and the document's edits are not flushed to the host (`build_->flush()`, the same path) until the window
-ticks again. The wake drains the assistant's jobs; it does not run the engine's frame.
+X-066, found on the way and cured in 48a26516: while the window did not tick the simulator was never adopted and a
+tool's change never reached it (`SimAdapter::adopt()` and `build_->flush()` run only from `SimAdapter::frame()`, the
+frame's). The wake's drain now runs the engine's frame before and after the jobs (`Shown::drainAssistant`); app/Main.cpp
+says, at the wake's branch, what of the frame still does not run while minimised (input, the bake's tick, the frames
+clock, the status line, the script's checks) and why.
