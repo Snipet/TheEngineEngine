@@ -2896,6 +2896,24 @@ forward. None was re-run to green.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 22:16 UTC: X-067, A RED ON macOS IN `main`'s OWN RUNS, TWICE: A TIMING ASSERTION IN THE WAKE'S "NOT YET"
+  CASE. "No known red" in the entry below is withdrawn.** The lead found it when the owner asked for the status,
+  not from a watch: `main`'s own run was not on the lead's list of things to read after a move. It is now.
+  - `main`'s push runs on 3ccb826b (46066040720) and on 2a92cc86 (46069016922): Linux and Windows green; macOS
+    598 of 599 both times: `shell.app.cases`, "the assistant's wake: a job that says not yet is drained again, no
+    frame ticked", `tests/shell/app/AssistantWakeTest.cpp:225`, `CHECK( m.drains >= 3 )` with `2 >= 3`. Nothing
+    else red. The branch's runs on the same two commits were green on macOS (599 of 599): 2 red of 4 macOS draws
+    of this code.
+  - In the same failing job the packed application's run-wake step passed (answered in 0.11 s; ticks 30 and 30)
+    and the owner's Mac build and the extension were uploaded (`TheEngineEngine-macos-arm64`,
+    `TheEngineEngine-mcpb-macos-arm64`): the application is not in question; the case asserts a rate (three
+    drains in 400 ms from a 75 ms timer) that a loaded runner does not keep.
+  - To B: restate the check on its property (a drain from the wake's own timer with nothing posted after the
+    first), with the proof it still bites and counts under load; read the other wake cases for fixed windows;
+    push on its two tiers. No job is re-run: the two reds stand as two draws. `main` stays at 2a92cc86 and moves
+    to the fix on three greens; the lead then reads `main`'s own macOS run on it too.
+  - **The rule added:** after each move of `main`, the lead reads `main`'s own run on that commit, all three
+    jobs, before calling the move clean. The gate (the branch's run) is one draw; `main`'s run is a second.
 - **27 Nov 21:14 UTC: `main` IS AT 2a92cc86** (run 46066140664: Linux 600, macOS 599, Windows 590, green; gated
   trees unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it today: 3ccb826b (20:47), 233d7154
   (19:42), 3db7ed07 (19:05), 40463d37 (17:42), 3ba103f4 (17:13), f77a46e6 (13:28), 35a733d1 (12:19), 7ff344bc
