@@ -2896,6 +2896,13 @@ forward. None was re-run to green.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 23:52 UTC: `main`'s OWN RUN ON f7c54737 IS GREEN ON ALL THREE (run 46081518403): X-067 CURED ON TWO macOS
+  DRAWS.** The lead's read of the macOS job's log: 599 of 599; `shell.app.cases` passed (46.57 s); the packed
+  application's lines "run-wake: answered in 0.03 s; window: minimised=1 hidden=0 occluded=1; ticks 30 before the
+  call, 30 after the answer" and "simulator ready while minimised, 5.8 s after the minimise". The other macOS
+  draw of the restated case: the branch's run 46077563740, green. Before the restatement: 2 red of 4.
+  **`main` (f7c54737) is clean by its gate and by its own run; a whole default tier has no known red; nothing is
+  in flight.** Next: the scheduled soak, read at 05:15 UTC by the steward and at 05:45 by the lead.
 - **27 Nov 23:16 UTC: `main` IS AT f7c54737** (run 46077563740: three green; gated trees unchanged: sim
   22314cde, host ef1715f6, tools 7c3e4d59). In it: B's restated "not yet" case (X-067), tests only. macOS draws
   of the restated case so far: 1 (the branch's run), green. `main`'s own run on it is the second: to be read
