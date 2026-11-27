@@ -2825,6 +2825,10 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:15 UTC: THE OWNER, on their Mac with the real G29: "I was able to verify the shifter-clutch logic is
+  correct".** The first run of the H-shifter as a manual's lever on the owner's machine (B's f8fb8d9b, in `main`
+  since 13:28). Proved there: the shifter and the clutch on a manual. Still unproved on a Mac until they say:
+  the automatics' selector from the gates, the trucks, the three-way setting's other two modes.
 - **27 Nov 17:13 UTC: `main` IS AT 3ba103f4, the baked commit** (run 46032401939: Linux, macOS and Windows green).
   **The trees `main` is gated on: sim 22314cde, host ef1715f6, tools 7c3e4d59.** Before it: f77a46e6 (13:28),
   35a733d1 (12:19), 7ff344bc (09:02). `sim/`, `host/`, `tools/` are closed until the next window. A whole
