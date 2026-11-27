@@ -9,11 +9,12 @@ namespace tee::assistant
 {
     Session::Session(SessionParts parts)
     {
-        const std::function<double()> clock = parts.clock;
+        // the limits run on real time (X-064): parts.clock, the frame's, stands still while the window is minimised
+        const std::function<double()> clock = [] { return realSeconds(); };
         std::function<bool()> given = std::move(parts.othersBusy);
         std::function<bool()> busy = [this, given] { return appBusy_.load() || (given && given()); };
         tools_ = std::make_unique<Tools>(Host{inbox_, parts.document, parts.library, std::move(parts.simHost),
-                                              std::move(parts.sim), parts.clock, std::move(parts.ask), Limits{},
+                                              std::move(parts.sim), clock, std::move(parts.ask), Limits{},
                                               std::move(busy)});
         link_ = std::make_unique<McpLink>(*tools_, drivers_, cards_, clock, std::move(parts.link));
         // the key chat: made now, idle (no thread, no connection, no read of the store) until it is used

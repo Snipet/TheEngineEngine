@@ -2825,6 +2825,93 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 20:34 UTC: THE WAKE ON macOS's RUNNER: ANSWERED WHILE MINIMISED, NO FRAME TICKED.** 120cc19d's "Run the
+  application" step succeeded on all three (run 46059778564; the steward's read, and the lead's own of the three
+  logs). The packed application's lines:
+  - macOS: "run-wake: answered in 0.06 s; window: minimised=1 hidden=0 occluded=1; ticks 30 before the call, 30
+    after the answer; simulator compiling at the call" and "run-wake: simulator ready while minimised, 7.3 s after
+    the minimise; ticks 30 (reported)". The runner honours a minimise (not the hide fallback).
+  - Linux: answered in 0.12 s, minimised=1, ticks 30 and 30; simulator ready 5.5 s after the minimise.
+  - Windows: "no link on this platform (Windows): nothing to call; not a failure".
+  - Its Test step: Linux 600 of 600, Windows 590 of 590, macOS 598 of 599 with the named red only
+    (`McpTest.cpp:908`, `:909`), cured in 3ccb826b.
+  - What this is not: the owner's own Mac, a Dock minimise by hand, Claude Desktop itself on the other end (the
+    script speaks the bridge's protocol through `tee-mcp`). Their try is still asked for
+    (`docs/handoffs/b-owner-mac-wake.md`).
+- **27 Nov 20:17 UTC: THE WAKE'S RUN ON THE PACKED APPLICATION PASSED ON LINUX IN CI, AND THE TIP TO PROTECT IS
+  3ccb826b.**
+  - 120cc19d (the steward's block in `build.yml`, run 46059778564), linux-x64 GREEN, 600 of 600. The step's lines,
+    read by the lead in the job's log: "run-wake: answered in 0.12 s; window: minimised=1 hidden=0 occluded=1;
+    ticks 30 before the call, 30 after the answer; simulator compiling at the call" and "run-wake: simulator ready
+    while minimised, 5.5 s after the minimise; ticks 30 (reported)". The packed application, minimised for real
+    under openbox, answers Claude Desktop's bridge with no frame ticked, and adopts its simulator there (X-066's
+    cure). Its macOS and Windows jobs are running: their lines are owed.
+  - T1 (4524113b) read on all three by the steward: Linux 600 of 600, Windows 590 of 590, macOS 598 of 599 with
+    the named red only (`McpTest.cpp:908`, `:909`). Not a candidate, as expected.
+  - **3ccb826b is card A's push and `main`'s next candidate**: 01788ba (the not-UTF-8 case checks the file was
+    made; where the file system refuses the name it says so and passes; both branches proved on Linux) and X-064
+    (the tools' limits and a turn's on a real clock a test can hold; the session no longer reads the frame's
+    clock; the dyno's words on a timeout say what to do). Card A's record: 600 of 600 on 6bfb90d2 + the first
+    X-064 commit; on the final stack, everything built and the assistant's and the shell's suites 94 of 94. The
+    lead's own tree at 3ccb826b: the same 94 of 94; with the gesture's wait given a clock that stands still,
+    `ToolsTest.cpp:466` and `:494` fail; restored. Its three jobs at 20:16: Linux running, macOS and Windows
+    pending. Waiting behind it: B's small push (two comments; the frame-count clock taken out of
+    `app/Offline.cpp`).
+  - `main`'s own run on 233d7154 is green on all three: the owner's builds of it exist.
+- **27 Nov 19:54 UTC: A RED ON macOS FROM X-063's OWN CASE; `main`'s NEXT CANDIDATE IS NO LONGER T1.** The steward's
+  read of 6bfb90d2's macOS job (run 46055531270): 598 of 599; `assistant.sim` fails "a whole build whose file
+  name is not UTF-8 is listed replaced, and loading it says why it cannot (X-063)" at
+  `tests/assistant/McpTest.cpp:908` and `:909`; Linux 600 of 600 there. The reading, from the code and not yet
+  measured: the case writes a file named "v8\xFF.json" unchecked, and APFS refuses a name that is not UTF-8, so
+  on macOS there is nothing to list. Card A had said as much of APFS at 17:45, and the lead asked for the case
+  without thinking of macOS: the third case today that was green only where its author ran it (libsecret; the
+  app option; now the file system).
+  - Card A cures it as the FIRST commit of the X-064 push it is holding: the case checks the file was made; where
+    the file system refuses the name it says so in the log and ends without failing; no `#if` on the operating
+    system; both branches proved on Linux.
+  - Until it lands the red is NAMED: macOS only, `assistant.sim`, `McpTest.cpp:908` and `:909`, nothing else. It
+    is in 6bfb90d2, in T1 (4524113b) and in the `build.yml` tip, so none of the three can gate `main`. `main`
+    (233d7154) does not hold X-063 and is not touched by it.
+  - The steward's `build.yml` block is pushed as its own tip, 120cc19d (ab2cbac4: the ten lines byte-identical to
+    `docs/handoffs/b-run-wake-ci.md`, checked with cmp), after T1's three jobs had started (macOS at 19:52:31Z).
+    Its first run's run-wake lines from all three platforms are owed to the lead.
+  - Card A's X-064 is ready (600 of 600 on 6bfb90d2 + dea6bab in the plain tree; merged with 4524113b, everything
+    built and 94 of 94) and goes, with the cure above, when 120cc19d's three jobs have started: that tip is the
+    next candidate.
+- **27 Nov 19:42 UTC: `main` IS AT 233d7154** (run 46051766042: Windows, Linux and macOS green; gated trees
+  unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 3db7ed07 (19:05), 40463d37 (17:42),
+  3ba103f4 (17:13). In it: card A's item 3 and U1's air patch.
+  - **The tip to protect is T1 = 4524113b** (the steward's `Known.h` push, last of the train behind B's stack
+    3e35f7a9 and card A's X-063 6bfb90d2). The steward's tier of record: 599 of 599 on its four commits over B's
+    tip, plain tree with libsecret and libcurl; merged with X-063: everything built, the combo's fast cases 4
+    of 4. At 19:42: Linux running since 19:35:42, Windows started 19:42:10, macOS PENDING (behind 6bfb90d2's
+    macOS job). Until macOS has started, nothing code-bearing goes: the steward's block in `build.yml`, card
+    A's X-064 (dea6bab, its tier running), B's small push (two comments, and the frame-count clock taken out
+    once X-064 is in) all wait.
+- **27 Nov 19:24 UTC: A CORRECTION to the 19:13 entry's dyno figure (card A's own, after reading the code; the lead had
+  passed the first version to the owner).** A sweep is NOT always 17 points and its time DOES grow with the span:
+  the spacing is max(10 rad/s, span/16) (`assistant/src/Tools.cpp:943`), so 17 points only for a span over about
+  1530 rpm; the sweep runs at a fixed 60 rad/s2 (`host` `Dyno.h:36`), so 500 to 8000 rpm is about 13 s simulated
+  (3.9 s measured on card A's container; 2.8 s for 1000 to 6000) and the widest span the schema allows, 10 000
+  rpm, about 17.5 s simulated, roughly 5 s there by proportion (not measured). Item 3's 40 s is about eight times
+  that container's need. The 3.9 s stands.
+  - X-064 is committed by card A (dea6bab, not pushed; its tier running): the tools' limits and a turn's on a
+    real clock a test can hold; the session no longer reads the frame's clock; the dyno's words on a timeout say
+    what to do. Three cases with their bites (`ToolsTest:466`, `:494`; `McpTest:751`; `:511`, `:512`).
+- **27 Nov 19:22 UTC: X-063's CURE IS ON THE BRANCH AT 6bfb90d2** (card A's 4c1a2d67, second behind B's stack; gated
+  trees unchanged). One helper, `dumpText` (`assistant/include/tee/assistant/Json.h`), writes every JSON text
+  in `assistant/` with a bad byte as U+FFFD; a test reads all of `assistant/` and fails on any `.dump(`
+  elsewhere; a last guard ends a faulty call or turn, not the app; a build whose file name is not UTF-8 is
+  listed with U+FFFD and loading it says "rename its file". Card A's tier of record: 600 of 600 on f97c88cc +
+  the cure (plain tree, libsecret and libcurl found); merged with 233d7154, 322 of 322 of the assistant's, the
+  shell's and the ui's; merged with B's 3e35f7a9, everything built and 94 of 94 of the assistant's and the
+  shell's. The lead's own tree at 6bfb90d2: the same 94 of 94; a bare `.dump()` added in
+  `assistant/view/ChatView.cpp` fails `InboxTest.cpp:236`, which names the file and line; the helper made strict
+  again fails `ChatTest.cpp:972` and the process does not end (the guards hold); both restored.
+  - Also on the branch, docs only: B's note for the owner's try of the wake on their Mac
+    (`docs/handoffs/b-owner-mac-wake.md`), given to the owner in short.
+  - CI at 19:21: 233d7154 Linux green, macOS and Windows running; 6bfb90d2 Linux started, Windows and macOS
+    pending. Next in the train: the steward's `Known.h` push; then, apart, the block in `build.yml`; then X-064.
 - **27 Nov 19:13 UTC: B's STACK IS ON THE BRANCH AT 3e35f7a9** (the wake's window test: `--minimise-after`,
   `scripts/run-wake.sh` and its ctest copy; X-066's cure: the engine's frame around the jobs in the drain).
   233d7154's three jobs had all started before it (Windows at 19:12:16Z). B's tier of record on 233d7154 + the

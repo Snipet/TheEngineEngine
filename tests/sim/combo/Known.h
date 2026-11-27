@@ -156,18 +156,12 @@ const Known kKnown[] = {
     // EACH PAIR IS ONE ROW, NOT TWO FINDINGS (the lead's ruling, 26 Nov 15:26): one build, one scenario, one named event,
     // the same excess against the same bound under either name, and the spread counted a copy over under either; a cure
     // (item 16 on the real code) is 0 of 17 under BOTH names, and the pair leaves together
-    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click",
-     "boost at the shifts, on a shipped build as built: the three-cylinder 1.0 turbo's 1-2 upshift: 6 of 17 over its nightly bound 2.84; lowest 1.26, median 2.62, highest 3.98", "shift 1-2"},
-    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click",
-     "boost at the shifts, on a shipped build as built: the three-cylinder 1.0 turbo's 2-3 upshift: 8 of 17 over its nightly bound 2.84; lowest 2.32, median 2.83, highest 3.56", "shift 2-3"},
-    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "kei-660-triple-turbo", "pull", "click",
-     "boost at the shifts, on a shipped build as built: the kei 660's 1-2 upshift: 2 of 17 over its nightly bound 2.77; lowest 1.53, median 2.08, highest 2.82", "shift 1-2"},
-    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click-shift-cut",
-     "as its click row, where the worst step lies at the upshift's cut (judge's click-shift-cut; the excess decides there too): the three-cylinder 1.0 turbo's 1-2 upshift: 6 of 17 over its nightly bound 2.84; lowest 1.26, median 2.62, highest 3.98", "shift 1-2"},
-    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "three-cylinder-10-turbo", "pull", "click-shift-cut",
-     "as its click row, where the worst step lies at the upshift's cut (judge's click-shift-cut; the excess decides there too): the three-cylinder 1.0 turbo's 2-3 upshift: 8 of 17 over its nightly bound 2.84; lowest 2.32, median 2.83, highest 3.56", "shift 2-3"},
-    {"X-048", "2026-11-26", "N2 (boost.model), the steward named (X-047's cut, item 16)", "as built", "kei-660-triple-turbo", "pull", "click-shift-cut",
-     "as its click row, where the worst step lies at the upshift's cut (judge's click-shift-cut; the excess decides there too): the kei 660's 1-2 upshift: 2 of 17 over its nightly bound 2.77; lowest 1.53, median 2.08, highest 2.82", "shift 1-2"},
+    // LEFT, 27 Nov (the lead's ruling, 19:03): the three-cylinder 1.0 turbo's 1-2 and 2-3 and the kei 660's 1-2, each
+    // pair together, CURED by item 16 (d28b3412): 0 of 17 under both names on the real code, the steward's 17 draws on
+    // the merged tree (the three-cylinder 6 and 8 of 17 before, 0 and 0 after; the kei 2 before, 0 after), and the
+    // lead's own on frozen copies of both trees for the three-cylinder (6 and 8 of 17 before, 0 and 0 after). A row that
+    // leaves is a red again if it returns. Nothing of the kind stays here for those three: the V8's 1-2 (fuel+ecu, 1 of
+    // 17 after) is X-031's and X-030's, not cured
     // X-055, the flat-plane twin-turbo V8 as built on the pull (the lead's ruling, 26 Nov 18:11; the shipped survey,
     // docs/measurements/combo/2026-11-26-shipped-pull.md): 17 copies at 293.15 +- 0.15 K per event against its own
     // reference's nightly bound 2.33 (that reference's lowest copy 1.17), the same on the tip and on item 16's cut probe
@@ -179,5 +173,26 @@ const Known kKnown[] = {
      "as its click row (one row under two names, as the shipped pairs): the 1-2 upshift, 1 of 17 over 2.33", "shift 1-2"},
     {"X-055", "2026-11-26", "not known (no owner read yet)", "as built", "flat-plane-v8-39-twin-turbo", "pull", "click",
      "the flat-plane twin-turbo V8 as built on the pull, in the rest (no event): 1 of 17 over 2.33 (2.76 at +0.03 K, 4.532 s); lowest 1.45, median 1.77. The owner is not known: nobody has read it", "the rest"},
+    // The baked commit's soak (3ba103f4, 27 Nov): nine rows red in one draw, each passed in the two soaks before it.
+    // L's measurement, 27 Nov: 17 copies at 293.15 +- 0.15 K per event on the tree just before 2f6bbbeb (item 20) and on 3ba103f4 (the baked commit), each against the nightly bound. Seven are sometimes rows of the shift's and the limiter's families, the same on both trees (5 of 119 old,
+    // 6 of 119 new): not item 20's. Two are X-065, made by item 20 (the lead's ruling, 27 Nov 19:01)
+    {"X-048", "2026-11-27", "N2 (boost.model), N1 named (the valve)", "valve.model+boost.model+sound.model", "turbo-six", "pull", "click",
+     "red in the soak on 3ba103f4 (27 Nov, one draw), passed in the soaks on 52cda676 and 0f5dc0c9: 2 of 17 over on the tree before item 20, 1 of 17 on 3ba103f4 (median 2.06 -> 2.10, against the nightly bound 2.67); red about once in 17 on both trees; not made by item 20", "shift 3-2"},
+    {"X-048", "2026-11-27", "N2 (boost.model)", "intake.model+boost.model+sound.model", "turbo-six", "pull", "click",
+     "red in the soak on 3ba103f4 (27 Nov, one draw), passed in the soaks on 52cda676 and 0f5dc0c9: 1 of 17 over on the tree before item 20, 2 of 17 on 3ba103f4 (median 1.82 -> 1.85, against the nightly bound 2.67); red about once in 17 on both trees; not made by item 20", "shift 2-3"},
+    {"X-048", "2026-11-27", "N2 (boost.model)", "boost.model+fuel.model+sound.model", "turbo-six-mild", "pull", "click",
+     "red in the soak on 3ba103f4 (27 Nov, one draw), passed in the soaks on 52cda676 and 0f5dc0c9: 1 of 17 over on the tree before item 20, 2 of 17 on 3ba103f4 (median 1.81 -> 1.65, against the nightly bound 3.04); red about once in 17 on both trees; not made by item 20", "shift 3-2"},
+    {"X-052", "2026-11-27", "G (the reference ECU's limiter: a train of cuts, X-051 the suspect)", "engine.wallHeat+sound.model+voices.model", "turbo-six", "tour", "click",
+     "red in the soak on 3ba103f4 (27 Nov, one draw), passed in the soaks on 52cda676 and 0f5dc0c9: 0 of 17 over on the tree before item 20, 1 of 17 on 3ba103f4 (median 1.85 -> 1.93, against the nightly bound 2.97); red about once in 17 on both trees; not made by item 20", "limiter"},
+    {"X-052", "2026-11-27", "G (the reference ECU's limiter: a train of cuts, X-051 the suspect)", "engine.custom+exhaust.model+sound.model", "turbo-six", "tour", "click",
+     "red in the soak on 3ba103f4 (27 Nov, one draw), passed in the soaks on 52cda676 and 0f5dc0c9: 0 of 17 over on the tree before item 20, 0 of 17 on 3ba103f4 (median 1.76 -> 1.81, against the nightly bound 2.97); 0 of 17 on both trees and red in the soak's one draw: what a sometimes row looks like; not made by item 20", "limiter"},
+    {"X-052", "2026-11-27", "the steward (ecu.model's limiter)", "fuel.model+ecu.model+sound.model", "turbo-six", "tour", "click",
+     "red in the soak on 3ba103f4 (27 Nov, one draw), passed in the soaks on 52cda676 and 0f5dc0c9: 0 of 17 over on the tree before item 20, 0 of 17 on 3ba103f4 (median 2.01 -> 2.17, against the nightly bound 2.97); 0 of 17 on both trees and red in the soak's one draw: what a sometimes row looks like; not made by item 20", "limiter"},
+    {"X-052", "2026-11-27", "G (the reference ECU's limiter: a train of cuts, X-051 the suspect)", "intake.model+exhaust.model+sound.model", "turbo-six", "tour", "click",
+     "red in the soak on 3ba103f4 (27 Nov, one draw), passed in the soaks on 52cda676 and 0f5dc0c9: 1 of 17 over on the tree before item 20, 0 of 17 on 3ba103f4 (median 1.93 -> 2.11, against the nightly bound 2.97); red about once in 17 on both trees; not made by item 20", "limiter"},
+    {"X-065", "2026-11-27", "L (item 20: the listener's output limiter; the next sim window)", "as built", "rotary-twin-na-side-port", "tour", "click",
+     "made by item 20's true levels (2f6bbbeb) through the output limiter: 12 to 19 dB deep on the rev limiter, its instant attack clamping the fronts; 0 of 17 with true levels turned back alone, and 0 of 17 with the limiter out of play (L's quiet probe: the staging at an eighth, the new spot and the fold kept; median 1.58); 0 of 17 over on the tree before item 20, 3 of 17 on 3ba103f4 (median 1.52 -> 2.10, against the nightly bound 2.35); L's measurement, 27 Nov; the cure (a look-ahead limiter, docs/plan/x065-limiter.md) is the next sim window's", "limiter"},
+    {"X-065", "2026-11-27", "L (item 20: the listener's output limiter; the next sim window)", "as built", "supercharged-v8-62", "tour", "click",
+     "made by item 20's true levels (2f6bbbeb) through the output limiter: 12 to 19 dB deep on the rev limiter, its instant attack clamping the fronts; 0 of 17 with true levels turned back alone, and 0 of 17 with the limiter out of play (L's quiet probe: the staging at an eighth, the new spot and the fold kept; median 2.63); 0 of 17 over on the tree before item 20, 3 of 17 on 3ba103f4 (median 2.15 -> 3.09, against the nightly bound 3.35); L's measurement, 27 Nov; the cure (a look-ahead limiter, docs/plan/x065-limiter.md) is the next sim window's", "limiter"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

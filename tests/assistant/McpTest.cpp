@@ -10,6 +10,12 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <stdexcept>
+
+#include <sstream>
+
+#include <fstream>
+
 #if !defined(_WIN32)
  #include <csignal>
  #include <poll.h>
@@ -330,8 +336,15 @@ namespace
         Drivers drivers;
         Cards cards;
         McpLink link;
+        std::atomic<bool> clockThrows{false};   // a fault on the link's own worker (X-063's last guard)
         App(const std::string& name, const std::string& dir, long user = -1)
-            : rig(name), link(*rig.tools, drivers, cards, [this] { return rig.clock; }, McpLinkOptions{dir, user, "0.2.0", {}})
+            : rig(name), link(*rig.tools, drivers, cards,
+                              [this] {
+                                  if (clockThrows)
+                                      throw std::runtime_error("a fault in the app");
+                                  return rig.clock;
+                              },
+                              McpLinkOptions{dir, user, "0.2.0", {}})
         {
         }
         ~App() { link.stop(); }
@@ -695,6 +708,51 @@ TEST_CASE("assistant: the status line counts the field changes Claude made, not 
     session.stop();
 }
 
+TEST_CASE("assistant: the session's limits never read the frame's clock (X-064)", "[assistant][sharedsim]")
+{
+    // The app's clock (SessionParts::clock) is its frame count: it stands still while the window is minimised. A
+    // Claude Desktop call's turn and a batch's wait for a held control run on real time instead.
+    const LinkDir held("frameclock");
+    Rig rig("mcp-frameclock");
+    std::atomic<int> reads{0};
+    Session session(SessionParts{*rig.file, *rig.library, [&]() -> SimHost* { return &rig.sim->host(); },
+                                 [&] { return rig.sim->host().sim(); },
+                                 [&] {
+                                     ++reads;
+                                     return rig.clock;
+                                 },
+                                 nullptr, nullptr, McpLinkOptions{held.path, -1, "0.2.0", {}}});
+    std::string why;
+    REQUIRE(session.allowDesktop(true, why));
+    const int fd = wire::connectTo(held.path, why);
+    INFO(why);
+    REQUIRE(fd >= 0);
+    const std::string ask = "{\"id\":7,\"method\":\"call\",\"params\":{\"name\":\"get_status\"}}\n";
+    REQUIRE(wire::sendAll(fd, ask.data(), ask.size()));
+    // the call's job served by the session's frame (its own inbox), until the reply comes
+    std::string got;
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (got.find('\n') == std::string::npos && std::chrono::steady_clock::now() < until)
+    {
+        session.frame();
+        pollfd p{fd, POLLIN, 0};
+        if (poll(&p, 1, 5) > 0)
+        {
+            char buf[4096];
+            const ssize_t n = read(fd, buf, sizeof buf);
+            if (n <= 0)
+                break;
+            got.append(buf, static_cast<std::size_t>(n));
+        }
+    }
+    INFO(got);
+    REQUIRE(got.find("\"id\":7") != std::string::npos);
+    CHECK(got.find("timed out") == std::string::npos);
+    CHECK(reads.load() == 0);
+    close(fd);
+    session.stop();
+}
+
 TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app with SIGPIPE", "[assistant][sharedsim]")
 {
     const SigpipeWatch watch;
@@ -829,6 +887,91 @@ TEST_CASE("assistant: tee-mcp in Claude Desktop's bare environment reaches the a
     CHECK(call["result"]["isError"] == false);
     CHECK(bridge.errText().find("connected to the app at " + folder) != std::string::npos);
     link.stop();
+}
+
+
+TEST_CASE("assistant: a fault during a call from Claude Desktop answers that call in words, and the next is served (X-063)",
+          "[assistant][sharedsim]")
+{
+    const LinkDir held("guard");
+    App app("mcp-guard", held.path);
+    std::string why;
+    REQUIRE(app.link.start(why));
+    Bridge bridge(held.path);
+    bridge.ask(&app.rig, 1, "initialize", {{"protocolVersion", "2025-11-25"}});
+    app.clockThrows = true;   // without the guard the link's worker ends the process here
+    const json bad = bridge.ask(&app.rig, 2, "tools/call", {{"name", "get_status"}}, 10.0);
+    INFO(bad.dump(-1, ' ', false, json::error_handler_t::replace));
+    REQUIRE(bad.contains("result"));
+    CHECK(bad["result"]["isError"] == true);
+    CHECK(toolResult(bad)["error"].get<std::string>().find("could not complete") != std::string::npos);
+    app.clockThrows = false;
+    const json good = bridge.ask(&app.rig, 3, "tools/call", {{"name", "get_status"}}, 10.0);
+    REQUIRE(good.contains("result"));
+    CHECK(good["result"]["isError"] == false);
+    CHECK_FALSE(app.link.view().running);
+}
+
+TEST_CASE("assistant: a build's name that is not UTF-8 reaches Claude Desktop replaced, and the app lives (X-063)",
+          "[assistant][sharedsim]")
+{
+    const LinkDir held("badname");
+    App app("mcp-badname", held.path);
+    app.rig.build().name = std::string("v8") + static_cast<char>(0xFF);
+    // through Result::text(): valid JSON, the bad byte U+FFFD
+    const Result direct = app.rig.call("get_status");
+    const json parsed = json::parse(direct.text(), nullptr, false);
+    REQUIRE(parsed.is_object());
+    CHECK(parsed["build"] == "v8\xEF\xBF\xBD");
+    // through the link and the bridge, as Claude Desktop sees it
+    std::string why;
+    REQUIRE(app.link.start(why));
+    Bridge bridge(held.path);
+    bridge.ask(&app.rig, 1, "initialize", {{"protocolVersion", "2025-11-25"}});
+    const json r = bridge.ask(&app.rig, 2, "tools/call", {{"name", "get_status"}}, 10.0);
+    REQUIRE(r.contains("result"));
+    CHECK(toolResult(r)["build"] == "v8\xEF\xBF\xBD");
+}
+
+TEST_CASE("assistant: a whole build whose file name is not UTF-8 is listed replaced, and loading it says why it cannot (X-063)",
+          "[assistant][sharedsim]")
+{
+    Rig rig("mcp-badstem");
+    // a whole build in the owner's folder, its "name" taken away so that its file's stem is its name
+    std::ifstream in(fs::path(TEE_SOURCE_DIR) / "content" / "builds" / "v8.json");
+    std::stringstream text;
+    text << in.rdbuf();
+    json build = json::parse(text.str());
+    build.erase("name");
+    const std::string stem = std::string("v8") + static_cast<char>(0xFF);
+    const fs::path folder = rig.user;
+    {
+        std::ofstream out(folder / (stem + ".json"));
+        out << build.dump(2);
+    }
+    // The file system decides whether such a name exists at all (APFS, for one, refuses a name that is not UTF-8):
+    // made only if the folder now holds an entry of exactly those bytes.
+    bool made = false;
+    std::error_code ec;
+    for (const fs::directory_entry& e : fs::directory_iterator(folder, ec))
+        made = made || e.path().filename().string() == stem + ".json";
+    if (!made)
+    {
+        WARN("this file system refuses a name that is not UTF-8: nothing to list (" << folder.string() << ")");
+        return;
+    }
+    const Result listed = rig.call("list_builds");
+    REQUIRE_FALSE(listed.isError);
+    bool seen = false;
+    for (const json& b : listed.value["builds"])
+        seen = seen || b["name"].get<std::string>() == stem;
+    CHECK(seen);   // in the result as the app holds it; written out with U+FFFD
+    CHECK(listed.text().find("v8\xEF\xBF\xBD") != std::string::npos);
+    // Claude can only send the name back as it read it (U+FFFD), which is not the file's name: refused in words
+    const Result load = rig.call("load_build", {{"name", "v8\xEF\xBF\xBD"}});
+    CHECK(load.isError);
+    INFO(load.text());
+    CHECK(load.value["error"].get<std::string>().find("not valid text") != std::string::npos);
 }
 
 #endif

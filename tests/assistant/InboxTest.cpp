@@ -5,6 +5,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <filesystem>
+#include <fstream>
 #include <atomic>
 #include <chrono>
 #include <future>
@@ -211,4 +213,28 @@ TEST_CASE("assistant: one driver at a time", "[assistant]")
     CHECK_FALSE(d.take(Driver::Desktop, why));
     d.release(Driver::Chat);
     CHECK(d.take(Driver::Desktop, why));
+}
+
+TEST_CASE("assistant: every serialisation in assistant/ goes through dumpText (X-063)", "[assistant]")
+{
+    // nlohmann's dump() throws on a string that is not UTF-8; dumpText (Json.h) writes U+FFFD instead. A bare `.dump(`
+    // anywhere in assistant/ (include/, view/, mcp/, src/) brings the crash back, so it fails here, by file and line.
+    namespace fs = std::filesystem;
+    const fs::path root = fs::path(TEE_SOURCE_DIR) / "assistant";
+    std::size_t files = 0;
+    for (const auto& e : fs::recursive_directory_iterator(root))
+    {
+        const std::string ext = e.path().extension().string();
+        if (!e.is_regular_file() || (ext != ".h" && ext != ".cpp") || e.path().filename() == "Json.h")
+            continue;
+        ++files;
+        std::ifstream in(e.path());
+        std::string line;
+        for (int n = 1; std::getline(in, line); ++n)
+        {
+            INFO(e.path().lexically_relative(root).generic_string() << ":" << n << ": " << line);
+            CHECK(line.find(".dump(") == std::string::npos);
+        }
+    }
+    CHECK(files > 20);
 }

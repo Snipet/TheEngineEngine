@@ -24,6 +24,7 @@
 #pragma once
 
 #include "tee/assistant/Inbox.h"
+#include "tee/assistant/Json.h"
 
 #include <nlohmann/json.hpp>
 
@@ -55,7 +56,7 @@ namespace tee::assistant
     struct Limits
     {
         double jobSeconds = 2.0;          // a job's wait for the frame (real time)
-        double gestureSeconds = 5.0;      // a batch's wait for an open gesture to end (the frame's clock)
+        double gestureSeconds = 5.0;      // a batch's wait for an open gesture to end (real time: Host::now)
         double askSeconds = 40.0;         // the owner's answer to a question (real time)
         double predictSeconds = 20.0;     // a predicted curve (real time)
         double dynoSeconds = 40.0;        // a dyno run (real time)
@@ -63,11 +64,14 @@ namespace tee::assistant
         // DEFAULT_REQUEST_TIMEOUT_MSEC), whatever it waits on: the bridge answers by wire::kCallSeconds, 55 s, and a
         // tool's longest path, two jobs and its own limit, stays under that: ToolsTest checks it.)
         int turnCalls = 24;               // tool calls in one turn
-        double turnSeconds = 300.0;       // a turn, on the frame's clock
+        double turnSeconds = 300.0;       // a turn (real time: the Turn's clock)
         std::size_t resultBytes = 32 * 1024;      // one tool's result
         std::size_t turnBytes = 256 * 1024;       // a turn's results in all
         std::size_t batchChanges = 64;    // changes in one set_fields
     };
+
+    // The system's steady clock, seconds: what every limit of the tools runs on in the app.
+    double realSeconds();
 
     // The app's pieces the tools work on. Everything but `sim` is the frame's thread's, reached only in a job.
     struct Host
@@ -77,7 +81,9 @@ namespace tee::assistant
         files::BuildLibrary& library;
         std::function<SimHost*()> simHost;                 // the playing host, null while the engine is not ready
         std::function<std::shared_ptr<Sim>()> sim;         // the compiled program for the private copies, or null
-        std::function<double()> clock;                     // the frame's clock, seconds (tee-headless: simulated)
+        // Real time, seconds, for the tools' own limits (never the frame's clock, which stands still while the window
+        // is minimised: X-064). Empty: the system's steady clock (realSeconds). A test may hold it and step it.
+        std::function<double()> now;
         // Puts a question to the owner in the app (called in a job, on the frame's thread) and returns the answer to
         // come: true yes. `withdrawn` is raised (release) when the asker stops waiting, for any reason (its time is
         // up, the call is cancelled, the session stops): the app then takes the question down (AppFrame::ask).
@@ -97,7 +103,7 @@ namespace tee::assistant
     {
         bool isError = false;
         nlohmann::json value;        // the structured answer ({"error": "..."} for an error)
-        std::string text() const { return value.dump(); }
+        std::string text() const { return dumpText(value); }
     };
 
     struct ToolInfo
@@ -117,6 +123,8 @@ namespace tee::assistant
         const std::vector<ToolInfo>& list() const noexcept { return infos_; }
         const ToolInfo* find(const std::string& name) const noexcept;
         const Limits& limits() const noexcept { return host_.limits; }
+        // Real time, seconds: Host::now, or the steady clock.
+        double now() const { return host_.now ? host_.now() : realSeconds(); }
 
         // Runs one tool on this (a worker's) thread. `cancel` (may be null) stops it as soon as it can.
         Result call(const std::string& name, const nlohmann::json& arguments = nlohmann::json::object(),
@@ -178,6 +186,7 @@ namespace tee::assistant
     class Turn
     {
     public:
+        // `clock`: real time, seconds, for turnSeconds (the app's session gives the steady clock; empty: Tools::now).
         Turn(Tools& tools, Drivers& drivers, Driver who, std::function<double()> clock);
         ~Turn();
         Turn(const Turn&) = delete;

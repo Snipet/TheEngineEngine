@@ -394,13 +394,14 @@ TEST_CASE("assistant: with the frame's clock held still, every tool ends by its 
     // end in real time all the same, both with no frame at all (minimised, nothing woken) and with the inbox drained
     // but the clock still (the wake while minimised). The limits are made small here; each call must end by its own
     // path's sum of them (the defaults' sums are inside the bridge's 55 s: the case above), never on the frame's clock.
+    // The tools' own clock is real time here (X-064): a held control is refused in its own words, not by a timeout.
     Limits l;
-    l.jobSeconds = 0.3;
+    l.jobSeconds = 1.0;   // the ticket (gesture + job) a full second past the gesture's own refusal: a slow runner's drains
     l.gestureSeconds = 0.6;
     l.askSeconds = 0.6;
     l.predictSeconds = 0.6;
     l.dynoSeconds = 0.6;
-    Rig rig("clock-held", l);
+    Rig rig("clock-held", l, [] { return realSeconds(); });   // the frame's clock held; real time runs
     const double slack = 3.0;   // a loaded runner
     const auto fields = rig.settable(1);
     REQUIRE(fields.size() == 1);
@@ -461,6 +462,8 @@ TEST_CASE("assistant: with the frame's clock held still, every tool ends by its 
             const Result r = timed(c);
             if (c.name == "set_fields" || c.name == "load_build" || c.name == "predict_curve" || c.name == "run_dyno")
                 CHECK(r.isError);
+            if (c.name == "set_fields")   // the held control's own words, on real time (X-064), not the frame's timeout
+                CHECK(r.text().find("a control is being moved") != std::string::npos);
         }
         stop = true;
         wake.join();
@@ -487,12 +490,26 @@ TEST_CASE("assistant: with the frame's clock held still, every tool ends by its 
             const Result r = timed(c);
             if (c.name == "set_fields" || c.name == "load_build" || c.name == "predict_curve" || c.name == "run_dyno")
                 CHECK(r.isError);
+            if (c.name == "set_fields")   // the held control's own words, on real time (X-064), not the frame's timeout
+                CHECK(r.text().find("a control is being moved") != std::string::npos);
         }
         stop = true;
         idle.join();
         rig.othersBusy = false;
         rig.build().endGesture();
     }
+}
+
+TEST_CASE("assistant: a dyno run stopped at its limit says what to do", "[assistant][sharedsim]")
+{
+    Limits l;
+    l.dynoSeconds = 0.05;   // far under a sweep's few seconds
+    Rig rig("dyno-limit", l, [] { return realSeconds(); });
+    const Result r = rig.call("run_dyno", {{"from_rpm", 500}, {"to_rpm", 8000}});
+    INFO(r.text());
+    REQUIRE(r.isError);
+    CHECK(r.text().find("nothing was changed") != std::string::npos);
+    CHECK(r.text().find("ask for a narrower range of speeds") != std::string::npos);
 }
 
 TEST_CASE("assistant: a turn's limits hold, and one driver at a time", "[assistant][sharedsim]")

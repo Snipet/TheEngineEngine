@@ -599,6 +599,16 @@ jobs:
           echo "---- the same with the plain Panel"
           limited "${run[@]}" "$app" --panel plain --script tests/shell/scripts/window.txt --frames 60 \
               --shot "$out/window-plain-$TEE_PLATFORM.png" || rc=$?
+          echo "---- the assistant's wake: the window minimised, one call through tee-mcp answered while it does not tick"
+          if [ "$RUNNER_OS" = Windows ]; then
+            bash scripts/run-wake.sh "$app" none || rc=$?
+          elif [ -n "${{ steps.mcpb.outputs.path }}" ]; then
+            wake="$RUNNER_TEMP/mcpb-wake"; rm -rf "$wake"; mkdir -p "$wake"
+            unzip -q "${{ steps.mcpb.outputs.path }}" -d "$wake" \
+              && limited "${run[@]}" scripts/run-wake.sh "$app" "$wake/server/tee-mcp" || rc=$?
+          else
+            echo "::warning::no Claude Desktop extension was built: the wake's run was not made"
+          fi
           ls -l "$out" || true
           exit $rc
 
