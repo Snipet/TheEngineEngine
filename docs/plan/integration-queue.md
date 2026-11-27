@@ -2778,11 +2778,32 @@ the steward would use, if the owner allows it:
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **27 Nov 13:04 UTC: THE HOLD OF 12:37 IS LIFTED for what is not `sim/`, `host/` or `tools/`.** f77a46e6's three jobs
-  have started (macOS 12:57, Linux 12:58, Windows 12:59); it holds B's H-shifter as a manual's lever, C's bake
-  across edits, D2's pickup and the tests of X, N2 and the integrator, and `main` moves to it on its three
-  greens. Let in now, together: J2 (U1's bake words, `[soak]`), X (the tractor's nightly pull-away, `[soak]`), the
-  integrator (its tests of record). THEN THE WINDOW: the lead calls item 16 when `main` is at f77a46e6.
+- **27 Nov 13:28 UTC: `main` IS AT f77a46e6** (run 46000962256, three jobs green). **The trees `main` is gated on: sim
+  f23337cc, host 29bcbaa5, tools 7c3e4d59** (host moved 86ea14da to 29bcbaa5 by C's bake across edits alone, no
+  baked value moved: C's two byte-identity proofs, the lead's own run of its cases). Before it: 35a733d1 (12:19).
+- **THE WINDOW, as it stands at 13:49 UTC (the branch's baked tables are STALE from d28b3412; `main` stays at
+  f77a46e6 until P's bake):**
+  - **ITEM 16 IS IN: d28b3412 (the steward, pushed 13:45).** `sim` f23337cc to d577990d (launch.fm: the cut for as
+    long as the vehicle asks; two seam comments); `host`, `tools` unchanged. Its tier of record 587 of 588, the
+    one red the five named cases. The cut on `ecu.flags`: the paddle robot 110 to 60 ms, the truck 200 to 150,
+    `car.model` 1's paddle manual and sequential 210 to 60, the bike 100/160/40 to its set 50/80/20; model 0 on
+    all 48 shipped builds bit-identical. ACCEPTED on the lead's own read: "shift.cut*" 40 assertions pass and
+    fail at ShiftCutTest.cpp:84 and :117 on the old launch.fm; the three-cylinder's pull over 17 nudges on
+    frozen copies of both trees: the 1-2 and the 2-3 over the bound in 6 and 8 of 17 before, 0 and 0 after
+    (the steward's counts exactly). CURED: the three-cylinder's and the kei's upshifts. NOT CURED: the V8
+    pull's 1-2 (1 of 17, was 4).
+  - **ITEM 15 HAS LEFT THIS WINDOW (13:50; called at 13:49 and withdrawn, the lead's fault: it was a design, not
+    code).** The integrator's count: sixty-odd sites in 13 files under 8 owners (a pAmb on every Duct for the
+    pipes' impedance alone), a null over every archetype, four predictions to measure: several hours, and
+    nothing the owner reported waits on it. It lands in the next window, whole or in two stages, each file's
+    owner having read its sites, and after a ruling on its deviation (the core has no model switch, so "model 0
+    keeps 101325" cannot hold off the default pressure).
+  - **ITEM 18 IS NEXT (the integrator): the dog shift holds the clutch where it was (X-056).** Then 20 (L:
+    verified ahead from its patch file), C's standard-day bake under `host/`, FROZEN FOR THE BAKE. Items 15,
+    17 and 19 have left this window (17: X-060, the flat-plane V8's top point from 6 to 16 failures in 51 of
+    the predictor's settle floor; 19: X-059, the cap moves the turbo's match on three builds).
+  - Not `sim/` and free to land meanwhile (they reach `main` with the baked commit): J2's carry of U1's bake
+    words (`[soak]`), U1's CLUTCH row and the settings' scroll after the lead's look, docs.
 - **THE WINDOW'S RULES OF THE DAY (the steward's advice, taken):** a `sim/` item is accepted on one whole default
   tier on the merged state green EXCEPT the cases that assert a shipped bake is current on this program (the
   key holds the program's source hash: the steward lists them by name here before the first call; first known:
@@ -2815,7 +2836,7 @@ the steward would use, if the owner allows it:
 - **Verified by the lead ahead of its call: item 20** (L's patch file on b6bdee76, sha256 0582ec86...26c1: its four
   evidence cases pass, 474 assertions; the old default fails EngineTest.cpp:411 and :434; the old scene.fm fails
   ListenerTest.cpp:312 at -9.2 dB, 620 Hz; ref.null 11 of 11 with the patch).
-- **27 Nov 12:19 UTC: `main` IS AT 35a733d1** (run 45994332561: Linux, macOS and Windows green on that commit;
+- (superseded at 13:28) **27 Nov 12:19 UTC: `main` was at 35a733d1** (run 45994332561: Linux, macOS and Windows green on that commit;
   B's gears by gearbox kind, `shell/` and tests). **The trees `main` is gated on: sim f23337cc, host 86ea14da,
   tools 7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked
   byte-identical; C's bake across edits, host 29bcbaa5, is on the branch and not yet in `main`). Before it:

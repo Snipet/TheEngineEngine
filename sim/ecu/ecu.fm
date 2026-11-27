@@ -473,7 +473,7 @@ module Ecu
     }
 
     // Every 16 samples, driven, with ecu.model 1: the vehicle's values (Car's: the driven wheels' slip, the speed m/s,
-    // the gear, upshifts counted, seconds of cut a dog box asks, the crank speed a downshift's blip asks, rad/s);
+    // the gear, upshifts counted, above 0 while a dog box asks its cut, the crank speed a downshift's blip asks, rad/s);
     // control1 reads them
     void vehicle(float drivenSlip, float speed, int gear, int upshifts, float cutRequest, float blipRequest)
     {
