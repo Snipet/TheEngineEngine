@@ -50,6 +50,13 @@ namespace tee::assistant
         Session& operator=(const Session&) = delete;
 
         // Once a frame: the tools' jobs run. `appBusy`: the app's own heavy work runs now (its curves yield to it).
+        // The app's wake (Inbox::setWake): called on the posting thread whenever a tool posts a job, so the app drains
+        // it (frame()) on its main thread even while its window does not tick (minimised). Set once, before the switch
+        // or the chat is used; may be empty. While jobs remain after a drain (waiting(): a job that said "not yet"), the
+        // app drains again a little later (a job's limit is 2 s of real time).
+        void setWake(std::function<void()> wake) { inbox_.setWake(std::move(wake)); }
+        std::size_t waiting() const { return inbox_.waiting(); }
+
         void frame(bool appBusy = false)
         {
             appBusy_.store(appBusy);

@@ -103,6 +103,10 @@ namespace tee::assistant
 
         // Any thread.
         Ticket post(Job job);
+        // Called after each job is queued, on the posting thread, outside the inbox's lock (any thread may post): the
+        // app wakes its main thread to drain, so that a window that does not tick (minimised) still answers. Set it
+        // before the first post; may be empty.
+        void setWake(std::function<void()> wake);
         std::size_t waiting() const;
         bool closed() const;
 
@@ -118,6 +122,7 @@ namespace tee::assistant
         };
         mutable std::mutex mutex_;
         std::deque<Entry> queue_;
+        std::function<void()> wake_;
         bool closed_ = false;
     };
 }

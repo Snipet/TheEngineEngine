@@ -2806,9 +2806,19 @@ the steward would use, if the owner allows it:
     the new tree, the engine between 959 and 1024 rpm throughout; a stall on the old. X-056 CURED on the
     application's path. Left noted: the upshift's 60 ms ignition cut still fires at rest (a 65 rpm dip): a
     question for item 16's owner.
-  - **ITEM 20 IS CALLED (L, 14:52):** the patch as the lead verified it from its file. Then C's standard-day bake
-    under `host/` (told to rebase and run its tier now, pushing on the lead's word), then FROZEN FOR THE BAKE.
-    Items 15, 17 and 19 have left this window (15: a design, not code; 17: X-060; 19: X-059).
+  - **ITEM 20 IS IN: d21f6eea (L, pushed 15:09).** `sim` ff68cf13 to 22314cde (sound.fm: true levels the default
+    in Places, THE OWNER'S RULING; listen.fm: one fixed staging, +3.7 dB; scene.fm: the Tailpipe camera a
+    boundary microphone on the ground 0.5 m behind the mouth, the ground's image folded into each capsule's
+    path). Its tier of record 586 of 587, the one red the five. ACCEPTED on the lead's own read, made ahead
+    from its patch file and repeated on the push: the pushed diff is the verified patch to the line but for
+    one corrected word in a print; the four evidence cases 474 assertions (the comb gone: least +5.6 dB at
+    6 kHz of asphalt against no ground, where the old spot read -9.2 dB at 620 Hz and fails the case; the V8's
+    idle over first.json's +8.4 in Places against +8.9 in the reference, where the old default read -1.0 and
+    fails); ref.null 11 of 11 with the patch.
+  - **C'S STANDARD-DAY BAKE HAS THE WORD (15:11): the window's last push, under `host/`.** Its proof: on three
+    builds chosen before looking a bake with the change and one without give the same bytes on the same tree.
+    THE COMMIT IT MAKES IS THE ONE THE LEAD FREEZES; P bakes on it. Items 15, 17 and 19 have left this window
+    (15: a design, not code; 17: X-060; 19: X-059).
   - IN, not `sim/` (they reach `main` with the baked commit): U1's bake words (0f5dc0c9, `[soak]`), and at
     f6a5d10f (14:28) U1's CLUTCH row in SETTINGS, the settings page's scroll where its rows do not fit, and the
     restated build.bake.stale, all carried by J2 after the lead's own look at the pictures. Card A's fixes from
