@@ -2825,6 +2825,16 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 19:42 UTC: `main` IS AT 233d7154** (run 46051766042: Windows, Linux and macOS green; gated trees
+  unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 3db7ed07 (19:05), 40463d37 (17:42),
+  3ba103f4 (17:13). In it: card A's item 3 and U1's air patch.
+  - **The tip to protect is T1 = 4524113b** (the steward's `Known.h` push, last of the train behind B's stack
+    3e35f7a9 and card A's X-063 6bfb90d2). The steward's tier of record: 599 of 599 on its four commits over B's
+    tip, plain tree with libsecret and libcurl; merged with X-063: everything built, the combo's fast cases 4
+    of 4. At 19:42: Linux running since 19:35:42, Windows started 19:42:10, macOS PENDING (behind 6bfb90d2's
+    macOS job). Until macOS has started, nothing code-bearing goes: the steward's block in `build.yml`, card
+    A's X-064 (dea6bab, its tier running), B's small push (two comments, and the frame-count clock taken out
+    once X-064 is in) all wait.
 - **27 Nov 19:24 UTC: A CORRECTION to the 19:13 entry's dyno figure (card A's own, after reading the code; the lead had
   passed the first version to the owner).** A sweep is NOT always 17 points and its time DOES grow with the span:
   the spacing is max(10 rad/s, span/16) (`assistant/src/Tools.cpp:943`), so 17 points only for a span over about
