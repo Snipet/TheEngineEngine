@@ -74,3 +74,9 @@ Probe `tuneBakeWords` (Tune.h). Test `frame.bake.stale` (FrameTests.cpp). No gol
 A wording question for U4 (the lead's, 27 Nov; not changed): the knock limit's switch is titled "Not baked (no table)",
 the state it turns on, so beside a line saying "old table in use" (the switch off, a table in play) the two read oddly
 together. Whether the title should say what the switch is now, or name the choice ("Table / Not baked"), is U4's call.
+
+**Added by U1 for U4, 27 Nov 2026** (the lead's word): CAR's "Gearbox and ratios" group no longer lists `car.autoClutch`.
+No Spec field has that name (only the demo's ui/app/Demo.cpp does), so the real window showed nothing there. The
+automatic clutch is the shell's setting, three-way (card B's `input::ClutchMode`: the shifter's clutch yours, the
+default; automatic; yours), set in SETTINGS' CLUTCH row (U1's, FrameServices::clutchMode), one place for it. No golden
+moved.

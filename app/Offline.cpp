@@ -274,6 +274,13 @@ namespace tee::app
                 };
                 frameServices.wheelStatus = [hooks] { return hooks->wheelStatus ? hooks->wheelStatus() : std::string(); };
 #endif
+                // the settings' CLUTCH row (U1's, over card B's three-way input::ClutchMode)
+                frameServices.clutchMode = [hooks] { return hooks->clutchMode ? hooks->clutchMode() : 0; };
+                frameServices.setClutchMode = [hooks](int m) {
+                    if (hooks->setClutchMode)
+                        hooks->setClutchMode(m);
+                };
+                frameServices.autoClutchSays = [hooks] { return hooks->autoClutchSays ? hooks->autoClutchSays() : std::string(); };
                 frameServices.coldStart = [hooks] { return hooks->coldStart && hooks->coldStart(); };
                 frameServices.setColdStart = [hooks](bool cold) {
                     if (hooks->setColdStart)
