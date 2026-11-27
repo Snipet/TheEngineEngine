@@ -341,6 +341,18 @@ TEST_CASE("shipped builds on the pull: the kei 660 then the three-cylinder 1.0 t
     }
 }
 
+// The truck (the lead's ruling 3(b), 27 Nov 12:07): one eighteen-speed through the pull as a pull-away in one gear, the
+// clutch floored, the L slot (gear 1), the clutch let up over 1 s, no shifts (Combo.cpp, Driver::Truck); picked by 17
+// nudges: no stall, top speed 2.34 to 2.36 m/s, gear 1 at the drive's end in every copy (the low range's first position,
+// gear 3, also held: 3.6 m/s). Its reference drives on its presses as every reference does.
+TEST_CASE("a truck pulls away in its low slot: the tractor through the pull, in one gear", "[nightly][corpus]")
+{
+    const auto f = corpusDir() / "tractor-15-inline-six.json";
+    if (!std::filesystem::exists(f))
+        SKIP("no " << f.string());
+    corpusBuild(f, Kind::Pull);
+}
+
 TEST_CASE("a handful of pairs where packages meet: fuel and ECU then boost and exhaust then ECU and car", "[nightly][combo][pairs]")
 {
     // the fast tier's pairs (every pair is nightly): those whose meeting has produced findings today (X-003, X-006,
@@ -575,6 +587,21 @@ TEST_CASE("gear probe: car.gear through a scenario", "[.gearprobe]")
         sc.at(0.0);
         for (const Switch& w : switches())
             sc.spec(w.path, 0);
+    }
+    // GEARPROBE_DT="dT ...": a copy at each nudge, one line each ("copy | dT | lowest engine.state while driven | top
+    // car.speed while driven | car.gear at the drive's end"): a pull-away read on 17 nudges, not one draw
+    if (const char* dts = std::getenv("GEARPROBE_DT"); dts != nullptr && tm.driveFrom >= 0.0)
+    {
+        std::istringstream list(dts);
+        double dT = 0.0;
+        while (list >> dT)
+        {
+            tee::test::Scenario c = sc;
+            c.at(0.0).spec("env.temperature", 293.15 + dT);
+            const tee::test::Run rc = c.run(tm.end);
+            std::printf("copy | %+.2f | %.0f | %.2f | %.0f\n", dT, rc.tel("engine.state").during(tm.driveFrom, tm.driveTo).min(),
+                        rc.tel("car.speed").during(tm.driveFrom, tm.driveTo).max(), rc.tel("car.gear").at(tm.driveTo));
+        }
     }
     const tee::test::Run r = sc.run(tm.end);
     const auto gear = r.tel("car.gear");
