@@ -2825,6 +2825,52 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 19:05 UTC: `main` IS AT 3db7ed07** (run 46047427666: Windows, Linux and macOS green; gated trees
+  unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 40463d37 (17:42), 3ba103f4 (17:13). In it:
+  card A's seven commits, B's wake, card A's cure. The tip to protect is still 233d7154 (item 3 and the air
+  carry), `main`'s next candidate.
+  - Ready and waiting for 233d7154's three jobs to start: B's stack (one fault in the ctest copy to fix), card
+    A's X-063 (4c1a2d6, its tier running), the steward's `Known.h` push (three commits: the nine rows in and the
+    three cured pairs out; each combo row's excess and bound printed at the end of its line, no reader of that
+    line found; X-065's words), then the block in `build.yml`, then X-064.
+- **27 Nov 19:04 UTC: X-065: THE LIMITER IS THE CAUSE, MEASURED, AND THE CURE IS DESIGNED FOR THE NEXT WINDOW.** L's
+  "quiet" probe (the new tree with the staging at an eighth, so the output limiter is out of play, the new spot
+  and the fold kept; 17 draws): rotary 0 of 17, median 1.58 (bound 2.35); V8 0 of 17, median 2.63 (bound 3.35),
+  equal to the tree with true levels turned back. Predicted 0 of 17 on both before the run. On first.json's tour
+  the limiter never acts on the new tree.
+  - The design is on the branch, docs only: `docs/plan/x065-limiter.md` (7ae41c17): a look-ahead limiter in the
+    Places listener's last stage (2 ms; the gain down when the peak arrives; no sample above the ceiling, as now;
+    the release, the ceiling and the +3.7 dB staging unchanged), with sources and six predictions written first
+    (both rows 0 of 17; the limiter's depth unchanged within 1 dB, so the density stays and the papery edge on
+    each pulse goes; first.json a pure 2 ms delay; every Places camera delayed alike; the other listener
+    bit-exact; `host.sim.bakes` red until the re-bake, as any sim change).
+  - **It joins the next window's list** (with item 15, item 17 and X-060, item 19 and X-059, X-058).
+  - **For the owner, with L's clips (old tree, new tree, the quiet probe; rotary and V8; matched and unmatched;
+    sent to them from L's session):** whether a loud build limited 12 to 19 dB at the rev limiter in Places, with
+    the edge gone, is what they want from true levels, or whether a loud build should also be turned down (a
+    ceiling per build that only falls: levelling by another name, so their ruling to change).
+- **27 Nov 19:01 UTC: X-065 MEASURED BY L (17 draws a row, the tree just before 2f6bbbeb against 3ba103f4): IT IS TWO
+  ROWS, NOT NINE, AND IT IS A REAL CHANGE IN THE SOUND.** L's two predictions were wrong and are said so.
+  - The seven triples are not item 20's: over of 17, old then new: 2-1, 1-2, 0-1, 0-0, 0-0, 1-0, 1-2 (5 of 119 red
+    on the old tree, 6 of 119 on the new; medians 1.65 to 2.17 against bounds 2.67 to 3.04). Sometimes-rows of
+    the click families already numbered, which a one-draw soak passes twice and then fails. They go into
+    `Known.h` under their families with these rates (the steward's wording).
+  - The two archetype rows are item 20's: rotary-twin-na-side-port / tour 0 then 3 of 17 (median 1.52 then 2.10,
+    bound 2.35); supercharged-v8-62 / tour 0 then 3 (2.15 then 3.09, bound 3.35). With one part turned back at a
+    time: true levels alone back, both 0 of 17 (the part); the Tailpipe camera's old spot back, the V8 0 and the
+    rotary 2 (a second part on the V8); the fold removed, no cure (not a cause).
+  - The mechanism, measured on rendered tours: with true levels these hot builds at the near spot drive the
+    OUTPUT limiter 12 to 19 dB deep on the rev limiter (deepest: rotary -19.6 dB, V8 -13.7; on the old tree -1.3
+    and 0, the auto level having ducked 7 to 12 dB first). The limiter's gain does not step at the cuts (under
+    1.1 dB a frame); its instant attack clamps fronts that are already steep (the rotary's port opening): 40 % of
+    the rotary's large steps sit on clamped samples, against 4 % on the old tree.
+  - Ruled: nothing is restated. The cure for the next window is an attack that does not cut the fronts (lookahead,
+    a few ms), L's design with predictions first. A ceiling per build that only falls is levelling by another
+    name and is the owner's ruling to change: it goes to them as a question with clips. Until the window the two
+    rows are known reds on X-065. L's "quiet" probe (the staging at an eighth, the limiter out of play) is
+    running, predicted 0 of 17 on both.
+  - Asked of the steward: how many rows of a soak sit near their bound, and a proposal so that a one-draw soak
+    does not go red by chance.
 - **27 Nov 18:50 UTC: CARD A's ITEM 3 AND J2's CARRY ARE ON THE BRANCH, BACK TO BACK. THE TIP TO PROTECT IS 233d7154.**
   Gated trees unchanged (sim 22314cde, host ef1715f6, tools 7c3e4d59).
   - Item 3 (f97c88cc: 28bd43e the withdrawn question, every tool inside 55 s, the owner's answer 40 s, a dyno
