@@ -2825,6 +2825,19 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 20:34 UTC: THE WAKE ON macOS's RUNNER: ANSWERED WHILE MINIMISED, NO FRAME TICKED.** 120cc19d's "Run the
+  application" step succeeded on all three (run 46059778564; the steward's read, and the lead's own of the three
+  logs). The packed application's lines:
+  - macOS: "run-wake: answered in 0.06 s; window: minimised=1 hidden=0 occluded=1; ticks 30 before the call, 30
+    after the answer; simulator compiling at the call" and "run-wake: simulator ready while minimised, 7.3 s after
+    the minimise; ticks 30 (reported)". The runner honours a minimise (not the hide fallback).
+  - Linux: answered in 0.12 s, minimised=1, ticks 30 and 30; simulator ready 5.5 s after the minimise.
+  - Windows: "no link on this platform (Windows): nothing to call; not a failure".
+  - Its Test step: Linux 600 of 600, Windows 590 of 590, macOS 598 of 599 with the named red only
+    (`McpTest.cpp:908`, `:909`), cured in 3ccb826b.
+  - What this is not: the owner's own Mac, a Dock minimise by hand, Claude Desktop itself on the other end (the
+    script speaks the bridge's protocol through `tee-mcp`). Their try is still asked for
+    (`docs/handoffs/b-owner-mac-wake.md`).
 - **27 Nov 20:17 UTC: THE WAKE'S RUN ON THE PACKED APPLICATION PASSED ON LINUX IN CI, AND THE TIP TO PROTECT IS
   3ccb826b.**
   - 120cc19d (the steward's block in `build.yml`, run 46059778564), linux-x64 GREEN, 600 of 600. The step's lines,
