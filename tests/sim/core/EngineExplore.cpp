@@ -898,3 +898,44 @@ TEST_CASE("each gearbox kind from rest: the counters, then the lever", "[.shiftk
         }
     }
 }
+
+// X-056 (B's trace, 27 Nov): a sequential box shifted 1 to 2 at a standstill; the engine's speed, the robotised
+// clutch and the engine's state through it, and two moving cases (hidden: "[.x056]")
+TEST_CASE("X-056: a sequential's dog shift at rest and while the launch clutch slips", "[.x056]")
+{
+    struct C { const char* what; float throttle; double before; int downTo1; };
+    for (const C& c : {C{"at rest, 1 to 2", 0.0f, 0.0, 0}, C{"pulling away (pedal 0.3, 0.4 s in), 1 to 2", 0.3f, 0.4, 0},
+                       C{"a crawl, 2 to 1", 0.15f, 1.5, 1}})
+    {
+        Bench b("archetypes/inline-five-turbo-rally");
+        b.start();
+        b.ctl().mode = 1;
+        b.play(0.2);
+        b.ctl().shiftUp += 1;          // into first
+        b.play(0.2);
+        if (c.downTo1 != 0)
+        {
+            b.ctl().shiftUp += 1;      // second, then let it roll at a crawl
+            b.play(0.2);
+        }
+        b.ctl().throttle = c.throttle;
+        b.play(c.before);
+        if (c.downTo1 != 0)
+        {
+            b.ctl().throttle = 0.0f;
+            b.ctl().shiftDown += 1;
+        }
+        else
+            b.ctl().shiftUp += 1;
+        double minRpm = 1e9, maxRobot = 0, minRobot = 1;
+        int state = 9;
+        b.play(1.0, [&] {
+            minRpm = std::min(minRpm, b.tel("engine.speed") * 9.5492966);
+            maxRobot = std::max(maxRobot, b.field("car.m1.box.robot"));
+            minRobot = std::min(minRobot, b.field("car.m1.box.robot"));
+            state = std::min(state, int(b.field("ecu.state")));
+        });
+        std::printf("%-46s gear %g, %.1f km/h; through the shift: engine down to %.0f rpm, robot %.2f to %.2f, least engine state %d, now %g\n",
+                    c.what, b.tel("car.gear"), b.tel("car.speed") * 3.6, minRpm, minRobot, maxRobot, state, b.field("ecu.state"));
+    }
+}
