@@ -2382,6 +2382,23 @@ engines only where a source shows such an engine drawn split.
   on 62a6a7fd still caught) comes before any ruling.
 - **X-055 is in `main`** (57265b5f): the flat-plane V8 in the nightly's shipped-pull case.
 
+- **The nightly schedule's soak of 26 Nov: run 45823658255 (job 139922148115), on the branch tip 3f892823.** GitHub
+  fired the 03:23 UTC cron at 12:52, 9.5 h late. 224 of 226 passed.
+  - `ui.build.bake.pictures` (nightly, test 704; `tests/ui/build/BakeWatch.cpp`): SEGFAULT at 385.9 s. The load's bake
+    was not finished at 300 s on that runner (FAIL at :94 and :97, the first curve 14.8 s against 10). An edit of the
+    compression then landed while a new bake started, and the process crashed. It is the owner's own crash on their
+    Mac (`host/src/Bake.cpp:354`, six times on 25 and 26 Nov). Owner C, for the crash: `predictCurve` returns true
+    when cancelled mid-curve, and `bakeIntakeCam` checks the cancel flag only between curves (the owner's session's
+    report). U1 restates the test's wait on the bake's state, not a clock, after C's fix.
+  - N2-38 (the vanes long form), standing.
+  - Combo green against X's Known.h.
+  - Wall 8912 s, against 3894 on d586682c's soak. Most of it is the runner: code that did not change ran about 1.8x
+    (host 1.82, shell 1.74, core 1.96, calibration-na 1.84). The real growth is in combo's nightly labels, by
+    label sec*proc, with the runner's 1.8 divided out: triples x1.28, pairs x1.65, corpus x2.2 (the shipped pulls),
+    flip x1.9, archetype x1.8.
+  - The steward's watcher missed this run: it read the branch's runs only, and a schedule's runs are filed under
+    main. Fixed: it reads the schedule's runs too.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **26 Nov 20:32 UTC: `main` IS AT 57265b5f** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
