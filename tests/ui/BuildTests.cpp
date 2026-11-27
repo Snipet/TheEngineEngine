@@ -357,19 +357,27 @@ namespace
         const auto t0 = std::chrono::steady_clock::now();
         tee::ui::BakeStatus b;
         std::string atLoad;
+        bool shippedCurrent = false;   // the first state read: the shipped bake current (else baked here)
         while (std::chrono::steady_clock::now() - t0 < std::chrono::seconds(600))
         {
             bake.tick();
             b = bake.status();
             if (atLoad.empty())
+            {
                 atLoad = bake.state();
+                shippedCurrent = b.phase == P::baked || b.phase == P::checked;
+            }
             if (b.phase == P::baked || b.phase == P::checked || b.phase == P::none || b.phase == P::failed)
                 break;
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
-        std::printf("  at load: %s; current after %.0f s: %s ('%s')\n", atLoad.c_str(),
-                    std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(), bake.state().c_str(),
-                    tee::ui::bakeState(b).c_str());
+        // Which way it passed, so a tier's log shows when the content's bake has gone stale (the lead's ask, 27 Nov).
+        const double took = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        if (shippedCurrent)
+            std::printf("  the shipped bake was current (%s)\n", atLoad.c_str());
+        else
+            std::printf("  baked here in %.0f s (at load: %s; now %s, '%s')\n", took, atLoad.c_str(), bake.state().c_str(),
+                        tee::ui::bakeState(b).c_str());
         if (b.phase == P::none)
             return 0;   // a program without the tables: nothing to bake
         CHECK_MSG(b.phase == P::baked || b.phase == P::checked, bake.state());

@@ -81,3 +81,8 @@ queued question so raised is never shown, and its future is answered false. An o
 as a no would, answered false (nobody reads it), and the next question opens in its place, laid out once. The flag is read
 with acquire on the frame's thread; no lock. Every caller compiles unchanged. Test `frame.ask.withdrawn`. Card A's half
 (SessionParts::ask, Tools, app/Offline.cpp's askOwner) follows on this.
+
+**Seen where (the lead's note, 27 Nov):** the bake's words, the CLUTCH row and the settings page's scroll were drawn and
+looked at on Linux under software rendering only (out/ui pictures, by U1 and by the lead). None of it has been seen on a
+Mac. Since then: 4 px of air above CLUTCH's heading (WHEEL's line, wrapped to two at 1100, ended against it); and
+build.bake.stale says which way it passed ("the shipped bake was current" or "baked here in N s").

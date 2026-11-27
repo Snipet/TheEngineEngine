@@ -1468,9 +1468,11 @@ namespace tee::ui
         // it means on the gearbox loaded under them, two lines at most.
         const bool clutch = on && services_.clutchMode && services_.setClutchMode && services_.autoClutchSays;
         const float cw = (w - 12.0f) / 3.0f;
+        clutchNoteY_ = -1.0f;
+        if (clutch)
+            y += 4.0f;   // air under the row above (WHEEL's line, wrapped to two, ends where this heading would begin)
         for (std::size_t m = 0; m < clutch_.size(); ++m)
             clutch_[m]->setPlace({ x + static_cast<float>(m) * (cw + 6.0f), y + 16.0f, cw, 26.0f }, clutch);
-        clutchNoteY_ = -1.0f;
         if (clutch)
         {
             settingsHeads_.push_back({ "CLUTCH", y });
