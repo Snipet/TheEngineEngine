@@ -2825,6 +2825,22 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 18:25 UTC: X-066, A WINDOW THAT DOES NOT TICK NEVER ADOPTS THE SIMULATOR AND NEVER SENDS THE DOCUMENT'S
+  CHANGES TO THE ENGINE** (B's finding while writing the window test; the lead read the code). `SimAdapter::adopt`
+  and `build_->flush()` run only from `SimAdapter::frame` (`shell/player/SimAdapter.cpp:314-330`), called from the
+  frame's `beforeTick` (`app/Main.cpp:575`). With the wake (in from d0949cf2 on), a `set_fields` from Claude
+  Desktop while the window is minimised changes the build and is answered, and the owner hears nothing until
+  the window ticks again. What it does not touch: `predict_curve` and `run_dyno` run on a copy of the document's
+  text (`assistant/src/Tools.cpp:834-843`, `:904-913`), so their numbers are right; they are refused only in an
+  app minimised before its simulator was ever adopted. Ruled: the wake's drain serves the engine too (adoption
+  and the document's changes through drains alone), B's design, with a case for each and a comment on what of
+  the frame still does not run while minimised. Its own commit in B's stack, before the window test's script.
+  **It does not hold 3db7ed07:** answering while minimised with the engine a restore behind is better than
+  timing out.
+  - B's window test on a slow machine, by B's runs: the link opens at launch, `get_build` reads the document alone;
+    with a cold cache and 8 busy loops on 4 cores the call is answered in 0.13 s, the simulator still compiling.
+    B's patch comes to the lead as a file on the branch (docs/handoffs/patches/, docs-only).
+  - L on X-065: 306 plays (9 rows, 17 draws, 2 trees), about 15 minutes; started 18:17.
 - **27 Nov 18:18 UTC: X-065's record from the steward, and the order of the evening's pushes.**
   - The soaks before the window, one draw a row each: 52cda676 (run 46005699524) GREEN, 228 of 228, with none of
     items 16, 18, 20; 0f5dc0c9 (run 46012616941) 227 of 228, only `ui.build.reverse`, WITH item 16 and without 18
