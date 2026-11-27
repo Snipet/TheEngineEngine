@@ -25,4 +25,5 @@ namespace tee::input::g29
     Presses RacingWheel::takePresses() { return {}; }
     std::string RacingWheel::status() const { return {}; }
     void RacingWheel::pump() {}
+    bool RacingWheel::clutchAxis() const noexcept { return false; }
 }

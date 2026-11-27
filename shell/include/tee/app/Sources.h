@@ -135,6 +135,7 @@ namespace tee
         inline constexpr std::string_view kCycle = "engine.cycle";             // a slowed copy of the cycle, 0 to 1
         inline constexpr std::string_view kCarSpeed = "car.speed";             // m/s
         inline constexpr std::string_view kGear = "car.gear";                  // -1 R, 0 N, 1 up
+        inline constexpr std::string_view kShift = "car.shift";                // 0 none, 1 up, 2 down, 3 refused
         inline constexpr std::string_view kDriven = "car.driven";              // 1 while the engine is in a vehicle
         inline constexpr std::string_view kCarBrake = "car.brake";             // the pedals as the car has them, 0 to 1
         inline constexpr std::string_view kCarClutch = "car.clutch";

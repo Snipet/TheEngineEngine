@@ -338,7 +338,7 @@ namespace tee::input::g29
         }
         // the shifter: a change of gate (and the first frame read, a gate already in: what the lever says from now on)
         if (now.gear != was_.gear || (first && now.gear != 0))
-            driver.requestGear(now.gear);
+            driver.shifterGate(now.gear, clutchAxis_);
         was_ = now;
     }
 }
