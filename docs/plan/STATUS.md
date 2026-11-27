@@ -43,6 +43,12 @@
 
 ## Landed
 
+- **27 Nov 21:14 UTC: `main` at 2a92cc86.** Run 46066140664: Linux 600, macOS 599, Windows 590, all green (the
+  steward's counts; the lead read the three jobs' conclusions). Gated trees unchanged: `sim` 22314cde, `host`
+  ef1715f6, `tools` 7c3e4d59. In it, past 3ccb826b: B's small push: two comments corrected (no tool's limit
+  reads the frame's clock), and the frame-count clock no longer made for the session (`app/Offline.cpp`; nothing
+  else read it). Nothing the owner would notice. The day's last code push; the branch holds nothing `main`
+  lacks but docs.
 - **27 Nov 20:47 UTC: `main` at 3ccb826b.** Run 46061873957: Linux 600 of 600, Windows 590 of 590, macOS 599 of 599
   (card A's read by case; the lead read the three jobs' conclusions and macOS's log). Gated trees unchanged: `sim`
   22314cde, `host` ef1715f6, `tools` 7c3e4d59. In it, past 233d7154:

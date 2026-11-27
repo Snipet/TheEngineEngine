@@ -2896,6 +2896,17 @@ forward. None was re-run to green.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 21:14 UTC: `main` IS AT 2a92cc86** (run 46066140664: Linux 600, macOS 599, Windows 590, green; gated
+  trees unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it today: 3ccb826b (20:47), 233d7154
+  (19:42), 3db7ed07 (19:05), 40463d37 (17:42), 3ba103f4 (17:13), f77a46e6 (13:28), 35a733d1 (12:19), 7ff344bc
+  (09:02). **Nothing code-bearing is in flight; no tip is protected; a whole default tier has no known red.**
+  The branch past `main` is docs only.
+  - Next reads: the scheduled soak (cron 03:23 UTC) on this sim tree, the steward's at 05:15 UTC, against
+    `Known.h` as it now stands and with the new excess column.
+  - With the owner: compaction for the chat; the Places loudness question (L's clips); their own try of Claude
+    Desktop with the window minimised; the G29 items on their Mac.
+  - The next sim window's list: X-065's look-ahead limiter (`docs/plan/x065-limiter.md`), item 15, item 17 with
+    X-060, item 19 with X-059, X-058, and the older list. `sim/`, `host/`, `tools/` stay closed until it opens.
 - **27 Nov 20:47 UTC: `main` IS AT 3ccb826b** (run 46061873957: Linux 600, Windows 590, macOS 599, all green;
   gated trees unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 233d7154 (19:42), 3db7ed07
   (19:05), 40463d37 (17:42), 3ba103f4 (17:13). **The named macOS red is over** (the not-UTF-8 case passes
