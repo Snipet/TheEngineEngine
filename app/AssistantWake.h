@@ -6,7 +6,8 @@
 // (again(): kAgainMs on, at most one timer pending), never at once, so a waiting job does not spin the main thread.
 //
 // Any thread may call the function wake() gives; take() and again() are the main thread's. What the wake holds is
-// shared: a post after the window has gone pushes an event nothing reads, and a timer outliving this deletes its own.
+// shared: a post after the window has gone pushes an event nothing reads, and a timer outliving this keeps it alive
+// until it fires.
 #pragma once
 
 #include <SDL3/SDL.h>
@@ -23,12 +24,9 @@ namespace tee::app
         static constexpr Uint32 kAgainMs = 75;   // a drain that left jobs: the next this long after (card A: 50 to 100)
 
         AssistantWake() : s_(std::make_shared<State>()) { s_->type = SDL_RegisterEvents(1); }
-        ~AssistantWake()
-        {
-            // a timer not yet fired: removed here and its hold let go; one firing now lets go of its own
-            if (const SDL_TimerID t = s_->timer.exchange(0); t != 0 && SDL_RemoveTimer(t))
-                delete s_->held.exchange(nullptr);
-        }
+        // A timer still pending is left to fire (within kAgainMs): only its callback lets go of its hold, so no instant
+        // of firing races a removal here; its one event finds no reader. SDL quitting first frees it unfired.
+        ~AssistantWake() = default;
         AssistantWake(const AssistantWake&) = delete;
         AssistantWake& operator=(const AssistantWake&) = delete;
 
@@ -56,17 +54,12 @@ namespace tee::app
         {
             if (s_->type == 0 || s_->armed.exchange(true))
                 return;
-            auto* hold = new std::shared_ptr<State>(s_);
-            s_->held.store(hold);
-            const SDL_TimerID t = SDL_AddTimer(kAgainMs, &fire, hold);
-            if (t == 0)
+            auto* hold = new std::shared_ptr<State>(s_);   // the timer's own: its callback deletes it
+            if (SDL_AddTimer(kAgainMs, &fire, hold) == 0)
             {
-                s_->held.store(nullptr);
                 delete hold;
                 s_->armed.store(false);
-                return;
             }
-            s_->timer.store(t);   // for the destructor's removal only (stale once fired: removing it then does nothing)
         }
 
         bool againPending() const noexcept { return s_->armed.load(); }
@@ -76,9 +69,7 @@ namespace tee::app
         {
             Uint32 type = 0;
             std::atomic<bool> posted{ false };
-            std::atomic<bool> armed{ false };                         // a timer pending
-            std::atomic<SDL_TimerID> timer{ 0 };
-            std::atomic<std::shared_ptr<State>*> held{ nullptr };   // the pending timer's hold on this
+            std::atomic<bool> armed{ false };   // a timer pending
         };
 
         static void post(State& s)
@@ -95,7 +86,6 @@ namespace tee::app
         {
             auto* hold = static_cast<std::shared_ptr<State>*>(user);
             State& s = **hold;
-            s.held.store(nullptr);
             s.armed.store(false);
             post(s);
             delete hold;

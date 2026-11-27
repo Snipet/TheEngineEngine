@@ -109,7 +109,8 @@ endif()
 if(TARGET tee_ui_build AND NOT TEE_PLACEHOLDER_PANEL AND COMMAND tee_app_gui)
   add_executable(tee-shell-app-tests "${CMAKE_CURRENT_SOURCE_DIR}/app/AskChainTest.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/AssistantWakeTest.cpp")
-  target_link_libraries(tee-shell-app-tests PRIVATE FunkGui::core Catch2::Catch2WithMain)
+  # SDL3 in every tree (the wake's case needs its events and timers only), not just through FunkGui::desktop below
+  target_link_libraries(tee-shell-app-tests PRIVATE FunkGui::core SDL3::SDL3 Catch2::Catch2WithMain)
   tee_app_gui(tee-shell-app-tests)
   if(TEE_BUILD_APP)
     target_link_libraries(tee-shell-app-tests PRIVATE FunkGui::gpu FunkGui::desktop)
