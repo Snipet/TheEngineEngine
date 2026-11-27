@@ -2567,6 +2567,24 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
   the limiter". X confirms by `car.gear`, gives the automatic and CVT a real pull (lever 1), and proposes what
   the truck rows should be; rows by the evidence rule; the soak's cost stated before it lands.
 
+## 27 Nov 11:49 UTC: X-057: the tuned diesel pickup's automatic never leaves first (found by B's proof of the shell fix)
+
+- **The fact (B, tee-headless, the selector fix applied, one trace):** `content/builds/diesel-pickup-tuned.json`, D,
+  full throttle held 37 s: gear 1 throughout, 13.3 m/s by 20 s and 13.87 at 40 s, the engine 2197 to 2228 rpm.
+  `archetypes/v6-35-na` upshifts by itself in the same script.
+- **The lead's read of the fields (fits the numbers; not yet a measurement of redW):** the build states an
+  electronic governor, `ecu.ratedSpeed` 219.9 rad/s (2100 rpm), droop 0.06, so high idle 2226 rpm, and no
+  `engine.redlineSpeed`. The automatic's schedule goes up at full pedal past min(idle + 0.9 x span, 0.85 x
+  redW) (`gearbox.fm`). If 85 % of the redline the vehicle holds is over the governor's high idle, the shift
+  point is never reached. The archetype pickup states its redline at its high idle and shifts.
+- **With the integrator (a read, a measurement, a proposal; nothing under `sim/`):** redW as the vehicle holds it
+  on this build; which other shipped builds pair a limit under the stated redline with a box that schedules on
+  it; where the cure belongs (the engine hands the vehicle the speed it can reach, `sim/`; or the build states
+  its redline, content, which moves its bake key: P either way); what else reads redW (the auto gearing, the
+  launch, the downshift's refusal, the lights). Item 19, or ahead of 18 if the integrator agrees the owner
+  cannot drive a shipped build without it.
+- **B's push (the gears by gearbox kind) is NOT held for it:** the selector works; this is what it uncovered.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
@@ -2675,6 +2693,8 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
      (synced, or the revs over the edge); the pull's and tour's rows to confirm it, not a reading. Two tests:
      rest, two presses (the engine over 0.85 x idle, the car under 0.5 km/h: fails today); a synced 1-2 at
      1500 rpm on the overrun keeps robot 1.0 (passes today, fails on the first cure). Behind 16, 17 and 15.
+ 19. the integrator, a read first (27 Nov): X-057, an automatic behind a governor that holds the engine under
+     the schedule's shift point never upshifts (diesel-pickup-tuned: stuck in first at 50 km/h).
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
