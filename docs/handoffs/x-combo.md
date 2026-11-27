@@ -222,3 +222,8 @@ were a stalled engine's. Every played reference that stalls while driven throws 
 automatic put into gear at rest, v6-35-twin-turbo-pickup's start, 1 of 17) numbered and recorded in
 docs/measurements/combo/2026-11-27-automatic-pull.md; no case's path, not in Known.h. Next: the tractor's one nightly
 pull-away (the lead's 3(b)): 17 nudges without a stall, no shifts, its cost stated before it lands with [soak].
+
+27 Nov: the tractor's pull-away (the lead's 3(b)), landed with [soak]: Driver::Truck, the L slot, the clutch let up over
+1 s, no shifts; picked on 17 nudges (no stall, 2.34 to 2.36 m/s, gear 1 in every copy); one nightly case on
+archetypes/tractor-15-inline-six, 0 of 17 at every event against its bound 5.28; about 27 s a soak
+(docs/measurements/combo/2026-11-27-truck-pull.md). The other four eighteen-speeds (top level) are in no case.

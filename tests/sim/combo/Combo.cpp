@@ -175,7 +175,7 @@ namespace combo
         // shift counters: the pull and the launch put it in D as they pull away and back in N as the car stops, as a driver
         // does (the owner's report, the lead's ruling 27 Nov 11:37: with the lever in N those boxes ran the pull in
         // neutral). A manual's lever is its H-pattern (1 is first), so no other box's lever is moved.
-        std::vector<Step> steps(Kind kind, std::uint32_t mask, Times& tm, bool drive)
+        std::vector<Step> steps(Kind kind, std::uint32_t mask, Times& tm, Driver driver)
         {
             std::vector<Step> s;
             auto ctl = [&](double t, const char* n, double v, double ramp = 0.0) { s.push_back({t, "ctl", n, v, ramp}); };
@@ -214,8 +214,18 @@ namespace combo
                 tm.idleFrom = 2.5;
                 tm.idleTo = 3.0;
                 press(3.0, "shiftUp");   // first, on the paddle (its own clutch pulls away)
-                if (drive)
+                if (driver == Driver::Lever)
                     ctl(3.0, "lever", 1);
+                if (driver == Driver::Truck)
+                {
+                    // the eighteen-speed's pull-away in one gear (the lead's ruling 3(b), 27 Nov 12:07): the clutch
+                    // floored at rest (the clutch brake stops the input shaft), the lever to the L slot (gear 1:
+                    // roadranger.fm), the clutch let up over truckClutchRamp() as the throttle opens; no shifts (a
+                    // shift wants a float or a double clutch: a driver, not a timeline; the presses do nothing to it)
+                    ctl(2.5, "clutch", 1.0, 0.2);
+                    ctl(2.8, "lever", truckSlot());
+                    ctl(3.4, "clutch", 0.0, truckClutchRamp());
+                }
                 ctl(3.3, "throttle", 0.5, 0.2);
                 ctl(4.5, "throttle", 1.0, 0.1);
                 press(6.5, "shiftUp");
@@ -226,7 +236,7 @@ namespace combo
                 press(11.0, "shiftDown");
                 ctl(12.0, "brake", 0.6, 0.2);
                 ctl(13.5, "clutch", 1.0, 0.2);   // stopped: the clutch down before the key, as a driver does
-                if (drive)
+                if (driver != Driver::Presses)
                     ctl(13.5, "lever", 0);
                 ctl(14.0, "ignition", 0);
                 tm.off = 14.0;
@@ -237,7 +247,7 @@ namespace combo
                 tm.idleTo = 3.0;
                 ctl(3.0, "brake", 1.0);
                 press(3.0, "shiftUp");
-                if (drive)
+                if (driver == Driver::Lever)
                     ctl(3.0, "lever", 1);
                 ctl(3.5, "throttle", 0.6, 0.3);   // held on the brake
                 ctl(5.0, "brake", 0.0, 0.05);
@@ -248,7 +258,7 @@ namespace combo
                 ctl(9.0, "throttle", 0.0, 0.05);
                 ctl(9.2, "brake", 0.8, 0.2);
                 ctl(11.0, "clutch", 1.0, 0.2);
-                if (drive)
+                if (driver == Driver::Lever)
                     ctl(11.0, "lever", 0);
                 ctl(11.5, "ignition", 0);
                 tm.off = 11.5;
@@ -308,7 +318,7 @@ namespace combo
         times = Times{};
         const std::string file = build.find('/') != std::string::npos ? build : buildPath(build);
         tee::test::Scenario sc(file);
-        for (const Step& st : steps(kind, mask, times, !reference && leverDrives(file)))
+        for (const Step& st : steps(kind, mask, times, reference ? Driver::Presses : driverFor(file)))
         {
             // shiftPhase moves the upshifts after the pull-away (3 s) by a few ms: where a shift cut ends among the
             // firings sets its bang's size, so a case reads the worst over a firing interval
@@ -334,22 +344,52 @@ namespace combo
         return tee::test::contentDirectory() / "scenarios" / "combo";
     }
 
-    bool leverDrives(const std::string& buildFile)
+    double truckClutchRamp()
     {
-        // the build's "gearbox" as written (the tee-build format's spec.car.gearbox, by its choice's name)
-        std::ifstream in(buildFile, std::ios::binary);
-        const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        static const std::regex box("\"gearbox\"\\s*:\\s*\"([^\"]*)\"");
-        std::smatch m;
-        if (!std::regex_search(text, m, box))
-            return false;
-        return m[1] == "Automatic" || m[1] == "CVT";
+        // COMBO_TRUCK_CLUTCH_RAMP: a measurement's override (the ramp is picked by 17 nudges without a stall)
+        if (const char* r = std::getenv("COMBO_TRUCK_CLUTCH_RAMP"); r != nullptr)
+            return std::atof(r);
+        return kTruckClutchRamp;
     }
 
-    std::string scenarioJson(Kind kind, std::uint32_t mask, bool drive)
+    int truckSlot()
+    {
+        // COMBO_TRUCK_SLOT: a measurement's override (5 the L slot, gear 1; 1 the low range's first position, gear 3)
+        if (const char* r = std::getenv("COMBO_TRUCK_SLOT"); r != nullptr)
+            return std::atoi(r);
+        return kTruckSlot;
+    }
+
+    namespace
+    {
+        // the build's "gearbox" as written (the tee-build format's spec.car.gearbox, by its choice's name); empty if none
+        std::string gearboxName(const std::string& buildFile)
+        {
+            std::ifstream in(buildFile, std::ios::binary);
+            const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            static const std::regex box("\"gearbox\"\\s*:\\s*\"([^\"]*)\"");
+            std::smatch m;
+            return std::regex_search(text, m, box) ? m[1].str() : std::string();
+        }
+    }
+
+    Driver driverFor(const std::string& buildFile)
+    {
+        const std::string box = gearboxName(buildFile);
+        if (box == "Automatic" || box == "CVT")
+            return Driver::Lever;
+        return box == "Eighteen-speed" ? Driver::Truck : Driver::Presses;
+    }
+
+    bool leverDrives(const std::string& buildFile)
+    {
+        return driverFor(buildFile) == Driver::Lever;
+    }
+
+    std::string scenarioJson(Kind kind, std::uint32_t mask, Driver driver)
     {
         Times tm;
-        const auto s = steps(kind, mask, tm, drive);
+        const auto s = steps(kind, mask, tm, driver);
         std::ostringstream o;
         o << "{\n  \"format\": \"tee-scenario\",\n  \"version\": 1,\n  \"name\": \"" << kindName(kind)
           << "\",\n  \"description\": \"Package X's " << kindName(kind)
