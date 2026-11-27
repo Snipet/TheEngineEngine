@@ -2664,9 +2664,17 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
      behind a hidden switch with the reference's three passes for the null. The line that hands the switch
      to the cylinder's valves is its file's owner's. Acceptance: the null to the bit; the sometimes rows by
      the evidence rule on the real code; the gate warm and cold on all 31; Q's cost; clips for the owner.
- 18. the integrator, a read and a design first (27 Nov): X-056, a Sequential box's shift at rest stalls the
-     engine (gearbox.fm:283). Behind items 16, 17 and 15: one shipped build is Sequential (the rally five), and
-     it takes a shift pressed twice at rest.
+ 18. the integrator (27 Nov; the design held here, its notes being local): X-056, a dog shift shuts the
+     robotised clutch (gearbox.fm:283, `robot = 1.0f`) where it was open or slipping. CONFIRMED by the
+     integrator's own trace on the shipped rally five: at rest 1-2 the engine to 382 rpm and the car shoved to
+     3 km/h (B's coupe stalled); an early 1-2 on a slipping launch to 719 rpm; a 2-1 at a crawl to 947 rpm.
+     The first cure (`robot = launch`) was REFUTED by the lead's question, measured: the synced latch is
+     cleared through every shift (:177), so under idle + 110 rad/s it would open a closed clutch (to 0.11 at
+     1536 rpm on the overrun). THE CURE (11:40): the dog shift holds the clutch where it was when the shift
+     began (begin() keeps robot's value). Equal to today's bits wherever robot was 1.0 at the shift's start
+     (synced, or the revs over the edge); the pull's and tour's rows to confirm it, not a reading. Two tests:
+     rest, two presses (the engine over 0.85 x idle, the car under 0.5 km/h: fails today); a synced 1-2 at
+     1500 rpm on the overrun keeps robot 1.0 (passes today, fails on the first cure). Behind 16, 17 and 15.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
