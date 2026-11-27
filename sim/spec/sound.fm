@@ -56,8 +56,9 @@ module SoundSpec
         [[ui::help("Camera Free: the listener's height above the road")]];
     float facing [[fminus::range(-180, 180)]] [[fminus::default(-90)]] [[ui::label("Listener facing")]]
         [[ui::unit("deg")]] [[ui::help("From the car's forward, toward its right: -90 faces the car from its right side")]];
-    // model 1's last stage: like a camera's exposure, bring what is heard to one loudness over seconds
-    int autoLevel [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Auto level")]]
+    // model 1's last stage: true levels at one fixed staging (the owner's ruling, 27 Nov), or, on Auto, like a camera's
+    // exposure, bring what is heard to one loudness over seconds
+    int autoLevel [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Auto level")]]
         [[ui::choices("True levels", "Auto")]]
-        [[ui::help("Auto: like a camera's exposure, the level follows what is heard over seconds, so a far camera, the cabin or a quiet engine are as loud as a near one; the balance within a moment stays true. True levels: every camera and engine at its own level")]];
+        [[ui::help("Auto: like a camera's exposure, the level follows what is heard over seconds, so a far camera, the cabin or a quiet engine are as loud as a near one; the balance within a moment stays true. True levels (the default): every camera and engine at its own level, one fixed staging for all")]];
 };

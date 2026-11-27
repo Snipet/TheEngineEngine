@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -327,11 +328,29 @@ namespace
 
 namespace
 {
+    // The idle's rms (dB re full scale), 3 to 5 s from the key
+    double idleRms(Bench& b)
+    {
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(1.75);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        b.play(1.25);
+        double p = 0.0;
+        std::size_t n = 0;
+        b.play(2.0, [&] {
+            for (std::size_t i = 0; i < b.left().size(); ++i)
+                p += 0.5 * (double(b.left()[i]) * b.left()[i] + double(b.right()[i]) * b.right()[i]);
+            n += b.left().size();
+        });
+        return 10.0 * std::log10(p / double(n) + 1e-30);
+    }
+
     void atDefaults(const std::vector<const char*>& builds)
     {
     for (const char* name : builds)
     {
         Bench b(name);
+        sound(b, "autoLevel", 1);       // the auto level's exposure: on Auto (true levels are the default since 27 Nov)
         const Rev r = freeRev(b);
         std::printf("%-34s idle peak %.2f, free rev peak %.2f (its largest %.2f), whole run %.2f, auto level %+.1f dB\n", name,
                     r.idle, r.rev, r.revMax, r.all, b.tel("sound.autoGain"));
@@ -353,16 +372,66 @@ namespace
     }
 }
 
-TEST_CASE("the level at the defaults: a free rev peaks at 0.3 to 0.6, the idle plainly heard, on builds far apart", "[listen][engine][nightly]")
+TEST_CASE("the auto level at the defaults: a free rev peaks at 0.3 to 0.6, the idle plainly heard, on builds far apart", "[listen][engine][nightly]")
 {
     // first.json and three archetypes whose true levels span some 25 dB (the kei triple, the V12, the tractor), each
-    // at its own defaults (model 1, camera Rear, place Field, asphalt, the auto level on)
+    // at its own defaults (model 1, place Field, asphalt) on Auto
     atDefaults({"first", "archetypes/kei-660-triple-turbo", "archetypes/v12-65", "archetypes/tractor-15-inline-six"});
 }
 
-TEST_CASE("the level at the defaults, quick: first.json and the tractor (a quiet idle, a loud let-off)", "[listen][engine][sim]")
+TEST_CASE("the auto level at the defaults, quick: first.json and the tractor (a quiet idle, a loud let-off)", "[listen][engine][sim]")
 {
     atDefaults({"first", "archetypes/tractor-15-inline-six"});
+}
+
+TEST_CASE("true levels at the defaults: first.json at the default camera beside its reference, its range kept", "[listen][engine][sim]")
+{
+    // The owner's ruling (27 Nov): true levels with one fixed staging, a level match at one named point (first.json at
+    // the default camera, the boundary microphone, its steady mid load: listen.fm). Here the free rev, not the point it
+    // was set on: the idle's peak and the rev's typical peak each within 2 dB of the reference's at its own defaults, and
+    // the rev's rise over the idle within 2 dB of the reference's. On Auto (the default before) the rev is exposed down
+    // and the idle up: each build to one loudness, so a loud build's idle comes out far nearer first.json's than its reference's (TEE_LISTEN_PROOF=1 runs it on Auto: see the commit)
+    double idle[2];
+    double rev[2];
+    for (int m = 0; m < 2; ++m)
+    {
+        Bench b("first");
+        sound(b, "model", m == 0 ? 0 : 1);
+        if (m == 1 && std::getenv("TEE_LISTEN_PROOF") != nullptr)
+            sound(b, "autoLevel", 1);
+        const Rev r = freeRev(b);
+        CHECK(r.finite);
+        CHECK(r.all < 1.0);
+        idle[m] = 20.0 * std::log10(r.idle);
+        rev[m] = 20.0 * std::log10(r.rev);
+    }
+    std::printf("first.json at its defaults: idle peak %.1f / %.1f dBFS, the rev's typical peak %.1f / %.1f dBFS (reference / "
+                "Places): the rise %.1f / %.1f dB\n", idle[0], idle[1], rev[0], rev[1], rev[0] - idle[0], rev[1] - idle[1]);
+    CHECK(std::fabs(idle[1] - idle[0]) < 2.0);
+    CHECK(std::fabs(rev[1] - rev[0]) < 2.0);
+    CHECK(std::fabs((rev[1] - idle[1]) - (rev[0] - idle[0])) < 2.0);
+    // and a loud build keeps its loudness against first.json: the big-block V8's idle over first.json's, within 2 dB of
+    // the reference's difference (the whole idle's rms, 3 to 5 s from the key)
+    double v8[2];
+    for (int m = 0; m < 2; ++m)
+    {
+        Bench b("archetypes/big-block-74-pushrod-v8");
+        sound(b, "model", m == 0 ? 0 : 1);
+        if (m == 1 && std::getenv("TEE_LISTEN_PROOF") != nullptr)
+            sound(b, "autoLevel", 1);
+        v8[m] = idleRms(b);
+    }
+    double fi[2];
+    for (int m = 0; m < 2; ++m)
+    {
+        Bench b("first");
+        sound(b, "model", m == 0 ? 0 : 1);
+        if (m == 1 && std::getenv("TEE_LISTEN_PROOF") != nullptr)
+            sound(b, "autoLevel", 1);
+        fi[m] = idleRms(b);
+    }
+    std::printf("the V8's idle over first.json's: %+.1f dB in the reference, %+.1f in Places\n", v8[0] - fi[0], v8[1] - fi[1]);
+    CHECK(std::fabs((v8[1] - fi[1]) - (v8[0] - fi[0])) < 2.0);
 }
 
 TEST_CASE("the auto level: cameras near and far brought together; off, each its true level", "[listen][engine][sim]")
@@ -687,6 +756,7 @@ TEST_CASE("the auto level after a start: the same idle whether the starter is he
     for (int k = 0; k < 2; ++k)
     {
         Bench b("first");
+        sound(b, "autoLevel", 1);       // the auto level's own case: on Auto (true levels are the default since 27 Nov)
         b.write("spec.voices.starterLevel", k == 0 ? 0.0 : -60.0);
         b.write("spec.voices.rev", b.field("spec.voices.rev") + 1);
         b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
@@ -718,6 +788,7 @@ namespace
     double liftBody(int bang, const char* name = "archetypes/inline-five-turbo-rally", int limiter = -1)
     {
         Bench b(name);
+        sound(b, "autoLevel", 1);       // the auto level's own case: on Auto
         const int i = b.player().specIndex("exhaust.bang");
         REQUIRE(i >= 0);
         b.player().setSpec(static_cast<std::size_t>(i), double(bang), 0);

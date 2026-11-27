@@ -1061,6 +1061,12 @@ module Listen
             sD[i] = kHead * expf(-0.115129255f * (over * 0.4f - 5.0f));
         }
         int bent = 0;
+        // True levels (the default since the owner's ruling of 27 Nov, "true levels with a fixed gain"): one fixed staging
+        // for every build, camera and distance, a level match at one named point: first.json at the default camera (the
+        // boundary microphone) at its steady mid load (the dyno at 45 % of the redline, throttle 0.3) stands beside its
+        // reference's level; without it, 3.5 to 3.7 dB under at idle, mid and pull (docs/plan/places-sound.md). On Auto
+        // the exposure sets the level and the staging is 1 (Auto as it was)
+        const float stage = ss->autoLevel == 0 ? 1.531f : 1.0f;
         // the auto level (an exposure, autoLevel below): this part's peak before it is taken first, so its gain is
         // already falling toward 0.4 / P (over 1 ms; up over 0.5 s) when the part that raised P is heard
         float partPk = 0.0f;
@@ -1069,7 +1075,7 @@ module Listen
         autoLevel(partPk, m);
         for (int i = 0; i < m; ++i)
         {
-            const float gc = sD[i];
+            const float gc = sD[i] * stage;
             float L = sA[i] * gc;
             float R = sB[i] * gc;
             autoS += (autoT - autoS) * (autoT < autoS ? autoKd : autoK);

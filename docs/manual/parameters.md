@@ -471,7 +471,7 @@
 | `listenerY` | Listener along | number | -60 to 60 | 2.2 | length | Camera Free: how far forward of the rear bumper the listener stands (negative: behind the car) |
 | `listenerZ` | Listener height | number | 0.1 to 10 | 1.5 | length | Camera Free: the listener's height above the road |
 | `facing` | Listener facing | number | -180 to 180 | -90 | deg | From the car's forward, toward its right: -90 faces the car from its right side |
-| `autoLevel` | Auto level | choice: True levels, Auto | 0 to 1 | Auto |  | Auto: like a camera's exposure, the level follows what is heard over seconds, so a far camera, the cabin or a quiet engine are as loud as a near one; the balance within a moment stays true. True levels: every camera and engine at its own level |
+| `autoLevel` | Auto level | choice: True levels, Auto | 0 to 1 | True levels |  | Auto: like a camera's exposure, the level follows what is heard over seconds, so a far camera, the cabin or a quiet engine are as loud as a near one; the balance within a moment stays true. True levels (the default): every camera and engine at its own level, one fixed staging for all |
 
 ## `spec.voices`
 
