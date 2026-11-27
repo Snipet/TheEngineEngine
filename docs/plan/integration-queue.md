@@ -2825,6 +2825,26 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 19:54 UTC: A RED ON macOS FROM X-063's OWN CASE; `main`'s NEXT CANDIDATE IS NO LONGER T1.** The steward's
+  read of 6bfb90d2's macOS job (run 46055531270): 598 of 599; `assistant.sim` fails "a whole build whose file
+  name is not UTF-8 is listed replaced, and loading it says why it cannot (X-063)" at
+  `tests/assistant/McpTest.cpp:908` and `:909`; Linux 600 of 600 there. The reading, from the code and not yet
+  measured: the case writes a file named "v8\xFF.json" unchecked, and APFS refuses a name that is not UTF-8, so
+  on macOS there is nothing to list. Card A had said as much of APFS at 17:45, and the lead asked for the case
+  without thinking of macOS: the third case today that was green only where its author ran it (libsecret; the
+  app option; now the file system).
+  - Card A cures it as the FIRST commit of the X-064 push it is holding: the case checks the file was made; where
+    the file system refuses the name it says so in the log and ends without failing; no `#if` on the operating
+    system; both branches proved on Linux.
+  - Until it lands the red is NAMED: macOS only, `assistant.sim`, `McpTest.cpp:908` and `:909`, nothing else. It
+    is in 6bfb90d2, in T1 (4524113b) and in the `build.yml` tip, so none of the three can gate `main`. `main`
+    (233d7154) does not hold X-063 and is not touched by it.
+  - The steward's `build.yml` block is pushed as its own tip, 120cc19d (ab2cbac4: the ten lines byte-identical to
+    `docs/handoffs/b-run-wake-ci.md`, checked with cmp), after T1's three jobs had started (macOS at 19:52:31Z).
+    Its first run's run-wake lines from all three platforms are owed to the lead.
+  - Card A's X-064 is ready (600 of 600 on 6bfb90d2 + dea6bab in the plain tree; merged with 4524113b, everything
+    built and 94 of 94) and goes, with the cure above, when 120cc19d's three jobs have started: that tip is the
+    next candidate.
 - **27 Nov 19:42 UTC: `main` IS AT 233d7154** (run 46051766042: Windows, Linux and macOS green; gated trees
   unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 3db7ed07 (19:05), 40463d37 (17:42),
   3ba103f4 (17:13). In it: card A's item 3 and U1's air patch.
