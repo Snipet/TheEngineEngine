@@ -2792,10 +2792,16 @@ the steward would use, if the owner allows it:
     frozen copies of both trees: the 1-2 and the 2-3 over the bound in 6 and 8 of 17 before, 0 and 0 after
     (the steward's counts exactly). CURED: the three-cylinder's and the kei's upshifts. NOT CURED: the V8
     pull's 1-2 (1 of 17, was 4).
-  - **ITEM 15 IS CALLED (the integrator, 13:49).** Then 18 (the integrator), 20 (L: verified ahead from its patch
-    file), C's standard-day bake under `host/`, FROZEN FOR THE BAKE. Items 17 and 19 have left this window
-    (17: X-060, the flat-plane V8's top point from 6 to 16 failures in 51 of the predictor's settle floor;
-    19: X-059, the cap moves the turbo's match on three builds).
+  - **ITEM 15 HAS LEFT THIS WINDOW (13:50; called at 13:49 and withdrawn, the lead's fault: it was a design, not
+    code).** The integrator's count: sixty-odd sites in 13 files under 8 owners (a pAmb on every Duct for the
+    pipes' impedance alone), a null over every archetype, four predictions to measure: several hours, and
+    nothing the owner reported waits on it. It lands in the next window, whole or in two stages, each file's
+    owner having read its sites, and after a ruling on its deviation (the core has no model switch, so "model 0
+    keeps 101325" cannot hold off the default pressure).
+  - **ITEM 18 IS NEXT (the integrator): the dog shift holds the clutch where it was (X-056).** Then 20 (L:
+    verified ahead from its patch file), C's standard-day bake under `host/`, FROZEN FOR THE BAKE. Items 15,
+    17 and 19 have left this window (17: X-060, the flat-plane V8's top point from 6 to 16 failures in 51 of
+    the predictor's settle floor; 19: X-059, the cap moves the turbo's match on three builds).
   - Not `sim/` and free to land meanwhile (they reach `main` with the baked commit): J2's carry of U1's bake
     words (`[soak]`), U1's CLUTCH row and the settings' scroll after the lead's look, docs.
 - **THE WINDOW'S RULES OF THE DAY (the steward's advice, taken):** a `sim/` item is accepted on one whole default
