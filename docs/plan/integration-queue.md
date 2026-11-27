@@ -2798,10 +2798,17 @@ the steward would use, if the owner allows it:
     nothing the owner reported waits on it. It lands in the next window, whole or in two stages, each file's
     owner having read its sites, and after a ruling on its deviation (the core has no model switch, so "model 0
     keeps 101325" cannot hold off the default pressure).
-  - **ITEM 18 IS NEXT (the integrator): the dog shift holds the clutch where it was (X-056).** Then 20 (L:
-    verified ahead from its patch file), C's standard-day bake under `host/`, FROZEN FOR THE BAKE. Items 15,
-    17 and 19 have left this window (17: X-060, the flat-plane V8's top point from 6 to 16 failures in 51 of
-    the predictor's settle floor; 19: X-059, the cap moves the turbo's match on three builds).
+  - **ITEM 18 IS IN: efec3052 (the integrator, pushed 14:47).** `sim` d577990d to ff68cf13 (gearbox.fm +5/-1: a dog
+    shift holds the automatic clutch where it was as the shift began). Its tier of record 584 of 585, the one
+    red the five. ACCEPTED on the lead's own read: [gears] 4 cases pass and X-057's fails as expected; the four
+    at-speed hashes of the two shipped sequentials identical on the new tree and on a frozen copy of the old;
+    the lead's script through tee-headless on the rally five (E, E, Q at rest, then the throttle): 7 of 7 on
+    the new tree, the engine between 959 and 1024 rpm throughout; a stall on the old. X-056 CURED on the
+    application's path. Left noted: the upshift's 60 ms ignition cut still fires at rest (a 65 rpm dip): a
+    question for item 16's owner.
+  - **ITEM 20 IS CALLED (L, 14:52):** the patch as the lead verified it from its file. Then C's standard-day bake
+    under `host/` (told to rebase and run its tier now, pushing on the lead's word), then FROZEN FOR THE BAKE.
+    Items 15, 17 and 19 have left this window (15: a design, not code; 17: X-060; 19: X-059).
   - IN, not `sim/` (they reach `main` with the baked commit): U1's bake words (0f5dc0c9, `[soak]`), and at
     f6a5d10f (14:28) U1's CLUTCH row in SETTINGS, the settings page's scroll where its rows do not fit, and the
     restated build.bake.stale, all carried by J2 after the lead's own look at the pictures. Card A's fixes from
