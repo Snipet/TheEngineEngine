@@ -21,16 +21,24 @@ namespace tee::assistant
         keys_ = makeSystemKeyStore(keysWhy_);
         ChatOptions chatOptions;
         chatOptions.noTransportWhy = transportWhy_;   // (Windows: "the chat by API key is for macOS and Linux ...")
-        chatOptions.noKeyStoreWhy = keys_ ? std::string() : keysWhy_;
+        // (no store: its reason is asked for when the key is, keyWhy(), never copied here: a store given later is whole)
         chatOptions.keyWhy = [this] { return keyWhy(); };
         chat_ = std::make_unique<Chat>(*tools_, drivers_, transport_.get(), [this] { return currentKey(); },
                                        systemPromptFor(parts.document.build().fields()), clock, std::move(chatOptions));
         keyState_->changed = [chat = chat_.get()] { chat->refresh(); };
     }
 
+    void Session::useTransport(std::unique_ptr<Transport> transport)
+    {
+        transport_ = std::move(transport);
+        transportWhy_.clear();
+        chat_->useTransport(transport_.get());
+    }
+
     void Session::useKeyStore(std::unique_ptr<KeyStore> store)
     {
         keys_ = std::move(store);
+        keysWhy_.clear();
         const std::lock_guard<std::mutex> lock(keyState_->mutex);
         keyState_->step = KeyState::Step::Unread;
     }
@@ -63,6 +71,8 @@ namespace tee::assistant
 
     std::string Session::keyWhy()
     {
+        if (!keys_)
+            return keysWhy_.empty() ? std::string("this build has no store for the key") : keysWhy_;
         currentKey();
         const std::lock_guard<std::mutex> lock(keyState_->mutex);
         switch (keyState_->step)

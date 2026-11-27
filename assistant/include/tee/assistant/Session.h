@@ -88,8 +88,10 @@ namespace tee::assistant
         bool saveKey(std::string typed, std::string& why);
         std::string keyMask();
         bool removeKey(std::string& why);
-        // Tests: the store the session uses in place of the system's (before the chat is used).
+        // Tests: the store, or the transport, the session uses in place of the system's (before the chat is used). A
+        // store or a transport given is the chat's whole: what the build had or lacked no longer speaks for it.
         void useKeyStore(std::unique_ptr<KeyStore> store);
+        void useTransport(std::unique_ptr<Transport> transport);
 
         // Every worker stopped (their calls cancelled and waited for), then the inbox closed. Idempotent.
         void stop();
