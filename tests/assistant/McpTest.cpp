@@ -331,6 +331,14 @@ TEST_CASE("assistant: Claude Desktop's path, bridge to app: tools, a change with
     REQUIRE(init.contains("result"));
     CHECK(init["result"]["protocolVersion"] == "2025-06-18");
     CHECK(init["result"]["capabilities"]["tools"]["listChanged"] == true);
+    // what Claude is told the owner sees is what the app draws: the app's Undo and its status line, no card (the app
+    // draws none yet: nothing outside assistant/ calls Session::cards())
+    {
+        const std::string said = init["result"].value("instructions", std::string());
+        INFO(said);
+        CHECK(said.find("Undo") != std::string::npos);
+        CHECK(said.find("card") == std::string::npos);
+    }
     bridge.send({{"jsonrpc", "2.0"}, {"method", "notifications/initialized"}});
 
     const json list = bridge.ask(&app.rig, 2, "tools/list");
