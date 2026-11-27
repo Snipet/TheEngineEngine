@@ -131,3 +131,64 @@ before the bound moves. Changes after this note are docs only; not pushed while 
 **Open for the next window (26 Nov)**: heat.fm's oil viscosity (viscK 15 at 20 C oil, 5.9 at 40 C, against some 7 to 9
 for a 15W-40) against a sourced viscosity table; the engine dyno's overshoot (above, after C's ramp); a V custom engine's
 bank angles in the custom null (one-bank builds only today).
+
+**Later, after X-047's cure (the lead's ruling, 26 Nov; docs/plan/x047-shift-cut.md, the steward's page)**: under
+contract (b) the engine is cut while the vehicle asks and the number Car::cutRequest() hands is no longer read as a
+length. Its name and meaning are the integrator's to tidy in car.fm (a flag, or the seconds remaining; the comment at
+car.fm:847 says "how long"), with model 1's shiftTime and model 0's 0.05 out of it. Not in X-047's change.
+
+**X-053 (X's, 26 Nov 11:11; mine, not yet read): a model switched while running.** X's Part B judges a switch thrown
+mid-run in its own 0.3 s window from each flip. The turbo six's pull with flips at 5.0, 6.5, 8.0 and 9.5 s, 17 copies,
+against the nightly bound 2.67: engine.wallHeat over in 3/17 (1.65 / 2.08 / 3.27), exhaust.model in 10/17 (2.05 /
+2.84 / 3.89). Reproduce once B's harness is on the branch: FLIPPROOF="5 turbo-six" BOUNDPROOF_DT="..."
+build-dev/bin/tee-tests-combo "[.flipproof]". First read: what the fade (cutWant, holdModel's held switch) does across a
+running flip for those two models, and whether their step is the fade's or the model's.
+
+**X-055 (X's, 26 Nov 18:11; my part, not yet read): the flat-plane twin-turbo V8 as built on the pull**
+(content/builds/archetypes/flat-plane-v8-39-twin-turbo.json, the nightly's shipped-pull case). Mine: its 1-2 upshift on
+the dual clutch, 1 of 17 copies over the nightly bound 2.33 (2.66 at +0.01 K, at 6.882 s; lowest 1.23, median 1.61),
+the same on the tip and on the steward's cut probe (a DCT cuts nothing, so X-047 doesn't reach it). N2 is named for
+the boost, the steward for the limiter (7 of 17); the "rest" (1 of 17, 2.76 at 4.532 s) has no owner yet. Reproduce:
+BOUNDPROOF="corpus flat-plane-v8-39-twin-turbo pull" BOUNDPROOF_DT="<17 nudges, -0.15 to +0.15 K>" tee-tests-combo
+"[.boundproof]". First read: the DCT's torque handover (gearbox.fm:294-320, aFrom / aTo across dur, a smoothstep) at
+1-2 with the boost spooled: whether the step is the handover's shape, the driveline's lash or the boost's response to
+the load step (N2's).
+
+## Queue item 18, X-056: the sequential's dog shift at rest (next window; design and tests, nothing under sim/ yet)
+
+Cause: gearbox.fm:283 sets the robot clutch to 1.0 for a dog shift whatever it held, and the synced latch is cleared
+while shifting (gearbox.fm:177), so at rest the shift closes a clutch the launch had open. Cure of record: hold the
+robot value from when the shift began, through the shift.
+
+Tests (all through the application's path, the shipped archetypes/inline-five-turbo-rally, warm, no throttle):
+
+1. At rest, up, up: engine above 0.85 x idle throughout and the car below 0.5 km/h. Fails today.
+2. A synced 1-2 at 1500 rpm on the overrun: robot stays 1.0. Passes today, and must still pass.
+3. The lead's case (measured on 35a733d1, tee-headless): at rest, E at 3.2 s (gear 1, 1024 rpm), E at 3.9 s (gear 2:
+   424, 348, 217 rpm, back to 1074 by 4.6 s), Q at 5.0 s (2 to 1, 100 ms shut with its blip; 376 rpm at 5.05 s, state
+   0 at 5.15 s, stalled for good). Test: at rest, up, up, down; the engine still running one second after the down.
+   Fails today.
+
+Prediction for the held-value cure, to check when the window opens: the robot stays 0 through all three shifts of
+case 3 (and both of case 1), since each begins with the launch's clutch open at rest, and so the engine neither dips
+on the up to 2 nor stalls on the down to 1.
+
+## Queue item 19, X-057: redlineFor at a governor's high idle (next window; notes, nothing under sim/ yet)
+
+Read in code (12:15 UTC), D2's two facts hold:
+- ecu.fm:125-130: on ecu.model 0, redlineFor returns fmaxf(base, idleRpm + 1500): a floor at idle + 1500 rpm. Under
+  model 1, a stated limiter speed (at least idle + 200).
+- engine.fm:786-789: spec.engine.redlineSpeed is read only when customUse != 0.
+
+So three governed builds cannot state a redline at their high idle in content (D2's numbers, high idle against the
+floor): diesel-v8-truck 2014 against 2324, diesel-mechanical-classic 2268 against 2355, diesel-marine-v12 1890 against
+2208. The pickup is cured in content by D2; the two 15 L trucks already sit under their high idle (2188 against 2226).
+The rule must let a governed engine's redline go beneath the idle + 1500 floor.
+
+Null, corrected: every shipped build bit-identical except those three, by name. For each the design says what moves
+(the band and the lights; diesel-v8-truck and the classic are eighteen-speeds with stated ratios, so their shift points;
+the marine V12 has no gearbox) and whether anything keyed on the redline is baked for them (D2 found no baked table in
+any of its builds; to check).
+
+Numbered for the list, not for now: X-058 (X's), archetypes/v6-35-twin-turbo-pickup, an automatic put into D at rest,
+the "start" window, 1 of 17 over its bound (3.57 against 3.22), 45 ms after the lever and before first is in.
