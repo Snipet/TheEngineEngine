@@ -169,6 +169,20 @@ Tests (all through the application's path, the shipped archetypes/inline-five-tu
    0 at 5.15 s, stalled for good). Test: at rest, up, up, down; the engine still running one second after the down.
    Fails today.
 
+Case 3 measured on the Bench (27 Nov, tests/sim/core/GearsTest.cpp and the hidden "[.x056lead]"): it does NOT stall.
+With the same spacing as the lead's trace (0.7 s between the ups, 1.1 s from the second up to the down) and the first
+press 0.2, 1.0, 2.0, 3.0 or 3.2 s after the Bench's start, the engine falls to 316-402 rpm after the up to 2 and to
+156-294 rpm after the down, and the state stays 2 (running) throughout. What differs between the two paths that can be
+named without guessing: the idle the engine sits at (the Bench 1249-1257 rpm before the first press; the application's
+trace 1024 rpm in first and 1074 rpm after recovering) and the start (the Bench's start() against the application's
+key and cranking). Whether the downshift's blip reaches the engine the same way through the shell's frame is not
+measured. Open; GearsTest marks case 3 on its dip (never under 0.85 x idle) as well as on still running, and it fails
+today on the dip. The cure's prediction below covers both paths.
+
+After the guard's shift (case 2), synced in second near 1000 rpm on the overrun, the robot slips between 0.28 and 0.57
+("[.x056guard]"): the clutch letting go as the revs fall under the idle. The lead: not numbered; it gets a number only
+if X's judge or an ear finds it.
+
 Prediction for the held-value cure, to check when the window opens: the robot stays 0 through all three shifts of
 case 3 (and both of case 1), since each begins with the launch's clutch open at rest, and so the engine neither dips
 on the up to 2 nor stalls on the down to 1.
@@ -189,6 +203,46 @@ Null, corrected: every shipped build bit-identical except those three, by name. 
 (the band and the lights; diesel-v8-truck and the classic are eighteen-speeds with stated ratios, so their shift points;
 the marine V12 has no gearbox) and whether anything keyed on the redline is baked for them (D2 found no baked table in
 any of its builds; to check).
+
+The six ecu.model 0 builds that state a governor, measured on 3ca7b90c ("[.x057figs]", 2.0 s after start; none states
+highIdle, so the high idle is ratedSpeed x (1 + droop)): diesel-v8-truck 2014.3 against ecu.redRpm 2338.7 today;
+diesel-mechanical-classic 2267.9 against 2364.9; diesel-marine-v12 1890.0 against 2361.5; truck-15l-six and its bobtail
+2225.9 against 2186.6 (under: bit-identical under the min rule); diesel-pickup-tuned, after D2's f77a46e6 (rated 303.7 rad/s =
+2900.1 rpm; re-read on 8d2e60f0): high idle 3074.1 against 3073.8 today (under: bit-identical). (My first read, on
+3ca7b90c, predated f77a46e6: 2225.9 against 3264.8.) So item 19 moves exactly three builds, as ruled. D2's
+tests/sim/diesel/RedlineTest.cpp:130 ([!mayfail]) checks the same three as GearsTest's X-057 case ([!shouldfail]). The lead's ruling (12:37): redlineFor itself, min(today's value, the governed high idle) for a stated
+governor, the idle + 1500 floor not holding the cap up.
+
+The steward's ecu.fm change (12:55, local, for my review): redlineFor computes today's value as before, then for a
+stated governor only returns min(that, high), high = ecu.highIdle if above 0, else ratedSpeed x (1 + max(droop,
+0.005)) (heavy.fm:201-203 without its fallback onto the redline). Their null (48 shipped builds driven, audio hash and
+engine.redline): diesel-v8-truck 2330.55 -> 2014.33, diesel-mechanical-classic 2364.92 -> 2267.88, diesel-marine-v12
+2361.48 -> 1890.04 rpm; the other 45 bit-identical.
+
+In item 19's push (the lead, 12:55): GearsTest's X-057 case loses its [!shouldfail] mark (it reads what the ECU holds,
+and item 19 turns it green); D2's full form (tests/sim/diesel/RedlineTest.cpp:130, which reads the files and stays
+failing for the three since the files still state nothing) is restated on the ECU's value or dropped in favour of
+GearsTest's; D2's gating form (the builds that shift by their redline) stays.
+
+**Item 19 left the window (the lead, 13:05): X-059.** The steward's cap reviewed on a scratch tree (TEE_CORE_SIM, one
+tee-tests-core binary, hidden "[.item19readers]"; 8d2e60f0 + 75d67996's diff by hand): it moves a reader its null did
+not see. boost.applyMachine sizes the machine from ecu.redRpm (machine.fm:464, designShare x redRpm), where a governed
+diesel's design speed is its rated speed (as designSpeed takes it at engine.fm:526). X-059 is N2's, with D2 for what
+the three should make at low speed, from sources; the rule and the match land together next window. GearsTest's
+X-057 case keeps its [!shouldfail]; D2's RedlineTest stays. The figures N2 starts from (Bench; before -> after):
+
+| build | engine.redline (rad/s) | boost.mach.redRpm | dyno full pedal 1200 rpm | 1600 rpm | 1900 rpm |
+|---|---|---|---|---|---|
+| diesel-v8-truck | 245.02 -> 210.94 | 2343.33 -> 2014.33 | 2751.79 -> 3076.95 N m (+11.8 %), boost 108299 -> 134970 Pa | 3185.75 -> 3171.74, 139997 both | 3074.51 -> 3074.12, 139997 both |
+| diesel-mechanical-classic | 247.65 -> 237.49 | 2364.92 -> 2267.88 | 2016.16 -> 2056.33 (+2.0 %), 82341 -> 86817 Pa | 2160.43 -> 2166.41, 128116 -> 131532 | 2160.33 -> 2154.65, 139850 -> 139977 |
+| diesel-marine-v12 | 247.29 -> 197.92 | 2361.48 -> 1890.04 | 2677.17 -> 3208.46 (+19.8 %), 77295 -> 108574 Pa | 3334.74 -> 3538.54 (+6.1 %), 123334 -> 139997 | -448.82 -> -423.50 (over its high idle), 42301 -> 56723 |
+
+Free rev at full pedal, 3-6 s after: v8-truck 1998.3-2009.4 -> 1998.0-2009.7 rpm; classic 2202.4-2360.8 ->
+2203.2-2361.6 (the reference's cut does not hold a governed diesel at redRpm); marine 1826.9-2125.4 -> 1831.2-2111.4;
+sound level within 0.35 dB. car.m1.redW read 6493.5 rpm on all three before and after in mode 0 (the vehicle's copy
+not read in drive: not measured). truck-15l-six and diesel-pickup-tuned print identically before and after. The
+steward's gate added since: a cap only with fuel kind != 0 and governor != 0 (all six governed builds state Electronic
+or Mechanical).
 
 Numbered for the list, not for now: X-058 (X's), archetypes/v6-35-twin-turbo-pickup, an automatic put into D at rest,
 the "start" window, 1 of 17 over its bound (3.57 against 3.22), 45 ms after the lever and before first is in.
