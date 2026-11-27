@@ -2825,6 +2825,25 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:53 UTC: CI CONFIRMED B's BREAK** (the steward's read of run 46044044673: linux-x64 failed at "Build first"
+  on `app/AssistantWake.h:12`, no test ran), and CI's trees are on record from a log and the workflow: the TESTS
+  tree is the plain preset (`build.yml:327`; status line "Release, tools ON, tests ON, app OFF"), the application's
+  tree has the app and no tests (`:348`). What each platform's tests tree finds for the assistant (the steward):
+  Linux libsecret 0.21.4 and libcurl 8.5.0; macOS the Keychain and libcurl 8.7.1; Windows neither.
+  - B's fix (to be pushed on its plain tree's whole tier): SDL3 linked to `tee-shell-app-tests` in every tree, so
+    the wake's cases run where CI runs; the timer's hold has one owner (its callback); a case for the "not yet"
+    path (`AssistantWakeTest.cpp:188`).
+  - J2's tier for U1's air carry: 591 of 592 on 899259e9 + air + bless, plain tree without libsecret, the named red
+    only; no golden moved beyond the four.
+  - **A question put to card A, which holds its item 3's push (B's finding, confirmed by the lead in the code):** the
+    assistant's clock in the app is the frame count at 60 a second (`app/Offline.cpp:151`, `:243`). It stands
+    still in a minimised window and runs at a fifth in an occluded one (FunkGui's idle rate, 12 Hz). The owner's
+    answer is on real time (`Tools.h:59`); a turn's limit and the gesture wait are on the frame's clock
+    (`Tools.h:63`, `Tools.cpp:684`). Asked: every limit and its clock, and a case with the clock held still that
+    every tool's call ends within item 3's 55 s of real time. A limit that can never end while minimised is a
+    finding to number.
+  - Not tonight, B's next item: a test of `app/Main.cpp`'s own wake lines with the real window (about half a day;
+    CI's tests tree has no `TheEngineEngine` target, so it may belong in the artefact's own run).
 - **27 Nov 17:49 UTC: X-063, A BUILD WHOSE NAME IS NOT VALID UTF-8 ENDS THE APP** (card A's probe, asked for by the
   lead after reading acbaae6; not yet re-run by the lead). Every `dump()` in `assistant/` is nlohmann's strict
   one and nothing there catches: a name "v8\xFF" through the chat's state line ends the chat's worker with
