@@ -131,4 +131,5 @@ namespace tee::input::g29
     Presses RacingWheel::takePresses() { return impl_->hub->driver().takePresses(); }
     std::string RacingWheel::status() const { return impl_->hub->driver().status(); }
     void RacingWheel::pump() { impl_->pump(); }
+    bool RacingWheel::clutchAxis() const noexcept { return true; }
 }
