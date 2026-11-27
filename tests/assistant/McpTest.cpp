@@ -43,17 +43,42 @@ namespace
         int count() const { return gSigpipes.load(); }
     };
 
-    // A private folder of the case's own for the link.
-    std::string linkFolder(const std::string& name)
+    // The socket's path must fit sockaddr_un's sun_path, here and on every platform the app runs on (104 bytes with its
+    // terminating zero on macOS, the smallest; 108 on Linux): a case fails with those words and both numbers, never at
+    // link.start() with no reason. (27 Nov: a socket under <source>/out was 109 bytes on the macOS runner.)
+    void socketFits(const std::string& socket)
     {
-        const fs::path dir = fs::path(TEE_SOURCE_DIR) / "out" / "assistant" / ("link-" + name);
-        std::error_code ec;
-        fs::remove_all(dir, ec);
-        fs::create_directories(dir.parent_path());
-        mkdir(dir.c_str(), 0700);
-        chmod(dir.c_str(), 0700);
-        return dir.string();
+        constexpr std::size_t kSmallest = 104;   // macOS's sun_path
+        const std::size_t here = sizeof(sockaddr_un{}.sun_path);
+        INFO("the socket's path is " << socket.size() + 1 << " bytes with its zero (" << socket << "); sun_path holds "
+                                     << here << " here and " << kSmallest << " on macOS");
+        REQUIRE(socket.size() + 1 <= here);
+        REQUIRE(socket.size() + 1 <= kSmallest);
     }
+
+    // A private folder of the case's own for the link (0700), short on every runner: made by mkdtemp under /tmp (the
+    // system's temporary folder, P_tmpdir; never the source tree, whose path a runner may make long), and removed with
+    // everything in it when the case ends.
+    struct LinkDir
+    {
+        std::string path;
+        explicit LinkDir(const std::string& name)
+        {
+            std::string pattern = "/tmp/tee-" + name.substr(0, 8) + "-XXXXXX";
+            REQUIRE(mkdtemp(pattern.data()) != nullptr);
+            path = pattern;
+            chmod(path.c_str(), 0700);
+            socketFits(wire::socketIn(path));
+            socketFits(wire::socketIn(wire::folderIn(path)));   // (the folder under it, when it is a base)
+        }
+        ~LinkDir()
+        {
+            std::error_code ec;
+            fs::remove_all(path, ec);
+        }
+        LinkDir(const LinkDir&) = delete;
+        LinkDir& operator=(const LinkDir&) = delete;
+    };
 
     // The environment Claude Desktop gives a local server's binary: the MCP SDK's stdio transport passes only these
     // (getDefaultEnvironment, DEFAULT_INHERITED_ENV_VARS off Windows) and the manifest's "env", which is empty.
@@ -316,7 +341,8 @@ namespace
 TEST_CASE("assistant: Claude Desktop's path, bridge to app: tools, a change with its card and Undo, a cancel",
           "[assistant][sharedsim]")
 {
-    const std::string dir = linkFolder("path");
+    const LinkDir heldDir("path");
+    const std::string& dir = heldDir.path;
     App app("mcp-path", dir);
     std::string why;
     const bool started = app.link.start(why);
@@ -414,7 +440,8 @@ TEST_CASE("assistant: Claude Desktop's path, bridge to app: tools, a change with
 
 TEST_CASE("assistant: the switch: off, nothing listens and the bridge says so; on, the tools appear", "[assistant][sharedsim]")
 {
-    const std::string dir = linkFolder("switch");
+    const LinkDir heldDir("switch");
+    const std::string& dir = heldDir.path;
     App app("mcp-switch", dir);
     CHECK_FALSE(fs::exists(wire::socketIn(dir)));
     Bridge bridge(dir);
@@ -452,7 +479,8 @@ TEST_CASE("assistant: the link refuses another user's peer, a folder open to oth
 {
     // a peer of another user: the link expects a user this process is not; the connection is closed unanswered
     {
-        const std::string dir = linkFolder("peer");
+        const LinkDir heldDir("peer");
+    const std::string& dir = heldDir.path;
         App app("mcp-peer", dir, static_cast<long>(geteuid()) + 1);
         std::string why;
         const bool started = app.link.start(why);
@@ -476,7 +504,8 @@ TEST_CASE("assistant: the link refuses another user's peer, a folder open to oth
     }
     // a folder open to others: the link is not made, and the bridge does not connect through it
     {
-        const std::string dir = linkFolder("open");
+        const LinkDir heldDir("open");
+    const std::string& dir = heldDir.path;
         chmod(dir.c_str(), 0755);
         App app("mcp-open", dir);
         std::string why;
@@ -486,7 +515,8 @@ TEST_CASE("assistant: the link refuses another user's peer, a folder open to oth
     }
     // a second app: refused while the first listens; the first's socket untouched
     {
-        const std::string dir = linkFolder("second");
+        const LinkDir heldDir("second");
+    const std::string& dir = heldDir.path;
         App first("mcp-first", dir);
         App second("mcp-second", dir);
         std::string why;
@@ -503,7 +533,8 @@ TEST_CASE("assistant: the link refuses another user's peer, a folder open to oth
 TEST_CASE("assistant: shutting down with a call waiting on the frame cancels it at once, and the frame need not drain",
           "[assistant][sharedsim]")
 {
-    const std::string dir = linkFolder("shutdown");
+    const LinkDir heldDir("shutdown");
+    const std::string& dir = heldDir.path;
     Rig rig("mcp-shutdown");
     auto session = std::make_unique<Session>(SessionParts{
         *rig.file, *rig.library, [&]() -> SimHost* { return &rig.sim->host(); },
@@ -569,9 +600,10 @@ namespace
 TEST_CASE("assistant: the switch off is the shipped default and costs nothing: no thread, no socket, no folder",
           "[assistant][sharedsim]")
 {
-    const fs::path dir = fs::path(TEE_SOURCE_DIR) / "out" / "assistant" / "link-never";
+    const LinkDir held("never");
+    const fs::path dir = fs::path(held.path) / "link";   // not made: the switch off makes nothing
+    socketFits(wire::socketIn(dir.string()));
     std::error_code ec;
-    fs::remove_all(dir, ec);
     Rig rig("mcp-never");
     rig.inbox.close();   // (the rig's own inbox is not used here)
     const int before = threadsOfThisProcess();
@@ -618,7 +650,8 @@ TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app 
 {
     const SigpipeWatch watch;
     const int before = watch.count();
-    const std::string dir = linkFolder("gone");
+    const LinkDir heldDir("gone");
+    const std::string& dir = heldDir.path;
     App app("mcp-gone", dir);
     std::string why;
     REQUIRE(app.link.start(why));
@@ -678,7 +711,8 @@ TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app 
 TEST_CASE("assistant: the link's folder is found the same in Claude Desktop's bare environment as in the app's",
           "[assistant]")
 {
-    const std::string made = linkFolder("env");   // a folder of the test's own: never the folder's base, if all is well
+    const LinkDir heldMade("env");
+    const std::string& made = heldMade.path;   // a folder of the test's own: never the folder's base, if all is well
     const EnvFor noDir("TEE_MCP_DIR", nullptr);
     const EnvFor tmp("TMPDIR", made.c_str());
     const EnvFor xdg("XDG_RUNTIME_DIR", made.c_str());
@@ -701,7 +735,8 @@ TEST_CASE("assistant: the link's folder is found the same in Claude Desktop's ba
 TEST_CASE("assistant: tee-mcp in Claude Desktop's bare environment reaches the app at the link's default folder",
           "[assistant][sharedsim]")
 {
-    const std::string base = linkFolder("bare-base");
+    const LinkDir heldBase("bare-base");
+    const std::string& base = heldBase.path;
     const std::string folder = wire::folderIn(base);
     const EnvFor noDir("TEE_MCP_DIR", nullptr);
     Rig rig("mcp-bare");
