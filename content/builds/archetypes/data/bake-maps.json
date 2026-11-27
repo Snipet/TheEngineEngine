@@ -104,7 +104,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1088102263
+  "knockLimitKey": 1095301141
  },
  "big-block-74-pushrod-v8": {
   "knockLimit": {
@@ -211,7 +211,7 @@
     ]
    ]
   },
-  "knockLimitKey": 648638378
+  "knockLimitKey": 1040387604
  },
  "big-bore-70-pushrod-v8": {
   "knockLimit": {
@@ -318,7 +318,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1405449585
+  "knockLimitKey": 730303327
  },
  "boxer-four-turbo-unequal": {
   "camIn": {
@@ -389,7 +389,7 @@
     ]
    ]
   },
-  "camInKey": 1094815691,
+  "camInKey": 966832127,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -494,7 +494,7 @@
     ]
    ]
   },
-  "knockLimitKey": 2037562513
+  "knockLimitKey": 357088367
  },
  "economy-four-15": {
   "camIn": {
@@ -565,7 +565,7 @@
     ]
    ]
   },
-  "camInKey": 1850363412,
+  "camInKey": 1296104774,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -670,7 +670,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1926976005
+  "knockLimitKey": 1105884631
  },
  "flat-plane-v8-39-twin-turbo": {
   "camIn": {
@@ -741,7 +741,7 @@
     ]
    ]
   },
-  "camInKey": 312672666,
+  "camInKey": 320333872,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -846,7 +846,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1001615801
+  "knockLimitKey": 119270399
  },
  "flat-plane-v8-45": {
   "camIn": {
@@ -917,7 +917,7 @@
     ]
    ]
   },
-  "camInKey": 1200942427,
+  "camInKey": 2020732417,
   "knockLimit": {
    "x": [
     104.72000122070312,
@@ -1022,7 +1022,7 @@
     ]
    ]
   },
-  "knockLimitKey": 456204408
+  "knockLimitKey": 500799006
  },
  "four-cam-v8-50": {
   "camIn": {
@@ -1093,7 +1093,7 @@
     ]
    ]
   },
-  "camInKey": 386214828,
+  "camInKey": 737093084,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -1198,7 +1198,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1052167407
+  "knockLimitKey": 726912325
  },
  "hot-hatch-16-16v": {
   "knockLimit": {
@@ -1305,7 +1305,7 @@
     ]
    ]
   },
-  "knockLimitKey": 667298557
+  "knockLimitKey": 2062528079
  },
  "inline-five-turbo-rally": {
   "knockLimit": {
@@ -1412,7 +1412,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1602946854
+  "knockLimitKey": 1981133904
  },
  "kei-660-triple-turbo": {
   "knockLimit": {
@@ -1519,7 +1519,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1837217002
+  "knockLimitKey": 1974298136
  },
  "pushrod-v6-38": {
   "knockLimit": {
@@ -1626,7 +1626,7 @@
     ]
    ]
   },
-  "knockLimitKey": 2028410055
+  "knockLimitKey": 1738400841
  },
  "rotary-twin-13": {
   "knockLimit": {
@@ -1733,7 +1733,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1693033951
+  "knockLimitKey": 1122533833
  },
  "rotary-twin-na-side-port": {
   "knockLimit": {
@@ -1840,7 +1840,7 @@
     ]
    ]
   },
-  "knockLimitKey": 608583105
+  "knockLimitKey": 441261971
  },
  "small-block-57-carb": {
   "knockLimit": {
@@ -1947,7 +1947,7 @@
     ]
    ]
   },
-  "knockLimitKey": 557340161
+  "knockLimitKey": 402689727
  },
  "straight-six-32-high-rev": {
   "camIn": {
@@ -2018,7 +2018,7 @@
     ]
    ]
   },
-  "camInKey": 930863509,
+  "camInKey": 585778515,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -2123,7 +2123,7 @@
     ]
    ]
   },
-  "knockLimitKey": 355565645
+  "knockLimitKey": 699832443
  },
  "straight-six-twin-turbo-30": {
   "camIn": {
@@ -2194,7 +2194,7 @@
     ]
    ]
   },
-  "camInKey": 2005923721,
+  "camInKey": 155682253,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -2299,7 +2299,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1949614334
+  "knockLimitKey": 195626680
  },
  "supercharged-v8-62": {
   "knockLimit": {
@@ -2406,7 +2406,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1275293013
+  "knockLimitKey": 1379558027
  },
  "three-cylinder-10-turbo": {
   "camIn": {
@@ -2477,7 +2477,7 @@
     ]
    ]
   },
-  "camInKey": 274909471,
+  "camInKey": 1378416546,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -2582,7 +2582,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1235256063
+  "knockLimitKey": 2004206193
  },
  "turbo-four-20-gdi": {
   "camIn": {
@@ -2667,7 +2667,7 @@
     ]
    ]
   },
-  "camInKey": 323635597,
+  "camInKey": 1800150653,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -2772,7 +2772,7 @@
     ]
    ]
   },
-  "knockLimitKey": 2073250234
+  "knockLimitKey": 687045864
  },
  "twin-cam-roadster-18": {
   "knockLimit": {
@@ -2879,7 +2879,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1563012799
+  "knockLimitKey": 629456945
  },
  "twin-turbo-hot-vee-v8-40": {
   "camIn": {
@@ -2950,7 +2950,7 @@
     ]
    ]
   },
-  "camInKey": 1114302608,
+  "camInKey": 1458551346,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -3055,7 +3055,7 @@
     ]
    ]
   },
-  "knockLimitKey": 831290515
+  "knockLimitKey": 1271709941
  },
  "two-stage-cam-20": {
   "knockLimit": {
@@ -3162,7 +3162,7 @@
     ]
    ]
   },
-  "knockLimitKey": 120194020
+  "knockLimitKey": 840328162
  },
  "v10-52": {
   "camIn": {
@@ -3233,7 +3233,7 @@
     ]
    ]
   },
-  "camInKey": 1574900082,
+  "camInKey": 53971150,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -3338,7 +3338,7 @@
     ]
    ]
   },
-  "knockLimitKey": 1653186332
+  "knockLimitKey": 934937922
  },
  "v12-65": {
   "camIn": {
@@ -3409,7 +3409,7 @@
     ]
    ]
   },
-  "camInKey": 1036451562,
+  "camInKey": 256311737,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -3514,7 +3514,7 @@
     ]
    ]
   },
-  "knockLimitKey": 197569058
+  "knockLimitKey": 264128124
  },
  "v6-35-na": {
   "camIn": {
@@ -3585,7 +3585,7 @@
     ]
    ]
   },
-  "camInKey": 995580985,
+  "camInKey": 1390798856,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -3690,7 +3690,7 @@
     ]
    ]
   },
-  "knockLimitKey": 460226363
+  "knockLimitKey": 479015269
  },
  "v6-35-twin-turbo-pickup": {
   "camIn": {
@@ -3761,7 +3761,7 @@
     ]
    ]
   },
-  "camInKey": 85154431,
+  "camInKey": 441203613,
   "knockLimit": {
    "x": [
     104.71975511965977,
@@ -3866,7 +3866,7 @@
     ]
    ]
   },
-  "knockLimitKey": 470720639
+  "knockLimitKey": 177481729
  },
  "vr6-28": {
   "knockLimit": {
@@ -3973,6 +3973,6 @@
     ]
    ]
   },
-  "knockLimitKey": 2107286578
+  "knockLimitKey": 2064182448
  }
 }
