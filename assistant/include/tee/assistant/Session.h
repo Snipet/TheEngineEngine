@@ -35,7 +35,7 @@ namespace tee::assistant
         files::BuildLibrary& library;
         std::function<SimHost*()> simHost;
         std::function<std::shared_ptr<Sim>()> sim;
-        std::function<double()> clock;
+        std::function<double()> clock;   // the frame's: not read (the limits run on real time, X-064)
         std::function<std::future<bool>(const std::string&, std::shared_ptr<const std::atomic<bool>>)> ask;   // (Tools.h's Host::ask)
         std::function<bool()> othersBusy;   // any thread; may be empty (frame()'s flag serves alone)
         McpLinkOptions link{};

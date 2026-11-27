@@ -68,7 +68,8 @@ namespace tee::test
         std::atomic<bool> othersBusy{false};    // the app's own heavy work (the ribbon's curve, the bake), as a test sets it
         std::function<bool()> busyToo;          // and a real service's busy flag, when a case has one
 
-        explicit Rig(const std::string& name, Limits limits = {})
+        // `now`: the tools' real clock (Host::now); empty: this rig's simulated clock, which the frames step.
+        explicit Rig(const std::string& name, Limits limits = {}, std::function<double()> now = {})
         {
             std::string errors;
             sim = test::sharedAdapter(errors);
@@ -87,7 +88,7 @@ namespace tee::test
                       *library,
                       [this]() -> SimHost* { return sim->ready() ? &sim->host() : nullptr; },
                       [this]() { return sim->ready() ? sim->host().sim() : std::shared_ptr<Sim>(); },
-                      [this]() { return clock; },
+                      now ? std::move(now) : std::function<double()>([this]() { return clock; }),
                       [this](const std::string& q, std::shared_ptr<const std::atomic<bool>> withdrawn) {
                           questions.push_back(q);
                           withdrawals.push_back(std::move(withdrawn));

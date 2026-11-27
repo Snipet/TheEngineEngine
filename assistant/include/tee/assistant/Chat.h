@@ -127,7 +127,7 @@ namespace tee::assistant
     {
     public:
         // `key`: the owner's key, read when a request is made (KeyStore.h); empty string: none. `systemPrompt`: fixed
-        // for the chat's life (systemPromptFor).
+        // for the chat's life (systemPromptFor). `clock`: real time, seconds, for a turn's limit (empty: Tools::now).
         Chat(Tools& tools, Drivers& drivers, Transport* transport, std::function<std::string()> key,
              std::string systemPrompt, std::function<double()> clock, ChatOptions options = {});
         ~Chat() override;

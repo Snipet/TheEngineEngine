@@ -22,6 +22,11 @@
 
 namespace tee::assistant
 {
+    double realSeconds()
+    {
+        return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    }
+
     using nlohmann::json;
 
     namespace
@@ -688,7 +693,7 @@ namespace tee::assistant
                     changes.push_back({f, v});
                 }
                 // a control held in the app: the batch waits (it would join the person's gesture), for a while
-                const double now = host_.clock ? host_.clock() : 0.0;
+                const double now = this->now();
                 if (*since < 0.0)
                     *since = now;
                 if (build.gestureOpen())
@@ -962,7 +967,8 @@ namespace tee::assistant
         if (!yielded)
             return error("the app is busy with its own curve or calibration; try again in a while");
         if (timedOut)
-            return error("the dyno run took too long and was stopped");
+            return error("the dyno run was stopped at " + std::to_string(static_cast<int>(host_.limits.dynoSeconds))
+                         + " s: nothing was changed; ask for a narrower range of speeds");
         if (!okRun)
             return error("this build cannot be put on the dyno");
         json points = json::array();
@@ -1026,8 +1032,10 @@ namespace tee::assistant
     Turn::Turn(Tools& tools, Drivers& drivers, Driver who, std::function<double()> clock)
         : tools_(tools), drivers_(drivers), who_(who), clock_(std::move(clock))
     {
+        if (!clock_)
+            clock_ = [&t = tools_] { return t.now(); };
         active_ = drivers_.take(who_, why_);
-        started_ = clock_ ? clock_() : 0.0;
+        started_ = clock_();
     }
 
     Turn::~Turn()
@@ -1043,7 +1051,7 @@ namespace tee::assistant
             return error(why_);
         if (calls_ >= l.turnCalls)
             return error("this turn has made its " + std::to_string(l.turnCalls) + " tool calls; answer with what you have");
-        if (clock_ && clock_() - started_ > l.turnSeconds)
+        if (clock_() - started_ > l.turnSeconds)
             return error("this turn has run out of time; answer with what you have");
         if (bytes_ >= l.turnBytes)
             return error("this turn's tool results are at their limit; answer with what you have");

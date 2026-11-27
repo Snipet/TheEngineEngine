@@ -61,3 +61,8 @@ is checked against the MCPB reference 0.3 and parsed by a test.
   one in the app, on purpose.** Telling whether a card's step still stands needs the build's undo stack read below its
   top: Build gives only undoStep()/redoStep() (the tops), and host/ is not card A's. Do not "fix" it by comparing step
   ids: a step undone and then built over leaves a larger id on top, and the count would lie.
+- X-064: every limit of the tools runs on real time (Host::now, the session's steady clock), never the frame's
+  clock, which stands still while the window is minimised. SessionParts::clock (app/Offline.cpp's frame count) is
+  no longer read: the app may stop passing it. tee-headless's scripts drive no tool, so none relied on the gesture
+  wait in simulated seconds. Tests hold the clock as before: the Rig gives the tools its simulated clock unless a
+  case gives a real one.

@@ -708,6 +708,51 @@ TEST_CASE("assistant: the status line counts the field changes Claude made, not 
     session.stop();
 }
 
+TEST_CASE("assistant: the session's limits never read the frame's clock (X-064)", "[assistant][sharedsim]")
+{
+    // The app's clock (SessionParts::clock) is its frame count: it stands still while the window is minimised. A
+    // Claude Desktop call's turn and a batch's wait for a held control run on real time instead.
+    const LinkDir held("frameclock");
+    Rig rig("mcp-frameclock");
+    std::atomic<int> reads{0};
+    Session session(SessionParts{*rig.file, *rig.library, [&]() -> SimHost* { return &rig.sim->host(); },
+                                 [&] { return rig.sim->host().sim(); },
+                                 [&] {
+                                     ++reads;
+                                     return rig.clock;
+                                 },
+                                 nullptr, nullptr, McpLinkOptions{held.path, -1, "0.2.0", {}}});
+    std::string why;
+    REQUIRE(session.allowDesktop(true, why));
+    const int fd = wire::connectTo(held.path, why);
+    INFO(why);
+    REQUIRE(fd >= 0);
+    const std::string ask = "{\"id\":7,\"method\":\"call\",\"params\":{\"name\":\"get_status\"}}\n";
+    REQUIRE(wire::sendAll(fd, ask.data(), ask.size()));
+    // the call's job served by the session's frame (its own inbox), until the reply comes
+    std::string got;
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (got.find('\n') == std::string::npos && std::chrono::steady_clock::now() < until)
+    {
+        session.frame();
+        pollfd p{fd, POLLIN, 0};
+        if (poll(&p, 1, 5) > 0)
+        {
+            char buf[4096];
+            const ssize_t n = read(fd, buf, sizeof buf);
+            if (n <= 0)
+                break;
+            got.append(buf, static_cast<std::size_t>(n));
+        }
+    }
+    INFO(got);
+    REQUIRE(got.find("\"id\":7") != std::string::npos);
+    CHECK(got.find("timed out") == std::string::npos);
+    CHECK(reads.load() == 0);
+    close(fd);
+    session.stop();
+}
+
 TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app with SIGPIPE", "[assistant][sharedsim]")
 {
     const SigpipeWatch watch;

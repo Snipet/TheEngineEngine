@@ -47,6 +47,7 @@ namespace tee::assistant
     public:
         using Options = McpLinkOptions;
 
+        // `clock`: real time, seconds, for each call's Turn (empty: the tools' own, Tools::now).
         McpLink(Tools& tools, Drivers& drivers, Cards& cards, std::function<double()> clock, Options options = {});
         ~McpLink();
         McpLink(const McpLink&) = delete;
