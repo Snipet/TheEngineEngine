@@ -2,6 +2,7 @@
 #include "Combo.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 
 #include <cmath>
 #include <cstdlib>
@@ -39,13 +40,25 @@ namespace combo
             std::snprintf(revs, sizeof revs, "%5.0f rpm", v.revMax * 30.0 / 3.14159265);
         else
             std::snprintf(revs, sizeof revs, "%9s", "n/a");
+        // the row's worst excess over its firing periods (its event windows', else the whole run's) against its bound,
+        // pass or fail, at the line's end (no column before it moves): how near its bound a passing row sits, read from
+        // one night's log (the lead's ruling, 27 Nov 19:03). "n/a" where no period or no bound is given
+        double excess = v.stepExcess;
+        for (const auto& w : v.windows)
+            excess = std::max(excess, w.excess);
+        char margin[48];
+        if (excess >= 0.0 && v.excessBound > 0.0)
+            std::snprintf(margin, sizeof margin, "excess %.2f of %.2f", excess, v.excessBound);
+        else
+            std::snprintf(margin, sizeof margin, "excess n/a");
         std::printf("combo | %-40s | %-13s | %-12s | step %5.1f | dc %.4f | idle %s | revs %s | %.2f R | %4.1f %% core | "
-                    "%s\n",
+                    "%s | %s\n",
                     c.c_str(), build.c_str(), scenario.c_str(), v.stepMax, v.dcMax, idle, revs,
                     r > 0 ? v.coreShare / r : 0.0, 100.0 * v.coreShare,
                     v.failures.empty() ? "ok" : (v.failures.size() == static_cast<std::size_t>(knownOf(v, c, build, scenario))
                                                      ? "ok (known findings only)"
-                                                     : "FAILED"));
+                                                     : "FAILED"),
+                    margin);
         std::fflush(stdout);
         // a row a run for the measurements' table (docs/measurements/combo/), under out/ (never committed)
         {
