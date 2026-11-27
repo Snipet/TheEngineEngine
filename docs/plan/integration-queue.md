@@ -2753,7 +2753,8 @@ the rotary twin).
   byte-identical; C's bake across edits, host 29bcbaa5, is on the branch and not yet in `main`). Before it:
   7ff344bc (27 Nov 09:02), ddacdf97 (27 Nov 07:16), dc2f7db3 (05:08, the crash fix), 57265b5f (26 Nov
   20:32), 6e67ac62, d6615852, 3f892823, 389ee865, 317404d9, 5278e3e9, 3c42b4d2, 5cd03815, 07a08dc0, d586682c
-  (04:36). Nothing code-bearing is on the branch past it.
+  (04:36). On the branch past it, code-bearing and waiting for their own green: B's trucks' start clause
+  (1b97231f), X's tests (the pull in D), C's bake across edits (f5946d7b).
 - **27 Nov 11:23 UTC: `host/` IS OPEN FOR ONE CHANGE: the owner's options 1 and 2 for the bake (C: Bake.cpp, its
   service, their tests), with U1's words and restated nightly case following.** Nothing else under `host/`,
   and nothing under `sim/` or `tools/`.
