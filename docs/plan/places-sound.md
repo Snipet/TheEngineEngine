@@ -109,6 +109,18 @@ direct path coincide, so there is no comb by the formula. Shipped against the bo
   (the exhaust is nearer, the road relatively quieter). No tyre roar comes forward.
 - Twin pipes: in line with the right-hand mouth (x = +0.55 m), 0.5 m behind it; the V8's 2.1 dB ripple is its own two
   pipes, the other 1.1 m across.
+- The ground folded into each capsule's own path on the ground (found 27 Nov): the image had been heard at the pair's
+  middle, which on a boundary microphone made a false notch from the far pipe (-6.6 dB at 2160 Hz, the Tailpipe case
+  failing without the fold). The fold acts below 5 cm only: Rear, Side, Engine bay, Driver, Trackside, Chase and a Free
+  camera 0.15 m up rendered with and without it are identical byte for byte. What it gives up: at the camera's 1 cm the
+  true image path is 14 mm longer, a real notch near 12 kHz, which the fold drops; a real boundary microphone's capsule
+  sits a millimetre or two over its plate (a notch near 60 kHz), so the fold is that microphone's physics.
+- G's three caveats on what the spot hears (read from sim/exhaust/ends.fm, not measured): the jet's mixing noise is
+  beamed by the listener's piston law like the monopole, where a real jet is loudest some 30 to 45 degrees off its
+  axis; the open end's reflection is a fit good to ka = 2 (about 6.4 kHz for a 60 mm tail in hot gas), extrapolated
+  above, which is the spot's top octave; and the monopole's near field below about 110 Hz at 0.5 m, which neither
+  listener applies (the reference's nearest view is the same 0.5 m). A probe of the jet's share of the top octave is
+  asked of G for the window after item 20.
 - CPU nil.
 - The onboard spot (the lead's prediction, about 350 Hz and 5 dB of ripple) measured 3.5 to 4.5 dB on four builds,
   11.6 on the bike (its pipe at 0.45 m).
@@ -198,7 +210,9 @@ With the patch applied and the build made (`cmake --build build-dev`):
   -5.84, -5.95.
 - "the reference's five views are presets": 36 source-view pairs (Rear, Side, Engine, Cabin), 2.97 dB rms, net of the
   stated staging.
-- And the null: `build-dev/bin/tee-tests "[null]"` green (model 0 untouched), the whole default tier green.
+- The patch: `git apply docs/handoffs/patches/l-places-true-levels.patch`. Its whole default tier (27 Nov, 12:43 to 12:55
+  UTC): 582 of 583 green, ref.null among them; the one red, host.sim.bakes, is the shipped V12's knock table no longer
+  current on the changed program (the keys hash the sources), cleared by the bake that follows any sim/ item.
 
 ## Not proposed, and why
 
