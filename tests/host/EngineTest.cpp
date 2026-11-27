@@ -1089,6 +1089,58 @@ TEST_CASE("an edit keeps the stale tables playing and undone is current at once"
 // The rule a stale table is judged fit by (unfitBy), a line each: each field of the list makes it unfit, by its own
 // path; compression (a key's field, nothing of the table's axes or meaning) does not; nor the displacement while the
 // redline is stated (redlineSpeed above 0), nor a boost kind within its class (Turbo to Twin)
+// Every bake measures at the standard day, 288.15 K and 101325 Pa, whatever air the build states (the lead's ruling, 26
+// Nov; docs/handoffs/c-host-tools.md, the X-046 note): one table serves every stated air, read by absolute load, and a
+// hot day is the knock control's to hear. spec.env is in no key, so a build stated at 49 C and 70 kPa keys as its twin
+// at the standard day, and now bakes the same table to the bit. (Before, each was baked in its own stated air under the
+// one key: shown differing below by hand.) Every shipped build states the standard day already, so none moves.
+TEST_CASE("a build stated at 322.04 K and 70 kPa bakes the same tables as its twin at the standard day",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    std::vector<std::string> warnings;
+    Build standard(sim->fields());
+    REQUIRE(standard.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/economy-four-15.json",
+                              BuildPart::Whole, warnings, error));
+    unbaked(standard);
+    REQUIRE(standard.fieldOf("env.pressure") >= 0);
+    standard.set("env.temperature", 288.15);
+    standard.set("env.pressure", 101325.0);
+    Build hot(sim->fields());
+    REQUIRE(hot.load(standard.save(), BuildPart::Whole, warnings, error));
+    hot.set("env.temperature", 322.04);
+    hot.set("env.pressure", 70000.0);
+    CHECK(knockLimitKey(hot, *sim) == knockLimitKey(standard, *sim));   // the air is in no key
+    CHECK(intakeCamKey(hot, *sim) == intakeCamKey(standard, *sim));
+    // the spark (small: two speeds, full pedal) and the cam (two cells, two speeds)
+    KnockBakeOptions so;
+    so.speeds = 2;
+    so.pedals = {1.0};
+    so.predict.threads = 2;
+    KnockBakeResult sa, sb;
+    REQUIRE(bakeKnockLimit(sim, standard, so, sa, error));
+    REQUIRE(bakeKnockLimit(sim, hot, so, sb, error));
+    CHECK(sa.limit == sb.limit);
+    CHECK(sa.loads == sb.loads);
+    CHECK(sa.key == sb.key);
+    CamBakeOptions co;
+    co.step = 50.0;
+    co.halfSteps = false;
+    co.accept = false;
+    co.predict.points = co.predict.coarse = 2;
+    CamBakeResult ca, cb;
+    REQUIRE(bakeIntakeCam(sim, standard, co, ca, error));
+    REQUIRE(bakeIntakeCam(sim, hot, co, cb, error));
+    CHECK(ca.torque == cb.torque);
+    CHECK(ca.best == cb.best);
+    std::printf("the standard day and 322.04 K / 70 kPa: spark loads %zu, cells %s; cam torques %s\n", sa.loads.size(),
+                sa.limit == sb.limit ? "identical" : "DIFFER", ca.torque == cb.torque ? "identical" : "DIFFER");
+}
+
 TEST_CASE("the fit rule: each field of a table's axes or meaning, a line each; compression keeps a table fit",
           "[engine][sim][bake]")
 {
