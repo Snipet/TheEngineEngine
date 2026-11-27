@@ -20,6 +20,8 @@ namespace tee::app
         std::vector<std::pair<std::string, double>> sets;   // --set id=value, in order, after the preset
         bool checks = false;            // --checks: the loop budget and the bounds checks
         int frames = -1;                // --frames N: run N frames and exit
+        int minimiseAfter = -1;         // --minimise-after N: the window minimised after N frames (hidden where that
+                                        // is not honoured), its state and ticks said twice a second, closed 20 s on
         std::string shot;               // --shot FILE.png: the last frame's picture
         double seconds = -1.0;          // --seconds S: render S seconds with no device and exit
         std::string wav;                // --wav FILE.wav: what was rendered

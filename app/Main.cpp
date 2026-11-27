@@ -449,7 +449,47 @@ namespace
         options.hidden = o.info;
         // the assistant's wake (app/AssistantWake.h): made once SDL runs (the host's), served first of every event
         std::unique_ptr<app::AssistantWake> assistantWake;
+        // --minimise-after N (scripts/run-wake.sh): after N frames the window is minimised (hidden where that is not
+        // honoured a second on), and twice a second, on the main thread, what SDL says of it and the frames ticked so
+        // far are printed, ticking or not; 20 s on, the window is closed. A window that does not tick, for the wake.
+        funkgui::desktop::DesktopHost* hostSeen = nullptr;
+        std::uint32_t ticksSeen = 0;
+        struct Minimise
+        {
+            Uint32 type = 0;
+            SDL_TimerID timer = 0;
+            std::uint64_t since = 0;    // SDL_GetTicks when asked
+            bool hidden = false;
+        } minimise;
+        const auto minimiseReport = [&] {
+            SDL_Window* w = hostSeen != nullptr ? hostSeen->window() : nullptr;
+            const SDL_WindowFlags f = w != nullptr ? SDL_GetWindowFlags(w) : 0;
+            const double t = static_cast<double>(SDL_GetTicks() - minimise.since) / 1000.0;
+            std::printf("minimise: %.1f s minimised=%d hidden=%d occluded=%d ticks=%u\n", t,
+                        (f & SDL_WINDOW_MINIMIZED) != 0, (f & SDL_WINDOW_HIDDEN) != 0, (f & SDL_WINDOW_OCCLUDED) != 0,
+                        ticksSeen);
+            std::fflush(stdout);
+            if (w != nullptr && t >= 1.0 && !minimise.hidden && (f & SDL_WINDOW_MINIMIZED) == 0)
+            {
+                minimise.hidden = true;
+                std::printf("minimise: not honoured here: the window hidden instead\n");
+                SDL_HideWindow(w);
+            }
+            if (t >= 20.0)
+            {
+                SDL_RemoveTimer(minimise.timer);
+                minimise.timer = 0;
+                SDL_Event quit{};
+                quit.type = SDL_EVENT_QUIT;
+                SDL_PushEvent(&quit);
+            }
+        };
         options.rawEvent = [&](const SDL_Event& e) {
+            if (minimise.type != 0 && e.type == minimise.type)
+            {
+                minimiseReport();
+                return true;
+            }
             if (assistantWake && assistantWake->take(e))
             {
                 // a tool posted: its job drained here, the window ticking or not; jobs left waiting: again a little later
@@ -469,13 +509,27 @@ namespace
         // A machine's script (--script, --frames) runs on the engine's clock: it starts when the engine is ready to play,
         // so its keys find an engine whatever the compile took; the frames it asks for are counted from then too.
         std::uint64_t began = last;
-        std::uint32_t readyTicks = 0, ticksSeen = 0;
+        std::uint32_t readyTicks = 0;
         bool scriptStarted = !machine || engine.ready();
         options.beforeTick = [&] {
             const std::uint64_t now = SDL_GetTicksNS();
             const float dt = static_cast<float>(static_cast<double>(now - last) * 1e-9);
             last = now;
             ++ticksSeen;
+            if (o.minimiseAfter > 0 && ticksSeen == static_cast<std::uint32_t>(o.minimiseAfter) && hostSeen != nullptr
+                && minimise.type == 0)
+            {
+                minimise.type = SDL_RegisterEvents(1);
+                minimise.since = SDL_GetTicks();
+                std::printf("minimise: asked after %u frames\n", ticksSeen);
+                SDL_MinimizeWindow(hostSeen->window());
+                minimise.timer = SDL_AddTimer(500, [](void* type, SDL_TimerID, Uint32 interval) -> Uint32 {
+                    SDL_Event e{};
+                    e.type = static_cast<Uint32>(reinterpret_cast<std::uintptr_t>(type));
+                    SDL_PushEvent(&e);
+                    return interval;
+                }, reinterpret_cast<void*>(static_cast<std::uintptr_t>(minimise.type)));
+            }
             if (ticksSeen == 1)
                 std::printf("window: the first frame %.2f s after launch\n",
                             std::chrono::duration<double>(std::chrono::steady_clock::now() - launched).count());
@@ -670,6 +724,7 @@ namespace
 
         funkgui::desktop::DesktopHost host(*panel, std::move(options));
         commands.attach(&host);
+        hostSeen = &host;
         if (shown.assistant != nullptr && shown.drainAssistant)
         {
             assistantWake = std::make_unique<app::AssistantWake>();
@@ -840,6 +895,8 @@ namespace
         }
         else
             code = host.run();
+        if (minimise.timer != 0)
+            SDL_RemoveTimer(minimise.timer);
         if (shown.assistant != nullptr)
             shown.assistant->setWake({});   // the window's loop is over: a post now has nothing to wake
         if (scriptCheckCount > 0)
