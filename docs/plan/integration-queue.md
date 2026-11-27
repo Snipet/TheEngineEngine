@@ -2747,6 +2747,13 @@ the rotary twin).
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 12:37 UTC: A HOLD ON EVERY CODE-BEARING PUSH, until the lead lifts it here.** Pushes arrived faster than
+  runners: each replaced the macOS and Windows jobs still waiting on the one before (b09ba28c lost both;
+  dfd86fcd's and f5946d7b's whole runs were replaced), so no commit holding B's H-shifter has three jobs
+  started and `main` cannot move on the owner's report. Docs-only pushes are free (they start no run). One
+  exception let in first: D2's pickup, if its tier was green by 12:46. The hold lifts when the tip's three jobs
+  have STARTED (the steward says when). Verified by the lead on dfd86fcd meanwhile: C's 21 [bake] cases and
+  B's 7 gearbox cases pass, and each fails under a deliberate break of the source it guards.
 - **27 Nov 12:19 UTC: `main` IS AT 35a733d1** (run 45994332561: Linux, macOS and Windows green on that commit;
   B's gears by gearbox kind, `shell/` and tests). **The trees `main` is gated on: sim f23337cc, host 86ea14da,
   tools 7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked
