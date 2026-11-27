@@ -230,4 +230,5 @@ namespace tee::input::g29
     // timers scheduled in the common modes; this runs it once more, returning at once, so the wheel's sources and timers
     // run each frame whatever the window's pump does (a frame drawn while SDL waits in a modal loop included).
     void RacingWheel::pump() { CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.0, true); }
+    bool RacingWheel::clutchAxis() const noexcept { return true; }
 }

@@ -112,4 +112,9 @@ namespace tee::input::g29
     Presses RacingWheel::takePresses() { return {}; }   // sampled a frame at a time: Input counts the frame's edge
     std::string RacingWheel::status() const { return impl_->on ? impl_->reader.status() : std::string(); }
     void RacingWheel::pump() { impl_->pump(); }
+    bool RacingWheel::clutchAxis() const noexcept
+    {
+        const JoystickTable* t = joystickTable(impl_->reader.kind());
+        return t != nullptr && t->axis[static_cast<std::size_t>(Axis::clutch)] >= 0;
+    }
 }
