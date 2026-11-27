@@ -2778,13 +2778,22 @@ the steward would use, if the owner allows it:
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **27 Nov 12:37 UTC: A HOLD ON EVERY CODE-BEARING PUSH, until the lead lifts it here.** Pushes arrived faster than
-  runners: each replaced the macOS and Windows jobs still waiting on the one before (b09ba28c lost both;
-  dfd86fcd's and f5946d7b's whole runs were replaced), so no commit holding B's H-shifter has three jobs
-  started and `main` cannot move on the owner's report. Docs-only pushes are free (they start no run). One
-  exception let in first: D2's pickup, if its tier was green by 12:46. The hold lifts when the tip's three jobs
-  have STARTED (the steward says when). Verified by the lead on dfd86fcd meanwhile: C's 21 [bake] cases and
-  B's 7 gearbox cases pass, and each fails under a deliberate break of the source it guards.
+- **27 Nov 13:04 UTC: THE HOLD OF 12:37 IS LIFTED for what is not `sim/`, `host/` or `tools/`.** f77a46e6's three jobs
+  have started (macOS 12:57, Linux 12:58, Windows 12:59); it holds B's H-shifter as a manual's lever, C's bake
+  across edits, D2's pickup and the tests of X, N2 and the integrator, and `main` moves to it on its three
+  greens. Let in now, together: J2 (U1's bake words, `[soak]`), X (the tractor's nightly pull-away, `[soak]`), the
+  integrator (its tests of record). THEN THE WINDOW: the lead calls item 16 when `main` is at f77a46e6.
+- **THE WINDOW'S RULES OF THE DAY (the steward's advice, taken):** a `sim/` item is accepted on one whole default
+  tier on the merged state green EXCEPT the cases that assert a shipped bake is current on this program (the
+  key holds the program's source hash: the steward lists them by name here before the first call; first known:
+  host.sim.bakes' five at EngineTest.cpp:1043), its evidence, and the lead's second measurement. The three
+  platforms are read on the FROZEN commit; P starts when its three fast jobs are green; the soak runs beside
+  the bake; THE BAKED COMMIT MUST SHOW EVERY ONE OF THOSE CASES GREEN, by name, before `main` moves. Order: 16,
+  (17 if G is ready: it has two unexplained moves and does not hold the bake), 15, 19, 18, 20, C's standard-day
+  bake under `host/`, then the list as it stands.
+- **Verified by the lead ahead of its call: item 20** (L's patch file on b6bdee76, sha256 0582ec86...26c1: its four
+  evidence cases pass, 474 assertions; the old default fails EngineTest.cpp:411 and :434; the old scene.fm fails
+  ListenerTest.cpp:312 at -9.2 dB, 620 Hz; ref.null 11 of 11 with the patch).
 - **27 Nov 12:19 UTC: `main` IS AT 35a733d1** (run 45994332561: Linux, macOS and Windows green on that commit;
   B's gears by gearbox kind, `shell/` and tests). **The trees `main` is gated on: sim f23337cc, host 86ea14da,
   tools 7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked
