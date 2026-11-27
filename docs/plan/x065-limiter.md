@@ -63,7 +63,9 @@ its sources, and the predictions, written before any code.
     front keeps its shape; the judge's step is a sample difference over a ±10 ms level.
   - Under about 0.5 ms the ramp moves into the band the step lives in.
   - Over about 5 ms a ramp starts to be heard as a duck before each pulse.
-  - The build scans 1, 2 and 4 ms and keeps the shortest that meets prediction 1.
+  - The build scans 1, 2 and 4 ms and keeps the shortest that meets prediction 1. If none of the three meets it, the
+    build keeps none: the window stops, the scan's counts and medians go to the lead as a failed prediction, and the
+    design is reopened. A longer delay is not tried, and no bound is touched to let one pass.
 
 ## Predictions (written before any code)
 
@@ -84,6 +86,12 @@ its sources, and the predictions, written before any code.
      - The fuel cut's stutter is flatter: more a wall than a stutter.
      - Bringing the stutter back is a question of level, not of this cure (the lead's ruling: that is the owner's
        question).
+   - Wrong by ear: if the owner still hears a click on the look-ahead clip where the quiet PROBE has none, the design
+     is wrong even at 0 of 17. What I would measure next, in this order:
+     - the gain trace at full rate, not telemetry rate, at the heard instant: a ramp that still lands on the front
+       means the hold or the delay is misaligned by a sample or more;
+     - the soft ceiling's bends at that instant, since look-ahead leaves the 0.75 guard as the only knee;
+     - the release's rise between pulses (250 ms over the cut's gaps), heard as a step at the next pulse.
 3. **first.json and the level match.**
    - The limiter does not act on first.json's tour (measured: 0.0 dB). Where no sample exceeds 0.7, the look-ahead
      limiter is a pure delay.
