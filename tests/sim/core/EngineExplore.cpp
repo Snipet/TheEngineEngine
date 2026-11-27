@@ -1022,7 +1022,7 @@ TEST_CASE("X-057: a governed diesel's automatic and its shift point", "[.x057]")
 TEST_CASE("Item 19: the governed builds under the idle + 1500 floor", "[.x057figs]")
 {
     const double k = 9.5492966;
-    for (const char* build : {"diesel-v8-truck", "diesel-mechanical-classic", "diesel-marine-v12"})
+    for (const char* build : {"diesel-v8-truck", "diesel-mechanical-classic", "diesel-marine-v12", "truck-15l-six", "truck-15l-six-bobtail", "diesel-pickup-tuned"})
     {
         Bench b(build);
         b.start();
