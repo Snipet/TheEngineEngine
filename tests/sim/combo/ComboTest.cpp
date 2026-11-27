@@ -238,7 +238,8 @@ namespace
         std::vector<double> excess;
         // (kept across the job's processes as reference() keeps its own: a corpus build with every switch off is its
         // own key, the build's file named in it and its bytes in the content tree's hash)
-        const std::string kept = referenceKey("corpus, every switch off: " + f.generic_string(), kind, nightlyCase());
+        const std::string kept = referenceKey("corpus, every switch off: " + f.generic_string(), kind, nightlyCase(),
+                                             leverDrives(f.string()));
         const bool fromFile = readKeptReference(kept, ref, excess);
         {
             Times t0;
@@ -538,4 +539,44 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
     std::printf("boundproof | %s / %s / %s: excess %.2f at %.3f s against %.2f\n", comboName(mask).c_str(), build.c_str(),
                 kindName(kind), v.stepExcess, v.stepAt, v.excessBound);
     report(v, comboName(mask), build, kindName(kind));
+}
+
+// GEARPROBE="<corpus stem> <tour|pull|launch|cold>": a corpus build as built through a scenario, unjudged; one line per
+// change of car.gear ("gear | t | from | to") and a line a second ("state | t | gear | engine rpm | km/h"), so that which
+// gear a scenario really drives in is read, not assumed. GEARPROBE_LEVER="t position ...": the lever moved at those times
+// (on top of the scenario's own controls).
+TEST_CASE("gear probe: car.gear through a scenario", "[.gearprobe]")
+{
+    const char* arg = std::getenv("GEARPROBE");
+    if (arg == nullptr)
+        SKIP("GEARPROBE not set");
+    std::istringstream in(arg);
+    std::string stem, kindArg;
+    in >> stem >> kindArg;
+    Kind kind = Kind::Pull;
+    for (Kind k : allKinds())
+        if (kindArg == kindName(k))
+            kind = k;
+    Times tm;
+    tee::test::Scenario sc = scenario(kind, (corpusDir() / (stem + ".json")).string(), 0u, tm);
+    if (const char* lv = std::getenv("GEARPROBE_LEVER"))
+    {
+        std::istringstream l(lv);
+        double t = 0.0;
+        int pos = 0;
+        while (l >> t >> pos)
+            sc.at(t).lever(pos);
+    }
+    const tee::test::Run r = sc.run(tm.end);
+    const auto gear = r.tel("car.gear");
+    const auto rpm = r.tel("engine.speed");
+    const auto kmh = r.tel("car.speed");
+    const auto& t = gear.times();
+    const auto& x = gear.values();
+    std::printf("gearprobe | %s | %s\n", stem.c_str(), kindName(kind));
+    for (std::size_t i = 1; i < t.size(); ++i)
+        if (x[i] != x[i - 1])
+            std::printf("gear | %.3f | %.0f | %.0f\n", t[i], x[i - 1], x[i]);
+    for (double s = 1.0; s <= tm.end; s += 1.0)
+        std::printf("state | %.1f | %.0f | %.0f | %.1f\n", s, gear.at(s), rpm.at(s), kmh.at(s));
 }

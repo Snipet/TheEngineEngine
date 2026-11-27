@@ -11,6 +11,8 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
+#include <regex>
 #include <map>
 #include <sstream>
 #include <tuple>
@@ -168,7 +170,11 @@ namespace combo
             double ramp;
         };
 
-        std::vector<Step> steps(Kind kind, std::uint32_t mask, Times& tm)
+        // drive: the build's box is an automatic or a CVT, whose gear the lever alone sets (R, N, D: gearbox.fm), not the
+        // shift counters: the pull and the launch put it in D as they pull away and back in N as the car stops, as a driver
+        // does (the owner's report, the lead's ruling 27 Nov 11:37: with the lever in N those boxes ran the pull in
+        // neutral). A manual's lever is its H-pattern (1 is first), so no other box's lever is moved.
+        std::vector<Step> steps(Kind kind, std::uint32_t mask, Times& tm, bool drive)
         {
             std::vector<Step> s;
             auto ctl = [&](double t, const char* n, double v, double ramp = 0.0) { s.push_back({t, "ctl", n, v, ramp}); };
@@ -207,6 +213,8 @@ namespace combo
                 tm.idleFrom = 2.5;
                 tm.idleTo = 3.0;
                 press(3.0, "shiftUp");   // first, on the paddle (its own clutch pulls away)
+                if (drive)
+                    ctl(3.0, "lever", 1);
                 ctl(3.3, "throttle", 0.5, 0.2);
                 ctl(4.5, "throttle", 1.0, 0.1);
                 press(6.5, "shiftUp");
@@ -217,6 +225,8 @@ namespace combo
                 press(11.0, "shiftDown");
                 ctl(12.0, "brake", 0.6, 0.2);
                 ctl(13.5, "clutch", 1.0, 0.2);   // stopped: the clutch down before the key, as a driver does
+                if (drive)
+                    ctl(13.5, "lever", 0);
                 ctl(14.0, "ignition", 0);
                 tm.off = 14.0;
                 tm.end = 17.0;
@@ -226,6 +236,8 @@ namespace combo
                 tm.idleTo = 3.0;
                 ctl(3.0, "brake", 1.0);
                 press(3.0, "shiftUp");
+                if (drive)
+                    ctl(3.0, "lever", 1);
                 ctl(3.5, "throttle", 0.6, 0.3);   // held on the brake
                 ctl(5.0, "brake", 0.0, 0.05);
                 ctl(5.0, "throttle", 1.0, 0.1);
@@ -235,6 +247,8 @@ namespace combo
                 ctl(9.0, "throttle", 0.0, 0.05);
                 ctl(9.2, "brake", 0.8, 0.2);
                 ctl(11.0, "clutch", 1.0, 0.2);
+                if (drive)
+                    ctl(11.0, "lever", 0);
                 ctl(11.5, "ignition", 0);
                 tm.off = 11.5;
                 tm.end = 14.5;
@@ -258,8 +272,9 @@ namespace combo
                                  double shiftPhase)
     {
         times = Times{};
-        tee::test::Scenario sc(build.find('/') != std::string::npos ? build : buildPath(build));
-        for (const Step& st : steps(kind, mask, times))
+        const std::string file = build.find('/') != std::string::npos ? build : buildPath(build);
+        tee::test::Scenario sc(file);
+        for (const Step& st : steps(kind, mask, times, leverDrives(file)))
         {
             // shiftPhase moves the upshifts after the pull-away (3 s) by a few ms: where a shift cut ends among the
             // firings sets its bang's size, so a case reads the worst over a firing interval
@@ -284,10 +299,22 @@ namespace combo
         return tee::test::contentDirectory() / "scenarios" / "combo";
     }
 
-    std::string scenarioJson(Kind kind, std::uint32_t mask)
+    bool leverDrives(const std::string& buildFile)
+    {
+        // the build's "gearbox" as written (the tee-build format's spec.car.gearbox, by its choice's name)
+        std::ifstream in(buildFile, std::ios::binary);
+        const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        static const std::regex box("\"gearbox\"\\s*:\\s*\"([^\"]*)\"");
+        std::smatch m;
+        if (!std::regex_search(text, m, box))
+            return false;
+        return m[1] == "Automatic" || m[1] == "CVT";
+    }
+
+    std::string scenarioJson(Kind kind, std::uint32_t mask, bool drive)
     {
         Times tm;
-        const auto s = steps(kind, mask, tm);
+        const auto s = steps(kind, mask, tm, drive);
         std::ostringstream o;
         o << "{\n  \"format\": \"tee-scenario\",\n  \"version\": 1,\n  \"name\": \"" << kindName(kind)
           << "\",\n  \"description\": \"Package X's " << kindName(kind)
@@ -757,7 +784,7 @@ namespace combo
         return refcache::treeHash(dir);
     }
 
-    std::string referenceKey(const std::string& build, Kind kind, bool copies)
+    std::string referenceKey(const std::string& build, Kind kind, bool copies, bool drive)
     {
         const std::uint64_t p = refcache::processKey();
         if (p == 0 || refcache::directory().empty())
@@ -765,7 +792,7 @@ namespace combo
         std::uint64_t h = p;
         h = refcache::mixString(h, build);
         h = refcache::mixString(h, kindName(kind));
-        h = refcache::mixString(h, scenarioJson(kind, 0u));
+        h = refcache::mixString(h, scenarioJson(kind, 0u, drive));
         for (double d : kBoundNudges)
             h = refcache::mix(h, &d, sizeof d);
         const int c = copies ? 1 : 0;
@@ -840,7 +867,7 @@ namespace combo
             return it->second;
         Reference ref;
         std::vector<double> excess;
-        const std::string kept = referenceKey(build, kind, copies);
+        const std::string kept = referenceKey(build, kind, copies, leverDrives(build.find('/') != std::string::npos ? build : buildPath(build)));
         const bool fromFile = readKeptReference(kept, ref.step, excess);
         for (double dT : kBoundNudges)
         {
