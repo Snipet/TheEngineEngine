@@ -76,6 +76,9 @@ Level 0. The comb and the highs remain.
 
 ## Proposed for the window (under `sim/`: each waits for the window and a bake)
 
+The two are independent: the spot cures the comb and the highs; the level is the owner's choice among shipped, half
+and true levels.
+
 ### 1. The Tailpipe camera at a recordist's spot: a boundary microphone on the ground, 0.5 m behind the mouth
 
 A grid fixed before it was measured (0.25 / 0.35 / 0.5 m back; on the ground, 0.15 m, the pipe's height; each at least
@@ -94,7 +97,18 @@ direct path coincide, so there is no comb by the formula. Shipped against the bo
   the pipe). The dial moves it straight back along the ground, 0.5 m to 30 m, with no comb at any distance; the level,
   the air and the room fall as now. The standing listener's spot with its comb stays where a real ear hears it: Rear
   (1.2 m high) and Side.
-- Cost: the rotary's top octave 5.8 dB dull (its large bore's piston law, 34 degrees off the axis). CPU nil.
+- What it is: a microphone lying on the ground. There the direct and the reflected path are one, so the pressure
+  doubles where the two stay coherent: measured +3.5 dB at the mid load (asphalt against ground None at the same spot,
+  true levels), less than the +5.6 the ground's 0.9 gives at low frequencies, because the image tap keeps its own
+  piston law and low-pass. The auto level absorbs it; under true levels the staging is chosen with the spot.
+- Cost: the rotary's top octave 5.8 dB dull: physical, its large bore's piston law 34 degrees off the axis.
+- With the car moving it is a camera's place, carried with the car, not a stand one could build: no Doppler (it moves
+  with the pipes), the wind's source unchanged. The road and the tyres heard from the tarmac, measured on first.json's
+  pull under true levels: the road 13.7 dB under the rest at the boundary spot, against 7.8 dB at the shipped spot
+  (the exhaust is nearer, the road relatively quieter). No tyre roar comes forward.
+- Twin pipes: in line with the right-hand mouth (x = +0.55 m), 0.5 m behind it; the V8's 2.1 dB ripple is its own two
+  pipes, the other 1.1 m across.
+- CPU nil.
 - The onboard spot (the lead's prediction, about 350 Hz and 5 dB of ripple) measured 3.5 to 4.5 dB on four builds,
   11.6 on the bike (its pipe at 0.45 m).
 - Null: model 0 untouched (scene.fm's placeListener is Places' alone); the null (`tee-tests "[null]"`) to be run.
@@ -104,44 +118,59 @@ direct path coincide, so there is no comb by the formula. Shipped against the bo
   each re-measured and restated on its property, never loosened. New: Tailpipe's ripple on the single-pipe builds within
   2 dB of the reference, shown to bite on the shipped spot (9.2 dB).
 
-### 2. The level set by the camera's position, not by the signal (the owner's choice)
+### 2. True levels as the default, with one fixed staging (the owner's choice among three)
 
 The auto level does two jobs at once: it brings near and far cameras together, and it brings every build to one
-loudness. The second is the complaint. The candidate that separates them: the auto level off, a gain the camera's place
-sets once (fixed while the camera is fixed), the limiter for the peaks. Measured as a probe (the gain from the camera's
-direct distance to the tailpipe, normalised to Tailpipe at the default dial, staged +9.7 dB, a level match chosen on
-first.json's mid load, nothing more):
+loudness. The second is the complaint. The plain candidate needs nothing computed per camera, build or source: the
+switch the code already has ("True levels", the auto level off), with one staging, a Level chosen openly so the
+default camera on first.json stands near its reference, then the same for every build. That is the reference's own
+behaviour: one staging, a farther camera quieter, the dial turning the level down, the limiter for a loud build's
+peaks. Measured at Tailpipe, the staging as the Level (+9.7 dB; +6.7 one to two dB lower everywhere), Places minus
+the reference:
 
-| build | idle | mid | pull | spread |
-|---|---|---|---|---|
-| first | +0.2 | -0.3 | -0.1 | 14.9 (15.2) |
-| V8 | +2.7 | -1.9 | -1.5 | 5.7 (9.9) |
-| truck | +0.1 | -1.5 | -1.2 | 6.0 (7.3) |
-| bike | +7.0 | +1.9 | +1.7 | 8.9 (14.3) |
-| rotary | +4.9 | +0.3 | +3.2 | 15.3 (17.0) |
+| build | idle | mid | pull | spread (ref) | limiter on the pull |
+|---|---|---|---|---|---|
+| first | -3.1 | -3.5 | -3.9 | 14.4 (15.2) | never |
+| V8 | -1.6 | -4.6 | -3.4 | 8.1 (9.9) | 74 % of reads, 4.3 dB median |
+| truck | -5.4 | -2.0 | -1.7 | 11.0 (7.3) | 100 %, 5.0 dB |
+| bike | +0.7 | +0.3 | -0.1 | 13.5 (14.3) | 35 %, 3.4 dB |
+| rotary | +4.4 | -1.2 | -0.2 | 12.4 (17.0) | never |
 
-- What it costs: the loud builds sit on the limiter as their references do on theirs (the truck's pull: acting in 98 to
-  100 % of reads, 10.5 dB median at +9.7, 4.5 at +3.7); that is what eats their spread.
-- Near against far (first.json, mid, against Tailpipe): Rear +1.2, Side -0.3, Trackside +2.5, Chase +1.7, Driver -2.1,
-  **Engine bay +9.7**: the gain makes up the bay camera's 4 m to the tailpipe while it hears the bay up close.
-- Weighting each source by the code's stated strengths (sEx, sIn, sMc) was tried and is refuted (Side -9.6, Engine bay
-  -14.6): the strengths are not the sources' signal levels. A right gain needs each source's level against the
-  exhaust's, measured per build at staging, as the exhaust's own loudness is computed (loudnessOf); that is design
-  work, not a constant.
-- The dial: the gain more than undoes it (Tailpipe at distance 0 / 0.3 / 0.6 / 1.0: -29.0 / -23.7 / -22.4 / -20.0
-  LUFS): a camera walked back gets louder, the room's share growing while the gain makes up the full 1/r. The owner
-  should know it before choosing it; a cure takes the room's share into the gain.
-- Trackside: a gain frozen where the car is when the camera is chosen fails (+37 dB at 40 m; the limiter takes the
-  pass); the camera's nominal geometry (the closest approach) is the right distance. A pass at a held speed and throttle
-  is still to be measured.
-- The owner chooses among three, with clips: as shipped (every build one loudness), half (the gain following half of the
-  exposure's change: spread restored on all five, the V8's mid -7.9), and by position. The owner ruled on 25 Nov that
-  the idle's loudness stays "as designed"; this reopens it on new evidence.
-- Null and bake: as in 1. Cases: "the auto level: cameras near and far brought together" and "the level at the
-  defaults" bound today's design and would be restated on the new property (the idle-to-pull spread within some LU of
-  the reference's, shown to bite on shipped: 10.0 against 15.2 on first.json).
+Against shipped (every build one loudness, the V8 and the truck 15 to 19 LU under) and half (the gain following half
+the exposure's change: the V8's mid -7.9), it keeps each build's loudness within about 5 LU of its reference and each
+build's range. Its costs, measured:
+
+- The cameras (first.json, mid, against Tailpipe, the auto level off): Rear -5.6, Side -4.1, Trackside -6.0, Chase
+  -7.2, Engine bay +1.6, Driver -3.3. A held mid load switched Tailpipe to Rear to Trackside: shipped within 1.4 LU,
+  true levels Rear and Trackside about 4 LU under Tailpipe.
+- The dial now falls as the reference's does: Tailpipe at distance 0 / 0.3 / 0.6 / 1.0: -23.7 / -26.9 / -33.0 /
+  -44.6 LUFS (21 dB from nearest to farthest).
+- Trackside, a pass at a held speed and throttle (first.json, second gear, 21 to 23 m/s, 5700 to 6360 rpm): each pass
+  swells about 20 dB, from -53 LUFS at 30 m to -33 abreast and back to -53 at 44 m. A microphone 40 m off is quiet
+  (some -52 to -55 LUFS); that is what it hears. Shipped's auto gain swings +16 to +30 dB through the same passes.
+- The Level dial counts again (with the auto level on it is undone by the exposure).
+- The cost that made the auto level exist: the quietest thing an owner can reach. The kei 660 at idle at the Rear
+  camera with the dial at its farthest (30 m): -65.5 LUFS under true levels +9.7, against its reference's -57.1 and
+  shipped's -45.2.
+- With the boundary spot (proposal 1) the Tailpipe camera is 5.7 dB louder at the same staging (-21.2 against -26.9
+  LUFS at mid): the staging is to be chosen with the spot.
+- The staging is the owner's ear: clips at +9.7 and +6.7 below, and the earlier +3.7.
+- Null and bake: the auto level's default lives in the spec's source (sim/spec/sound.fm, autoLevel 1); its change is
+  `sim/` and a bake, the reference untouched (sound.level is the reference's own dial, so the staging cannot be a build
+  file's line: it would move the reference too). Cases: "the auto level: cameras near and far" and "the level at the
+  defaults" bound today's design and would be restated on the new property (each build's idle-to-pull spread within
+  some LU of its reference's, shown to bite on shipped: 10.0 against 15.2 on first.json; the V8's 1.1 against 9.9).
 
 ## Not proposed, and why
+
+- The level set by the camera's position (a gain from the camera's geometry, fixed while the camera is fixed): first.json
+  met its reference (+0.2 / -0.3 / -0.1 LU, spread 14.9 against 15.2), but the tailpipe-only form was 9.7 dB too loud
+  at Engine bay (it made up the bay camera's 4 m to the tailpipe while it hears the bay up close), turned the dial
+  upside down (distance 0 / 0.3 / 0.6 / 1.0: -29.0 / -23.7 / -22.4 / -20.0 LUFS: a camera walked back got louder), and,
+  frozen where the car was when the camera was chosen, took a pass-by at 40 m as its distance (+37 dB, the limiter
+  acting through 91 % of the pass). Weighting each source by the code's stated strengths (sEx, sIn, sMc) was worse
+  (Side -9.6, Engine bay -14.6, Trackside -11.5): the strengths are not the signals' levels. A right form needs a
+  measured level per source per build. Refuted, and not wanted: true levels (proposal 2) need no per-camera gain.
 
 - The ground tap at gain 0.5 through 1.5 kHz: chosen for the notch depth wanted, built from its own target. Withdrawn.
 - A 9 kHz pole at the pipe's mouth: no physical ground for it in the listener; the reference's own high cut is its dial's
@@ -172,8 +201,18 @@ mid load), `pull-` (2 to 14 s of the paddle pull); "matched" means turned to the
 - `steady-7-`, `pull-7-PROBE-camera-level-unmatched` / `-matched`: the level set by the camera (+9.7 dB).
 - `steady-8-`, `pull-8-PROBE-camera-level-ground-coherence-distance-0-unmatched` / `-matched`: 7 with 3 and 5.
 
-Staging set, unmatched (the level is the question), first.json and the truck at Tailpipe, steady and pull:
-`staging-<build>-<scene>-1-reference`, `-2-PROBE-camera-level-plus9.7dB`, `-3-...-plus6.7dB`, `-4-...-plus3.7dB`.
-first.json never reaches the limiter; the truck sits on it at all three, as its reference does at 0.85.
+Staging set, unmatched, first.json and the truck at Tailpipe, steady and pull, of the refuted camera-position level
+(at Tailpipe it is a fixed staging after the last stage's compressor): `staging-<build>-<scene>-1-reference`,
+`-2-PROBE-camera-level-plus9.7dB`, `-3-...-plus6.7dB`, `-4-...-plus3.7dB`. first.json never reaches the limiter; the
+truck sits on it at all three, as its reference does at 0.85.
+
+Third set, unmatched, first.json and the 15 L truck, `idle` / `steady` / `pull`:
+
+- `spot-<build>-<scene>-1-reference`, `-2-places-as-shipped`, `-3-PROBE-boundary-0.5m`, `-4-PROBE-onboard` (each with
+  the auto level as shipped, so only the spot changes), `-5-PROBE-boundary-true-levels-plus9.7dB`.
+- `level-<build>-<scene>-1-reference`, `-2-places-as-shipped`, `-3-PROBE-half`, `-4-PROBE-true-levels-plus9.7dB`,
+  `-5-PROBE-true-levels-plus6.7dB` (at the shipped spot).
+- `cameras-1-places-as-shipped-tailpipe-rear-trackside`, `cameras-2-PROBE-true-levels-plus9.7dB-tailpipe-rear-trackside`:
+  a held mid load, the camera moved Tailpipe to Rear (at 4 s into the clip) to Trackside (at 7.5 s).
 
 (A first set, `pull-` and `steady-` 1 to 3, made before the correction, is superseded by the second.)
