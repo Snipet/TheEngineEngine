@@ -1,0 +1,390 @@
+From 60c7e975bc9c915c8eb19eadabf95c69fad82e10 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 18:08:51 +0000
+Subject: [PATCH 1/3] app: --minimise-after N: the window minimised (hidden if
+ not honoured), its state and ticks said
+
+For scripts/run-wake.sh: a window that does not tick. Measured under Xvfb with openbox:
+minimised=1 occluded=1, ticks held at 30 for 20 s.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgPYzYByoQt6gue8ek5
+---
+ app/Main.cpp    | 59 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ app/Options.cpp |  7 ++++++
+ app/Options.h   |  2 ++
+ 3 files changed, 67 insertions(+), 1 deletion(-)
+
+diff --git a/app/Main.cpp b/app/Main.cpp
+index 396c6c93..bb210fe2 100644
+--- a/app/Main.cpp
++++ b/app/Main.cpp
+@@ -449,7 +449,47 @@ namespace
+         options.hidden = o.info;
+         // the assistant's wake (app/AssistantWake.h): made once SDL runs (the host's), served first of every event
+         std::unique_ptr<app::AssistantWake> assistantWake;
++        // --minimise-after N (scripts/run-wake.sh): after N frames the window is minimised (hidden where that is not
++        // honoured a second on), and twice a second, on the main thread, what SDL says of it and the frames ticked so
++        // far are printed, ticking or not; 20 s on, the window is closed. A window that does not tick, for the wake.
++        funkgui::desktop::DesktopHost* hostSeen = nullptr;
++        std::uint32_t ticksSeen = 0;
++        struct Minimise
++        {
++            Uint32 type = 0;
++            SDL_TimerID timer = 0;
++            std::uint64_t since = 0;    // SDL_GetTicks when asked
++            bool hidden = false;
++        } minimise;
++        const auto minimiseReport = [&] {
++            SDL_Window* w = hostSeen != nullptr ? hostSeen->window() : nullptr;
++            const SDL_WindowFlags f = w != nullptr ? SDL_GetWindowFlags(w) : 0;
++            const double t = static_cast<double>(SDL_GetTicks() - minimise.since) / 1000.0;
++            std::printf("minimise: %.1f s minimised=%d hidden=%d occluded=%d ticks=%u\n", t,
++                        (f & SDL_WINDOW_MINIMIZED) != 0, (f & SDL_WINDOW_HIDDEN) != 0, (f & SDL_WINDOW_OCCLUDED) != 0,
++                        ticksSeen);
++            std::fflush(stdout);
++            if (w != nullptr && t >= 1.0 && !minimise.hidden && (f & SDL_WINDOW_MINIMIZED) == 0)
++            {
++                minimise.hidden = true;
++                std::printf("minimise: not honoured here: the window hidden instead\n");
++                SDL_HideWindow(w);
++            }
++            if (t >= 20.0)
++            {
++                SDL_RemoveTimer(minimise.timer);
++                minimise.timer = 0;
++                SDL_Event quit{};
++                quit.type = SDL_EVENT_QUIT;
++                SDL_PushEvent(&quit);
++            }
++        };
+         options.rawEvent = [&](const SDL_Event& e) {
++            if (minimise.type != 0 && e.type == minimise.type)
++            {
++                minimiseReport();
++                return true;
++            }
+             if (assistantWake && assistantWake->take(e))
+             {
+                 // a tool posted: its job drained here, the window ticking or not; jobs left waiting: again a little later
+@@ -469,13 +509,27 @@ namespace
+         // A machine's script (--script, --frames) runs on the engine's clock: it starts when the engine is ready to play,
+         // so its keys find an engine whatever the compile took; the frames it asks for are counted from then too.
+         std::uint64_t began = last;
+-        std::uint32_t readyTicks = 0, ticksSeen = 0;
++        std::uint32_t readyTicks = 0;
+         bool scriptStarted = !machine || engine.ready();
+         options.beforeTick = [&] {
+             const std::uint64_t now = SDL_GetTicksNS();
+             const float dt = static_cast<float>(static_cast<double>(now - last) * 1e-9);
+             last = now;
+             ++ticksSeen;
++            if (o.minimiseAfter > 0 && ticksSeen == static_cast<std::uint32_t>(o.minimiseAfter) && hostSeen != nullptr
++                && minimise.type == 0)
++            {
++                minimise.type = SDL_RegisterEvents(1);
++                minimise.since = SDL_GetTicks();
++                std::printf("minimise: asked after %u frames\n", ticksSeen);
++                SDL_MinimizeWindow(hostSeen->window());
++                minimise.timer = SDL_AddTimer(500, [](void* type, SDL_TimerID, Uint32 interval) -> Uint32 {
++                    SDL_Event e{};
++                    e.type = static_cast<Uint32>(reinterpret_cast<std::uintptr_t>(type));
++                    SDL_PushEvent(&e);
++                    return interval;
++                }, reinterpret_cast<void*>(static_cast<std::uintptr_t>(minimise.type)));
++            }
+             if (ticksSeen == 1)
+                 std::printf("window: the first frame %.2f s after launch\n",
+                             std::chrono::duration<double>(std::chrono::steady_clock::now() - launched).count());
+@@ -670,6 +724,7 @@ namespace
+ 
+         funkgui::desktop::DesktopHost host(*panel, std::move(options));
+         commands.attach(&host);
++        hostSeen = &host;
+         if (shown.assistant != nullptr && shown.drainAssistant)
+         {
+             assistantWake = std::make_unique<app::AssistantWake>();
+@@ -840,6 +895,8 @@ namespace
+         }
+         else
+             code = host.run();
++        if (minimise.timer != 0)
++            SDL_RemoveTimer(minimise.timer);
+         if (shown.assistant != nullptr)
+             shown.assistant->setWake({});   // the window's loop is over: a post now has nothing to wake
+         if (scriptCheckCount > 0)
+diff --git a/app/Options.cpp b/app/Options.cpp
+index 32ea13e0..88928bc6 100644
+--- a/app/Options.cpp
++++ b/app/Options.cpp
+@@ -120,6 +120,11 @@ namespace tee::app
+                 if (!whole(o.frames, 0, 10000000))
+                     return false;
+             }
++            else if (arg == "--minimise-after")
++            {
++                if (!whole(o.minimiseAfter, 1, 100000))
++                    return false;
++            }
+             else if (arg == "--shot")
+             {
+                 if (!value(o.shot))
+@@ -270,6 +275,8 @@ namespace tee::app
+              "  --set ID=VALUE         a parameter, after the preset; may be given many times\n"
+              "  --checks               compile with the loop budget and the bounds checks\n"
+              "  --frames N             run N frames, then exit\n"
++             "  --minimise-after N     the window minimised after N frames (hidden if not honoured), what SDL\n"
++             "                         says of it and the ticks twice a second, closed 20 s on (scripts/run-wake.sh)\n"
+              "  --shot FILE.png        write the last frame's picture\n"
+              "  --seconds S            render S seconds with no audio device, then exit\n"
+              "  --wav FILE.wav         write what was rendered (with --seconds, or --frames in tee-headless)\n"
+diff --git a/app/Options.h b/app/Options.h
+index db972ead..b10c5f5e 100644
+--- a/app/Options.h
++++ b/app/Options.h
+@@ -20,6 +20,8 @@ namespace tee::app
+         std::vector<std::pair<std::string, double>> sets;   // --set id=value, in order, after the preset
+         bool checks = false;            // --checks: the loop budget and the bounds checks
+         int frames = -1;                // --frames N: run N frames and exit
++        int minimiseAfter = -1;         // --minimise-after N: the window minimised after N frames (hidden where that
++                                        // is not honoured), its state and ticks said twice a second, closed 20 s on
+         std::string shot;               // --shot FILE.png: the last frame's picture
+         double seconds = -1.0;          // --seconds S: render S seconds with no device and exit
+         std::string wav;                // --wav FILE.wav: what was rendered
+-- 
+2.43.0
+
+
+From 69c51106086c3e52e4e2ffdc0e4ae89ee087d4ed Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 18:13:21 +0000
+Subject: [PATCH 2/3] scripts: run-wake.sh: the assistant's wake in the real
+ application, its window minimised
+
+One get_build through tee-mcp must be answered within 5 s while the window does not tick;
+one line says the window's flags and the ticks before the call and after the answer.
+shell.window.wake runs it in a tree with the application on (extra: CI runs it on the
+packed application). Without setWake the call is refused ("timed out before the app took
+it") and the script fails.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgPYzYByoQt6gue8ek5
+---
+ scripts/run-wake.sh        | 96 ++++++++++++++++++++++++++++++++++++++
+ tests/shell/CMakeLists.txt | 11 +++++
+ 2 files changed, 107 insertions(+)
+ create mode 100755 scripts/run-wake.sh
+
+diff --git a/scripts/run-wake.sh b/scripts/run-wake.sh
+new file mode 100755
+index 00000000..1e4c567e
+--- /dev/null
++++ b/scripts/run-wake.sh
+@@ -0,0 +1,96 @@
++#!/usr/bin/env bash
++# scripts/run-wake.sh <TheEngineEngine> <tee-mcp>: the assistant's wake (app/AssistantWake.h) in the real application,
++# its window minimised: the app is started with "Allow Claude Desktop" on (a settings folder of this run's own) and
++# --minimise-after 30, and once SDL says the window is down, one tools/call (get_build) goes through tee-mcp, as Claude
++# Desktop's would. It must be answered within 5 s while the window does not tick: the wake's drain on the main thread
++# answers it; without the wake it waits for a frame that never comes (tee-mcp's own limit, 110 s).
++#
++#   scripts/xvfb-run.sh scripts/run-wake.sh build-dev/bin/TheEngineEngine build-dev/bin/tee-mcp     (Linux)
++#
++# One line says what was seen, for a reader of a CI log: what SDL said of the window, the frames ticked before the call
++# and after the answer, and how long the answer took. Linux must pass (Xvfb with openbox minimises for real). Where the
++# window manager does not honour a minimise the app hides the window instead and the line says so. Windows: this
++# version has no link there (no Claude Desktop extension on Windows yet): said, and a pass.
++set -euo pipefail
++[ $# -eq 2 ] || { echo "usage: scripts/run-wake.sh <TheEngineEngine> <tee-mcp>" >&2; exit 2; }
++app=$1
++mcp=$2
++
++case "$(uname -s)" in
++  MINGW* | MSYS* | CYGWIN*) echo "run-wake: no link on this platform (Windows): nothing to call; not a failure"; exit 0 ;;
++esac
++
++work=$(mktemp -d "${TMPDIR:-/tmp}/tee-wake.XXXXXX")
++pid=
++cleanup() {
++  [ -z "$pid" ] || kill "$pid" 2>/dev/null || true
++  wait 2>/dev/null || true
++  rm -rf "$work"
++}
++trap cleanup EXIT
++mkdir -p "$work/settings" "$work/link"
++chmod 700 "$work/link"   # the link refuses a folder others may enter
++# the settings file's version as this checkout's app reads it (shell/settings/Settings.h): run from the repository
++here=$(cd "$(dirname "$0")/.." && pwd)
++version=$(sed -nE 's/.*constexpr int kVersion = ([0-9]+);.*/\1/p' "$here/shell/settings/Settings.h" | head -1)
++[ -n "$version" ] || { echo "run-wake: the settings version was not found in shell/settings/Settings.h" >&2; exit 1; }
++printf '{ "format": "tee-settings", "version": %s, "allowClaudeDesktop": true }\n' "$version" > "$work/settings/settings.json"
++export TEE_SETTINGS_DIR="$work/settings" TEE_MCP_DIR="$work/link"
++export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-dummy}"
++
++"$app" --minimise-after 30 > "$work/app.log" 2>&1 &
++pid=$!
++
++# the window down (its first report) and the link open, within a minute (the simulator's compile comes first)
++for _ in $(seq 600); do
++  grep -q '^minimise: [0-9.]* s ' "$work/app.log" && [ -S "$work/link/app.sock" ] && break
++  kill -0 "$pid" 2>/dev/null || { echo "run-wake: the app ended before its window was down:" >&2; cat "$work/app.log" >&2; exit 1; }
++  sleep 0.1
++done
++grep -q '^minimise: [0-9.]* s ' "$work/app.log" || { echo "run-wake: the window was never minimised:" >&2; cat "$work/app.log" >&2; exit 1; }
++[ -S "$work/link/app.sock" ] || { echo "run-wake: the app's link never opened (Allow Claude Desktop):" >&2; cat "$work/app.log" >&2; exit 1; }
++sleep 1   # a second down, ticks or none, before the call
++
++last() { grep '^minimise: [0-9.]* s ' "$work/app.log" | tail -1; }
++before=$(last)
++ticksBefore=${before##*ticks=}
++
++# initialize, then the call; stdin held open 6 s so that tee-mcp waits for the answer, then let go
++start=$(date +%s.%N)
++{
++  printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"run-wake","version":"1"}}}'
++  printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
++  printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_build","arguments":{}}}'
++  for _ in $(seq 60); do
++    grep -q '"id":2' "$work/mcp.out" 2>/dev/null && break
++    sleep 0.1
++  done
++} | "$mcp" > "$work/mcp.out" 2> "$work/mcp.err" &
++feeder=$!
++for _ in $(seq 60); do
++  grep -q '"id":2' "$work/mcp.out" 2>/dev/null && break
++  sleep 0.1
++done
++took=$(echo "$(date +%s.%N) - $start" | bc)
++wait "$feeder" 2>/dev/null || true
++sleep 0.6   # one more report after the answer
++after=$(last)
++ticksAfter=${after##*ticks=}
++flags=$(echo "$after" | sed -E 's/^minimise: [0-9.]+ s ([^t]*)ticks=.*/\1/; s/ +$//')
++hidden=
++grep -q 'not honoured here' "$work/app.log" && hidden=" (minimise not honoured: hidden instead)"
++
++if ! grep -q '"id":2' "$work/mcp.out"; then
++  echo "run-wake: FAILED: no answer within 6 s; window: $flags$hidden; ticks $ticksBefore before the call, $ticksAfter after"
++  echo "---- tee-mcp's stderr"; cat "$work/mcp.err"
++  exit 1
++fi
++if grep '"id":2' "$work/mcp.out" | grep -q '"isError":true'; then
++  echo "run-wake: FAILED: the call answered with an error:"; grep '"id":2' "$work/mcp.out" | cut -c1-400
++  exit 1
++fi
++printf 'run-wake: answered in %.2f s; window: %s%s; ticks %s before the call, %s after the answer\n' \
++  "$took" "$flags" "$hidden" "$ticksBefore" "$ticksAfter"
++if [ "$ticksBefore" != "$ticksAfter" ]; then
++  echo "run-wake: note: the window ticked meanwhile, so this run does not show a drain without a frame"
++fi
+diff --git a/tests/shell/CMakeLists.txt b/tests/shell/CMakeLists.txt
+index a7d27f8d..231266e4 100644
+--- a/tests/shell/CMakeLists.txt
++++ b/tests/shell/CMakeLists.txt
+@@ -177,6 +177,17 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+     add_test(NAME shell.window.info
+       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine> --engine tone --info
+       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
++    # The assistant's wake in the real application (scripts/run-wake.sh): the window minimised, one call through tee-mcp
++    # answered in time while it does not tick. CI runs the same script on the packed application (build.yml's "Run the
++    # application"); this copy is for a tree with the application on, extra to that.
++    if(TARGET tee-mcp)
++      add_test(NAME shell.window.wake
++        COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" "${PROJECT_SOURCE_DIR}/scripts/run-wake.sh"
++                $<TARGET_FILE:TheEngineEngine> $<TARGET_FILE:tee-mcp>
++        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
++      set_tests_properties(shell.window.wake PROPERTIES TIMEOUT 300 LABELS "shell;window" RUN_SERIAL TRUE
++        PASS_REGULAR_EXPRESSION "run-wake: answered in [0-9.]+ s; window: minimised=1")
++    endif()
+     # The launch (app/Launch.h): a launch with no settings that names the first build (content/builds/first.json: a
+     # scripted run opens none unless named) shows its notes' first line ("Try first: ...") and ends with its name and
+     # every model switch the Schema has on, in the document and as the engine was sent them (a switch at 0, or one not
+-- 
+2.43.0
+
+
+From d5768e3ca7790d9c4d83ef86f56ca1c0a9161a8c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 18:22:58 +0000
+Subject: [PATCH 3/3] scripts: run-wake says the simulator's state at the call;
+ the app's report line carries it
+
+A call arrives while the simulator is still compiling (it is never adopted while the
+window does not tick: SimAdapter::frame) and is answered: get_build reads only the
+document. Measured warm and cold (empty TEE_CACHE_DIR, eight busy loops on four cores).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgPYzYByoQt6gue8ek5
+---
+ app/Main.cpp        |  5 +++--
+ scripts/run-wake.sh | 12 +++++++-----
+ 2 files changed, 10 insertions(+), 7 deletions(-)
+
+diff --git a/app/Main.cpp b/app/Main.cpp
+index bb210fe2..9064099c 100644
+--- a/app/Main.cpp
++++ b/app/Main.cpp
+@@ -465,9 +465,10 @@ namespace
+             SDL_Window* w = hostSeen != nullptr ? hostSeen->window() : nullptr;
+             const SDL_WindowFlags f = w != nullptr ? SDL_GetWindowFlags(w) : 0;
+             const double t = static_cast<double>(SDL_GetTicks() - minimise.since) / 1000.0;
+-            std::printf("minimise: %.1f s minimised=%d hidden=%d occluded=%d ticks=%u\n", t,
++            const char* sim = engine.sim == nullptr ? "none" : engine.sim->ready() ? "ready" : "compiling";
++            std::printf("minimise: %.1f s minimised=%d hidden=%d occluded=%d simulator=%s ticks=%u\n", t,
+                         (f & SDL_WINDOW_MINIMIZED) != 0, (f & SDL_WINDOW_HIDDEN) != 0, (f & SDL_WINDOW_OCCLUDED) != 0,
+-                        ticksSeen);
++                        sim, ticksSeen);
+             std::fflush(stdout);
+             if (w != nullptr && t >= 1.0 && !minimise.hidden && (f & SDL_WINDOW_MINIMIZED) == 0)
+             {
+diff --git a/scripts/run-wake.sh b/scripts/run-wake.sh
+index 1e4c567e..c533a0ee 100755
+--- a/scripts/run-wake.sh
++++ b/scripts/run-wake.sh
+@@ -41,7 +41,7 @@ export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-dummy}"
+ "$app" --minimise-after 30 > "$work/app.log" 2>&1 &
+ pid=$!
+ 
+-# the window down (its first report) and the link open, within a minute (the simulator's compile comes first)
++# the window down (its first report) and the link open (at launch, before the simulator is ready), within a minute
+ for _ in $(seq 600); do
+   grep -q '^minimise: [0-9.]* s ' "$work/app.log" && [ -S "$work/link/app.sock" ] && break
+   kill -0 "$pid" 2>/dev/null || { echo "run-wake: the app ended before its window was down:" >&2; cat "$work/app.log" >&2; exit 1; }
+@@ -54,6 +54,8 @@ sleep 1   # a second down, ticks or none, before the call
+ last() { grep '^minimise: [0-9.]* s ' "$work/app.log" | tail -1; }
+ before=$(last)
+ ticksBefore=${before##*ticks=}
++# the simulator as the call is sent: get_build reads only the document, so a call while it compiles must answer too
++simulator=$(echo "$before" | sed -nE 's/.* simulator=([a-z]+) .*/\1/p')
+ 
+ # initialize, then the call; stdin held open 6 s so that tee-mcp waits for the answer, then let go
+ start=$(date +%s.%N)
+@@ -76,12 +78,12 @@ wait "$feeder" 2>/dev/null || true
+ sleep 0.6   # one more report after the answer
+ after=$(last)
+ ticksAfter=${after##*ticks=}
+-flags=$(echo "$after" | sed -E 's/^minimise: [0-9.]+ s ([^t]*)ticks=.*/\1/; s/ +$//')
++flags=$(echo "$after" | sed -E 's/^minimise: [0-9.]+ s (.*) simulator=.*/\1/')
+ hidden=
+ grep -q 'not honoured here' "$work/app.log" && hidden=" (minimise not honoured: hidden instead)"
+ 
+ if ! grep -q '"id":2' "$work/mcp.out"; then
+-  echo "run-wake: FAILED: no answer within 6 s; window: $flags$hidden; ticks $ticksBefore before the call, $ticksAfter after"
++  echo "run-wake: FAILED: no answer within 6 s; window: $flags$hidden; ticks $ticksBefore before the call, $ticksAfter after; simulator ${simulator:-not said} at the call"
+   echo "---- tee-mcp's stderr"; cat "$work/mcp.err"
+   exit 1
+ fi
+@@ -89,8 +91,8 @@ if grep '"id":2' "$work/mcp.out" | grep -q '"isError":true'; then
+   echo "run-wake: FAILED: the call answered with an error:"; grep '"id":2' "$work/mcp.out" | cut -c1-400
+   exit 1
+ fi
+-printf 'run-wake: answered in %.2f s; window: %s%s; ticks %s before the call, %s after the answer\n' \
+-  "$took" "$flags" "$hidden" "$ticksBefore" "$ticksAfter"
++printf 'run-wake: answered in %.2f s; window: %s%s; ticks %s before the call, %s after the answer; simulator %s at the call\n' \
++  "$took" "$flags" "$hidden" "$ticksBefore" "$ticksAfter" "${simulator:-not said}"
+ if [ "$ticksBefore" != "$ticksAfter" ]; then
+   echo "run-wake: note: the window ticked meanwhile, so this run does not show a drain without a frame"
+ fi
+-- 
+2.43.0
+

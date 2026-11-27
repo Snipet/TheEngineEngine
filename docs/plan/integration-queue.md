@@ -2825,6 +2825,41 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 18:25 UTC: X-066, A WINDOW THAT DOES NOT TICK NEVER ADOPTS THE SIMULATOR AND NEVER SENDS THE DOCUMENT'S
+  CHANGES TO THE ENGINE** (B's finding while writing the window test; the lead read the code). `SimAdapter::adopt`
+  and `build_->flush()` run only from `SimAdapter::frame` (`shell/player/SimAdapter.cpp:314-330`), called from the
+  frame's `beforeTick` (`app/Main.cpp:575`). With the wake (in from d0949cf2 on), a `set_fields` from Claude
+  Desktop while the window is minimised changes the build and is answered, and the owner hears nothing until
+  the window ticks again. What it does not touch: `predict_curve` and `run_dyno` run on a copy of the document's
+  text (`assistant/src/Tools.cpp:834-843`, `:904-913`), so their numbers are right; they are refused only in an
+  app minimised before its simulator was ever adopted. Ruled: the wake's drain serves the engine too (adoption
+  and the document's changes through drains alone), B's design, with a case for each and a comment on what of
+  the frame still does not run while minimised. Its own commit in B's stack, before the window test's script.
+  **It does not hold 3db7ed07:** answering while minimised with the engine a restore behind is better than
+  timing out.
+  - B's window test on a slow machine, by B's runs: the link opens at launch, `get_build` reads the document alone;
+    with a cold cache and 8 busy loops on 4 cores the call is answered in 0.13 s, the simulator still compiling.
+    B's patch comes to the lead as a file on the branch (docs/handoffs/patches/, docs-only).
+  - L on X-065: 306 plays (9 rows, 17 draws, 2 trees), about 15 minutes; started 18:17.
+- **27 Nov 18:18 UTC: X-065's record from the steward, and the order of the evening's pushes.**
+  - The soaks before the window, one draw a row each: 52cda676 (run 46005699524) GREEN, 228 of 228, with none of
+    items 16, 18, 20; 0f5dc0c9 (run 46012616941) 227 of 228, only `ui.build.reverse`, WITH item 16 and without 18
+    and 20. All nine X-065 rows passed at both and failed at 3ba103f4. Item 16 acts only under `ecu.model` 1 and
+    item 18 only on `car.model` 1's sequential, and no red row has either. So: item 20, or chance; L's 17 draws a
+    row, old against new, decide. The steward's per-case read agrees with the lead's (7 entries, 11 assertions,
+    all `Report.cpp:75`; no timeout, nothing Not Run). The soak's time: +131 s of summed case time against
+    ddacdf97's, of which `ui.build.bake.pictures` +115 s (J2's restatement waits on the bake's state, by design).
+  - 899259e9 read on all three by the steward as well: Linux 598 of 598, macOS 597 of 597, Windows 587 of 588 (the
+    two lines).
+  - The order: 3db7ed07 is protected until its three jobs have started (`main`'s next candidate). Then J2's carry
+    (U1's air patch) and card A's item 3 (28bd43e, 604404a, e142b06 with the held-clock case: green in 20 s; with
+    the job's wait put on the frame's clock its first section hangs) BACK TO BACK: whoever is ready first pushes,
+    the second merges it, builds everything, runs the assistant's, the shell's and the ui's suites and pushes at
+    once; the second tip is the protected one. Then B's window test of the wake (60c7e975 the `--minimise-after`
+    option, 69c51106 `scripts/run-wake.sh` and its ctest copy; with `setWake`'s call in `app/Main.cpp` made a no-op
+    the script fails: "timed out before the app took it"), read by the lead from patches first, with a run on a
+    loaded machine asked for; then one block in `build.yml`'s "Run the application" step, applied by the steward
+    on the lead's word.
 - **27 Nov 18:16 UTC: X-065, THE SOAK ON 3ba103f4 ENDED RED, AND EVERY RED ROW HAS THE PLACES LISTENER ON.** The lead's
   read of the job's log (run 46032401939, linux-x64-soak, 16:54 to 18:09; 4373 s against 4251; 221 of 228;
   `ui.build.reverse` passed, 43 s). Seven tests, eleven assertions, all the click judge at
