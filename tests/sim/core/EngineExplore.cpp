@@ -1257,3 +1257,49 @@ TEST_CASE("Item 15: the outside's pressure, the predictions measured", "[.item15
                         b.field("ecu.state"), b.tel("engine.speed") * k);
         }
 }
+
+// Item 18's null (27 Nov): the shipped sequentials pulling away and shifting at speed, up through four gears and down
+// two, at full and part pedal; a hash of the sound, the speed and the robotised clutch each block, to diff between two
+// sim/ trees (TEE_CORE_SIM) (hidden: "[.seqhash]")
+TEST_CASE("Item 18: the sequentials' shifts at speed, hashed", "[.seqhash]")
+{
+    for (const char* build : {"archetypes/inline-five-turbo-rally", "archetypes/rotary-twin-13"})
+        for (float pedal : {1.0f, 0.3f})
+        {
+            Bench b(build);
+            b.start();
+            b.ctl().mode = 1;
+            b.play(0.2);
+            std::uint64_t h = 1469598103934665603ull;
+            auto mix = [&](const void* p, std::size_t n) {
+                const unsigned char* c = static_cast<const unsigned char*>(p);
+                for (std::size_t i = 0; i < n; ++i)
+                    h = (h ^ c[i]) * 1099511628211ull;
+            };
+            double minRobotShift = 1;
+            auto each = [&] {
+                mix(b.left().data(), b.left().size() * sizeof(float));
+                const double w = b.tel("engine.speed"), r = b.field("car.m1.box.robot");
+                mix(&w, sizeof w);
+                mix(&r, sizeof r);
+                if (b.field("car.m1.box.shifting") != 0.0)
+                    minRobotShift = std::min(minRobotShift, r);
+            };
+            b.ctl().shiftUp += 1;
+            b.play(0.3, each);
+            b.ctl().throttle = pedal;
+            for (int g = 0; g < 3; ++g)
+            {
+                b.play(pedal > 0.5f ? 2.5 : 4.0, each);
+                b.ctl().shiftUp += 1;
+            }
+            b.play(2.0, each);
+            for (int g = 0; g < 2; ++g)
+            {
+                b.ctl().shiftDown += 1;
+                b.play(1.5, each);
+            }
+            std::printf("%-36s pedal %.1f: %016llx; gear %g at %.1f km/h; robot while shifting down to %.3f\n", build, pedal,
+                        (unsigned long long)h, b.tel("car.gear"), b.tel("car.speed") * 3.6, minRobotShift);
+        }
+}
