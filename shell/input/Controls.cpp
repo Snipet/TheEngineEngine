@@ -116,7 +116,8 @@ namespace tee::input
     {
         if (driver_.gearbox() != Gearbox::eighteen)
             return status_;
-        const std::string note = "eighteen-speed: the clutch is yours (Left Shift, or the wheel's pedal)";
+        const std::string note = "eighteen-speed: the clutch is yours (Left Shift, or the wheel's pedal); start in L "
+                                 "(key 5) with the clutch down";
         return status_.empty() ? note : status_ + "   " + note;
     }
 

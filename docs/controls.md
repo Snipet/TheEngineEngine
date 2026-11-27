@@ -47,7 +47,9 @@ What a press reaches depends on the build's gearbox (read from the build each fr
 Reference, reads no gearbox and is driven as a manual's paddles whatever the field says):
 
 - **Manual, sequential, dual clutch: the shift counters.** As above: E and Q (and the wheel's paddles) are a shift up
-  and down; a gear key or the wheel's shifter seeks that gear through them.
+  and down; a gear key or the wheel's shifter seeks that gear through them. A sequential box shifted at a standstill
+  can stall today (a shift into second, or back down, with the car still: X-056, the simulator's, until its fix lands):
+  pull away in first.
 - **Automatic, CVT: the selector.** The box picks its own gears in D; the controls move its selector, R, N, D, held
   whatever the automatic clutch says. E (a paddle up) steps towards D: R to N, N to D. Q (a paddle down) steps towards
   R, and out of D only at a crawl (under 5 km/h): at speed Q does nothing, so a press hoping for a kickdown never drops
@@ -59,8 +61,9 @@ Reference, reads no gearbox and is driven as a manual's paddles whatever the fie
   the revs matched, grinds as the box says. The keys 1 to 4 (and the shifter's gates 1 to 4) are the lever's
   positions, 5 the L slot (gears 1 and 2, low range), 6 nothing, reverse R, N neutral. E and Q are the next gear of
   the eighteen in order, up or down: the lever's position and the splitter and range that gear wants, refused at 1 and
-  18; Z and X then toggle from where the press left them. While an eighteen-speed is loaded the status line says the
-  clutch is yours.
+  18; Z and X then toggle from where the press left them. A truck starts in L (key 5, or the shifter's gate 5) with the
+  clutch down: key 1 is third, and a clutch let up there without throttle stalls it. While an eighteen-speed is loaded
+  the status line says the clutch is yours and where to start.
 
 Until 27 Nov the automatic, the CVT and the eighteen-speed sat in neutral whatever was pressed (the automatic clutch
 held the lever they read at neutral; 13 shipped builds: the owner's report). `tests/shell/GearboxDrivingTest.cpp`
