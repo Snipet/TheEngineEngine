@@ -41,7 +41,7 @@ export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-dummy}"
 "$app" --minimise-after 30 > "$work/app.log" 2>&1 &
 pid=$!
 
-# the window down (its first report) and the link open, within a minute (the simulator's compile comes first)
+# the window down (its first report) and the link open (at launch, before the simulator is ready), within a minute
 for _ in $(seq 600); do
   grep -q '^minimise: [0-9.]* s ' "$work/app.log" && [ -S "$work/link/app.sock" ] && break
   kill -0 "$pid" 2>/dev/null || { echo "run-wake: the app ended before its window was down:" >&2; cat "$work/app.log" >&2; exit 1; }
@@ -54,6 +54,8 @@ sleep 1   # a second down, ticks or none, before the call
 last() { grep '^minimise: [0-9.]* s ' "$work/app.log" | tail -1; }
 before=$(last)
 ticksBefore=${before##*ticks=}
+# the simulator as the call is sent: get_build reads only the document, so a call while it compiles must answer too
+simulator=$(echo "$before" | sed -nE 's/.* simulator=([a-z]+) .*/\1/p')
 
 # initialize, then the call; stdin held open 6 s so that tee-mcp waits for the answer, then let go
 start=$(date +%s.%N)
@@ -76,12 +78,12 @@ wait "$feeder" 2>/dev/null || true
 sleep 0.6   # one more report after the answer
 after=$(last)
 ticksAfter=${after##*ticks=}
-flags=$(echo "$after" | sed -E 's/^minimise: [0-9.]+ s ([^t]*)ticks=.*/\1/; s/ +$//')
+flags=$(echo "$after" | sed -E 's/^minimise: [0-9.]+ s (.*) simulator=.*/\1/')
 hidden=
 grep -q 'not honoured here' "$work/app.log" && hidden=" (minimise not honoured: hidden instead)"
 
 if ! grep -q '"id":2' "$work/mcp.out"; then
-  echo "run-wake: FAILED: no answer within 6 s; window: $flags$hidden; ticks $ticksBefore before the call, $ticksAfter after"
+  echo "run-wake: FAILED: no answer within 6 s; window: $flags$hidden; ticks $ticksBefore before the call, $ticksAfter after; simulator ${simulator:-not said} at the call"
   echo "---- tee-mcp's stderr"; cat "$work/mcp.err"
   exit 1
 fi
@@ -89,8 +91,8 @@ if grep '"id":2' "$work/mcp.out" | grep -q '"isError":true'; then
   echo "run-wake: FAILED: the call answered with an error:"; grep '"id":2' "$work/mcp.out" | cut -c1-400
   exit 1
 fi
-printf 'run-wake: answered in %.2f s; window: %s%s; ticks %s before the call, %s after the answer\n' \
-  "$took" "$flags" "$hidden" "$ticksBefore" "$ticksAfter"
+printf 'run-wake: answered in %.2f s; window: %s%s; ticks %s before the call, %s after the answer; simulator %s at the call\n' \
+  "$took" "$flags" "$hidden" "$ticksBefore" "$ticksAfter" "${simulator:-not said}"
 if [ "$ticksBefore" != "$ticksAfter" ]; then
   echo "run-wake: note: the window ticked meanwhile, so this run does not show a drain without a frame"
 fi

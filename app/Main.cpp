@@ -465,9 +465,10 @@ namespace
             SDL_Window* w = hostSeen != nullptr ? hostSeen->window() : nullptr;
             const SDL_WindowFlags f = w != nullptr ? SDL_GetWindowFlags(w) : 0;
             const double t = static_cast<double>(SDL_GetTicks() - minimise.since) / 1000.0;
-            std::printf("minimise: %.1f s minimised=%d hidden=%d occluded=%d ticks=%u\n", t,
+            const char* sim = engine.sim == nullptr ? "none" : engine.sim->ready() ? "ready" : "compiling";
+            std::printf("minimise: %.1f s minimised=%d hidden=%d occluded=%d simulator=%s ticks=%u\n", t,
                         (f & SDL_WINDOW_MINIMIZED) != 0, (f & SDL_WINDOW_HIDDEN) != 0, (f & SDL_WINDOW_OCCLUDED) != 0,
-                        ticksSeen);
+                        sim, ticksSeen);
             std::fflush(stdout);
             if (w != nullptr && t >= 1.0 && !minimise.hidden && (f & SDL_WINDOW_MINIMIZED) == 0)
             {
