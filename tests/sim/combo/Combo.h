@@ -75,7 +75,9 @@ namespace combo
     tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times,
                                  double shiftPhase = 0.0);
     // Its timeline as a tee-scenario file (for the tools and the listening pack).
-    std::string scenarioJson(Kind kind, std::uint32_t mask);
+    std::string scenarioJson(Kind kind, std::uint32_t mask, bool drive = false);
+    // the build file's box is an automatic or a CVT: the scenarios put its lever in D to drive (see steps)
+    bool leverDrives(const std::string& buildFile);
     // Where those files are: content/scenarios/combo/ (tee-render takes them by path, not by name).
     std::filesystem::path scenarioDirectory();
 
@@ -153,7 +155,7 @@ namespace combo
     double stepExcess(const tee::test::Run& run, double from, double to, double* at = nullptr, double* period = nullptr);
     // The reference sets kept across one job's processes (Combo.cpp): a set's file name from everything that decides it
     // (empty: nothing kept); a kept set read back (false: a miss, the set is played); one written; a tree's hash
-    std::string referenceKey(const std::string& build, Kind kind, bool copies);
+    std::string referenceKey(const std::string& build, Kind kind, bool copies, bool drive = false);
     bool readKeptReference(const std::string& key, double& step, std::vector<double>& excess);
     void keepReference(const std::string& key, double step, const std::vector<double>& excess);
     std::uint64_t referenceTreeHash(const std::filesystem::path& dir);
