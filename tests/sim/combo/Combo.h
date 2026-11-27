@@ -83,7 +83,23 @@ namespace combo
     // were a stalled engine's). Every reference play calls it, before its figures are used or kept.
     void requireReferenceRuns(const tee::test::Run& run, const Times& times, const std::string& what);
     // Its timeline as a tee-scenario file (for the tools and the listening pack).
-    std::string scenarioJson(Kind kind, std::uint32_t mask, bool drive = false);
+    // How a scenario drives a build's box: by the shift presses (the lever in N: a manual, a sequential, a dual clutch,
+    // and every reference), by the lever in D (an automatic, a CVT), or as a truck's pull-away in one gear (the
+    // eighteen-speed: the clutch, the L slot, the clutch let up; the pull only)
+    enum class Driver
+    {
+        Presses,
+        Lever,
+        Truck
+    };
+    Driver driverFor(const std::string& buildFile);
+    // the truck's clutch let up over this many seconds (picked by measurement: 17 nudges, no stall)
+    inline constexpr double kTruckClutchRamp = 1.0;
+    double truckClutchRamp();
+    // the slot it pulls away in (ctl.lever: 5 is L, gear 1; roadranger.fm)
+    inline constexpr int kTruckSlot = 5;
+    int truckSlot();
+    std::string scenarioJson(Kind kind, std::uint32_t mask, Driver driver = Driver::Presses);
     // the build file's box is an automatic or a CVT: the scenarios put its lever in D to drive (see steps)
     bool leverDrives(const std::string& buildFile);
     // Where those files are: content/scenarios/combo/ (tee-render takes them by path, not by name).
