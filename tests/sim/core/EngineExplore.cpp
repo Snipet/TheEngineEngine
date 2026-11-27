@@ -5,6 +5,10 @@
 #include "tee/Warm.h"
 
 #include <algorithm>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -1136,4 +1140,166 @@ TEST_CASE("Item 19: the readers of ecu.redRpm on the governed builds", "[.item19
             std::printf("   dyno %.0f rpm full pedal: torque %.2f N m, boost %.0f Pa\n", rpm, tq / n, bp / n);
         }
     }
+}
+
+// Item 15's null (27 Nov): every shipped build (content/builds, not parts/), from its start, 1 s at idle, 1 s at full
+// pedal, 1 s off it, free (mode 0); a hash of both channels' every sample and of the engine's speed each block, printed
+// per build, to diff between two sim/ trees (TEE_CORE_SIM). TEE_SIMHASH_ONLY: a substring a build's name must hold
+// (hidden: "[.simhash]")
+TEST_CASE("Item 15: every shipped build's sound and speed, hashed", "[.simhash]")
+{
+    std::vector<std::string> names;
+    const auto root = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds";
+    for (const auto& e : std::filesystem::recursive_directory_iterator(root))
+    {
+        if (!e.is_regular_file() || e.path().extension() != ".json")
+            continue;
+        const std::string rel = std::filesystem::relative(e.path(), root).replace_extension("").generic_string();
+        if (rel.rfind("parts/", 0) == 0)
+            continue;
+        {
+            std::ifstream in(e.path());
+            std::stringstream ss;
+            ss << in.rdbuf();
+            if (ss.str().find("\"format\": \"tee-build\"") == std::string::npos)
+                continue;   // (a data file beside the builds: bake-maps.json)
+        }
+        if (const char* only = std::getenv("TEE_SIMHASH_ONLY"); only != nullptr && rel.find(only) == std::string::npos)
+            continue;
+        names.push_back(rel);
+    }
+    std::sort(names.begin(), names.end());
+    for (const std::string& name : names)
+    {
+        Bench b(name);
+        b.start();
+        std::uint64_t h = 1469598103934665603ull;
+        auto mix = [&](const void* p, std::size_t n) {
+            const unsigned char* c = static_cast<const unsigned char*>(p);
+            for (std::size_t i = 0; i < n; ++i)
+                h = (h ^ c[i]) * 1099511628211ull;
+        };
+        auto each = [&] {
+            mix(b.left().data(), b.left().size() * sizeof(float));
+            mix(b.right().data(), b.right().size() * sizeof(float));
+            const double w = b.tel("engine.speed");
+            mix(&w, sizeof w);
+        };
+        b.play(1.0, each);
+        b.ctl().throttle = 1.0f;
+        b.play(1.0, each);
+        b.ctl().throttle = 0.0f;
+        b.play(1.0, each);
+        std::printf("%-56s %016llx  %.6f rad/s\n", name.c_str(), (unsigned long long)h, b.tel("engine.speed"));
+    }
+}
+
+// Item 15's predictions (27 Nov), each at 101325 and 70000 Pa (spec.env.pressure written before the start): the dyno
+// at full pedal (BMEP and its parts, the plenum, the boost), the idle after 6 s, and a cold start's time to running
+// (hidden: "[.item15pred]")
+TEST_CASE("Item 15: the outside's pressure, the predictions measured", "[.item15pred]")
+{
+    using tee::EnginePlayer;
+    const double k = 9.5492966;
+    for (const char* build : {"default", "archetypes/economy-four-15", "archetypes/turbo-four-20-gdi"})
+        for (double rpm : {2000.0, 3000.0, 5000.0})
+            for (double pa : {101325.0, 70000.0})
+            {
+                Bench b(build);
+                b.write("spec.env.pressure", pa);
+                b.start();
+                b.warm();
+                b.ctl().mode = 2;
+                b.ctl().throttle = 1.0f;
+                b.ctl().dynoSpeed = float(rpm / k);
+                b.play(5.0);
+                double im = 0, pm = 0, fm = 0, bm = 0, pl = 0, bp = 0, tq = 0, n = 0;
+                b.play(1.0, [&] {
+                    im += b.tel("engine.imep");
+                    pm += b.tel("engine.pmep");
+                    fm += b.tel("engine.fmep");
+                    bm += b.tel("engine.bmep");
+                    pl += b.field("intk.pPlenum");
+                    bp += b.tel("boost.pressure");
+                    tq += b.tel("engine.dynoTorque");
+                    ++n;
+                });
+                std::printf("%-30s %4.0f rpm at %6.0f Pa: IMEP %.2f PMEP %.2f FMEP %.2f BMEP %.2f bar; torque %.1f N m; plenum %.0f Pa abs; "
+                            "boost.pressure %.0f\n", build, rpm, pa, im / n * 1e-5, pm / n * 1e-5, fm / n * 1e-5, bm / n * 1e-5, tq / n, pl / n, bp / n);
+            }
+    for (const char* build : {"default", "archetypes/economy-four-15", "archetypes/v10-52"})
+        for (double pa : {101325.0, 70000.0})
+        {
+            Bench b(build);
+            b.write("spec.env.pressure", pa);
+            b.start(6.0);
+            double w = 0, n = 0;
+            b.play(1.0, [&] {
+                w += b.tel("engine.speed") * k;
+                ++n;
+            });
+            std::printf("idle %-30s at %6.0f Pa: %.1f rpm (target %.1f), state %g, plenum %.0f Pa\n", build, pa, w / n, b.field("ecu.idleRpm"),
+                        b.field("ecu.state"), b.field("intk.pPlenum"));
+        }
+    for (const char* build : {"default", "large-diesel", "diesel-v8-truck"})
+        for (double pa : {101325.0, 70000.0})
+        {
+            Bench b(build);
+            b.write("spec.env.pressure", pa);
+            b.ctl().ignition = EnginePlayer::kIgnitionStart;
+            double t = 0, at = -1;
+            b.play(4.0, [&] {
+                t += 512.0 / 48000.0;
+                if (at < 0 && b.field("ecu.state") == 2.0)
+                    at = t;
+            });
+            std::printf("cold start %-24s at %6.0f Pa: running after %.3f s (block-timed), state %g, %.0f rpm\n", build, pa, at,
+                        b.field("ecu.state"), b.tel("engine.speed") * k);
+        }
+}
+
+// Item 18's null (27 Nov): the shipped sequentials pulling away and shifting at speed, up through four gears and down
+// two, at full and part pedal; a hash of the sound, the speed and the robotised clutch each block, to diff between two
+// sim/ trees (TEE_CORE_SIM) (hidden: "[.seqhash]")
+TEST_CASE("Item 18: the sequentials' shifts at speed, hashed", "[.seqhash]")
+{
+    for (const char* build : {"archetypes/inline-five-turbo-rally", "archetypes/rotary-twin-13"})
+        for (float pedal : {1.0f, 0.3f})
+        {
+            Bench b(build);
+            b.start();
+            b.ctl().mode = 1;
+            b.play(0.2);
+            std::uint64_t h = 1469598103934665603ull;
+            auto mix = [&](const void* p, std::size_t n) {
+                const unsigned char* c = static_cast<const unsigned char*>(p);
+                for (std::size_t i = 0; i < n; ++i)
+                    h = (h ^ c[i]) * 1099511628211ull;
+            };
+            double minRobotShift = 1;
+            auto each = [&] {
+                mix(b.left().data(), b.left().size() * sizeof(float));
+                const double w = b.tel("engine.speed"), r = b.field("car.m1.box.robot");
+                mix(&w, sizeof w);
+                mix(&r, sizeof r);
+                if (b.field("car.m1.box.shifting") != 0.0)
+                    minRobotShift = std::min(minRobotShift, r);
+            };
+            b.ctl().shiftUp += 1;
+            b.play(0.3, each);
+            b.ctl().throttle = pedal;
+            for (int g = 0; g < 3; ++g)
+            {
+                b.play(pedal > 0.5f ? 2.5 : 4.0, each);
+                b.ctl().shiftUp += 1;
+            }
+            b.play(2.0, each);
+            for (int g = 0; g < 2; ++g)
+            {
+                b.ctl().shiftDown += 1;
+                b.play(1.5, each);
+            }
+            std::printf("%-36s pedal %.1f: %016llx; gear %g at %.1f km/h; robot while shifting down to %.3f\n", build, pedal,
+                        (unsigned long long)h, b.tel("car.gear"), b.tel("car.speed") * 3.6, minRobotShift);
+        }
 }

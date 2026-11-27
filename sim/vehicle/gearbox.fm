@@ -61,6 +61,7 @@ module VehGearbox
     float aFrom;        // how far the old gear's coupling is closed, 0 to 1
     float aTo;          // the new gear's
     float robot;        // the automatic clutch, 0 open to 1 closed
+    float robotHeld;    // the automatic clutch as a shift began: a dog shift holds it there (X-056, queue item 18)
     bool synced;        // the automatic clutch has synchronised in this gear (locked, either way): held closed by the road's
                         // speed until a shift, neutral, the pedal or a stall (card D as integrator, the lead's leave)
     bool cut;           // asks the ECU to cut the ignition
@@ -129,6 +130,7 @@ module VehGearbox
         aTo = 0.0f;
         dur = kind == VEH_AUTOMATIC || kind == VEH_CVT ? 2.5f * shiftTime : shiftTime;
         sinceShift = 0.0f;
+        robotHeld = robot;
     }
 
     // The gear the counters ask for from `g`, within lo to hi; into reverse only at a crawl, never down into a gear
@@ -284,7 +286,9 @@ module VehGearbox
                         blip = 0.0f;
                     }
                 }
-                robot = 1.0f;       // (a dog shift leaves the clutch closed)
+                // a dog shift leaves the clutch where it was as the shift began: closed at speed, open at rest (X-056: a
+                // closed clutch here pulled a standing car through the dogs and stalled the engine; queue item 18, 27 Nov)
+                robot = robotHeld;
             }
             aFrom = 1.0f;
             aTo = 0.0f;

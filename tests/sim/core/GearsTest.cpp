@@ -47,9 +47,10 @@ TEST_CASE("each gearbox kind leaves rest by the input it reads", "[core][engine]
     }
 }
 
-// X-056 (B's trace; the lead's drive of 35a733d1): the sequential's dog shift sets the robotised clutch to 1.0
-// (gearbox.fm:283) whatever the launch held, so at rest it closes a clutch the launch had open. Fails today.
-TEST_CASE("X-056: at rest, two up presses: the engine stays above 0.85 x idle and the car stays put", "[core][engine][gears][!shouldfail]")
+// X-056 (B's trace; the lead's drive of 35a733d1): the sequential's dog shift set the robotised clutch to 1.0 whatever
+// the launch held, so at rest it closed a clutch the launch had open. Cured by queue item 18 (27 Nov): the dog shift
+// holds the clutch where it was as the shift began (gearbox.fm, robotHeld); before it, 386 rpm and 3.27 km/h here.
+TEST_CASE("X-056: at rest, two up presses: the engine stays above 0.85 x idle and the car stays put", "[core][engine][gears]")
 {
     Bench b(kRally);
     atRest(b);
@@ -71,9 +72,9 @@ TEST_CASE("X-056: at rest, two up presses: the engine stays above 0.85 x idle an
 
 // X-056, the lead's case (27 Nov): at rest, up, up, then down. Through the application (tee-headless, 35a733d1) the
 // shipped rally five stalls 0.15 s after the down (2 to 1, 100 ms shut with its blip) and stays stalled. On this Bench
-// (measured 27 Nov) it does not stall: it sags to 287 rpm and recovers. So the case asks for both: still running a
-// second after the down, and never under 0.85 x idle. Fails today on the second.
-TEST_CASE("X-056: at rest, up, up, down: the engine still runs a second after the down", "[core][engine][gears][!shouldfail]")
+// (measured 27 Nov) it does not stall: it sagged to 287 rpm and recovered. So the case asks for both: still running a
+// second after the down, and never under 0.85 x idle. Cured by queue item 18 (as above).
+TEST_CASE("X-056: at rest, up, up, down: the engine still runs a second after the down", "[core][engine][gears]")
 {
     Bench b(kRally);
     atRest(b);

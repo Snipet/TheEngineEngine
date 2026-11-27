@@ -183,6 +183,14 @@ After the guard's shift (case 2), synced in second near 1000 rpm on the overrun,
 ("[.x056guard]"): the clutch letting go as the revs fall under the idle. The lead: not numbered; it gets a number only
 if X's judge or an ear finds it.
 
+**Item 18 measured (27 Nov, 89963aee):** the misses, as the lead took them. At rest the engine still dips 65 rpm under
+idle (1190 against 1255; 30 was predicted) after an up: the up's 60 ms ignition cut (gearbox.fm, cut = t < 0.06)
+still fires at a standstill with the clutch open, where it cuts nothing but the idle. A QUESTION for item 16's owner
+(the steward, launch.fm's cut for as long as the vehicle asks), not for today: should the cut be asked at all when the
+clutch is open? The robot reaches 0.03 (the launch's own drag at idle), not 0. On the application's path the car is at
+0.53 km/h at 6 s: the idle creep in first before any shift (0.28 km/h at 3.85 s on both trees), so the prediction's
+wording was wrong, not the cure.
+
 Prediction for the held-value cure, to check when the window opens: the robot stays 0 through all three shifts of
 case 3 (and both of case 1), since each begins with the launch's clutch open at rest, and so the engine neither dips
 on the up to 2 nor stalls on the down to 1.
