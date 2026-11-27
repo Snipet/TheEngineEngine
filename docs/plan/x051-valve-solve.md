@@ -271,6 +271,65 @@ keeps the passes until N1's field). Before its first run:
    be 0: the scratch trees' histogram had solves of 15 or more evaluations.
 5. The other exhaust cases under the builder move within their bounds; a red one is explained, never loosened.
 
+## The real code, as measured (27 Nov, G; local commit 7f7219ea on dfd86fcd, nothing pushed under sim/)
+
+**Against the predictions above:** 1 held (ref.null and test 2 to the bit; with exhaust.model 0 the switch is not
+heard). 2 held. 3: chatter 228 on the passes (predicted about 270), 0 converged. 4: chatter 0 on all nine shipped
+boosted builds' start, pull and lug. "Unfinished" first read 1 to 49 a run, mostly on the lugs. 5: two cases went
+red on the first tier (below).
+
+**Two changes to the solve after its first run** (neither loosens a test):
+- **The bracket-halving safeguard.** A secant step is taken only while the bracket has at least halved in two steps;
+  otherwise bisect. Found on the turbo six's into-branch at a 58 Pa drop, where the secant wandered for 24
+  evaluations. It is likely what duct.fm's old note about a Newton that chattered at a tiny drop meant.
+- **The tolerance scaled to the valve.** The bracket and step tests are now `1e-4 x` the valve's own scale (its
+  choked flow at pq: C psi*/pq out, ci psi* in) `+ 1e-4 q`, where they were a fixed `1e-6 m^3/s + 1e-4 q`. At a
+  trickle (a tiny drop on a lug) a fixed 1e-6 sat under float32's resolution of the root, and the solve bisected to
+  24 evaluations. After both changes, "unfinished" reads 0 on every nightly run and on the turbo six.
+- **What an unfinished solve returns:** its last point, strictly inside the kept bracket. The safeguard halves that
+  bracket at least every two evaluations, so after 24 its error is under about 2^-11 of the top, roughly 5e-4 of the
+  valve's choked flow, on one sample. Today's passes are wrong by up to 98 % on a chattering sample. Neither the
+  null (the switch is gated by the model) nor an ear could tell one such sample. The counter is there to keep it at 0.
+
+**The tier:** 580 of 582 in 7 min 26 s, from the scratchpad worktree, -j4. The two reds are the window's known
+ones. host.sim.bakes: the knock key mixes `sim->sourceHash()`, so any sim change stales it until P bakes.
+assistant.sim: its socket path under the long worktree path is 118 characters, over the 108 limit, which is
+environmental. The tier of record is one whole run from a short path.
+
+**The two moves, each spread over 51 nudges of the air (+-0.1625 K) on both trees** (predictions written first, in
+the scratchpad's x049/pred-two-moves.txt):
+
+| | the tip | item 17 |
+|---|---|---|
+| the rally five's lift, Burned - Carved (median) | +0.99 dB | +0.54 dB |
+| copies under the case's -2 dB | 2 of 51 (worst -3.28) | 2 of 51 (worst -3.95) |
+| Carved body / Burned body (median, dBFS) | -26.42 / -25.34 | -25.88 / -25.31 |
+| the flat-plane V8 at 8700 rpm, torque (mean, sd) | 396.50 (1.69) N m | 392.28 (1.28) N m |
+| its standard error over 0.005 of the torque | 6 of 51 | 16 of 51 |
+
+- **The lift is a sometimes thing on both trees**, 2 of 51 each, so it is a row with a count, not item 17's. The
+  converged valve does not move the bangs' body (Burned -25.34 against -25.31). It raises the Carved body by
+  0.5 dB, which narrows the margin. The owner's default ("burned in the pipe") reads as it did. My prediction A held
+  on 51 copies; on the first 17 the tip had none under -2.
+- **The V8 moves in both its torque and its noise. My prediction B was wrong.** Its passes never chatter at
+  8700 rpm (counter 0, both switches), but the pipe floor binds: 728 floored solves a point on the passes, 458
+  converged.
+  - **The torque** (-1.1 %, about 2.5 sd) is a correction. With the passes kept wherever the floor binds, the torque
+    still reads 392.35 N m. So it comes from ordinary samples, where the passes sit about 1 % off the equation's root.
+  - **The noise tail** is the floor's. With the passes kept where the floor binds, it reads 7 of 51, the tip's rate.
+    So it comes from the converged root landing on the 8000 Pa clamp: the linear wave beyond its range.
+  - **The passes on floored samples are no cure.** With that gate the turbo six's pull reads 5 chatters
+    (4321 floored on the passes, 66 converged) and the twin-turbo six's pull 1. The nightly and the chatter case go
+    red.
+- **So item 17 as built cures the chatter everywhere,** but triples how often the V8's top point fails the
+  predictor's settle floor (6 to 16 of 51). That case is one draw; it passes at the case's own draw on both trees
+  today. The honest cure for the tail is the pipes' linear rarefaction (§ the edges, "the floor in running"), not
+  this solve. That is a design of its own, not this window's.
+
+**The cost:** on the replay, with the real tolerance, 40.9 against 44.6 ns a call (-8 %), 1.67 evaluations a call,
+0 out of evaluations. The whole program (tee-fuzz --play turbo-six pull, 9 alternated runs, tip against item 17's
+tree): +0.7 % in median, pairs from -1.3 to +1.0 points, within the noise.
+
 ## Acceptance, written before code
 
 1. **The null, to the bit,** with both models off or both switches off: ref.null (every preset, the layouts, the
