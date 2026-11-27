@@ -5,6 +5,7 @@
 #define TEE_REGISTER_SHARED_SIM
 #include "Rig.h"
 #include "tee/Predict.h"
+#include "tee/assistant/McpWire.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -228,10 +229,39 @@ TEST_CASE("assistant: loading over unsaved changes asks the owner first", "[assi
     CHECK(rig.build().name == name);
 
     rig.answer.reset();   // silence
+    REQUIRE(rig.withdrawals.size() == 1);
+    CHECK(rig.withdrawals[0] != nullptr);
+    CHECK(rig.withdrawals[0]->load());   // answered: withdrawn too (a flag raised after the answer does nothing)
     r = rig.call("load_build", {{"name", "v10"}});
     CHECK(r.isError);
-    CHECK(r.value["error"].get<std::string>().find("did not answer") != std::string::npos);
+    // in words that stop Claude asking again in a loop: the question is gone, and why
+    CHECK(r.value["error"].get<std::string>().find("has not answered") != std::string::npos);
+    CHECK(r.value["error"].get<std::string>().find("taken off their screen") != std::string::npos);
+    CHECK(r.value["error"].get<std::string>().find("Do not ask again") != std::string::npos);
     CHECK(rig.build().hash() == hash);
+    // the unanswered question is withdrawn, so the app takes it down: a retry would show one question, not two
+    REQUIRE(rig.withdrawals.size() == 2);
+    CHECK(rig.withdrawals[1]->load());
+    // and a call cancelled while the owner is asked withdraws its question as well
+    {
+        std::atomic<bool> stop{false};
+        auto pending = std::async(std::launch::async, [&] {
+            return rig.tools->call("load_build", {{"name", "v10"}}, &stop);
+        });
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while (rig.withdrawals.size() < 3 && std::chrono::steady_clock::now() < until)
+        {
+            rig.frame();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        REQUIRE(rig.withdrawals.size() == 3);
+        CHECK_FALSE(rig.withdrawals[2]->load());   // still showing while the call waits
+        stop = true;
+        while (pending.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+            rig.frame();
+        CHECK(pending.get().isError);
+        CHECK(rig.withdrawals[2]->load());
+    }
 
     rig.answer = true;    // yes, but the build is changed while the owner is asked
     const FieldInfo& f0 = *fields[0].first;
@@ -245,12 +275,28 @@ TEST_CASE("assistant: loading over unsaved changes asks the owner first", "[assi
     r = rig.call("load_build", {{"name", "v10"}});
     INFO(r.text());
     CHECK_FALSE(r.isError);
-    CHECK(rig.questions.size() == 4);
+    CHECK(rig.questions.size() == 5);
     CHECK(rig.build().name != name);
     CHECK_FALSE(rig.file->dirty());
     // a part is not a whole build
     for (const files::BuildSummary& s : rig.library->list())
         CHECK(s.part.empty());
+}
+
+TEST_CASE("assistant: every tool ends inside the MCP client's 60 s, and the bridge answers before it does", "[assistant]")
+{
+    // The MCP SDK's DEFAULT_REQUEST_TIMEOUT_MSEC is 60 000 (progress resets it only when the client opts in): a tool
+    // that ran longer would leave Claude Desktop with a timeout and the app still working. A tool's longest path is its
+    // jobs' waits for the frame and its own limit.
+    const Limits l;
+    const double client = 60.0;
+    CHECK(wire::kCallSeconds < client);
+    INFO("load_build over unsaved changes: two jobs and the owner's answer");
+    CHECK(2.0 * l.jobSeconds + l.askSeconds < wire::kCallSeconds);
+    INFO("run_dyno: a job and the run");
+    CHECK(l.jobSeconds + l.dynoSeconds < wire::kCallSeconds);
+    INFO("predict_curve: a job and the prediction");
+    CHECK(l.jobSeconds + l.predictSeconds < wire::kCallSeconds);
 }
 
 TEST_CASE("assistant: save-as refuses a name that is already a build's, and overwrites nothing", "[assistant][sharedsim]")
@@ -340,6 +386,113 @@ TEST_CASE("assistant: a batch waits while a control is held, and never joins its
     rig.build().endGesture();
     CHECK(late.isError);
     CHECK(rig.build().get(asked.path) == stored);
+}
+
+TEST_CASE("assistant: with the frame's clock held still, every tool ends by its own real-time limit", "[assistant][sharedsim]")
+{
+    // The app's clock is its frame count: it stands still while the window is minimised. Every wait a tool makes must
+    // end in real time all the same, both with no frame at all (minimised, nothing woken) and with the inbox drained
+    // but the clock still (the wake while minimised). The limits are made small here; each call must end by its own
+    // path's sum of them (the defaults' sums are inside the bridge's 55 s: the case above), never on the frame's clock.
+    Limits l;
+    l.jobSeconds = 0.3;
+    l.gestureSeconds = 0.6;
+    l.askSeconds = 0.6;
+    l.predictSeconds = 0.6;
+    l.dynoSeconds = 0.6;
+    Rig rig("clock-held", l);
+    const double slack = 3.0;   // a loaded runner
+    const auto fields = rig.settable(1);
+    REQUIRE(fields.size() == 1);
+    const json change = {{"changes", {{{"path", shortPath(*fields[0].first)}, {"value", fields[0].second}}}}};
+    struct Call
+    {
+        std::string name;
+        json args;
+        double within;   // the call's longest real-time path
+    };
+    const std::vector<Call> calls = {
+        {"get_status", json::object(), l.jobSeconds},
+        {"describe_field", {{"path", shortPath(*fields[0].first)}}, l.jobSeconds},
+        {"get_build", json::object(), l.jobSeconds},
+        {"list_builds", json::object(), l.jobSeconds},
+        {"set_fields", change, l.jobSeconds + l.gestureSeconds},
+        {"load_build", {{"name", "v8"}}, 2.0 * l.jobSeconds + l.askSeconds},
+        {"save_build_as", {{"name", "clock held"}}, l.jobSeconds},
+        {"predict_curve", json::object(), l.jobSeconds + l.predictSeconds},
+        {"run_dyno", {{"from_rpm", 1000}, {"to_rpm", 6000}}, l.jobSeconds + l.dynoSeconds},
+    };
+    REQUIRE(calls.size() == rig.tools->list().size());
+    const double frozen = rig.clock;
+    const auto timed = [&](const Call& c) {
+        const auto t0 = std::chrono::steady_clock::now();
+        auto f = std::async(std::launch::async, [&] { return rig.tools->call(c.name, c.args); });
+        const bool ended = f.wait_for(std::chrono::duration<double>(c.within + slack)) == std::future_status::ready;
+        INFO(c.name);
+        REQUIRE(ended);   // else it waits on the frame's clock: the future's destructor would hang here
+        const Result r = f.get();
+        INFO(r.text());
+        CHECK(std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() < c.within + slack);
+        return r;
+    };
+    SECTION("minimised: no frame at all")
+    {
+        for (const Call& c : calls)
+            CHECK(timed(c).isError);   // nothing was taken: nothing was done
+        CHECK(rig.clock == frozen);
+    }
+    SECTION("woken while minimised: the inbox drained, the clock still")
+    {
+        // the owner holds a control, the open build has unsaved changes the owner is never asked about in time
+        rig.build().set(fields[0].first->path, fields[0].second);
+        REQUIRE(rig.file->dirty());
+        rig.build().beginGesture();
+        std::atomic<bool> stop{false};
+        std::thread wake([&] {
+            while (!stop.load())
+            {
+                rig.inbox.drain();   // what the wake does: no frame counted
+                std::this_thread::sleep_for(std::chrono::milliseconds(75));
+            }
+        });
+        rig.othersBusy = true;   // and the app's own curve or bake running
+        for (const Call& c : calls)
+        {
+            const Result r = timed(c);
+            if (c.name == "set_fields" || c.name == "load_build" || c.name == "predict_curve" || c.name == "run_dyno")
+                CHECK(r.isError);
+        }
+        stop = true;
+        wake.join();
+        rig.othersBusy = false;
+        rig.build().endGesture();
+        CHECK(rig.clock == frozen);
+    }
+    SECTION("occluded: frames at the idle rate, the clock at a fifth")
+    {
+        rig.build().set(fields[0].first->path, fields[0].second);
+        REQUIRE(rig.file->dirty());
+        rig.build().beginGesture();
+        rig.othersBusy = true;
+        std::atomic<bool> stop{false};
+        std::thread idle([&] {
+            while (!stop.load())
+            {
+                rig.frame();   // a frame counts 1/60 s, at 12 a second
+                std::this_thread::sleep_for(std::chrono::milliseconds(83));
+            }
+        });
+        for (const Call& c : calls)
+        {
+            const Result r = timed(c);
+            if (c.name == "set_fields" || c.name == "load_build" || c.name == "predict_curve" || c.name == "run_dyno")
+                CHECK(r.isError);
+        }
+        stop = true;
+        idle.join();
+        rig.othersBusy = false;
+        rig.build().endGesture();
+    }
 }
 
 TEST_CASE("assistant: a turn's limits hold, and one driver at a time", "[assistant][sharedsim]")

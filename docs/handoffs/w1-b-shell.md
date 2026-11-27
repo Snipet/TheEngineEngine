@@ -117,3 +117,8 @@ DynoService (no PredictService) and simply share the cores.
 U1's): `app/FrameSources` `LateBake::status()` (the bake as `ui::BakeStatus` fields: ServiceBake::status() once the
 program is in, "waiting to bake" parsed before), and `app/Offline.cpp` serves it as `frameServices.bakeStatus`, beside
 `sparkMap`. Two lines; nothing else in `app/` changed. The frame and TUNE say the bake from it (ui/app/BakeStatus.h).
+
+**Added by card A for B, 27 Nov 2026** (the review's item 3, the lead's word and B's): `app/Offline.cpp`'s `askOwner`
+takes the assistant's `withdrawn` flag (`SessionParts::ask` gained it) and passes it to `AppFrame::ask` as its fourth
+argument (U1's 22987c17), so a question the assistant has stopped waiting for leaves the screen. The lambda and
+`askOwner`'s signature; nothing else in `app/` changed.

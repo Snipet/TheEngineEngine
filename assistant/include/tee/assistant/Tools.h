@@ -56,9 +56,12 @@ namespace tee::assistant
     {
         double jobSeconds = 2.0;          // a job's wait for the frame (real time)
         double gestureSeconds = 5.0;      // a batch's wait for an open gesture to end (the frame's clock)
-        double askSeconds = 60.0;         // the owner's answer to a question (real time)
+        double askSeconds = 40.0;         // the owner's answer to a question (real time)
         double predictSeconds = 20.0;     // a predicted curve (real time)
-        double dynoSeconds = 60.0;        // a dyno run (real time)
+        double dynoSeconds = 40.0;        // a dyno run (real time)
+        // (Every tool ends inside the MCP client's request timeout, 60 s by default in the MCP SDK (protocol.ts,
+        // DEFAULT_REQUEST_TIMEOUT_MSEC), whatever it waits on: the bridge answers by wire::kCallSeconds, 55 s, and a
+        // tool's longest path, two jobs and its own limit, stays under that: ToolsTest checks it.)
         int turnCalls = 24;               // tool calls in one turn
         double turnSeconds = 300.0;       // a turn, on the frame's clock
         std::size_t resultBytes = 32 * 1024;      // one tool's result
@@ -76,8 +79,10 @@ namespace tee::assistant
         std::function<std::shared_ptr<Sim>()> sim;         // the compiled program for the private copies, or null
         std::function<double()> clock;                     // the frame's clock, seconds (tee-headless: simulated)
         // Puts a question to the owner in the app (called in a job, on the frame's thread) and returns the answer to
-        // come: true yes. Empty function: nobody can be asked, and what needs asking is refused.
-        std::function<std::future<bool>(const std::string& question)> ask;
+        // come: true yes. `withdrawn` is raised (release) when the asker stops waiting, for any reason (its time is
+        // up, the call is cancelled, the session stops): the app then takes the question down (AppFrame::ask).
+        // Empty function: nobody can be asked, and what needs asking is refused.
+        std::function<std::future<bool>(const std::string& question, std::shared_ptr<const std::atomic<bool>> withdrawn)> ask;
         Limits limits{};
         // The app's own heavy work a person waits for is running: the ribbon's predicted curve
         // (PredictService::busyFlag) or the calibration bake (CalibrationBakeService::state() Baking or Checking).

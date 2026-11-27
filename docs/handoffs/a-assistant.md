@@ -18,11 +18,11 @@ try on their Mac is the first.**
    looked in ("the app is not reachable at .../TheEngineEngine-mcp/app.sock: ..."); `tee-mcp --where`, run in a
    Terminal, prints the folder it would use.
 
-**Extension 0.2.1 (27 Nov): reinstall it.** 0.1.0 looked for the app in a folder taken from its environment, which
+**Extension 0.2.3 (27 Nov): reinstall it.** 0.1.0 looked for the app in a folder taken from its environment, which
 Claude Desktop does not pass: with the app open and the switch on it still said "not open". 0.2.0 and later find the folder
 from the system (the per-user temporary folder), the same from both ends. Build `tee-mcpb` again and double-click the
 new `TheEngineEngine.mcpb` (Claude Desktop replaces an installed extension only with a newer version), and use an app
-built from the same commit. (0.2.1 also tells Claude what the app really shows: each change is one step of the
+built from the same commit. (0.2.1 and later also tell Claude what the app really shows: each change is one step of the
 app's Undo, counted on the status line; no card is drawn yet.)
 
 **What you will see.** Claude reads the build and the library, changes fields (each batch one step the app's Undo takes
@@ -52,10 +52,12 @@ is checked against the MCPB reference 0.3 and parsed by a test.
 - J2: an Enter-only multi-line TextField and an error colour in the kit's Look (on the branch at 330c98f0: the chat
   moves to them in a later change).
 
-## Held for the next update (27 Nov, the review's items; committed, waiting for the freeze to lift)
-- Item 10: the status line becomes "N changes made", counting field-change cards only. **It does not fall when the
-  owner undoes one in the app, on purpose.** Telling whether a card's step still stands needs the build's undo stack
-  read below its top: Build gives only undoStep()/redoStep() (the tops), and host/ is not card A's. Do not "fix" it by
-  comparing step ids: a step undone and then built over leaves a larger id on top, and the count would lie.
-- Items 3 (the withdrawn question; every tool within 55 s), 4 (New chat; the too-long 400), 6, 7 (the history byte
-  for byte), 8, 9, 10, and the Keychain read off the frame's thread; the extension then 0.2.2.
+## The 27 Nov review: what landed, and one rule
+- Landed: the link's folder from the system (51260f6), the words about cards (f72f3bc), the wake (baaeb02; B's
+  half in app/), the socket paths in tests (72834ed), New chat and the too-long 400 (d64da73), the Keychain read off
+  the frame (127ae3c), items 9, 6, 8, 7, 10 (46baadb, 38d1fe7, acbaae6, 2023a2a, d4c3ce8), the withdrawn question and
+  every tool within 55 s (b9da7e6). Waiting on the owner's yes: compaction (item 4, step 2).
+- Item 10's status line, "N changes made", counts field-change cards only. **It does not fall when the owner undoes
+  one in the app, on purpose.** Telling whether a card's step still stands needs the build's undo stack read below its
+  top: Build gives only undoStep()/redoStep() (the tops), and host/ is not card A's. Do not "fix" it by comparing step
+  ids: a step undone and then built over leaves a larger id on top, and the count would lie.

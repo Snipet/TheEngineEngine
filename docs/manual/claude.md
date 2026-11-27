@@ -18,18 +18,17 @@ it makes is yours to undo. macOS and Linux; Windows has neither in this version.
    - A file downloaded from CI is quarantined by macOS. Run `xattr -d com.apple.quarantine TheEngineEngine.mcpb`
      first, or after a refusal open System Settings, Privacy & Security, and choose "Open Anyway".
 2. Use an extension and an app built from the same commit. Claude Desktop replaces an installed extension only with
-   a newer version, so after an update install the new `.mcpb` again. **Version 0.2.1 or later is needed**: 0.1.0
-   looked for the app in the wrong folder and always said the app was not open. (The next update raises it to
-   0.2.2: install it again then.)
+   a newer version, so after an update install the new `.mcpb` again. **Version 0.2.3 or later is needed**: 0.1.0
+   looked for the app in the wrong folder and always said the app was not open, and 0.2.3 ends every call in time.
 
 ### Allowing it in the app
 
 In SETTINGS, the CLAUDE DESKTOP row: **Allow**. Off (the default), the app listens on nothing. The choice is kept for
 the next launch.
 
-The status line says what is happening: "Claude Desktop allowed" (waiting), "Claude Desktop connected, 3 changes",
-"Claude Desktop working: set_fields" while a call runs. (In the next update it says "3 changes made": the batches
-of field changes Claude has made, not its loads or saves. It does not fall when you undo one in the app.)
+The status line says what is happening: "Claude Desktop allowed" (waiting), "Claude Desktop connected, 3 changes made"
+(the batches of field changes Claude has made, not its loads or saves; it does not fall when you undo one in the app),
+"Claude Desktop working: set_fields" while a call runs.
 
 Then ask Claude, in Claude Desktop, "What engine is open?" or "Raise the idle a little".
 
@@ -42,13 +41,9 @@ Then ask Claude, in Claude Desktop, "What engine is open?" or "Raise the idle a 
 3. Type, and press Enter to send. Escape, or the Stop button, stops Claude's answer. While Claude works you see a
    dim summary of its thinking and a row for each tool it uses.
 
-A long conversation is sent whole each time. **In the next update:**
-- **New chat** (at the top of the panel, once there is a conversation) starts again from nothing;
-- once a conversation is longer than Claude can read, the chat says so in words, and your last message goes back
-  into the box.
-
-Until then the chat cannot be cleared except by quitting the app, and a conversation that has grown too long answers
-every message with an error from the API.
+**New chat** (at the top of the panel, once there is a conversation) starts again from nothing. A long conversation
+is sent whole each time; once it is longer than Claude can read, the chat says so, and your last message goes back
+into the box.
 
 ## What Claude can do, and what it cannot
 
@@ -58,9 +53,8 @@ It can:
 - change fields, in SI units, within each field's range (a value outside it is refused, never clamped). Each batch
   of changes is **one step of the app's own Undo**, and while you hold a control Claude waits for you to let go;
 - list the builds GARAGE shows and load one. If the open build has unsaved changes, the app asks you first (**Load**
-  or **Keep**; Keep has the focus). If Claude stops waiting for your answer (after a minute), the question stays on
-  screen in this version, and pressing either button then does nothing. In the next update it leaves the screen by
-  itself, after 40 seconds;
+  or **Keep**; Keep has the focus). If you do not answer within 40 seconds, the question leaves the screen by
+  itself and nothing is loaded;
 - save the open build under a new name, which never overwrites a build;
 - predict the torque curve, or run a dyno sweep, on a private copy (the engine you hear is not touched).
 
@@ -108,22 +102,18 @@ These are known or suspected, and nobody has been able to check them on a Mac ye
   - The first time the chat reads the saved key, macOS may ask whether TheEngineEngine may use it.
   - An app you build yourself is signed afresh by each build, and macOS may then ask again after every rebuild.
   - Choose "Always Allow".
-  - In this version the question holds the window until it is answered.
-  - If you refuse, the chat cannot read the key and asks the Keychain again. Remove and save the key with **Key** to
+  - The key is read away from the window: the window keeps drawing, and the chat says "reading your saved key" until
+    the question is answered.
+  - If you refuse, the chat says the key could not be read and does not ask again. Save the key again with **Key** to
     start over.
-  - The next update reads the key away from the window: the chat says "reading your saved key" meanwhile. It also
-    remembers a refusal.
 - **Long calls.**
   - Claude Desktop stops waiting for a tool after 60 seconds by default.
-  - In this version a dyno sweep, or a Load question left unanswered, can outlast that. Claude Desktop then reports a
-    timeout although the app goes on; ask for a narrower dyno range.
-  - In the next update every tool ends within 55 seconds and says why in words.
+  - Every tool here ends within 55 seconds, and says why in words when it could not finish. A dyno sweep that cannot
+    finish in time says so; ask for a narrower range.
 - **The chat's first conversation with tools.**
   - The chat sends back what Claude wrote, exactly as it was written. The API checks that earlier messages are
     unchanged when Claude's thinking is kept between turns, and nobody here can run that check.
-  - In this version a tool call's input is sent back with its keys re-ordered. The next update keeps them as
-    written.
-  - If the check counts the re-ordering as a change, you would see it on the message after Claude used a tool: a
+  - If the check ever finds a difference, you would see it on the message after Claude used a tool: a
     notice "the API answered 400: ..." about earlier messages or thinking. Please send that notice's words if you
     see it.
 - **An idle link.**
