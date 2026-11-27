@@ -7,6 +7,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <map>
 #include <sstream>
 #include <tuple>
@@ -643,6 +647,188 @@ namespace combo
         return gNightlyCase;
     }
 
+    // ---- the reference copies kept across processes (the lead's ruling, 27 Nov 03:44) ----
+    // CI runs each Catch case as its own process, and each judged its references afresh: the five copies behind every
+    // nightly bound were played again in every entry (360 reference sets in one soak for 57 distinct). A set is kept in
+    // a file named by a hash of everything that decides it: the test executable's bytes (any rebuild is a new key),
+    // every file of the sim tree and of the content tree in use, the build's name, the scenario (its kind and its
+    // timeline as tee-scenario JSON), the nudges, and whether copies are taken. The values are written exactly (hex
+    // floats), so a kept set reads the same figures to the digit; a missing, partial or unreadable file is a miss and
+    // the set is played. Written to a temporary name and renamed, so a reader never sees half a file.
+    namespace refcache
+    {
+        std::uint64_t mix(std::uint64_t h, const void* data, std::size_t n)
+        {
+            const auto* p = static_cast<const unsigned char*>(data);
+            for (std::size_t i = 0; i < n; ++i)
+            {
+                h ^= p[i];
+                h *= 1099511628211ull;   // FNV-1a, 64 bits
+            }
+            return h;
+        }
+        std::uint64_t mixString(std::uint64_t h, const std::string& s)
+        {
+            const std::uint64_t n = s.size();
+            h = mix(h, &n, sizeof n);
+            return mix(h, s.data(), s.size());
+        }
+        // every regular file under dir, by its path relative to dir, in order; 0 when dir is not a directory
+        std::uint64_t treeHash(const std::filesystem::path& dir)
+        {
+            std::error_code ec;
+            if (!std::filesystem::is_directory(dir, ec))
+                return 0;
+            std::vector<std::filesystem::path> files;
+            for (auto it = std::filesystem::recursive_directory_iterator(dir, ec);
+                 !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec))
+                if (it->is_regular_file(ec))
+                    files.push_back(it->path());
+            if (ec)
+                return 0;
+            std::sort(files.begin(), files.end());
+            std::uint64_t h = 14695981039346656037ull;
+            std::vector<char> buf;
+            for (const auto& f : files)
+            {
+                h = mixString(h, std::filesystem::relative(f, dir, ec).generic_string());
+                std::ifstream in(f, std::ios::binary);
+                buf.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+                h = mixString(h, std::string(buf.begin(), buf.end()));
+            }
+            return h;
+        }
+        std::uint64_t fileHash(const std::filesystem::path& f)
+        {
+            std::ifstream in(f, std::ios::binary);
+            if (!in)
+                return 0;
+            std::uint64_t h = 14695981039346656037ull;
+            char buf[1 << 16];
+            while (in.read(buf, sizeof buf) || in.gcount() > 0)
+                h = mix(h, buf, static_cast<std::size_t>(in.gcount()));
+            return h;
+        }
+        // the directory the sets are kept in, or empty: none (TEE_COMBO_REFERENCES=off, or no executable to key on)
+        const std::filesystem::path& directory()
+        {
+            static const std::filesystem::path dir = [] {
+                const char* e = std::getenv("TEE_COMBO_REFERENCES");
+                if (e != nullptr && std::strcmp(e, "off") == 0)
+                    return std::filesystem::path();
+                if (e != nullptr && *e != '\0')
+                    return std::filesystem::path(e);
+#ifdef TEE_COMBO_REFERENCE_DIR
+                return std::filesystem::path(TEE_COMBO_REFERENCE_DIR);
+#else
+                return std::filesystem::path();
+#endif
+            }();
+            return dir;
+        }
+        // the hash of what every set of this process shares (the executable, the trees); 0: keep nothing
+        std::uint64_t processKey()
+        {
+            static const std::uint64_t key = [] {
+                std::error_code ec;
+                const auto exe = std::filesystem::read_symlink("/proc/self/exe", ec);
+                if (ec)
+                    return std::uint64_t(0);   // no executable to key on (not Linux): every set is played
+                const std::uint64_t e = fileHash(exe), sim = treeHash(tee::test::simDirectory()),
+                                    content = treeHash(tee::test::contentDirectory());
+                if (e == 0 || sim == 0 || content == 0)
+                    return std::uint64_t(0);
+                std::uint64_t h = 14695981039346656037ull;
+                for (std::uint64_t x : {e, sim, content})
+                    h = mix(h, &x, sizeof x);
+                return h;
+            }();
+            return key;
+        }
+    } // namespace refcache
+
+    std::filesystem::path referenceDirectory()
+    {
+        return refcache::directory();
+    }
+
+    std::uint64_t referenceTreeHash(const std::filesystem::path& dir)
+    {
+        return refcache::treeHash(dir);
+    }
+
+    std::string referenceKey(const std::string& build, Kind kind, bool copies)
+    {
+        const std::uint64_t p = refcache::processKey();
+        if (p == 0 || refcache::directory().empty())
+            return std::string();
+        std::uint64_t h = p;
+        h = refcache::mixString(h, build);
+        h = refcache::mixString(h, kindName(kind));
+        h = refcache::mixString(h, scenarioJson(kind, 0u));
+        for (double d : kBoundNudges)
+            h = refcache::mix(h, &d, sizeof d);
+        const int c = copies ? 1 : 0;
+        h = refcache::mix(h, &c, sizeof c);
+        char name[32];
+        std::snprintf(name, sizeof name, "%016llx", static_cast<unsigned long long>(h));
+        return name;
+    }
+
+    bool readKeptReference(const std::string& key, double& step, std::vector<double>& excess)
+    {
+        if (key.empty())
+            return false;
+        std::ifstream in(refcache::directory() / (key + ".ref"));
+        std::string tag;
+        std::size_t n = 0;
+        if (!(in >> tag >> n) || tag != "tee-combo-reference-1" || n == 0 || n > 16)
+            return false;
+        std::string word;
+        if (!(in >> word))
+            return false;
+        step = std::strtod(word.c_str(), nullptr);
+        excess.clear();
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            if (!(in >> word))
+                return false;
+            excess.push_back(std::strtod(word.c_str(), nullptr));
+        }
+        return (in >> word) && word == "end";
+    }
+
+    void keepReference(const std::string& key, double step, const std::vector<double>& excess)
+    {
+        if (key.empty())
+            return;
+        std::error_code ec;
+        std::filesystem::create_directories(refcache::directory(), ec);
+        const auto final = refcache::directory() / (key + ".ref");
+        auto tmp = final;
+        tmp += ".tmp." + std::to_string(std::random_device{}()) + std::to_string(std::random_device{}());   // a name of its own
+        {
+            std::ofstream out(tmp);
+            if (!out)
+                return;
+            char b[64];
+            out << "tee-combo-reference-1 " << excess.size();
+            std::snprintf(b, sizeof b, " %a", step);
+            out << b;
+            for (double e : excess)
+            {
+                std::snprintf(b, sizeof b, " %a", e);
+                out << b;
+            }
+            out << " end\n";
+            if (!out)
+                return;
+        }
+        std::filesystem::rename(tmp, final, ec);
+        if (ec)
+            std::filesystem::remove(tmp, ec);
+    }
+
     const Reference& reference(const std::string& build, Kind kind)
     {
         // (the default tier's single draw and the nightly's copies kept apart)
@@ -654,8 +840,12 @@ namespace combo
             return it->second;
         Reference ref;
         std::vector<double> excess;
+        const std::string kept = referenceKey(build, kind, copies);
+        const bool fromFile = readKeptReference(kept, ref.step, excess);
         for (double dT : kBoundNudges)
         {
+            if (fromFile)
+                break;
             Times tm;
             tee::test::Scenario sc = scenario(kind, build, 0u, tm);
             if (dT != 0.0)
@@ -668,11 +858,13 @@ namespace combo
             if (!copies)
                 break;
         }
+        if (!fromFile)
+            keepReference(kept, ref.step, excess);
         ref.excess = lowestExcess(excess);
         if (copies)
         {
-            std::printf("reference | %-13s | %-6s | excess over its copies (dT 0, -0.07, -0.03, +0.03, +0.07 K):", build.c_str(),
-                        kindName(kind));
+            std::printf("reference | %-13s | %-6s | excess over its copies (dT 0, -0.07, -0.03, +0.03, +0.07 K)%s:", build.c_str(),
+                        kindName(kind), fromFile ? " (kept)" : "");
             for (double e : excess)
                 std::printf(" %.2f", e);
             std::printf("; the bound twice the lowest, %.2f\n", 2.0 * ref.excess);

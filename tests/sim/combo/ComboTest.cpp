@@ -236,8 +236,20 @@ namespace
         // (nightly: the reference's lowest excess over its copies at kBoundNudges, as referenceExcess; the default
         // tier: the 293.15 K copy alone)
         std::vector<double> excess;
+        // (kept across the job's processes as reference() keeps its own: a corpus build with every switch off is its
+        // own key, the build's file named in it and its bytes in the content tree's hash)
+        const std::string kept = referenceKey("corpus, every switch off: " + f.generic_string(), kind, nightlyCase());
+        const bool fromFile = readKeptReference(kept, ref, excess);
+        {
+            Times t0;
+            (void)scenario(kind, f.string(), 0u, t0);
+            from = t0.started + 0.5;
+            to = t0.off > 0.0 ? t0.off : t0.end;
+        }
         for (double dT : kBoundNudges)
         {
+            if (fromFile)
+                break;
             tee::test::Scenario off = scenario(kind, f.string(), 0u, tm);
             off.at(0.0);
             for (const Switch& w : switches())
@@ -253,9 +265,12 @@ namespace
             if (!nightlyCase())
                 break;
         }
+        if (!fromFile)
+            keepReference(kept, ref, excess);
         if (nightlyCase())
         {
-            std::printf("reference | %-28s | %s | excess over its copies:", f.stem().string().c_str(), kindName(kind));
+            std::printf("reference | %-28s | %s | excess over its copies%s:", f.stem().string().c_str(), kindName(kind),
+                        fromFile ? " (kept)" : "");
             for (double e : excess)
                 std::printf(" %.2f", e);
             std::printf("; the bound twice the lowest, %.2f\n", 2.0 * lowestExcess(excess));

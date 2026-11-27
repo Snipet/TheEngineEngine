@@ -151,6 +151,13 @@ namespace combo
     std::vector<float> stepProfile(std::span<const float> x, double rate);
     // The excess of the worst step of [from, to] over its neighbouring firing periods (Verdict::stepExcess)
     double stepExcess(const tee::test::Run& run, double from, double to, double* at = nullptr, double* period = nullptr);
+    // The reference sets kept across one job's processes (Combo.cpp): a set's file name from everything that decides it
+    // (empty: nothing kept); a kept set read back (false: a miss, the set is played); one written; a tree's hash
+    std::string referenceKey(const std::string& build, Kind kind, bool copies);
+    bool readKeptReference(const std::string& key, double& step, std::vector<double>& excess);
+    void keepReference(const std::string& key, double step, const std::vector<double>& excess);
+    std::uint64_t referenceTreeHash(const std::filesystem::path& dir);
+    std::filesystem::path referenceDirectory();   // where the sets are kept (empty: none)
     // The bang rule's baseline (cuts that send fuel to the pipe, the new ECU's): the largest step of three reference
     // copies with ecu.pops at 0.3, 0.01 K apart in the air (one run of a chaotic engine is no bound: 11.9 to 20.5 measured).
     double referenceStepWithPops(const std::string& build, Kind kind);
