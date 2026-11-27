@@ -153,3 +153,22 @@ BOUNDPROOF="corpus flat-plane-v8-39-twin-turbo pull" BOUNDPROOF_DT="<17 nudges, 
 "[.boundproof]". First read: the DCT's torque handover (gearbox.fm:294-320, aFrom / aTo across dur, a smoothstep) at
 1-2 with the boost spooled: whether the step is the handover's shape, the driveline's lash or the boost's response to
 the load step (N2's).
+
+## Queue item 18, X-056: the sequential's dog shift at rest (next window; design and tests, nothing under sim/ yet)
+
+Cause: gearbox.fm:283 sets the robot clutch to 1.0 for a dog shift whatever it held, and the synced latch is cleared
+while shifting (gearbox.fm:177), so at rest the shift closes a clutch the launch had open. Cure of record: hold the
+robot value from when the shift began, through the shift.
+
+Tests (all through the application's path, the shipped archetypes/inline-five-turbo-rally, warm, no throttle):
+
+1. At rest, up, up: engine above 0.85 x idle throughout and the car below 0.5 km/h. Fails today.
+2. A synced 1-2 at 1500 rpm on the overrun: robot stays 1.0. Passes today, and must still pass.
+3. The lead's case (measured on 35a733d1, tee-headless): at rest, E at 3.2 s (gear 1, 1024 rpm), E at 3.9 s (gear 2:
+   424, 348, 217 rpm, back to 1074 by 4.6 s), Q at 5.0 s (2 to 1, 100 ms shut with its blip; 376 rpm at 5.05 s, state
+   0 at 5.15 s, stalled for good). Test: at rest, up, up, down; the engine still running one second after the down.
+   Fails today.
+
+Prediction for the held-value cure, to check when the window opens: the robot stays 0 through all three shifts of
+case 3 (and both of case 1), since each begins with the launch's clutch open at rest, and so the engine neither dips
+on the up to 2 nor stalls on the down to 1.
