@@ -35,9 +35,11 @@ namespace tee::assistant
 {
     struct McpLinkOptions
     {
-        std::string folder;          // empty: wire::folder()
+        std::string folder;          // the folder itself (a test's); empty: under `base`
         long expectedUser = -1;      // the peer's user allowed; -1: this process's (a test names another)
-        std::string version = "0.1.0";
+        std::string version = "0.2.0";
+        std::string base;            // the base the folder lies in (wire::folderIn); empty: wire::folder(), the
+                                     // system's (a test names one of its own, as it names tee-mcp's --base)
     };
 
     class McpLink
