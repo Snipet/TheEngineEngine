@@ -544,7 +544,7 @@ TEST_CASE("the nightly bound's proof: one case judged against its reference's lo
 // GEARPROBE="<corpus stem> <tour|pull|launch|cold>": a corpus build as built through a scenario, unjudged; one line per
 // change of car.gear ("gear | t | from | to") and a line a second ("state | t | gear | engine rpm | km/h"), so that which
 // gear a scenario really drives in is read, not assumed. GEARPROBE_LEVER="t position ...": the lever moved at those times
-// (on top of the scenario's own controls).
+// (on top of the scenario's own controls). GEARPROBE_OFF=1: every switch off, as corpusBuild plays the build's reference.
 TEST_CASE("gear probe: car.gear through a scenario", "[.gearprobe]")
 {
     const char* arg = std::getenv("GEARPROBE");
@@ -567,13 +567,19 @@ TEST_CASE("gear probe: car.gear through a scenario", "[.gearprobe]")
         while (l >> t >> pos)
             sc.at(t).lever(pos);
     }
+    if (std::getenv("GEARPROBE_OFF") != nullptr)   // every switch off, as the build's reference plays it
+    {
+        sc.at(0.0);
+        for (const Switch& w : switches())
+            sc.spec(w.path, 0);
+    }
     const tee::test::Run r = sc.run(tm.end);
     const auto gear = r.tel("car.gear");
     const auto rpm = r.tel("engine.speed");
     const auto kmh = r.tel("car.speed");
     const auto& t = gear.times();
     const auto& x = gear.values();
-    std::printf("gearprobe | %s | %s\n", stem.c_str(), kindName(kind));
+    std::printf("gearprobe | %s | %s%s\n", stem.c_str(), kindName(kind), std::getenv("GEARPROBE_OFF") != nullptr ? " | every switch off" : "");
     for (std::size_t i = 1; i < t.size(); ++i)
         if (x[i] != x[i - 1])
             std::printf("gear | %.3f | %.0f | %.0f\n", t[i], x[i - 1], x[i]);
