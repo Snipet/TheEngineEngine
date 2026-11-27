@@ -2825,6 +2825,16 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 19:24 UTC: A CORRECTION to the 19:13 entry's dyno figure (card A's own, after reading the code; the lead had
+  passed the first version to the owner).** A sweep is NOT always 17 points and its time DOES grow with the span:
+  the spacing is max(10 rad/s, span/16) (`assistant/src/Tools.cpp:943`), so 17 points only for a span over about
+  1530 rpm; the sweep runs at a fixed 60 rad/s2 (`host` `Dyno.h:36`), so 500 to 8000 rpm is about 13 s simulated
+  (3.9 s measured on card A's container; 2.8 s for 1000 to 6000) and the widest span the schema allows, 10 000
+  rpm, about 17.5 s simulated, roughly 5 s there by proportion (not measured). Item 3's 40 s is about eight times
+  that container's need. The 3.9 s stands.
+  - X-064 is committed by card A (dea6bab, not pushed; its tier running): the tools' limits and a turn's on a
+    real clock a test can hold; the session no longer reads the frame's clock; the dyno's words on a timeout say
+    what to do. Three cases with their bites (`ToolsTest:466`, `:494`; `McpTest:751`; `:511`, `:512`).
 - **27 Nov 19:22 UTC: X-063's CURE IS ON THE BRANCH AT 6bfb90d2** (card A's 4c1a2d67, second behind B's stack; gated
   trees unchanged). One helper, `dumpText` (`assistant/include/tee/assistant/Json.h`), writes every JSON text
   in `assistant/` with a bad byte as U+FFFD; a test reads all of `assistant/` and fails on any `.dump(`
