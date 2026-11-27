@@ -214,3 +214,43 @@ The listener (sim/listen/) is L's; the voices are M's; the air box is N1's. Each
 4. The predictions of section 4 measured at 70 kPa on the named builds, against what's written here.
 5. The interface (section 5) with U1.
 6. The sound's factor (section 6), with L, M and N1, after the lead's ruling on pressure alone or density.
+
+## 7. Proposal after the window of 27 Nov: staging, and the deviation for the lead's ruling (D, 13:58; docs only)
+
+Item 15 left the window of 27 Nov (the lead, 13:50): it lands in the next one, after each file's owner has read its
+sites and after the lead has ruled on the deviation below.
+
+**Stage 1: every site where 101325 is added to a gauge pressure or is the outside** (G's rule, section 1):
+- engine.fm: the box, the cylinders and the plenum at rest, applyMachine's, the two-stroke's and work.trapped's
+  pressure argument, the scope's and showMap's gauges, the slap click, the crankcase's telemetry (D);
+- cylinder.fm: the cylinder at rest, the ports, the rings' leak, the gas torque (D); wallheat.fm at rest (D);
+  duct.fm's Valve: the pipe's pressure with nothing flowing, :678 (G's "take the outside");
+- intake.fm: the ends, the box's and the plenum's gauge (N1);
+- exhaust.fm:911, :1132, :1785 and slots.fm:1222-1223, :2299 (G's "take the outside");
+- ecu.fm:317, the ECU's barometer, so model 1's cam map reads the manifold over the outside (H);
+- heavy.fm's starts and its back pressure's density (D2), with :205 (the pump's full fuel) kept at 101325 as a
+  calibration (a mechanical pump meters a fixed stroke; to confirm with D2);
+- truckair.fm:69 (I); cylinder2.fm:424 and twostroke.fm:204, the two-stroke's pAir already handed and unused (T).
+- The form: each part holds `pAmb` and reads it through `outside()`, which returns 101325 while it's 0 (never handed: a
+  rig that builds the part alone). At the default every site computes the same float as today. Engine hands it once a
+  configure, in mechanicsSetup and every 16 samples (`airToParts()`).
+- A local draft exists (branch item15-local, 7c955f5d, not pushed, 12 files). It compiles and runs through the JIT.
+  Its null was started and stopped when the item left the window: 4 archetypes measured identical to the bit (audio
+  and speed hash, "[.simhash]"), the rest not run. Nothing else in it is measured.
+
+**Stage 2: the pipes' impedance and density on every Duct** (G's (a): duct.fm:321, :347-348, :596's denominator,
+:687, slots.fm:1225), plumbed through the 40-odd `set()` calls; the boost target's meaning (section 3, with sources);
+the sound's factor (section 6, with L, M and N1).
+
+**The deviation, for the lead's ruling with this design in front of them:** section 2 says "model 0 keeps 101325
+everywhere". The core (the cylinders, the box, the rings, the gas torque) has no model switch, so stage 1 gives the
+outside to every build at a non-default pressure, model 0's parts included. Only boost.fm:353 (model 0's absolute
+boost, N2's null) and sim/ref/ keep the literal. At the default it is bit-identical either way. The question is what
+the null promises off the default: (a) every build feels the stated air (stage 1 as drafted), or (b) a gate (one
+switch, or each part's model) under which the core keeps 101325, with the inconsistency that a model-1 intake's waves
+then sit over a 70 kPa box while the cylinder at rest reads 101325.
+
+**The evidence, when it's measured:** `TEE_CORE_SIM=<tree>/sim build-dev/bin/tee-tests-core "[.simhash]"` on the
+tree before and after (every shipped build, a diff of two files), and `"[.item15pred]"` for section 4's predictions
+(the dyno at 2000/3000/5000 rpm on the default V8, the economy four and the 2.0 turbo four; the idle on those and the
+V10; a cold start on the V8, the large diesel and the V8 truck), each at 101325 and 70000 Pa.
