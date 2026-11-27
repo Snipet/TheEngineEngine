@@ -2843,8 +2843,18 @@ It ran while the day's fast jobs crowded the runners.
     by B's own permission check: the owner's to answer).
   - **Two reds outside the five, on macOS at efec3052 (the steward's read):** assistant.sim (above, card A's,
     being fixed), and ONE draw of host's "the service runs the newest request only, and answers a repeat from
-    its cache" (tests/host/DynoTest.cpp:98: another request's curve read): C measures its rate and finds the
-    race; neither re-run to green nor waved off. If it recurs on the baked commit's macOS job, `main` waits.
+    its cache" (tests/host/DynoTest.cpp:98: another request's curve read).
+  - **X-062 (numbered 15:40; C's): that draw is the SERVICE's fault, not the case's.** DynoService (host/src/Dyno.cpp)
+    published a run that ended after a newer request had been made (past its last cancel check) as the newest,
+    and `request()` never set an untaken older result aside: `take()` then handed back the curve of the build
+    before the owner's last edit. Rate on C's box: 0 of 400 under load (the window is a few tens of ms between
+    two request() calls); a loaded macOS runner found it. C's cure: Dyno.cpp alone, +9/-1 (request() clears
+    ready; a run that ends while a newer request waits is cached under its own key and not published), with a
+    case that makes the race certain and fails on the frozen code every time.
+    **THE SECOND CODE PUSH ALLOWED UNDER THE FREEZE, by the lead's ruling (15:40):** it is a fault an owner meets,
+    the baked commit's macOS job should not hang on a draw, and it is not in the bake's path (no Bake or
+    Predict file; tee-dyno's bake calls bakeKnockLimit and bakeIntakeCam, not DynoService). So `host` will
+    differ from 24835b34 by Dyno.cpp alone when P merges, and that is expected: no key or table can move by it.
 - **27 Nov 13:28 UTC: `main` IS AT f77a46e6** (run 46000962256, three jobs green). **The trees `main` is gated on: sim
   f23337cc, host 29bcbaa5, tools 7c3e4d59** (host moved 86ea14da to 29bcbaa5 by C's bake across edits alone, no
   baked value moved: C's two byte-identity proofs, the lead's own run of its cases). Before it: 35a733d1 (12:19).
