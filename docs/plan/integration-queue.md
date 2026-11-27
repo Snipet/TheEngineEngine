@@ -2583,6 +2583,11 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
   its redline, content, which moves its bake key: P either way); what else reads redW (the auto gearing, the
   launch, the downshift's refusal, the lights). Item 19, or ahead of 18 if the integrator agrees the owner
   cannot drive a shipped build without it.
+- **CONFIRMED by the lead's own run (11:50; the tip's simulator through tee-render, a scratch scenario: the lever at
+  1 from 2.5 s, full throttle from 3 s, 42 s; predicted first: gear 1 throughout, about 2220 rpm, 13 to 14 m/s):**
+  diesel-pickup-tuned gear 1 at every reading, 13.86 m/s and 2221 rpm at 42 s. The archetype
+  pickup-diesel-67-inline-six in the same scenario: 2 by 9 s, 3 by 12 s, 6 by 27 s, 53 m/s at 42 s. So the box
+  and the lever work, and this build's shift point is out of its engine's reach. redW itself is still unmeasured.
 - **B's push (the gears by gearbox kind) is NOT held for it:** the selector works; this is what it uncovered.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
