@@ -2548,6 +2548,25 @@ stalls the engine. B's reading, one trace, unconfirmed: `gearbox.fm:283` `robot 
 the clutch closed") holds during every dog shift, also where the robotised clutch was open. No shipped build is
 Sequential. The integrator confirms or refutes with its own measurement and designs the smallest cure; item 18.
 
+## 27 Nov 11:36 UTC: CORRECTION to the section above; the integrator's read; the pull in neutral (X)
+
+- **False, and mine to withdraw: "No shipped build is Sequential" and "five of six".** The application opens the
+  shipped folder recursively, archetypes included. By the lead's grep of `content/builds/*.json` and
+  `content/builds/archetypes/*.json`: Automatic 7, Dual clutch 7, Eighteen-speed 5, Sequential 1
+  (`archetypes/inline-five-turbo-rally`), CVT 1 (`archetypes/economy-four-15`), the rest Manual. So **13 shipped
+  builds sit in neutral** under the automatic clutch, and X-056 touches a shipped build (it still needs a shift
+  pressed twice at rest; it stays item 18).
+- **The integrator's own probe of the sim (the second measurement):** from rest in DRIVE, presses move the
+  manual (lever 0), the sequential and the dual clutch; the automatic and the CVT ignore presses and drive on
+  lever 1; the eighteen-speed moves by neither alone. The counters cannot swallow more than one step's press.
+  The sim does what its code says for every kind: the fault is the lever the shell never sends.
+- **Not taken:** the counters as a selector inside `gearbox.fm`, or a manual mode on the automatic. A feature
+  for the owner to want.
+- **For X (tests only):** the combo pull drives by shift-up presses and sets no lever (Combo.cpp:206-221), so on
+  an automatic, a CVT and an eighteen-speed it has been revving in NEUTRAL, where the survey says "one gear on
+  the limiter". X confirms by `car.gear`, gives the automatic and CVT a real pull (lever 1), and proposes what
+  the truck rows should be; rows by the evidence rule; the soak's cost stated before it lands.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
@@ -2646,7 +2665,8 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
      to the cylinder's valves is its file's owner's. Acceptance: the null to the bit; the sometimes rows by
      the evidence rule on the real code; the gate warm and cold on all 31; Q's cost; clips for the owner.
  18. the integrator, a read and a design first (27 Nov): X-056, a Sequential box's shift at rest stalls the
-     engine (gearbox.fm:283). Behind items 16, 17 and 15: no shipped build is Sequential.
+     engine (gearbox.fm:283). Behind items 16, 17 and 15: one shipped build is Sequential (the rally five), and
+     it takes a shift pressed twice at rest.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
