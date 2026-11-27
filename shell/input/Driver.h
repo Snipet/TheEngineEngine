@@ -15,6 +15,17 @@
 // neutral and the gearbox works its own clutch: the keys alone can drive. With it off, a gear key moves the H-pattern
 // lever and the clutch is the driver's (its key).
 //
+// Which gears a press reaches depends on the gearbox (setGearbox: the Controls read it from the build each frame):
+//   shifts     a manual's paddles, a sequential box, a dual clutch: as above (the shift presses)
+//   selector   an automatic and a CVT, which read only the lever as R, N, D (sim/vehicle/gearbox.fm): a shift up moves
+//              it R to N to D, a shift down D to N to R (the box takes R only at a crawl); a gear key or the wheel's
+//              shifter in a forward gate is D, neutral N, reverse R; the automatic clutch has nothing to do with it
+//   lever      the eighteen-speed (sim/vehicle/roadranger.fm), which reads only the lever's positions (1 to 4, 5 the L
+//              slot, -1 reverse) and the clutch pedal: the lever is sent whatever the automatic clutch says, a gear
+//              key or the shifter's gate puts it there, a shift press steps it (the clutch is the driver's)
+// Before 27 Nov the lever was zeroed for every box while the automatic clutch was on, so the automatic, the CVT and
+// the eighteen-speed sat in neutral whatever was pressed (the owner's report; tests/shell/GearboxDrivingTest.cpp).
+//
 // UI thread only.
 #pragma once
 
@@ -28,6 +39,9 @@ namespace tee::input
 {
     // ctl.buttons' bits (sim/spec/controls.fm, BTN_*) the driver's toggles set.
     inline constexpr int kButtonSplitter = 16, kButtonRange = 32, kButtonEngineBrake = 64;
+
+    // What a press of the gears reaches (the comment above).
+    enum class Gearbox : std::uint8_t { shifts, selector, lever };
 
     // Who holds an action: each source lets go of only what it pressed.
     enum class Source : std::uint8_t { keyboard, gamepad, panel, script, wheel, count };
@@ -108,6 +122,10 @@ namespace tee::input
         // The frame's mode from now on (ControlsFrame::mode: MODE_BENCH 0, MODE_DRIVE 1, MODE_DYNO_ENGINE 2).
         void setMode(int mode);
 
+        // The gearbox the presses drive (a change: the selector and the lever back to neutral, as the box goes).
+        void setGearbox(Gearbox g);
+        Gearbox gearbox() const noexcept { return gearbox_; }
+
         // Everything a source holds is let go (the window lost the keyboard; a gamepad was unplugged).
         void release(Source);
 
@@ -146,6 +164,8 @@ namespace tee::input
         // the gears
         int shiftUp_ = 0, shiftDown_ = 0;
         int lever_ = 0;
+        Gearbox gearbox_ = Gearbox::shifts;
+        int select_ = 0;            // the selector's R -1, N 0, D 1 (Gearbox::selector)
         int seek_ = 0;              // the gear a key asked for (seeking_ says whether one did)
         bool seeking_ = false;
         float seekWait_ = 0;

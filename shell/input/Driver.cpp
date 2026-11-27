@@ -43,7 +43,7 @@ namespace tee::input
     void Driver::setSettings(const DriverSettings& s)
     {
         settings_ = s;
-        if (settings_.autoClutch)
+        if (settings_.autoClutch && gearbox_ == Gearbox::shifts)
             lever_ = 0;             // the lever goes back to neutral: the gearbox keeps the gear it is in
         else
             seeking_ = false;
@@ -88,12 +88,20 @@ namespace tee::input
         }
         if (action == Action::shiftUp)
         {
+            if (gearbox_ == Gearbox::selector)
+                select_ = std::min(select_ + 1, 1);
+            else if (gearbox_ == Gearbox::lever)
+                lever_ = std::min(lever_ + 1, 4);
             ++shiftUp_;
             seeking_ = false;       // the driver's own shift ends a gear key's
             return;
         }
         if (action == Action::shiftDown)
         {
+            if (gearbox_ == Gearbox::selector)
+                select_ = std::max(select_ - 1, -1);
+            else if (gearbox_ == Gearbox::lever)
+                lever_ = std::max(lever_ - 1, -1);
             ++shiftDown_;
             seeking_ = false;
             return;
@@ -112,6 +120,18 @@ namespace tee::input
     void Driver::requestGear(int gear)
     {
         gear = std::clamp(gear, -1, 6);
+        if (gearbox_ == Gearbox::selector)
+        {
+            select_ = gear > 0 ? 1 : gear < 0 ? -1 : 0;     // a forward gate is D
+            seeking_ = false;
+            return;
+        }
+        if (gearbox_ == Gearbox::lever)
+        {
+            lever_ = std::min(gear, 4);                      // the lever's own positions (5, the L slot: its key)
+            seeking_ = false;
+            return;
+        }
         if (settings_.autoClutch)
         {
             seek_ = gear;
@@ -179,6 +199,16 @@ namespace tee::input
     void Driver::setMode(int mode)
     {
         settings_.mode = mode;
+    }
+
+    void Driver::setGearbox(Gearbox g)
+    {
+        if (g == gearbox_)
+            return;
+        gearbox_ = g;
+        select_ = 0;
+        lever_ = 0;
+        seeking_ = false;
     }
 
     void Driver::release(Source source)
@@ -273,7 +303,10 @@ namespace tee::input
         frame_.clutch = std::max({ clutch_, padClutch_, wheelClutch_, clutchStripHeld_ ? clutchStrip_ : 0.0f });
         frame_.handbrake = std::max(handbrake_, handbrakeStripHeld_ ? handbrakeStrip_ : 0.0f);
         frame_.steer = padSteer_;
-        frame_.lever = settings_.autoClutch ? 0 : lever_;
+        frame_.lever = gearbox_ == Gearbox::selector ? select_
+                     : gearbox_ == Gearbox::lever  ? lever_
+                     : settings_.autoClutch        ? 0
+                                                   : lever_;
         frame_.shiftUp = shiftUp_;
         frame_.shiftDown = shiftDown_;
         frame_.buttons = latched_;

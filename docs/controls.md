@@ -41,6 +41,18 @@ gearbox is in that gear; it gives up after twelve presses (a downshift the gearb
 engine past its redline). With the automatic clutch off, a gear key moves an H-pattern lever and the clutch is yours
 (Left Shift): the Driver has this path and its test, and nothing in the window turns it on yet.
 
+What a press reaches depends on the build's gearbox (the vehicle model on; read each frame from the build):
+
+| Gearbox | E / Q, the paddles | A gear key (1 to 6, N, R), the wheel's shifter |
+|---|---|---|
+| Manual, sequential, dual clutch | A shift up / down | As above: sought through the shifts |
+| Automatic, CVT | The selector: R, N, D (Q in D is N: the box picks its own gears in D; R only at a crawl) | A forward gear is D, N is N, reverse R |
+| Eighteen-speed | The lever a position up / down (1 to 4); the clutch pedal is yours, as the truck's box has no synchromesh | The lever to that position |
+
+Until 27 Nov the automatic, the CVT and the eighteen-speed sat in neutral whatever was pressed (the automatic clutch
+held the lever they read at neutral: the owner's report). `tests/shell/GearboxDrivingTest.cpp` drives each kind
+from a standstill by the key and by the wheel's paddle through the simulator.
+
 The times are `tee::input::DriverSettings`; they move to the settings file with the bindings in the shell's
 second slice.
 
@@ -121,7 +133,7 @@ Linux and Windows: never yet run with a real wheel. No test here opens a device.
 |---|---|
 | Throttle, brake, clutch pedals | The pedals: each is the larger of the wheel's and the keys' or a gamepad's (its first 1 % of travel reads released). |
 | Right paddle / left paddle | Shift up / shift down (a press each), by default. |
-| The shifter | The gate it is in: with the automatic clutch off, the H-pattern lever itself (the clutch pedal is yours); with it on, the gear is sought through the gearbox's own shifts, as a gear key does (a sequential or an automatic box too). Out of every gate: neutral. |
+| The shifter | The gate it is in: with the automatic clutch off, the H-pattern lever itself (the clutch pedal is yours); with it on, the gear is sought through the gearbox's own shifts, as a gear key does (a sequential box too). An automatic or a CVT: a forward gate is D, reverse R; the eighteen-speed: its lever's position (the gears table above). Out of every gate: neutral. |
 | PS button | By default, the start key, held as long as it is held (a press starts a stopped engine; held on a running one, off). |
 | The steering | Read but not driven: the car runs in a straight line. |
 | Its five shift lights | The DRIVE view's own count (the same five steps below the redline), all five flashing on the limiter. |

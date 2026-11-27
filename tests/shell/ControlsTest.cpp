@@ -400,3 +400,48 @@ TEST_CASE("shell: a truck's switches latch: Z the splitter, X the range, J the e
     CHECK(actionOf(defaultBindings(), key::kJ) == Action::engineBrake);
     CHECK(actionFromName("enginebrake") == Action::engineBrake);
 }
+
+TEST_CASE("shell: an automatic's or a CVT's presses move the selector R, N, D; the lever is sent whatever the clutch",
+          "[shell][input]")
+{
+    Driver d;                                                       // the automatic clutch on (the default)
+    d.setGearbox(Gearbox::selector);
+    CHECK(run(d, 0.1).lever == 0);                                  // N
+    d.press(Action::shiftUp);
+    CHECK(run(d, 0.1).lever == 1);                                  // D
+    d.press(Action::shiftUp);
+    CHECK(run(d, 0.1).lever == 1);                                  // (D is the top)
+    d.press(Action::shiftDown);
+    CHECK(run(d, 0.1).lever == 0);
+    d.press(Action::shiftDown);
+    CHECK(run(d, 0.1).lever == -1);                                 // R (the box takes it only at a crawl)
+    d.requestGear(3);                                               // a gear key or the shifter's forward gate: D
+    CHECK(run(d, 0.1).lever == 1);
+    d.requestGear(0);
+    CHECK(run(d, 0.1).lever == 0);
+    d.requestGear(-1);
+    CHECK(run(d, 0.1).lever == -1);
+    // another box: back to neutral and the presses' own rules (the lever 0 with the automatic clutch)
+    d.setGearbox(Gearbox::shifts);
+    const int ups = d.frame().shiftUp;
+    d.press(Action::shiftUp);
+    CHECK(run(d, 0.1).lever == 0);
+    CHECK(d.frame().shiftUp == ups + 1);
+}
+
+TEST_CASE("shell: the eighteen-speed's lever is sent with the automatic clutch on; presses and gear keys move it",
+          "[shell][input]")
+{
+    Driver d;
+    d.setGearbox(Gearbox::lever);
+    d.requestGear(3);
+    CHECK(run(d, 0.1).lever == 3);
+    d.press(Action::shiftUp);
+    CHECK(run(d, 0.1).lever == 4);
+    d.press(Action::shiftUp);
+    CHECK(run(d, 0.1).lever == 4);                                  // (4 the top; 5, the L slot, by its own key)
+    d.requestGear(-1);
+    CHECK(run(d, 0.1).lever == -1);
+    d.setGearbox(Gearbox::shifts);
+    CHECK(run(d, 0.1).lever == 0);
+}
