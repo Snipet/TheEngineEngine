@@ -2825,6 +2825,90 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 18:36 UTC: X-066 CORRECTED: THE ENTRY BELOW OVERSTATES IT, AND THE LEAD TOLD THE OWNER THE OVERSTATEMENT.**
+  The 18:25 entry says a `set_fields` made while the window is minimised is not heard until the window ticks.
+  That is wrong for the ordinary case. The lead had read that `flush()` is called only from `SimAdapter::frame`
+  and had NOT read what a set does: `Build::attach` "sends every value to host now and each change after"
+  (`host/include/tee/Build.h:131-132`), `Build::set` sends at once (`host/src/Build.cpp:391`, `:481-490`), and
+  `flush()` only re-sends what the host refused because its queue was full (`:503-510`). So in an app whose
+  simulator is adopted (the app the owner minimises after using it), Claude's change is heard at once, minimised
+  or not. What X-066 is: (a) an app minimised before its simulator was ever adopted has no simulator for the
+  tools and sends nothing until a frame; (b) a write the host refused waits for a frame. B's cure (48a26516,
+  read by the lead from the patch file at e57abecf: the engine's frame before and after the jobs in the drain)
+  covers (a), with cases broken by B; for (b) B is asked to MEASURE whether a whole build loaded while minimised
+  leaves writes waiting, and if so to make the wake ask again until none is. The lead's lesson: "confirmed in
+  the code" means the whole path was read, not the line that fits.
+  - The lead's five points on `scripts/run-wake.sh` before it lands: its timing is not portable to macOS
+    (`date +%s.%N`, `bc`: the macOS run would fail for a reason that is not the wake); every folder the app
+    touches under the run's own; ticks moved is a failure on Linux; the app's log on "no answer"; a wording slip.
+  - J2's tier for the carry on the merged state 2680d5a9 (plain tree, no libsecret): 592 of 592; `assistant.sim`
+    34 cases green there: card A's cure measured on three containers (card A's, the lead's, J2's).
+  - 3db7ed07's jobs at 18:33: Linux green; Windows running; macOS waiting behind f61531fa's macOS job (started
+    18:18:12). J2 and card A hold until it has started.
+- **27 Nov 18:25 UTC: X-066, A WINDOW THAT DOES NOT TICK NEVER ADOPTS THE SIMULATOR AND NEVER SENDS THE DOCUMENT'S
+  CHANGES TO THE ENGINE** (B's finding while writing the window test; the lead read the code). `SimAdapter::adopt`
+  and `build_->flush()` run only from `SimAdapter::frame` (`shell/player/SimAdapter.cpp:314-330`), called from the
+  frame's `beforeTick` (`app/Main.cpp:575`). With the wake (in from d0949cf2 on), a `set_fields` from Claude
+  Desktop while the window is minimised changes the build and is answered, and the owner hears nothing until
+  the window ticks again. What it does not touch: `predict_curve` and `run_dyno` run on a copy of the document's
+  text (`assistant/src/Tools.cpp:834-843`, `:904-913`), so their numbers are right; they are refused only in an
+  app minimised before its simulator was ever adopted. Ruled: the wake's drain serves the engine too (adoption
+  and the document's changes through drains alone), B's design, with a case for each and a comment on what of
+  the frame still does not run while minimised. Its own commit in B's stack, before the window test's script.
+  **It does not hold 3db7ed07:** answering while minimised with the engine a restore behind is better than
+  timing out.
+  - B's window test on a slow machine, by B's runs: the link opens at launch, `get_build` reads the document alone;
+    with a cold cache and 8 busy loops on 4 cores the call is answered in 0.13 s, the simulator still compiling.
+    B's patch comes to the lead as a file on the branch (docs/handoffs/patches/, docs-only).
+  - L on X-065: 306 plays (9 rows, 17 draws, 2 trees), about 15 minutes; started 18:17.
+- **27 Nov 18:18 UTC: X-065's record from the steward, and the order of the evening's pushes.**
+  - The soaks before the window, one draw a row each: 52cda676 (run 46005699524) GREEN, 228 of 228, with none of
+    items 16, 18, 20; 0f5dc0c9 (run 46012616941) 227 of 228, only `ui.build.reverse`, WITH item 16 and without 18
+    and 20. All nine X-065 rows passed at both and failed at 3ba103f4. Item 16 acts only under `ecu.model` 1 and
+    item 18 only on `car.model` 1's sequential, and no red row has either. So: item 20, or chance; L's 17 draws a
+    row, old against new, decide. The steward's per-case read agrees with the lead's (7 entries, 11 assertions,
+    all `Report.cpp:75`; no timeout, nothing Not Run). The soak's time: +131 s of summed case time against
+    ddacdf97's, of which `ui.build.bake.pictures` +115 s (J2's restatement waits on the bake's state, by design).
+  - 899259e9 read on all three by the steward as well: Linux 598 of 598, macOS 597 of 597, Windows 587 of 588 (the
+    two lines).
+  - The order: 3db7ed07 is protected until its three jobs have started (`main`'s next candidate). Then J2's carry
+    (U1's air patch) and card A's item 3 (28bd43e, 604404a, e142b06 with the held-clock case: green in 20 s; with
+    the job's wait put on the frame's clock its first section hangs) BACK TO BACK: whoever is ready first pushes,
+    the second merges it, builds everything, runs the assistant's, the shell's and the ui's suites and pushes at
+    once; the second tip is the protected one. Then B's window test of the wake (60c7e975 the `--minimise-after`
+    option, 69c51106 `scripts/run-wake.sh` and its ctest copy; with `setWake`'s call in `app/Main.cpp` made a no-op
+    the script fails: "timed out before the app took it"), read by the lead from patches first, with a run on a
+    loaded machine asked for; then one block in `build.yml`'s "Run the application" step, applied by the steward
+    on the lead's word.
+- **27 Nov 18:16 UTC: X-065, THE SOAK ON 3ba103f4 ENDED RED, AND EVERY RED ROW HAS THE PLACES LISTENER ON.** The lead's
+  read of the job's log (run 46032401939, linux-x64-soak, 16:54 to 18:09; 4373 s against 4251; 221 of 228;
+  `ui.build.reverse` passed, 43 s). Seven tests, eleven assertions, all the click judge at
+  `tests/sim/combo/Report.cpp:75` ("excess over its firing periods ... which decides"):
+  - nightly shards 2, 8, 13, 14, 15 and 16 of 16, seven triples, each with `sound.model`:
+    valve.model+boost.model+sound.model / turbo-six / pull (shift 3-2: 3.39 against 2.67);
+    intake.model+boost.model+sound.model / turbo-six / pull (shift 2-3: 2.71 against 2.67);
+    engine.wallHeat+sound.model+voices.model, engine.custom+exhaust.model+sound.model,
+    fuel.model+ecu.model+sound.model, intake.model+exhaust.model+sound.model / turbo-six / tour (the limiter: 3.16,
+    3.07, 3.18, 3.00 against 2.97); boost.model+fuel.model+sound.model / turbo-six-mild / pull (shift 3-2: 3.12
+    against 3.04);
+  - the archetype corpus, as built, two builds whose sound is Places: rotary-twin-na-side-port / tour (the limiter,
+    three instants: 2.54, 2.47, 2.62 against 2.35) and supercharged-v8-62 / tour (the limiter: 3.55 against 3.35).
+  - None of these rows is in `Known.h`; their neighbours without `sound.model` are (X-048, X-052, X-044, X-043).
+  - **Not established:** the cause. Item 20 (2f6bbbeb: true levels, the staging gain, the boundary microphone and
+    its fold) is the day's only commit that touches that listener. Each soak row is ONE draw, which is not
+    evidence by the lead's own rule. Asked of L: old against new at 17 draws a row, then which part of item 20,
+    then whether a person hears it. Asked of the steward: the last soak before the window, by row.
+  - `main`'s gate is the three jobs, and `main` (40463d37) holds this sim tree (22314cde): this is a finding on
+    what the owner has now. `sim/` stays closed; a cure waits for a window, and it does not bring auto level back
+    (the owner's ruling for true levels stands).
+- **27 Nov 18:16 UTC: THE NAMED RED IS OVER: card A's cure is in at 3db7ed07** (ef77de5 merged on B's fix; gated trees
+  unchanged). Card A's tier of record: 598 of 598 on 899259e9 + ef77de5 (plain tree, libsecret and libcurl
+  found); on the merged state, everything built and the assistant's and the shell's suites 92 of 92. The lead's
+  own tree at 3db7ed07 (plain, app OFF, NO libsecret, libcurl found): the same 92 of 92, the key-read case green
+  there; with the reason copied at construction again it fails at `ChatTest.cpp:824` and `:833`; restored. **The
+  prediction for 899259e9's Windows held exactly:** 587 of 588, `assistant.sim` at `ChatTest.cpp(820)` and
+  `(829)`, nothing else (the lead's read of the log). **The hold protects 3db7ed07** (18:14: Windows started
+  18:11:33; Linux and macOS pending). `main` moves to it on three greens. Then J2's carry, card A's item 3.
 - **27 Nov 18:06 UTC: THE TIP BUILDS AGAIN: B's fix is in at f61531fa** (76ce9d97 under two merges; gated trees
   unchanged). B's tier of record, in a tree configured by the plain preset (app OFF, no libsecret, no libcurl):
   591 of 592, the named red only; its app-on tree's shell suites 61 of 61. The lead's own plain tree at f61531fa:
