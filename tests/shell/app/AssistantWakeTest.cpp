@@ -23,6 +23,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <cstdio>
 #include <future>
 #include <memory>
 #include <string>
@@ -243,9 +244,10 @@ TEST_CASE("the assistant's wake: the simulator adopted through drains alone, no 
     CHECK(m.engine.sim->ready());
 }
 
-// The change made before the simulator is adopted: only the drain's frame (adopting it, the document attached and sent)
-// puts it in the engine; once adopted, a set goes straight to the host, and the frame after the jobs sends what it held.
-TEST_CASE("the assistant's wake: a tool's change reaches the engine, no frame ticked", "[app][assistant]")
+// The change made to an app whose simulator was never adopted: the drain's frame adopts it, and adopting sends the whole
+// document, the change with it. (This proves the adoption again, by the value it carries; once adopted, a set goes
+// straight to the host's queue: the whole-build case below.)
+TEST_CASE("the assistant's wake: a change to an unadopted engine arrives with its adoption, no frame ticked", "[app][assistant]")
 {
     Minimised m(/*adopted*/ false);
     Build& build = m.engine.sim->build();
@@ -288,4 +290,55 @@ TEST_CASE("the assistant's wake: a tool that needs the simulator finds it adopte
     INFO(r.value.dump().substr(0, 400));
     CHECK(r.value.dump().find("not ready") == std::string::npos);
     CHECK_FALSE(r.isError);
+}
+
+// X-066 (b): with the simulator adopted, a set goes straight to the host's queue; only a write the queue refused waits
+// for a frame (Build::flush). Can a whole build, loaded through the tool with no frame, leave writes waiting? Nothing
+// drains the queue here (no audio device): the worst case. After the answer, flush() true means none ever waited.
+TEST_CASE("the assistant's wake: a whole build loaded with no frame leaves no write waiting", "[app][assistant]")
+{
+    Minimised m;
+    Build& build = m.engine.sim->build();
+    SimHost& host = m.engine.sim->host();
+
+    // what a whole build sends: every Spec field (not a rev), its bytes; more than 16 go to the queue's pool
+    std::size_t fields = 0, bytes = 0, pooled = 0;
+    for (const FieldInfo& f : host.fields().all())
+        if (f.block == "spec" && f.kind != FieldKind::Rev)
+        {
+            std::string why;
+            const FieldRef r = host.fields().ref(f.path, why);
+            if (!r.valid())
+                continue;
+            ++fields;
+            bytes += r.size;
+            if (r.size > 16)
+                pooled += r.size;
+        }
+    std::printf("whole build: %zu fields, %zu bytes, %zu of them pooled (the queue: %zu slots, %zu bytes of pool)\n",
+                fields, bytes, pooled, LoadOptions{}.commandSlots, LoadOptions{}.poolBytes);
+
+    auto list = m.call("list_builds", nlohmann::json::object());
+    m.serve(list, 30000);
+    REQUIRE(answered(list));
+    const assistant::Result listed = list.get();
+    REQUIRE_FALSE(listed.isError);
+    std::string other;
+    for (const auto& b : listed.value["builds"])
+        if (b["name"].get<std::string>() != build.name && b["name"].get<std::string>().find("v8") != std::string::npos)
+        {
+            other = b["name"].get<std::string>();
+            break;
+        }
+    REQUIRE_FALSE(other.empty());
+
+    const std::string before = build.name;
+    auto load = m.call("load_build", { { "name", other } });
+    m.serve(load, 30000);
+    REQUIRE(answered(load));
+    const assistant::Result r = load.get();
+    INFO(r.value.dump().substr(0, 400));
+    REQUIRE_FALSE(r.isError);
+    CHECK(build.name != before);
+    CHECK(build.flush());   // nothing was left waiting by the load, with nothing draining the queue
 }

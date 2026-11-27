@@ -242,9 +242,11 @@ namespace tee::app
                 kept->assistant.frame(appBusy());
                 kept->frames.store(kept->frames.load() + 1.0);
             };
-            // A window that does not tick (X-066): the engine's frame around the drain, as the frame does it, so that a
-            // simulator compiled meanwhile is adopted before the jobs run (predict_curve and run_dyno need it) and a job's
-            // change reaches the engine in this drain, not at a next frame a minimised window never has.
+            // A window that does not tick (X-066): the engine's frame before the jobs, so that a simulator compiled
+            // meanwhile is adopted (predict_curve and run_dyno need it; adopting sends the whole document to it). Once
+            // adopted, a job's change goes straight to the host's queue (Build::set), and a whole build fits it with room
+            // (451 fields, 11,682 bytes against 16,384 slots and a 2 MiB pool: AssistantWakeTest's whole-build case). The
+            // frame after the jobs is only the frame's own order kept (it re-sends a write the queue refused): no case.
             shown.drainAssistant = [kept, appBusy, e = &engine] {
                 e->frame();
                 kept->assistant.frame(appBusy());
