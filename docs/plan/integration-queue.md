@@ -2567,6 +2567,53 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
   the limiter". X confirms by `car.gear`, gives the automatic and CVT a real pull (lever 1), and proposes what
   the truck rows should be; rows by the evidence rule; the soak's cost stated before it lands.
 
+## 27 Nov 11:49 UTC: X-057: the tuned diesel pickup's automatic never leaves first (found by B's proof of the shell fix)
+
+- **The fact (B, tee-headless, the selector fix applied, one trace):** `content/builds/diesel-pickup-tuned.json`, D,
+  full throttle held 37 s: gear 1 throughout, 13.3 m/s by 20 s and 13.87 at 40 s, the engine 2197 to 2228 rpm.
+  `archetypes/v6-35-na` upshifts by itself in the same script.
+- **The lead's read of the fields (fits the numbers; not yet a measurement of redW):** the build states an
+  electronic governor, `ecu.ratedSpeed` 219.9 rad/s (2100 rpm), droop 0.06, so high idle 2226 rpm, and no
+  `engine.redlineSpeed`. The automatic's schedule goes up at full pedal past min(idle + 0.9 x span, 0.85 x
+  redW) (`gearbox.fm`). If 85 % of the redline the vehicle holds is over the governor's high idle, the shift
+  point is never reached. The archetype pickup states its redline at its high idle and shifts.
+- **With the integrator (a read, a measurement, a proposal; nothing under `sim/`):** redW as the vehicle holds it
+  on this build; which other shipped builds pair a limit under the stated redline with a box that schedules on
+  it; where the cure belongs (the engine hands the vehicle the speed it can reach, `sim/`; or the build states
+  its redline, content, which moves its bake key: P either way); what else reads redW (the auto gearing, the
+  launch, the downshift's refusal, the lights). Item 19, or ahead of 18 if the integrator agrees the owner
+  cannot drive a shipped build without it.
+- **CONFIRMED by the lead's own run (11:50; the tip's simulator through tee-render, a scratch scenario: the lever at
+  1 from 2.5 s, full throttle from 3 s, 42 s; predicted first: gear 1 throughout, about 2220 rpm, 13 to 14 m/s):**
+  diesel-pickup-tuned gear 1 at every reading, 13.86 m/s and 2221 rpm at 42 s. The archetype
+  pickup-diesel-67-inline-six in the same scenario: 2 by 9 s, 3 by 12 s, 6 by 27 s, 53 m/s at 42 s. So the box
+  and the lever work, and this build's shift point is out of its engine's reach. redW itself is still unmeasured.
+- **B's push (the gears by gearbox kind) is NOT held for it:** the selector works; this is what it uncovered.
+
+## 27 Nov 11:52 UTC: X-057 MEASURED AND RULED (content now through D2; the rule in the window); the pull in neutral confirmed (X)
+
+- **X-057, the integrator's numbers (its own probe):** on diesel-pickup-tuned the vehicle holds redW 3265 rpm (the
+  reference's redline for 6.7 L: the build states no `engine.redlineSpeed`) and idleW 712; the automatic's upshift
+  at full pedal is 2775 rpm of road-derived input; the governor holds the engine at 2226 and the input at 1996.
+  The same redline sets the auto final drive (1.97: top gear geared for 198 km/h at a speed the engine cannot
+  reach). ONE shipped build exposed: the two archetype diesels state their redline at their high idle.
+- **Ruled:** (ii) NOW, D2's file and tests: the build states a redline its engine reaches (or D2 corrects the rated
+  speed if 2100 rpm was a slip, with its source); the test first (D at full pedal reaches second within a stated
+  time). By the lead's read the build carries no baked table (no maps or knock tables in its `ecu`), so no bake;
+  D2 confirms or stops. (i) in its FULL form only (the ECU's `redlineFor`: a governed engine's redline is its
+  governed high idle, so the lights, the vehicle and the key move together) is the window's item 19, AHEAD of
+  18; the vehicle-only half is not taken.
+- **The pull in neutral, CONFIRMED by X's `car.gear`:** automatic, CVT and truck sat in gear 0 at 0 m/s through the
+  pull. None of the 13 such shipped builds was in a nightly or default pull or launch case, so the mislabel was
+  in the survey's rows only (corrected). Tests only, X pushing: lever 1 for Automatic and CVT on the pull and the
+  launch; a fast-3 case that fails with the lever in N. On the automatics' real pull: 0 of 17 at every event on
+  the six corpus automatics and the CVT, NO NEW ROW, but WEAK on four of them (bounds 6.7 to 17 against a top of
+  3.67): the references read excesses of 8 to 12. The lead's hypothesis, for X to test: the reference run is
+  `car.model` 0, the reference's manual with first slammed in by the lever: not a fair twin under the lever.
+  No automatic goes on a nightly pull until that is read. Trucks: rows named "in neutral (no driver)" now; one
+  nightly pull-away on the tractor allowed after B's push, with conditions (no stall on 17 nudges, no shifts,
+  its cost stated).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
@@ -2675,6 +2722,10 @@ Sequential. The integrator confirms or refutes with its own measurement and desi
      (synced, or the revs over the edge); the pull's and tour's rows to confirm it, not a reading. Two tests:
      rest, two presses (the engine over 0.85 x idle, the car under 0.5 km/h: fails today); a synced 1-2 at
      1500 rpm on the overrun keeps robot 1.0 (passes today, fails on the first cure). Behind 16, 17 and 15.
+ 19. AHEAD OF 18 (27 Nov): X-057's rule, the integrator with the steward: a governed engine's redline is its
+     governed high idle (`redlineFor`, the full form: the lights, the vehicle and the key together). The one
+     shipped build that met it (diesel-pickup-tuned) is cured in content by D2 outside the window; after that
+     every shipped build is to be bit-identical under the rule.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
