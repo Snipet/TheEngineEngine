@@ -43,6 +43,28 @@
 
 ## Landed
 
+- **27 Nov 19:05 UTC: `main` at 3db7ed07.** Run 46047427666: Windows 588 of 588, Linux 598 of 598, macOS 597 of 597
+  (the steward's read by case; the lead read the three jobs' conclusions). Gated trees unchanged: `sim` 22314cde,
+  `host` ef1715f6, `tools` 7c3e4d59. In it, past 40463d37:
+  - **Card A's seven commits from the owner's quality check of the Claude integration** (899259e9): "New chat" in
+    the panel and a conversation too long for Claude said in words, the last message handed back; the saved key
+    read off the window's thread, once, a refusal remembered; the transport refuses an address whose authority
+    could name another host; `run_dyno`'s limits in its schema; the build's name carried as the app's data,
+    escaped; the chat's history kept in Claude's own key order; the status line's count, and the bridge going on
+    after a batch or an over-long line. The Claude Desktop extension is 0.2.2: it is installed again from this
+    build's `.mcpb`.
+  - **B's wake** (d0949cf2, fixed at f61531fa): a tool's call from Claude Desktop is answered while the window is
+    minimised (one SDL event a post; the window's event loop drains the inbox, frame or no frame; a job that says
+    "not yet" asked again 75 ms on). The lead's own build and break of it; the cases passed on macOS in CI. NOT
+    yet proved on the owner's Mac with a real minimised window.
+  - **Card A's cure of its own key-read case** (ef77de5): green where a build has no system key store (Windows,
+    a Linux without libsecret), measured on three containers and on Windows in CI.
+  - NOT in it, on the branch: card A's item 3 (every tool inside 55 s, the withdrawn question taken down; the
+    extension 0.2.3), U1's air patch in SETTINGS, B's window test of the wake and X-066's cure, X-063, X-064.
+  - Known on what the owner has: X-065 (in Places, the side-port rotary and the supercharged 6.2 V8 drive the
+    output limiter 12 to 19 dB deep at the rev limiter and it clamps the pulses' fronts: the look-ahead limiter
+    is designed for the next window); X-063 (a build file whose name is not UTF-8 ends the app when the
+    assistant reads it: Linux in practice); X-064 (two of the assistant's limits count frames).
 - **27 Nov 17:42 UTC: `main` at 40463d37.** Run 46039773867: Linux, macOS and Windows green on that commit. Gated
   trees unchanged: `sim` 22314cde, `host` ef1715f6, `tools` 7c3e4d59. In it, past 3ba103f4 (J2's carry of U1's
   two patches; 590 of 590 on J2's tier): a question Claude asked that Claude has since withdrawn takes its card

@@ -2825,6 +2825,14 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 19:05 UTC: `main` IS AT 3db7ed07** (run 46047427666: Windows, Linux and macOS green; gated trees
+  unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 40463d37 (17:42), 3ba103f4 (17:13). In it:
+  card A's seven commits, B's wake, card A's cure. The tip to protect is still 233d7154 (item 3 and the air
+  carry), `main`'s next candidate.
+  - Ready and waiting for 233d7154's three jobs to start: B's stack (one fault in the ctest copy to fix), card
+    A's X-063 (4c1a2d6, its tier running), the steward's `Known.h` push (three commits: the nine rows in and the
+    three cured pairs out; each combo row's excess and bound printed at the end of its line, no reader of that
+    line found; X-065's words), then the block in `build.yml`, then X-064.
 - **27 Nov 19:04 UTC: X-065: THE LIMITER IS THE CAUSE, MEASURED, AND THE CURE IS DESIGNED FOR THE NEXT WINDOW.** L's
   "quiet" probe (the new tree with the staging at an eighth, so the output limiter is out of play, the new spot
   and the fold kept; 17 draws): rotary 0 of 17, median 1.58 (bound 2.35); V8 0 of 17, median 2.63 (bound 3.35),
