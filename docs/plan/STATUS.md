@@ -43,6 +43,26 @@
 
 ## Landed
 
+- **27 Nov 20:47 UTC: `main` at 3ccb826b.** Run 46061873957: Linux 600 of 600, Windows 590 of 590, macOS 599 of 599
+  (card A's read by case; the lead read the three jobs' conclusions and macOS's log). Gated trees unchanged: `sim`
+  22314cde, `host` ef1715f6, `tools` 7c3e4d59. In it, past 233d7154:
+  - **B's window test of the wake and X-066's cure** (3e35f7a9): `--minimise-after`, `scripts/run-wake.sh`, and the
+    engine's frame around the jobs in the wake's drain, so an app minimised before its simulator was adopted
+    adopts it there. **CI now runs the packed application minimised on every job** (the steward's block in
+    `build.yml`): on this commit macOS says "run-wake: answered in 0.02 s; window: minimised=1 hidden=0
+    occluded=1; ticks 30 before the call, 30 after the answer" and "simulator ready while minimised, 4.6 s after
+    the minimise"; Linux the same in kind; Windows says it has no link.
+  - **X-063 cured** (6bfb90d2, and the case's own macOS fix 01788ba): a build file whose name is not UTF-8 no
+    longer ends the app; every JSON text the assistant writes goes through one helper, and a fault ends a call
+    or a turn, not the app.
+  - **X-064 cured** (3ccb826b): the assistant's limits are on real time (the gesture's wait, a turn's limit); the
+    session no longer reads the frame's clock; a dyno run stopped at its 40 s says to ask for a narrower range.
+  - **`Known.h`** (4524113b): X-065's two rows and the seven sometimes-rows in with their 17-draw rates, three
+    cured shift-click pairs out, each combo row's excess and bound printed.
+  - The lead built and broke each of the four in its own tree before or as it landed.
+  - Known on what the owner has: X-065 (Places: the side-port rotary and the supercharged 6.2 V8 limited 12 to
+    19 dB at the rev limiter with an edge on the pulses; the look-ahead limiter is designed for the next sim
+    window, `docs/plan/x065-limiter.md`).
 - **27 Nov 19:42 UTC: `main` at 233d7154.** Run 46051766042: Windows, Linux and macOS green (the steward's counts
   before Windows ended: Linux 599, macOS 598; the lead read the three jobs' conclusions). Gated trees unchanged:
   `sim` 22314cde, `host` ef1715f6, `tools` 7c3e4d59. In it, past 3db7ed07:

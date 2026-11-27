@@ -2825,6 +2825,18 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 20:47 UTC: `main` IS AT 3ccb826b** (run 46061873957: Linux 600, Windows 590, macOS 599, all green;
+  gated trees unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 233d7154 (19:42), 3db7ed07
+  (19:05), 40463d37 (17:42), 3ba103f4 (17:13). **The named macOS red is over** (the not-UTF-8 case passes
+  there; which of its two branches macOS took is not shown by the job's log, so "APFS refuses the name" stays
+  a reading, not a measurement). A whole default tier has no known red.
+  - Waiting, the only code-bearing push left tonight: B's small one (two comments corrected; the frame-count
+    clock taken out of what `app/Offline.cpp` gives the session), on B's two tiers. No tip is being protected now:
+    `main` holds everything else.
+  - With the owner: compaction for the chat (card A's paragraph; design first on a yes); the Places loudness
+    question with L's clips; their own try of Claude Desktop with the window minimised.
+  - The next sim window's list: X-065's look-ahead limiter, item 15 (the air's pressure), item 17 with X-060,
+    item 19 with X-059, X-058, and the older list.
 - **27 Nov 20:34 UTC: THE WAKE ON macOS's RUNNER: ANSWERED WHILE MINIMISED, NO FRAME TICKED.** 120cc19d's "Run the
   application" step succeeded on all three (run 46059778564; the steward's read, and the lead's own of the three
   logs). The packed application's lines:
