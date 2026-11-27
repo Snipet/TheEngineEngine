@@ -160,10 +160,12 @@ namespace tee::assistant
             return "Claude Desktop working: " + v.tool;
         if (v.connections == 0)
             return "Claude Desktop allowed";
+        // the batches of field changes Claude has made (not its loads or saves): "made", since the owner may have undone
+        // some with the app's Undo since, which this line cannot see
         std::size_t changes = 0;
         for (const Card& c : cards_.list())
-            changes += c.undone ? 0 : 1;
-        return "Claude Desktop connected, " + std::to_string(changes) + (changes == 1 ? " change" : " changes");
+            changes += c.tool == "set_fields" && !c.undone ? 1 : 0;
+        return "Claude Desktop connected, " + std::to_string(changes) + (changes == 1 ? " change made" : " changes made");
     }
 
     void Session::stop()

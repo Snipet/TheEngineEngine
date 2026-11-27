@@ -33,6 +33,7 @@
 
 #include <cstddef>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 
 #if !defined(_WIN32)
@@ -289,11 +290,39 @@ namespace tee::assistant::wire
     }
 #endif
 
-    // Bytes in, whole lines out. A line longer than kMaxLine makes the reader fail (the connection is then closed).
+    // Bytes in, whole lines out. A line longer than kMaxLine makes the reader fail (the connection is then closed), or,
+    // for a reader that goes on (the bridge's client), is skipped whole: skipLine().
     class Lines
     {
     public:
-        void add(const char* data, std::size_t n) { buffer_.append(data, n); }
+        void add(const char* data, std::size_t n)
+        {
+            if (skipping_)
+            {
+                // the rest of an over-long line: dropped up to its end
+                const char* end = static_cast<const char*>(std::memchr(data, '\n', n));
+                if (end == nullptr)
+                    return;
+                skipping_ = false;
+                const std::size_t used = static_cast<std::size_t>(end - data) + 1;
+                data += used;
+                n -= used;
+            }
+            buffer_.append(data, n);
+        }
+        // The line now over kMaxLine dropped, whatever of it is still to come too; the lines after it read as usual.
+        void skipLine()
+        {
+            const std::size_t at = buffer_.find('\n');
+            if (at == std::string::npos)
+            {
+                buffer_.clear();
+                skipping_ = true;
+            }
+            else
+                buffer_.erase(0, at + 1);
+            scanned_ = 0;
+        }
         // The next whole line (without its '\n' and a '\r' before it); false when there is none yet.
         bool next(std::string& line)
         {
@@ -315,5 +344,6 @@ namespace tee::assistant::wire
     private:
         std::string buffer_;
         std::size_t scanned_ = 0;
+        bool skipping_ = false;
     };
 }

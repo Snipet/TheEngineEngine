@@ -69,7 +69,8 @@ namespace tee::assistant
 
         McpLink::View desktop() const { return link_->view(); }
         // What the status line says of Claude Desktop: "" while the switch is off; "Claude Desktop allowed" while on
-        // and nothing connected; "Claude Desktop connected, 3 changes" (running: "Claude Desktop working: set_fields").
+        // and nothing connected; "Claude Desktop connected, 3 changes made" (batches of field changes, not loads or
+        // saves; made, so undoing one in the app does not lower it) (running: "Claude Desktop working: set_fields").
         // Until the frame draws the cards, this is how the owner sees that Claude Desktop changes the build.
         std::string statusNote() const;
         Cards& cards() noexcept { return cards_; }

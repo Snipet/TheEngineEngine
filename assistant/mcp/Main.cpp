@@ -36,7 +36,7 @@ namespace
     namespace wire = tee::assistant::wire;
     using Clock = std::chrono::steady_clock;
 
-    constexpr const char* kVersion = "0.2.1";
+    constexpr const char* kVersion = "0.2.2";
     constexpr double kCallSeconds = 110.0;   // the longest tool (a dyno: 60 s, an asked load: 60 s) and some
 
     const char* const kInstructions =
@@ -87,7 +87,12 @@ namespace
                         return 0;   // the client has gone
                     client_.add(buf, static_cast<std::size_t>(got));
                     if (client_.overflow())
-                        return 1;
+                    {
+                        // a request over 4 MB is answered, dropped whole and the next read (never the end of the server)
+                        client_.skipLine();
+                        send({{"jsonrpc", "2.0"}, {"id", nullptr},
+                              {"error", {{"code", -32600}, {"message", "Invalid Request: a request is at most 4 MB"}}}});
+                    }
                     std::string line;
                     while (client_.next(line))
                         if (!line.empty())
@@ -195,6 +200,13 @@ namespace
             if (msg.is_discarded())
             {
                 send({{"jsonrpc", "2.0"}, {"id", nullptr}, {"error", {{"code", -32700}, {"message", "Parse error"}}}});
+                return;
+            }
+            if (msg.is_array())
+            {
+                // a JSON-RPC batch: MCP has none since 2025-06-18; answered, not ignored
+                send({{"jsonrpc", "2.0"}, {"id", nullptr},
+                      {"error", {{"code", -32600}, {"message", "Invalid Request: batches are not supported; send one request a line"}}}});
                 return;
             }
             if (!msg.is_object() || !msg.contains("method") || !msg["method"].is_string())
