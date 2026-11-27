@@ -56,3 +56,15 @@ The lead's look (27 Nov, 12:42: the patch's text applied, built, the pictures dr
 before two mends the lead then asked for, which the lead took as described and did not draw again: tune.bake.stale's rig
 given a baked table, and TUNE's "old table in use" said from the service's own word when no telemetry says it (U4's
 handoff). J2's tier covers them.
+
+**27 Nov 2026, SETTINGS' CLUTCH row and the page's scroll (the lead's rulings):** CLUTCH under WHEEL: three buttons
+across the column (Shifter's, Automatic, Yours; card B's three-way `input::ClutchMode` through
+FrameServices::clutchMode/setClutchMode, wired in app/Offline.cpp as coldStart is), the mode lit and following a change
+made elsewhere (B's F9 item), B's line for the gearbox loaded under them (`autoClutchSays`, two lines at most). With it
+the page no longer fits 1100 x 700 when every row is served, so the settings page SCROLLS where its rows do not fit
+(`placeSettings`, `settingsScroll_`): every row in its own place and size, the page moved up; a widget, heading or line
+not wholly in the room is not shown (nothing over the cockpit or the ribbon); the wheel by the inspector's own rule (over
+a stepper's value box its unit, the page still; elsewhere the page, by funkgui::scroll::wheelPx with the Rows' row height,
+the trackpad speed mended on 26 Nov); Tab and Shift-Tab bring a stop scrolled out into view before focusing it; a thin bar
+at the column's right edge while it scrolls; at the top when SETTINGS is opened or the window changes. Where the rows fit,
+nothing changes (offset 0; no golden moved). Test `frame.clutch`; pictures out/ui/frame.clutch[.bottom][.small][.dpi1].png.

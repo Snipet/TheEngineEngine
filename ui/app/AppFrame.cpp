@@ -3,6 +3,7 @@
 
 #include "app/Look.h"
 #include "app/Placeholders.h"
+#include "kit/inspect/FieldInspector.h"
 #include "kit/inspect/Outline.h"
 #include "kit/widgets/Tables.h"
 
@@ -11,6 +12,7 @@
 #include <funkgui/prefs/UiPreferences.h>
 #include <funkgui/text/FontService.h>
 #include <funkgui/text/TextFit.h>
+#include <funkgui/widgets/Scroll.h>
 
 #include <algorithm>
 #include <cmath>
@@ -344,6 +346,14 @@ namespace tee::ui
         wheelOn_ = &make<Button>("On", [this] { if (services_.setWheelOn) services_.setWheelOn(true); });
         wheelOff_->setLit([this] { return services_.wheelOn && !services_.wheelOn(); });
         wheelOn_->setLit([this] { return services_.wheelOn && services_.wheelOn(); });
+        // CLUTCH, three ways (card B's input::ClutchMode): with an H-shifter its clutch is yours (the default), or the
+        // gearbox works it, or the clutch is yours whatever moves the lever.
+        static const char* const kClutch[3] = { "Shifter's", "Automatic", "Yours" };
+        for (int m = 0; m < 3; ++m)
+        {
+            clutch_[static_cast<std::size_t>(m)] = &make<Button>(kClutch[m], [this, m] { if (services_.setClutchMode) services_.setClutchMode(m); });
+            clutch_[static_cast<std::size_t>(m)]->setLit([this, m] { return clutchLit() == m; });
+        }
         desktopOff_ = &make<Button>("Deny", [this] { setDesktop(false); });
         desktopOn_ = &make<Button>("Allow", [this] { setDesktop(true); });
         desktopOff_->setLit([this] { return services_.desktopAllowed && !services_.desktopAllowed(); });
@@ -425,6 +435,10 @@ namespace tee::ui
         desktopOff_->setHelp("Claude Desktop cannot reach this app: it listens on nothing.");
         desktopOn_->setHelp("Lets Claude Desktop on this computer reach the build open here through a private link, and "
                             "change it. The status line says when it is connected and what it does.");
+        clutch_[0]->setHelp("With an H-shifter, the clutch is yours: its pedal, or Left Shift. With the keys or paddles alone, "
+                            "the gearbox works it.");
+        clutch_[1]->setHelp("The gearbox works the clutch, whatever shifts: no clutch to work.");
+        clutch_[2]->setHelp("The clutch is always yours, whatever moves the lever.");
         wheelOff_->setHelp("The steering wheel is not read.");
         wheelOn_->setHelp("Reads a connected Logitech G29: its wheel, its pedals and its paddles. The line under it says "
                           "what it is doing.");
@@ -934,6 +948,18 @@ namespace tee::ui
         return status;
     }
 
+    std::string AppFrame::clutchLine() const
+    {
+        if (!services_.clutchMode || !services_.setClutchMode || !services_.autoClutchSays)
+            return {};
+        return services_.autoClutchSays();
+    }
+
+    int AppFrame::clutchLit() const
+    {
+        return services_.clutchMode ? services_.clutchMode() : -1;
+    }
+
     std::string AppFrame::wheelLine() const
     {
         if (!services_.wheelOn || !services_.setWheelOn || !services_.wheelStatus)
@@ -1048,6 +1074,7 @@ namespace tee::ui
     {
         if (on)
         {
+            settingsScroll_ = 0.0f;   // the settings open at their top
             chatOpen_ = false;
             card_->close();
         }
@@ -1325,11 +1352,27 @@ namespace tee::ui
                                std::max(0, width() - static_cast<int>(room.right()) + 4),
                                std::max(0, height() - static_cast<int>(room.bottom())));
         }
+        // The settings page: laid out at its scroll, again once if the scroll had to come back within its most.
+        if (!(unitsPage_ && !chatOpen_) || width() != settingsSize_.first || height() != settingsSize_.second)
+            settingsScroll_ = 0.0f;   // reopened, or the window changed: at the top
+        settingsSize_ = { width(), height() };
+        placeSettings(room);
+        if (settingsScroll_ > settingsMax_)
+        {
+            settingsScroll_ = settingsMax_;
+            placeSettings(room);
+        }
+    }
+
+    void AppFrame::placeSettings(const funkgui::Rect& room)
+    {
         // The settings page, top down: AUDIO (the device in a line, its menu), THEME, UNITS (two columns of steppers),
-        // KEYS (drawn: drawOver).
+        // KEYS (drawn: drawOver). Where its rows do not fit the room (the smallest window with every row served), it
+        // scrolls (settingsScroll_, U1, 27 Nov, the lead's ruling): every row in its own place and size, the page moved
+        // up; a row not wholly in the room is not shown, so nothing is drawn over the cockpit or the ribbon.
         const bool on = unitsPage_ && !chatOpen_;
         const float x = room.x + 12.0f, w = room.w - 24.0f;
-        float y = room.y + 8.0f;
+        float y = room.y + 8.0f - settingsScroll_;
         settingsHeads_.clear();
         settingsHeads_.push_back({ "AUDIO", y });
         // The device's line, its menu's button at the line's right (one row).
@@ -1383,18 +1426,68 @@ namespace tee::ui
             wheelNoteY_ = y + 16.0f;
             y += 42.0f;
         }
+        // CLUTCH: three ways (card B's), across the whole column under its heading (three do not fit beside it), what
+        // it means on the gearbox loaded under them, two lines at most.
+        const bool clutch = on && services_.clutchMode && services_.setClutchMode && services_.autoClutchSays;
+        const float cw = (w - 12.0f) / 3.0f;
+        for (std::size_t m = 0; m < clutch_.size(); ++m)
+            clutch_[m]->setPlace({ x + static_cast<float>(m) * (cw + 6.0f), y + 16.0f, cw, 26.0f }, clutch);
+        clutchNoteY_ = -1.0f;
+        if (clutch)
+        {
+            settingsHeads_.push_back({ "CLUTCH", y });
+            clutchNoteY_ = y + 47.0f;
+            y += 78.0f;
+        }
         settingsHeads_.push_back({ "UNITS", y });
         // One column: each quantity's name in full at the left, its stepper at the right.
         // 25 px apart, closer (to 23, the stepper's own height) where the room is short.
         const float n = static_cast<float>(std::max<std::size_t>(1, unitSteppers_.size()));
-        // Down to 21 (the steppers as tall) where even 23 would run into the cockpit (the smallest window with every row).
-        const float pitch = std::clamp((room.bottom() - y - 16.0f - 4.0f) / n, 21.0f, 25.0f);
+        // Down to 21 (the steppers as tall) where even 23 would run into the cockpit; where even 21 would, the page scrolls
+        // and the steppers keep their own pitch, 25 (the room reckoned at no scroll, so the pitch does not move with it).
+        const float y0 = y + settingsScroll_;   // UNITS' heading at no scroll
+        const bool overflows = y0 + 16.0f + 21.0f * n > room.bottom() + 0.5f;   // even at 21 the last runs past
+        const float pitch = overflows ? 25.0f : std::clamp((room.bottom() - y0 - 16.0f - 4.0f) / n, 21.0f, 25.0f);
         for (std::size_t i = 0; i < unitSteppers_.size(); ++i)
             unitSteppers_[i]->setPlace({ x, y + 16.0f + static_cast<float>(i) * pitch, w, std::min(23.0f, pitch) }, on);
         y += 16.0f + pitch * static_cast<float>(unitSteppers_.size()) + 8.0f;
         keysY_ = y + 16.0f;
         if (keysY_ + 14.0f <= room.bottom())   // a heading only with a key under it
             settingsHeads_.push_back({ "KEYS", y });
+        // How far it scrolls: the last stepper's foot past the room's, with a margin (0: it fits, and nothing here changes
+        // the page).
+        settingsMax_ = on && overflows ? std::max(0.0f, y0 + 16.0f + pitch * (n - 1.0f) + std::min(23.0f, pitch) + 6.0f - room.bottom())
+                                       : 0.0f;
+        // A widget not wholly in the room is not shown (kept with its place, for Tab: AppFrame::key).
+        settingsClipped_.clear();
+        if (on)
+            for (Widget* wd : settingsWidgets())
+                if (wd->shown() && (wd->bounds().y < room.y - 0.5f || wd->bounds().bottom() > room.bottom() + 0.5f))
+                {
+                    settingsClipped_.push_back({ wd, wd->bounds() });
+                    wd->setPlace(wd->bounds(), false);
+                }
+    }
+
+    std::vector<Widget*> AppFrame::settingsWidgets() const
+    {
+        std::vector<Widget*> out = { audioLine_, audioMenu_, graphite_, paper_, full_, economy_, warmStart_, coldStart_,
+                                     desktopOff_, desktopOn_, wheelOff_, wheelOn_ };
+        out.insert(out.end(), clutch_.begin(), clutch_.end());
+        for (Stepper* st : unitSteppers_)
+            out.push_back(st);
+        return out;
+    }
+
+    bool AppFrame::scrollSettings(float to)
+    {
+        const float before = settingsScroll_;
+        settingsScroll_ = std::clamp(to, 0.0f, settingsMax_);
+        if (settingsScroll_ == before)
+            return false;
+        arrange();
+        dirty_ = true;
+        return true;
     }
 
     // ---- drawing ----------------------------------------------------------------------------------------------------
@@ -1436,13 +1529,19 @@ namespace tee::ui
         if (unitsPage_ && !chatOpen_)
         {
             const funkgui::Rect room = inspectorRect();
+            // what is drawn here is drawn only wholly in the room (the page may be scrolled: placeSettings)
+            const auto inRoom = [&](float ty, float th2) { return ty >= room.y - 0.5f && ty + th2 <= room.bottom() + 0.5f; };
             for (const auto& [heading, hy] : settingsHeads_)
-                c.text(heading.c_str(), heading == "QUALITY" ? settingsHeadX_ : room.x + 12.0f, hy, look::kCaps, p.label);
-            if (startNoteY_ >= 0.0f)
+                if (inRoom(hy, 12.0f))
+                    c.text(heading.c_str(), heading == "QUALITY" ? settingsHeadX_ : room.x + 12.0f, hy, look::kCaps, p.label);
+            if (startNoteY_ >= 0.0f && inRoom(startNoteY_, 12.0f))
                 c.text("from the next launch", room.x + 12.0f, startNoteY_, look::kUnit, p.label);
             // A row's line, two lines at most in the left column (the buttons at the right), the second cut to fit.
-            const auto rowNote = [&](const std::string& line, float ny, funkgui::Col ink) {
-                const float lw = settingsHeadX_ - room.x - 12.0f - 8.0f;
+            const auto rowNote = [&](const std::string& line, float ny, funkgui::Col ink, float lw = -1.0f) {
+                if (!inRoom(ny, 26.0f))
+                    return;
+                if (lw < 0.0f)
+                    lw = settingsHeadX_ - room.x - 12.0f - 8.0f;
                 std::string first;
                 std::size_t at = 0;
                 while (at < line.size())
@@ -1463,6 +1562,8 @@ namespace tee::ui
                 rowNote(desktopLine(), desktopNoteY_, desktopWhy_.empty() ? p.text : Look::of(th).error);
             if (wheelNoteY_ >= 0.0f)
                 rowNote(wheelLine(), wheelNoteY_, p.text);
+            if (clutchNoteY_ >= 0.0f)   // the whole column's width: nothing beside it
+                rowNote(clutchLine(), clutchNoteY_, p.text, room.w - 24.0f);
             // The keys of docs/controls.md (the shell reads them; they work in every workspace but a text field).
             static const char* const kKeys[][2] = {
                 { "Up / W", "throttle" }, { "Down / S", "brake" }, { "Left Shift", "clutch" }, { "Return", "start (hold: stop)" },
@@ -1474,9 +1575,22 @@ namespace tee::ui
             {
                 if (ky + 14.0f > room.bottom())
                     break;
+                if (ky < room.y)
+                {
+                    ky += 15.0f;
+                    continue;
+                }
                 c.text(k[0], room.x + 12.0f, ky, look::kUnit, p.value);
                 c.text(k[1], room.x + 130.0f, ky, look::kUnit, p.label);
                 ky += 15.0f;
+            }
+            // While it scrolls: a thin bar at the column's right edge, its thumb where the page is.
+            if (settingsMax_ > 0.0f)
+            {
+                const float tx = room.right() - 5.0f, ty0 = room.y + 4.0f, th0 = room.h - 8.0f;
+                const float thumb = std::max(24.0f, th0 * room.h / (room.h + settingsMax_));
+                c.rrect(tx, ty0, 3.0f, th0, 1.5f, p.edge);
+                c.rrect(tx, ty0 + (th0 - thumb) * (settingsScroll_ / settingsMax_), 3.0f, thumb, 1.5f, p.label);
             }
         }
         // The ribbon's title row.
@@ -1632,6 +1746,8 @@ namespace tee::ui
             k.mix(std::hash<std::string>{}(desktopLine()));
         if (wheelNoteY_ >= 0.0f)
             k.mix(std::hash<std::string>{}(wheelLine()));
+        if (clutchNoteY_ >= 0.0f)
+            k.mix(std::hash<std::string>{}(clutchLine())).mix(static_cast<std::uint64_t>(clutchLit() + 1));
         k.mix(doc_.revision()).mix(selection_.revision()).mix(units_.revision()).mix(dyno_->revision());
         for (int i = 0; i < count(); ++i)
         {
@@ -1700,6 +1816,17 @@ namespace tee::ui
     bool AppFrame::wheel(const funkgui::WheelEvent& e)
     {
         dirty_ = true;
+        // The settings page while it scrolls: by the inspector's own rule (FieldInspector::wheel), a stepper's value box
+        // takes the wheel (its unit) and the page does not move; anywhere else the page scrolls, as every list does
+        // (funkgui::scroll::wheelPx with the Rows' row height: the trackpad's small deltas as mended on 26 Nov).
+        if (unitsPage_ && !chatOpen_ && settingsMax_ > 0.0f && e.dy != 0.0f && inspectorRect().contains({ e.x, e.y }))
+        {
+            for (const Stepper* st : unitSteppers_)
+                if (st->shown() && st->bounds().contains({ e.x, e.y }) && e.x >= st->minusRect().x && e.x <= st->plusRect().right())
+                    return Board::wheel(e);
+            scrollSettings(settingsScroll_ - funkgui::scroll::wheelPx(e.dy, e.smooth, FieldInspector::kWheelRowH));
+            return true;
+        }
         return Board::wheel(e);
     }
 
@@ -1736,6 +1863,30 @@ namespace tee::ui
             if (services_.redo)
                 services_.redo();
             return true;
+        }
+        // Tab on the settings page while it scrolls: the next stop scrolled out of the room is brought in whole first,
+        // so the board's own Tab finds it shown (a list shows its focused row).
+        if (e.key == funkgui::Key::tab && unitsPage_ && !chatOpen_ && !settingsClipped_.empty())
+        {
+            const int step = e.mods.shift ? -1 : 1, n = count();
+            for (int k = 1; k <= n; ++k)
+            {
+                const int at = focus() < 0 ? (step > 0 ? k - 1 : n - k) : focus() + step * k;
+                if (at < 0 || at >= n)
+                    break;
+                const Item& it = item(at);
+                if (it.shown() && it.focusable())
+                    break;   // a stop in sight: the board's Tab takes it
+                const auto c = std::find_if(settingsClipped_.begin(), settingsClipped_.end(),
+                                            [&](const auto& w) { return static_cast<const Item*>(w.first) == &it; });
+                if (c != settingsClipped_.end())
+                {
+                    const funkgui::Rect room = inspectorRect(), r = c->second;
+                    scrollSettings(r.y < room.y ? settingsScroll_ - (room.y - r.y) - 4.0f
+                                                : settingsScroll_ + (r.bottom() - room.bottom()) + 4.0f);
+                    break;
+                }
+            }
         }
         return Board::key(e);
     }

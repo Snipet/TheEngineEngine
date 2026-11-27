@@ -28,6 +28,8 @@
 // and lets every other key through unless a text field has the caret.
 #pragma once
 
+#include <array>
+
 #include "app/AskDialog.h"
 #include "app/Cockpit.h"
 #include "app/KeyDialog.h"
@@ -145,6 +147,12 @@ namespace tee::ui
         // The settings' WHEEL row's line (FrameServices::wheelOn, setWheelOn, wheelStatus: card B's G29): its status, or
         // what off and on mean. Empty: no row.
         std::string wheelLine() const;
+        // The CLUTCH row's line (FrameServices::autoClutchSays; "" when the row is not served), and the mode lit (-1: none).
+        std::string clutchLine() const;
+        int clutchLit() const;
+        // The settings page's scroll, px, and its most (0: it fits); for tests.
+        float settingsScroll() const noexcept { return settingsScroll_; }
+        float settingsScrollMax() const noexcept { return settingsMax_; }
 
         // The key chat (card A's ChatView: a kit Widget the shell makes and hands over, so ui/ links nothing of the
         // assistant). The top bar's CHAT opens it in the inspector's column (the page, its tabs and the ribbon give it
@@ -280,6 +288,16 @@ namespace tee::ui
         Button *desktopOff_ = nullptr, *desktopOn_ = nullptr;  // CLAUDE DESKTOP (FrameServices::allowDesktop)
         float desktopNoteY_ = -1.0f;
         Button *wheelOff_ = nullptr, *wheelOn_ = nullptr;      // WHEEL (FrameServices::wheelOn)
+        std::array<Button*, 3> clutch_{};                      // CLUTCH (FrameServices::clutchMode): shifter's, automatic, yours
+        // The settings page's scroll (placeSettings): px moved up, and its most (0: the rows fit, no scroll); the widgets
+        // out of the room with their places; the window size it was for (a new size: back to the top).
+        float settingsScroll_ = 0.0f, settingsMax_ = 0.0f;
+        std::vector<std::pair<Widget*, funkgui::Rect>> settingsClipped_;
+        std::pair<int, int> settingsSize_{ 0, 0 };
+        void placeSettings(const funkgui::Rect& room);
+        std::vector<Widget*> settingsWidgets() const;
+        bool scrollSettings(float to);   // clamped to [0, most]; true: it moved (the page laid out again)
+        float clutchNoteY_ = -1.0f;
         float wheelNoteY_ = -1.0f;
         std::string desktopWhy_;                               // the switch's last refusal (cleared by a change)
         void setDesktop(bool on);
