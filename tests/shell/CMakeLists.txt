@@ -177,6 +177,17 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_test(NAME shell.window.info
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine> --engine tone --info
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    # The assistant's wake in the real application (scripts/run-wake.sh): the window minimised, one call through tee-mcp
+    # answered in time while it does not tick. CI runs the same script on the packed application (build.yml's "Run the
+    # application"); this copy is for a tree with the application on, extra to that.
+    if(TARGET tee-mcp)
+      add_test(NAME shell.window.wake
+        COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" "${PROJECT_SOURCE_DIR}/scripts/run-wake.sh"
+                $<TARGET_FILE:TheEngineEngine> $<TARGET_FILE:tee-mcp>
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+      set_tests_properties(shell.window.wake PROPERTIES TIMEOUT 300 LABELS "shell;window" RUN_SERIAL TRUE
+        PASS_REGULAR_EXPRESSION "run-wake: answered in [0-9.]+ s; window: minimised=1")
+    endif()
     # The launch (app/Launch.h): a launch with no settings that names the first build (content/builds/first.json: a
     # scripted run opens none unless named) shows its notes' first line ("Try first: ...") and ends with its name and
     # every model switch the Schema has on, in the document and as the engine was sent them (a switch at 0, or one not
