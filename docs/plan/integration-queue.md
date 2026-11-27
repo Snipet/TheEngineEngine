@@ -2822,8 +2822,18 @@ the steward would use, if the owner allows it:
   one undone during the wait starts none; the service may go while it waits". Read and NOT of the kind: every
   other knockLimitCurrent or intakeCamCurrent in EngineTest.cpp (tables baked inside the case, or asserted not
   current), TuneFuelTests.cpp:51, BuildTests' build.bake, the nightly tier, the bake gate (idle figures, not
-  keys). A red outside these five is a red. P's proof on the baked commit: `host.sim.bakes` green, these five
-  passing by name.
+  keys). A red outside these is a red. **A SIXTH, by name (14:04, the lead's ruling on J2's question):** ctest
+  `ui.build`, the case `build.bake.stale` (tests/ui/BuildTests.cpp:368-382; it arrives with J2's carry of U1's
+  bake words): it loads first.json and requires its shipped bake current at load, so on a changed `sim/` it
+  reads "baking spark map ..." and fails; the same kind as the five. P's proof on the baked commit:
+  `host.sim.bakes` green with its five passing by name, AND `ui.build`'s `build.bake.stale` green.
+- **Asked of the owner this afternoon, under way (not the window's):** "a quality check on the Claude integration
+  (both MCP and in-app interface)... try to find bugs/inaccuracies/integration issues": a fresh reviewer, TEE R
+  (session_01LFAGgQVPmQi8n8GgP5YyjZ), read-only on `main` at f77a46e6, findings to the lead marked proved or
+  read; card A fixes after the lead's triage. The lead's own first lead for it, read and not proved: the app
+  and the bridge each take the link's folder from their own environment (McpWire.h:48-66) and the extension's
+  manifest passes the bridge none, so if Claude Desktop starts it with a short list of variables the two look
+  in different folders and never meet.
 - **X-059 (numbered 13:06; N2's, with D2):** `boost.applyMachine` sizes the turbo from `ecu.redRpm` (machine.fm:464),
   where a governed diesel's design speed is its rated speed (as `designSpeed` takes it, engine.fm:526). So item
   19's cap, reviewed by the integrator on the steward's change, moves three shipped engines' full-pedal torque
