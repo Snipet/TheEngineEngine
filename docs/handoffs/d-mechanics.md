@@ -224,5 +224,25 @@ and item 19 turns it green); D2's full form (tests/sim/diesel/RedlineTest.cpp:13
 failing for the three since the files still state nothing) is restated on the ECU's value or dropped in favour of
 GearsTest's; D2's gating form (the builds that shift by their redline) stays.
 
+**Item 19 left the window (the lead, 13:05): X-059.** The steward's cap reviewed on a scratch tree (TEE_CORE_SIM, one
+tee-tests-core binary, hidden "[.item19readers]"; 8d2e60f0 + 75d67996's diff by hand): it moves a reader its null did
+not see. boost.applyMachine sizes the machine from ecu.redRpm (machine.fm:464, designShare x redRpm), where a governed
+diesel's design speed is its rated speed (as designSpeed takes it at engine.fm:526). X-059 is N2's, with D2 for what
+the three should make at low speed, from sources; the rule and the match land together next window. GearsTest's
+X-057 case keeps its [!shouldfail]; D2's RedlineTest stays. The figures N2 starts from (Bench; before -> after):
+
+| build | engine.redline (rad/s) | boost.mach.redRpm | dyno full pedal 1200 rpm | 1600 rpm | 1900 rpm |
+|---|---|---|---|---|---|
+| diesel-v8-truck | 245.02 -> 210.94 | 2343.33 -> 2014.33 | 2751.79 -> 3076.95 N m (+11.8 %), boost 108299 -> 134970 Pa | 3185.75 -> 3171.74, 139997 both | 3074.51 -> 3074.12, 139997 both |
+| diesel-mechanical-classic | 247.65 -> 237.49 | 2364.92 -> 2267.88 | 2016.16 -> 2056.33 (+2.0 %), 82341 -> 86817 Pa | 2160.43 -> 2166.41, 128116 -> 131532 | 2160.33 -> 2154.65, 139850 -> 139977 |
+| diesel-marine-v12 | 247.29 -> 197.92 | 2361.48 -> 1890.04 | 2677.17 -> 3208.46 (+19.8 %), 77295 -> 108574 Pa | 3334.74 -> 3538.54 (+6.1 %), 123334 -> 139997 | -448.82 -> -423.50 (over its high idle), 42301 -> 56723 |
+
+Free rev at full pedal, 3-6 s after: v8-truck 1998.3-2009.4 -> 1998.0-2009.7 rpm; classic 2202.4-2360.8 ->
+2203.2-2361.6 (the reference's cut does not hold a governed diesel at redRpm); marine 1826.9-2125.4 -> 1831.2-2111.4;
+sound level within 0.35 dB. car.m1.redW read 6493.5 rpm on all three before and after in mode 0 (the vehicle's copy
+not read in drive: not measured). truck-15l-six and diesel-pickup-tuned print identically before and after. The
+steward's gate added since: a cap only with fuel kind != 0 and governor != 0 (all six governed builds state Electronic
+or Mechanical).
+
 Numbered for the list, not for now: X-058 (X's), archetypes/v6-35-twin-turbo-pickup, an automatic put into D at rest,
 the "start" window, 1 of 17 over its bound (3.57 against 3.22), 45 ms after the lever and before first is in.
