@@ -43,6 +43,14 @@
 
 ## Landed
 
+- **27 Nov 09:02 UTC: `main` at 7ff344bc** (from ddacdf97, fast-forward; run 45955671762 on that commit: Linux,
+  Windows and macOS green; sim f23337cc, host 86ea14da, tools 7c3e4d59 unchanged). Tests only: the nightly's
+  `ui.build.bake.pictures` waits on the bake's state and not on a clock (U1, carried by J2): the load ends at
+  "baked" for as long as the state moves, a stall is 120 s unmoved; a second launch is done with no stage of
+  baking; the ribbon's first curve comes within ten points of the bake's start (a promptness check: the bake's
+  yield to the predictor is guarded in the host's own default case, which fails without it). The soak with X's
+  reference store read 71 minutes on a reference runner, 6 over d586682c's 65 with the twin and the shipped
+  pulls in (93 before the store): under the line of 10, so nothing leaves the soak.
 - **27 Nov 07:16 UTC: `main` at ddacdf97** (from dc2f7db3, fast-forward; run 45951143037 on that commit: Linux,
   Windows and macOS green; sim f23337cc, host 86ea14da, tools 7c3e4d59 unchanged). Tests and docs only: the
   nightly bound's reference sets are kept across one job's processes (X: 360 sets were being played for 57
