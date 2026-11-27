@@ -864,3 +864,37 @@ TEST_CASE("custom twin turbos arranged in sequence keep one collector", "[.seqtu
     b.start();
     std::printf("custom four, twin turbos in sequence: topo %g\n", b.field("lay.topo"));
 }
+
+// The owner's report (27 Nov): shifting works only on the manual. Each gearbox kind driven from rest by the counters
+// alone (lever 0, as the application sends under its automatic clutch), then by the lever (hidden: "[.shiftkinds]")
+TEST_CASE("each gearbox kind from rest: the counters, then the lever", "[.shiftkinds]")
+{
+    struct K { const char* build; const char* kind; };
+    for (const K& k : {K{"archetypes/hot-hatch-16-16v", "manual"}, K{"archetypes/inline-five-turbo-rally", "sequential"},
+                       K{"archetypes/turbo-four-20-gdi", "dual clutch"}, K{"archetypes/v6-35-na", "automatic"},
+                       K{"archetypes/economy-four-15", "CVT"}, K{"archetypes/tractor-15-inline-six", "eighteen"}})
+    {
+        for (int byLever = 0; byLever < 2; ++byLever)
+        {
+            Bench b(k.build);
+            b.start();
+            b.ctl().mode = 1;
+            b.play(0.2);
+            const double g0 = b.tel("car.gear");
+            if (byLever == 0)
+                b.ctl().shiftUp += 1;
+            else
+                b.ctl().lever = 1;
+            b.play(0.5);
+            const double g1 = b.tel("car.gear");
+            b.ctl().throttle = 0.4f;
+            b.play(3.0);
+            const double g2 = b.tel("car.gear");
+            if (byLever == 0)
+                b.ctl().shiftUp += 1;
+            b.play(1.0);
+            std::printf("%-12s %s: gear %g, after the input %g, after 3 s at 0.4 %g (%.1f km/h), after another up press %g\n", k.kind,
+                        byLever ? "lever 1    " : "up counter ", g0, g1, g2, b.tel("car.speed") * 3.6, b.tel("car.gear"));
+        }
+    }
+}
