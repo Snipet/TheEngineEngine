@@ -43,6 +43,16 @@
 
 ## Landed
 
+- **27 Nov 12:19 UTC: `main` at 35a733d1: the gears by gearbox kind (the owner's report that shifting worked on no
+  box but a manual).** Run 45994332561: Linux, macOS and Windows green on that commit; `sim` f23337cc, `host`
+  86ea14da, `tools` 7c3e4d59 unchanged. B's `shell/input`: the Driver learns the build's gearbox and `car.model`;
+  an automatic's and a CVT's selector R, N, D on the lever (a shift up towards D, a shift down towards R and out
+  of D only at a crawl, the N key N at any speed, the gear keys and forward gates D); the eighteen-speed's lever
+  passed with the clutch the driver's (keys and gates 1 to 4, 5 the L slot, a shift the next of the eighteen
+  with its splitter and range); manual, sequential, dual clutch and the reference's car unchanged. Driven by
+  the lead through tee-headless on shipped builds (the automatic V6 and the CVT 11 of 11 checks, both trucks 8
+  of 8). NOT in it: X-056 (the shipped rally five stalls on up, up, down at rest: `sim/`), X-057 (the tuned
+  diesel pickup's automatic stays in first: D2's content, to follow), the H-shifter as the lever (B, to follow).
 - **27 Nov 09:02 UTC: `main` at 7ff344bc** (from ddacdf97, fast-forward; run 45955671762 on that commit: Linux,
   Windows and macOS green; sim f23337cc, host 86ea14da, tools 7c3e4d59 unchanged). Tests only: the nightly's
   `ui.build.bake.pictures` waits on the bake's state and not on a clock (U1, carried by J2): the load ends at

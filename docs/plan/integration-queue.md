@@ -2685,14 +2685,76 @@ the rotary twin).
   by position is the owner's, with clips; all of it is `sim/` and the window.
 - **L writes docs/plan/places-sound.md** (docs only) when the grid and the pass-by are measured.
 
+## 27 Nov 12:16 UTC: THE OWNER'S RULINGS AND REPORTS since 12:00: the level in Places; the H-shifter; what is ruled on each
+
+- **THE OWNER, on the level in Places: "Go with true levels with a fixed gain".** Their answer to three defaults put
+  to them (as shipped: every build, camera and distance at about one loudness; true levels with one fixed gain;
+  half). It supersedes their 25 Nov ruling that the idle's loudness stays as designed. So: true levels the
+  default in Places, ONE staging gain for every build, camera and distance (a level match at one named point:
+  first.json at the default camera beside its reference, taken at the new Tailpipe spot), the limiter for the
+  peaks, "Auto" still a setting. L's; `sim/` (the spec's default, listen.fm); item 20 of the window.
+- **The level by the camera's position (the lead's idea) is REFUTED by L's measure** and dropped: from the stated
+  strengths it is worse (Side -9.6, Engine bay -14.6, Trackside -11.5 against Tailpipe), and the tailpipe-only
+  form is +9.7 at Engine bay and turns the dial upside down (a camera walked back about 9 dB louder).
+- **The Tailpipe camera's spot, ACCEPTED as the proposal (L, a grid of nine spots and an onboard one on five builds,
+  chosen before looking):** a boundary microphone on the ground 0.5 m behind the mouth. Ripple 0.2 to 1.0 dB on
+  four builds (2.1 on the V8: its own two pipes) against 5.7 to 14.0 shipped; the 500 Hz hole within 0.6 dB;
+  the top octave within 1.6 dB on four; the rotary 5.8 dB dull at the top (a large bore heard 34 degrees off
+  its axis: stated, not hidden). The lead's onboard spot was right on four builds and wrong on the bike (11.6
+  dB). `sim/` (scene.fm); item 20 with the level. The page: docs/plan/places-sound.md (L, 38f6f691; under
+  revision for the owner's ruling).
+- **THE OWNER, on the wheel: "When I use the H-shifter connected to my G29, there is a small delay in shifting.
+  Additionally, the engine does not fully use the clutch mechanics when using the H-shifter because I cannot
+  stall it."** The automatic clutch doing what it was built for (a gate sought by presses every 0.3 s through
+  robotised shifts; no stall), with no switch in the window. RULED (B, `shell/`): on a wheel with a clutch
+  pedal the H-shifter IS the lever by default and the clutch is the driver's, nothing to set up; out of every
+  gate the paddles and keys shift as now; a three-way setting (the shifter's clutch yours, the default;
+  Automatic; Yours for the keys too); manual boxes only; the edges tested; the gate-to-gear time before and
+  after and a stall at rest measured. A stall that does not come is a `sim/` finding, not B's to tune.
+- **X-057, D2:** the pickup cured locally (rated 2900 rpm: 219.9 was a copy with no source; the redline at its
+  high idle by the trim; the archetype's six ratios and 3.42; the 1-2 at 37 km/h after 4.6 s; the most power
+  224 kW at 1796 to 320 at 2613 rpm), its push to follow. On the reference ECU `redlineFor` floors the
+  redline at idle + 1500 rpm, so diesel-v8-truck, diesel-mechanical-classic and diesel-marine-v12 CANNOT state
+  a reachable redline in content: they wait for item 19, whose null is now "every shipped build bit-identical
+  but those three, by name". The two 15 L trucks already sit under their high idle and are left alone.
+- **X, the automatics' pull:** the reference under the lever is the reference's manual dropped into first and it
+  STALLS; ruled: the reference driven its own way (presses, the lever in N), only the case in D, and a guard
+  that a pull's reference with a stopped engine fails loudly. Then 0 of 17 on six builds. **X-058 numbered:**
+  an automatic put into D at rest, `archetypes/v6-35-twin-turbo-pickup`, 1 of 17 (3.57 over 3.22) 45 ms after
+  the lever; a sometimes row on one build, in no case's path; the integrator's list.
+
+## 27 Nov 12:20 UTC: `main` AT 35a733d1 (the gears); P AND THE INTEGRATOR CAN PUSH; C's bake across edits is on the branch
+
+- **`main` moved 7ff344bc to 35a733d1 at 12:19 UTC** (run 45994332561, three jobs green; the three gated trees
+  unchanged). The owner can drive every gearbox kind from it; what it does not hold is in STATUS.md.
+- **THE OWNER approved pushes inside P's and the integrator's sessions** ("I approved two, but I couldn't find the
+  third session that needed input"). P's first push is in (7184c1e2: ac0d0e77, docs only). The third is N2: idle,
+  no prompt waiting; asked to list what it holds and to push its docs and tests, so that a prompt exists.
+- **A BAKE IS POSSIBLE AGAIN. The order of the day:** (1) `main` takes what is owner-facing and needs no bake: C's
+  bake across edits (f5946d7b, in CI) with U1's words and restated nightly case through J2; D2's pickup; B's
+  H-shifter as the lever with the three-way clutch setting. (2) THEN the window's `sim/` pushes, one at a time,
+  each called by the lead: 16, 17, 15, 19, 18, 20, then the list (and C's standard-day bake under `host/`).
+  (3) THEN the lead writes FROZEN FOR THE BAKE, P bakes, and `main` follows the baked commit's three green jobs.
+  Nothing under `sim/` is pushed before its call: the first such push stales every table and stops `main`.
+- **C's push (25b101b7, eb017295, 49794a9e; tip f5946d7b):** `host/` moved 86ea14da to 29bcbaa5 by Bake.h and
+  Bake.cpp alone; `sim` and `tools` unchanged (the lead's rev-parse and log). C's proof that no baked value
+  moves: three shipped builds rebaked byte-identical to bake-maps.json, and the same three edited and baked
+  through the new service byte-identical to cams.py's bake of the edited file. The lead builds and runs C's
+  cases before `main` moves on it. `ui.build.bake.pictures` (nightly) is red until U1's restated case lands.
+- **B's H-shifter (local, its tier running):** the gate to `car.gear` in 1 frame as the lever against 40 frames
+  (0.67 s) to second when sought: the owner's delay, measured; and the stall: first, at rest, the clutch let up
+  with no throttle, `engine.state` leaves 2. The sim's clutch does stall.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
-  tests and docs only past the crash fix). **The trees `main` is gated on: sim f23337cc, host 86ea14da, tools
-  7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked
-  byte-identical). Before it: ddacdf97 (27 Nov 07:16), dc2f7db3 (05:08, the crash fix), 57265b5f (26 Nov
+- **27 Nov 12:19 UTC: `main` IS AT 35a733d1** (run 45994332561: Linux, macOS and Windows green on that commit;
+  B's gears by gearbox kind, `shell/` and tests). **The trees `main` is gated on: sim f23337cc, host 86ea14da,
+  tools 7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked
+  byte-identical; C's bake across edits, host 29bcbaa5, is on the branch and not yet in `main`). Before it:
+  7ff344bc (27 Nov 09:02), ddacdf97 (27 Nov 07:16), dc2f7db3 (05:08, the crash fix), 57265b5f (26 Nov
   20:32), 6e67ac62, d6615852, 3f892823, 389ee865, 317404d9, 5278e3e9, 3c42b4d2, 5cd03815, 07a08dc0, d586682c
-  (04:36). Nothing code-bearing is on the branch past it.
+  (04:36). On the branch past it, code-bearing and waiting for their own green: B's trucks' start clause
+  (1b97231f), X's tests (the pull in D), C's bake across edits (f5946d7b).
 - **27 Nov 11:23 UTC: `host/` IS OPEN FOR ONE CHANGE: the owner's options 1 and 2 for the bake (C: Bake.cpp, its
   service, their tests), with U1's words and restated nightly case following.** Nothing else under `host/`,
   and nothing under `sim/` or `tools/`.
@@ -2796,7 +2858,13 @@ the rotary twin).
  19. AHEAD OF 18 (27 Nov): X-057's rule, the integrator with the steward: a governed engine's redline is its
      governed high idle (`redlineFor`, the full form: the lights, the vehicle and the key together). The one
      shipped build that met it (diesel-pickup-tuned) is cured in content by D2 outside the window; after that
-     every shipped build is to be bit-identical under the rule.
+     every shipped build is to be bit-identical under the rule BUT THREE, by name (diesel-v8-truck,
+     diesel-mechanical-classic, diesel-marine-v12: the reference ECU floors the redline at idle + 1500 rpm,
+     over their high idle, so content cannot state it; the rule must let a governor go under that floor).
+ 20. L (27 Nov, THE OWNER'S RULING "true levels with a fixed gain", and their report of the comb and the
+     highs): Places' level true by default with one fixed staging; the Tailpipe camera a boundary microphone
+     on the ground 0.5 m behind the mouth. docs/plan/places-sound.md. L's files only (scene.fm, listen.fm,
+     the spec's sound.fm), model 1 only; the patch ready on a scratch tree before the window.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
