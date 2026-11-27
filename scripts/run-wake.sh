@@ -57,24 +57,30 @@ ticksBefore=${before##*ticks=}
 # the simulator as the call is sent: get_build reads only the document, so a call while it compiles must answer too
 simulator=$(echo "$before" | sed -nE 's/.* simulator=([a-z]+) .*/\1/p')
 
-# initialize, then the call; stdin held open 6 s so that tee-mcp waits for the answer, then let go
-start=$(date +%s.%N)
-{
-  printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"run-wake","version":"1"}}}'
-  printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
-  printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_build","arguments":{}}}'
+# One call through tee-mcp, as Claude Desktop's: initialize, then tools/call get_build; stdin held open until its answer
+# (6 s at most) so that tee-mcp waits for it, then let go. The answer, if any, in $work/mcp.$1.out.
+ask() {
+  local out="$work/mcp.$1.out"
+  {
+    printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"run-wake","version":"1"}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_build","arguments":{}}}'
+    for _ in $(seq 60); do
+      grep -q '"id":2' "$out" 2>/dev/null && break
+      sleep 0.1
+    done
+  } | "$mcp" > "$out" 2> "$work/mcp.$1.err" &
+  local feeder=$!
   for _ in $(seq 60); do
-    grep -q '"id":2' "$work/mcp.out" 2>/dev/null && break
+    grep -q '"id":2' "$out" 2>/dev/null && break
     sleep 0.1
   done
-} | "$mcp" > "$work/mcp.out" 2> "$work/mcp.err" &
-feeder=$!
-for _ in $(seq 60); do
-  grep -q '"id":2' "$work/mcp.out" 2>/dev/null && break
-  sleep 0.1
-done
+  wait "$feeder" 2>/dev/null || true
+}
+
+start=$(date +%s.%N)
+ask first
 took=$(echo "$(date +%s.%N) - $start" | bc)
-wait "$feeder" 2>/dev/null || true
 sleep 0.6   # one more report after the answer
 after=$(last)
 ticksAfter=${after##*ticks=}
@@ -82,17 +88,32 @@ flags=$(echo "$after" | sed -E 's/^minimise: [0-9.]+ s (.*) simulator=.*/\1/')
 hidden=
 grep -q 'not honoured here' "$work/app.log" && hidden=" (minimise not honoured: hidden instead)"
 
-if ! grep -q '"id":2' "$work/mcp.out"; then
+if ! grep -q '"id":2' "$work/mcp.first.out"; then
   echo "run-wake: FAILED: no answer within 6 s; window: $flags$hidden; ticks $ticksBefore before the call, $ticksAfter after; simulator ${simulator:-not said} at the call"
-  echo "---- tee-mcp's stderr"; cat "$work/mcp.err"
+  echo "---- tee-mcp's stderr"; cat "$work/mcp.first.err"
   exit 1
 fi
-if grep '"id":2' "$work/mcp.out" | grep -q '"isError":true'; then
-  echo "run-wake: FAILED: the call answered with an error:"; grep '"id":2' "$work/mcp.out" | cut -c1-400
+if grep '"id":2' "$work/mcp.first.out" | grep -q '"isError":true'; then
+  echo "run-wake: FAILED: the call answered with an error:"; grep '"id":2' "$work/mcp.first.out" | cut -c1-400
   exit 1
 fi
 printf 'run-wake: answered in %.2f s; window: %s%s; ticks %s before the call, %s after the answer; simulator %s at the call\n' \
   "$took" "$flags" "$hidden" "$ticksBefore" "$ticksAfter" "${simulator:-not said}"
 if [ "$ticksBefore" != "$ticksAfter" ]; then
   echo "run-wake: note: the window ticked meanwhile, so this run does not show a drain without a frame"
+fi
+
+# Reported, not required (X-066): the simulator adopted while the window still does not tick. A minimised window adopts
+# it only in a drain, so the script asks again about once a second until the app's line says simulator=ready, for 15 s
+# at most (the app closes its window 20 s after the minimise): a compile slower than that is said, not failed.
+for i in $(seq 15); do
+  echo "$(last)" | grep -q ' simulator=ready ' && break
+  ask "again$i"
+  sleep 1
+done
+ready=$(last)
+if echo "$ready" | grep -q ' simulator=ready '; then
+  echo "run-wake: simulator ready while minimised, $(echo "$ready" | sed -E 's/^minimise: ([0-9.]+) s .*/\1/') s after the minimise; ticks ${ready##*ticks=} (reported)"
+else
+  echo "run-wake: note: the simulator was not ready within 15 s of asking (a slow compile; reported, not required); ticks ${ready##*ticks=}"
 fi
