@@ -2781,14 +2781,23 @@ the steward would use, if the owner allows it:
 - **27 Nov 13:28 UTC: `main` IS AT f77a46e6** (run 46000962256, three jobs green). **The trees `main` is gated on: sim
   f23337cc, host 29bcbaa5, tools 7c3e4d59** (host moved 86ea14da to 29bcbaa5 by C's bake across edits alone, no
   baked value moved: C's two byte-identity proofs, the lead's own run of its cases). Before it: 35a733d1 (12:19).
-- **27 Nov 13:29 UTC: THE WINDOW'S `sim/` PUSHES HAVE BEGUN: ITEM 16 IS CALLED (the steward).** From its push the
-  branch's baked tables are stale and `main` STAYS AT f77a46e6 until P's bake. Called one at a time by the lead,
-  each after the lead's second measurement of the one before: 16, then 15 (the integrator), 18 (the
-  integrator), 20 (L: verified ahead from its patch file), then C's standard-day bake under `host/`, then
-  FROZEN FOR THE BAKE. **Items 17 and 19 have left this window** (17: G's verdict and the lead's, X-060: it
-  takes the flat-plane V8's top point from 6 to 16 failures in 51 of the predictor's settle floor; 19: X-059).
-  Not `sim/` and free to land meanwhile (they reach `main` with the baked commit): J2's carry of U1's bake
-  words (`[soak]`), U1's CLUTCH row after the lead's look, the integrator's tests of record, docs.
+- **THE WINDOW, as it stands at 13:49 UTC (the branch's baked tables are STALE from d28b3412; `main` stays at
+  f77a46e6 until P's bake):**
+  - **ITEM 16 IS IN: d28b3412 (the steward, pushed 13:45).** `sim` f23337cc to d577990d (launch.fm: the cut for as
+    long as the vehicle asks; two seam comments); `host`, `tools` unchanged. Its tier of record 587 of 588, the
+    one red the five named cases. The cut on `ecu.flags`: the paddle robot 110 to 60 ms, the truck 200 to 150,
+    `car.model` 1's paddle manual and sequential 210 to 60, the bike 100/160/40 to its set 50/80/20; model 0 on
+    all 48 shipped builds bit-identical. ACCEPTED on the lead's own read: "shift.cut*" 40 assertions pass and
+    fail at ShiftCutTest.cpp:84 and :117 on the old launch.fm; the three-cylinder's pull over 17 nudges on
+    frozen copies of both trees: the 1-2 and the 2-3 over the bound in 6 and 8 of 17 before, 0 and 0 after
+    (the steward's counts exactly). CURED: the three-cylinder's and the kei's upshifts. NOT CURED: the V8
+    pull's 1-2 (1 of 17, was 4).
+  - **ITEM 15 IS CALLED (the integrator, 13:49).** Then 18 (the integrator), 20 (L: verified ahead from its patch
+    file), C's standard-day bake under `host/`, FROZEN FOR THE BAKE. Items 17 and 19 have left this window
+    (17: X-060, the flat-plane V8's top point from 6 to 16 failures in 51 of the predictor's settle floor;
+    19: X-059, the cap moves the turbo's match on three builds).
+  - Not `sim/` and free to land meanwhile (they reach `main` with the baked commit): J2's carry of U1's bake
+    words (`[soak]`), U1's CLUTCH row and the settings' scroll after the lead's look, docs.
 - **THE WINDOW'S RULES OF THE DAY (the steward's advice, taken):** a `sim/` item is accepted on one whole default
   tier on the merged state green EXCEPT the cases that assert a shipped bake is current on this program (the
   key holds the program's source hash: the steward lists them by name here before the first call; first known:
