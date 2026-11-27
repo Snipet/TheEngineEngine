@@ -496,9 +496,9 @@ namespace
                 // a tool posted: its job drained here, the window ticking or not; jobs left waiting: again a little later.
                 // The drain runs the engine's frame around the jobs (Shown::drainAssistant, X-066). Of beforeTick, this
                 // still does NOT run while the window does not tick, deliberately: the keys', the gamepad's and the wheel's
-                // input (nobody drives a window they cannot see; the wheel's pump is the frame's), the bake's tick and the
-                // frames clock (shown.frame; no tool's limit reads it: a job ends by its ticket's real-time deadline, and
-                // with X-064 every tool's limit is on real time), the status line and the script's checks.
+                // input (nobody drives a window they cannot see; the wheel's pump is the frame's), the bake's tick
+                // (shown.frame; the assistant keeps no frame clock: every tool's limit is on real time, X-064), the
+                // status line and the script's checks.
                 if (shown.drainAssistant)
                     shown.drainAssistant();
                 if (shown.assistant != nullptr && shown.assistant->waiting() > 0)

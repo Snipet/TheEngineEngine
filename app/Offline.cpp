@@ -148,7 +148,7 @@ namespace tee::app
                              Presets::userDirectory()),
                       assistant({file, library, [&sim]() -> SimHost* { return sim.ready() ? &sim.host() : nullptr; },
                                  [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); },
-                                 [this] { return frames.load() / 60.0; }, [this](const std::string& q, std::shared_ptr<const std::atomic<bool>> withdrawn) {
+                                 {}, [this](const std::string& q, std::shared_ptr<const std::atomic<bool>> withdrawn) {
                                      return askOwner(q, std::move(withdrawn));
                                  },
                                  nullptr, {}})
@@ -163,13 +163,12 @@ namespace tee::app
                 files::BuildLibrary library;
                 GarageLibrary garage;             // GARAGE's (U5's Library), over `file`: after it, so destroyed first
                 int driveStyle = 0;               // DRIVE's dash (views/drive/Dash.h), kept with the units' choices
-                // The assistant (card A): its tools' jobs run on this frame (assistant.frame, below), its clock this
-                // frame count at 60 a second (tee-headless's simulated clock; about the window's). Last, so destroyed
+                // The assistant (card A): its tools' jobs run on this frame (assistant.frame, below) or a drain of the
+                // wake (shown.drainAssistant); no clock is given it (its limits run on real time, X-064). Last, so destroyed
                 // first: its destructor stops Claude Desktop's link (the call running cancelled and waited for) and
                 // closes its inbox before the document and the library it acts on go. A load over unsaved changes asks
                 // the owner first, through the frame's dialog (askOwner below: AppFrame::ask, "Load" or "Keep"); with no
                 // frame to ask (tee-headless before its frame, or after it) the answer is no: never silent.
-                std::atomic<double> frames{0.0};   // (read by the link's worker: a turn's clock)
                 // The owner's yes or no (SessionParts::ask): the frame's dialog (AppFrame::ask, U1's) while the frame
                 // lives; set once it is made, cleared before it goes (Shown::panelGoing). Without it: no.
                 std::mutex askMutex;
@@ -244,7 +243,6 @@ namespace tee::app
             shown.frame = [kept, appBusy] {
                 kept->bake.tick();
                 kept->assistant.frame(appBusy());
-                kept->frames.store(kept->frames.load() + 1.0);
             };
             // A window that does not tick (X-066): the engine's frame before the jobs, so that a simulator compiled
             // meanwhile is adopted (predict_curve and run_dyno need it; adopting sends the whole document to it). Once
