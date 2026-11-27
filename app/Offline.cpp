@@ -148,7 +148,9 @@ namespace tee::app
                              Presets::userDirectory()),
                       assistant({file, library, [&sim]() -> SimHost* { return sim.ready() ? &sim.host() : nullptr; },
                                  [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); },
-                                 [this] { return frames.load() / 60.0; }, [this](const std::string& q) { return askOwner(q); },
+                                 [this] { return frames.load() / 60.0; }, [this](const std::string& q, std::shared_ptr<const std::atomic<bool>> withdrawn) {
+                                     return askOwner(q, std::move(withdrawn));
+                                 },
                                  nullptr, {}})
                 {
                 }
@@ -172,7 +174,9 @@ namespace tee::app
                 // lives; set once it is made, cleared before it goes (Shown::panelGoing). Without it: no.
                 std::mutex askMutex;
                 ui::AppFrame* asker = nullptr;
-                std::future<bool> askOwner(const std::string& question)
+                // `withdrawn`: raised by the assistant when it stops waiting (card A, 27 Nov review item 3): the frame then
+                // takes the question down, or never shows it
+                std::future<bool> askOwner(const std::string& question, std::shared_ptr<const std::atomic<bool>> withdrawn)
                 {
                     const std::lock_guard<std::mutex> lock(askMutex);
                     if (asker == nullptr)
@@ -183,7 +187,7 @@ namespace tee::app
                     }
                     // card A's load over unsaved changes answers LOAD or KEEP; any other question YES or NO
                     const bool load = question.rfind("Claude asks to load", 0) == 0;
-                    return asker->ask(question, load ? "Load" : "", load ? "Keep" : "");
+                    return asker->ask(question, load ? "Load" : "", load ? "Keep" : "", std::move(withdrawn));
                 }
                 assistant::Session assistant;
             };

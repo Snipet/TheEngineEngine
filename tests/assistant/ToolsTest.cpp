@@ -5,6 +5,7 @@
 #define TEE_REGISTER_SHARED_SIM
 #include "Rig.h"
 #include "tee/Predict.h"
+#include "tee/assistant/McpWire.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -228,10 +229,39 @@ TEST_CASE("assistant: loading over unsaved changes asks the owner first", "[assi
     CHECK(rig.build().name == name);
 
     rig.answer.reset();   // silence
+    REQUIRE(rig.withdrawals.size() == 1);
+    CHECK(rig.withdrawals[0] != nullptr);
+    CHECK(rig.withdrawals[0]->load());   // answered: withdrawn too (a flag raised after the answer does nothing)
     r = rig.call("load_build", {{"name", "v10"}});
     CHECK(r.isError);
-    CHECK(r.value["error"].get<std::string>().find("did not answer") != std::string::npos);
+    // in words that stop Claude asking again in a loop: the question is gone, and why
+    CHECK(r.value["error"].get<std::string>().find("has not answered") != std::string::npos);
+    CHECK(r.value["error"].get<std::string>().find("taken off their screen") != std::string::npos);
+    CHECK(r.value["error"].get<std::string>().find("Do not ask again") != std::string::npos);
     CHECK(rig.build().hash() == hash);
+    // the unanswered question is withdrawn, so the app takes it down: a retry would show one question, not two
+    REQUIRE(rig.withdrawals.size() == 2);
+    CHECK(rig.withdrawals[1]->load());
+    // and a call cancelled while the owner is asked withdraws its question as well
+    {
+        std::atomic<bool> stop{false};
+        auto pending = std::async(std::launch::async, [&] {
+            return rig.tools->call("load_build", {{"name", "v10"}}, &stop);
+        });
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while (rig.withdrawals.size() < 3 && std::chrono::steady_clock::now() < until)
+        {
+            rig.frame();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        REQUIRE(rig.withdrawals.size() == 3);
+        CHECK_FALSE(rig.withdrawals[2]->load());   // still showing while the call waits
+        stop = true;
+        while (pending.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+            rig.frame();
+        CHECK(pending.get().isError);
+        CHECK(rig.withdrawals[2]->load());
+    }
 
     rig.answer = true;    // yes, but the build is changed while the owner is asked
     const FieldInfo& f0 = *fields[0].first;
@@ -245,12 +275,28 @@ TEST_CASE("assistant: loading over unsaved changes asks the owner first", "[assi
     r = rig.call("load_build", {{"name", "v10"}});
     INFO(r.text());
     CHECK_FALSE(r.isError);
-    CHECK(rig.questions.size() == 4);
+    CHECK(rig.questions.size() == 5);
     CHECK(rig.build().name != name);
     CHECK_FALSE(rig.file->dirty());
     // a part is not a whole build
     for (const files::BuildSummary& s : rig.library->list())
         CHECK(s.part.empty());
+}
+
+TEST_CASE("assistant: every tool ends inside the MCP client's 60 s, and the bridge answers before it does", "[assistant]")
+{
+    // The MCP SDK's DEFAULT_REQUEST_TIMEOUT_MSEC is 60 000 (progress resets it only when the client opts in): a tool
+    // that ran longer would leave Claude Desktop with a timeout and the app still working. A tool's longest path is its
+    // jobs' waits for the frame and its own limit.
+    const Limits l;
+    const double client = 60.0;
+    CHECK(wire::kCallSeconds < client);
+    INFO("load_build over unsaved changes: two jobs and the owner's answer");
+    CHECK(2.0 * l.jobSeconds + l.askSeconds < wire::kCallSeconds);
+    INFO("run_dyno: a job and the run");
+    CHECK(l.jobSeconds + l.dynoSeconds < wire::kCallSeconds);
+    INFO("predict_curve: a job and the prediction");
+    CHECK(l.jobSeconds + l.predictSeconds < wire::kCallSeconds);
 }
 
 TEST_CASE("assistant: save-as refuses a name that is already a build's, and overwrites nothing", "[assistant][sharedsim]")
