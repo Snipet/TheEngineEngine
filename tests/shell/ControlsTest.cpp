@@ -502,3 +502,84 @@ TEST_CASE("shell: the eighteen-speed: keys to the lever's positions, a shift the
     d.setGearbox(Gearbox::shifts);
     CHECK(frame().lever == 0);
 }
+
+TEST_CASE("shell: the automatic clutch switched: off, the lever passes and a gear key moves it; on again, the H-lever to neutral",
+          "[shell][input]")
+{
+    Driver d;                                                       // on (the default): the lever 0, a gear key seeks
+    d.requestGear(3);
+    CHECK(run(d, 0.1).lever == 0);
+    DriverSettings off = d.settings();
+    off.autoClutch = false;
+    d.setSettings(off);
+    d.requestGear(3);
+    CHECK(run(d, 0.1).lever == 3);                                  // the H-lever itself
+    d.set(Source::keyboard, Action::clutch, true);
+    CHECK(run(d, 0.5).clutch == 1.0f);                              // the clutch the driver's
+    d.set(Source::keyboard, Action::clutch, false);
+    DriverSettings on = d.settings();
+    on.autoClutch = true;
+    d.setSettings(on);
+    CHECK(run(d, 0.1).lever == 0);                                  // back on: the lever to neutral
+    // a wheel's pedals are seen while it is read, and not after it is let go
+    CHECK_FALSE(d.wheelPedals());
+    d.setWheel(0.0f, 0.0f, 0.0f);
+    CHECK(d.wheelPedals());
+    d.release(Source::wheel);
+    CHECK_FALSE(d.wheelPedals());
+}
+
+TEST_CASE("shell: a wheel's H-shifter on a manual: the lever at once with its clutch pedal; sought without; three modes",
+          "[shell][input]")
+{
+    Driver d;                                                       // the default: ClutchMode::shifter
+    CHECK(clutchModeOf(d.settings()) == ClutchMode::shifter);
+    CHECK(d.gearbox() == Gearbox::manual);
+    // a gate with a clutch pedal: the lever at once, no seek (no shift presses)
+    const int ups = d.frame().shiftUp;
+    d.shifterGate(3, true);
+    CHECK(run(d, 0.1).lever == 3);
+    CHECK(d.frame().shiftUp == ups);
+    // in a gate the paddles do nothing, as in a car
+    d.press(Action::shiftUp);
+    CHECK(run(d, 0.1).shiftUp == ups);
+    // out of every gate: neutral, and the paddles shift for you again
+    d.shifterGate(0, true);
+    CHECK(run(d, 0.1).lever == 0);
+    d.press(Action::shiftUp);
+    CHECK(run(d, 0.1).shiftUp == ups + 1);
+    // the wheel unplugged mid-drive: the lever to neutral
+    d.shifterGate(2, true);
+    CHECK(run(d, 0.1).lever == 2);
+    d.release(Source::wheel);
+    CHECK(run(d, 0.1).lever == 0);
+    // a wheel with no clutch pedal: the gate sought, and said
+    d.shifterGate(2, false);
+    CHECK(run(d, 0.1).lever == 0);
+    CHECK(d.gateSought());
+    d.shifterGate(0, false);
+    CHECK_FALSE(d.gateSought());
+    // Automatic: the gate sought (today's behaviour), the lever 0
+    DriverSettings s = d.settings();
+    setClutchMode(s, ClutchMode::automatic);
+    d.setSettings(s);
+    CHECK(clutchModeOf(d.settings()) == ClutchMode::automatic);
+    d.shifterGate(4, true);
+    CHECK(run(d, 0.1).lever == 0);
+    // Yours: the gate is the lever (and the keys move it too)
+    setClutchMode(s, ClutchMode::yours);
+    d.setSettings(s);
+    d.shifterGate(4, true);
+    CHECK(run(d, 0.1).lever == 4);
+    d.press(Action::gear2);
+    CHECK(run(d, 0.1).lever == 2);
+    // back to the shifter mode: the lever of the mode before let go
+    setClutchMode(s, ClutchMode::shifter);
+    d.setSettings(s);
+    CHECK(run(d, 0.1).lever == 0);
+    // a sequential or a dual clutch: the gate sought, whatever the mode
+    d.setGearbox(Gearbox::shifts);
+    d.shifterGate(3, true);
+    CHECK(run(d, 0.1).lever == 0);
+    CHECK(d.gateLever() == 0);
+}

@@ -864,3 +864,155 @@ TEST_CASE("custom twin turbos arranged in sequence keep one collector", "[.seqtu
     b.start();
     std::printf("custom four, twin turbos in sequence: topo %g\n", b.field("lay.topo"));
 }
+
+// The owner's report (27 Nov): shifting works only on the manual. Each gearbox kind driven from rest by the counters
+// alone (lever 0, as the application sends under its automatic clutch), then by the lever (hidden: "[.shiftkinds]")
+TEST_CASE("each gearbox kind from rest: the counters, then the lever", "[.shiftkinds]")
+{
+    struct K { const char* build; const char* kind; };
+    for (const K& k : {K{"archetypes/hot-hatch-16-16v", "manual"}, K{"archetypes/inline-five-turbo-rally", "sequential"},
+                       K{"archetypes/turbo-four-20-gdi", "dual clutch"}, K{"archetypes/v6-35-na", "automatic"},
+                       K{"archetypes/economy-four-15", "CVT"}, K{"archetypes/tractor-15-inline-six", "eighteen"}})
+    {
+        for (int byLever = 0; byLever < 2; ++byLever)
+        {
+            Bench b(k.build);
+            b.start();
+            b.ctl().mode = 1;
+            b.play(0.2);
+            const double g0 = b.tel("car.gear");
+            if (byLever == 0)
+                b.ctl().shiftUp += 1;
+            else
+                b.ctl().lever = 1;
+            b.play(0.5);
+            const double g1 = b.tel("car.gear");
+            b.ctl().throttle = 0.4f;
+            b.play(3.0);
+            const double g2 = b.tel("car.gear");
+            if (byLever == 0)
+                b.ctl().shiftUp += 1;
+            b.play(1.0);
+            std::printf("%-12s %s: gear %g, after the input %g, after 3 s at 0.4 %g (%.1f km/h), after another up press %g\n", k.kind,
+                        byLever ? "lever 1    " : "up counter ", g0, g1, g2, b.tel("car.speed") * 3.6, b.tel("car.gear"));
+        }
+    }
+}
+
+// X-056 (B's trace, 27 Nov): a sequential box shifted 1 to 2 at a standstill; the engine's speed, the robotised
+// clutch and the engine's state through it, and two moving cases (hidden: "[.x056]")
+TEST_CASE("X-056: a sequential's dog shift at rest and while the launch clutch slips", "[.x056]")
+{
+    struct C { const char* what; float throttle; double before; int downTo1; };
+    for (const C& c : {C{"at rest, 1 to 2", 0.0f, 0.0, 0}, C{"pulling away (pedal 0.3, 0.4 s in), 1 to 2", 0.3f, 0.4, 0},
+                       C{"a crawl, 2 to 1", 0.15f, 1.5, 1}})
+    {
+        Bench b("archetypes/inline-five-turbo-rally");
+        b.start();
+        b.ctl().mode = 1;
+        b.play(0.2);
+        b.ctl().shiftUp += 1;          // into first
+        b.play(0.2);
+        if (c.downTo1 != 0)
+        {
+            b.ctl().shiftUp += 1;      // second, then let it roll at a crawl
+            b.play(0.2);
+        }
+        b.ctl().throttle = c.throttle;
+        b.play(c.before);
+        if (c.downTo1 != 0)
+        {
+            b.ctl().throttle = 0.0f;
+            b.ctl().shiftDown += 1;
+        }
+        else
+            b.ctl().shiftUp += 1;
+        double minRpm = 1e9, maxRobot = 0, minRobot = 1;
+        int state = 9;
+        b.play(1.0, [&] {
+            minRpm = std::min(minRpm, b.tel("engine.speed") * 9.5492966);
+            maxRobot = std::max(maxRobot, b.field("car.m1.box.robot"));
+            minRobot = std::min(minRobot, b.field("car.m1.box.robot"));
+            state = std::min(state, int(b.field("ecu.state")));
+        });
+        std::printf("%-46s gear %g, %.1f km/h; through the shift: engine down to %.0f rpm, robot %.2f to %.2f, least engine state %d, now %g\n",
+                    c.what, b.tel("car.gear"), b.tel("car.speed") * 3.6, minRpm, minRobot, maxRobot, state, b.field("ecu.state"));
+    }
+}
+
+// X-056's edge (the lead's question): an upshift at speed with the engine under idle + 110 rad/s: the synced latch and
+// the robotised clutch through the shift, step by step (hidden: "[.x056edge]")
+TEST_CASE("X-056: the synced latch through a low-revs dog upshift", "[.x056edge]")
+{
+    for (float ped : {0.06f, 0.08f, 0.12f, 0.2f, 0.35f})
+    {
+        Bench b("archetypes/inline-five-turbo-rally");
+        b.start();
+        b.ctl().mode = 1;
+        b.play(0.2);
+        b.ctl().shiftUp += 1;
+        b.play(0.2);
+        b.ctl().throttle = ped;
+        b.play(ped < 0.1f ? 2.0 : 4.0);
+        const double idle = b.field("ecu.idleRpm");
+        std::printf("pedal %.2f: before the shift %.0f rpm (idle %.0f, idle + 110 rad/s = %.0f), synced %g, robot %.3f, %.1f km/h\n", ped,
+                    b.tel("engine.speed") * 9.5492966, idle, idle + 110.0 * 9.5492966, b.field("car.m1.box.synced"), b.field("car.m1.box.robot"),
+                    b.tel("car.speed") * 3.6);
+        b.ctl().shiftUp += 1;
+        int k = 0;
+        b.play(0.15, [&] {
+            if (k++ < 9)
+                std::printf("   step %d: shifting %g gear %g synced %g robot %.3f engine %.0f rpm\n", k, b.field("car.m1.box.shifting"),
+                            b.field("car.m1.box.gear"), b.field("car.m1.box.synced"), b.field("car.m1.box.robot"), b.tel("engine.speed") * 9.5492966);
+        });
+    }
+}
+
+TEST_CASE("X-056: a synced low-revs upshift on the overrun", "[.x056coast]")
+{
+    for (double coast : {3.5, 5.0, 7.0})
+    {
+        Bench b("archetypes/inline-five-turbo-rally");
+        b.start();
+        b.ctl().mode = 1;
+        b.play(0.2);
+        b.ctl().shiftUp += 1;
+        b.play(0.2);
+        b.ctl().throttle = 0.2f;
+        b.play(3.0);
+        b.ctl().throttle = 0.0f;
+        b.play(coast);
+        const double idle = b.field("ecu.idleRpm");
+        const double w = b.tel("engine.speed") * 9.5492966;
+        const double x = std::min(std::max((b.tel("engine.speed") - idle / 9.5492966 - 15.7) / 94.2, 0.0), 1.0);
+        std::printf("coast %.1f s: %.0f rpm (idle %.0f), synced %g, robot %.3f; the revs' launch term %.3f (what the cure would hold through the shift)\n",
+                    coast, w, idle, b.field("car.m1.box.synced"), b.field("car.m1.box.robot"), x * x * (3.0 - 2.0 * x));
+    }
+}
+
+// X-057 (B's trace, 27 Nov): the tuned diesel pickup in D at full throttle, the redline the vehicle holds, the
+// automatic's shift point, the governor (hidden: "[.x057]")
+TEST_CASE("X-057: a governed diesel's automatic and its shift point", "[.x057]")
+{
+    for (const char* build : {"diesel-pickup-tuned", "archetypes/pickup-diesel-67-inline-six"})
+    {
+        Bench b(build);
+        b.start();
+        b.ctl().mode = 1;
+        b.ctl().lever = 1;
+        b.ctl().throttle = 1.0f;
+        b.play(20.0);
+        const double k = 9.5492966;
+        const double idleW = b.field("car.m1.idleW"), redW = b.field("car.m1.redW");
+        const double wUp = std::min(idleW + 0.9 * (redW - idleW), 0.85 * redW);
+        const int n = int(b.field("car.m1.box.n"));
+        const double fd = b.field("car.m1.box.fd"), r1 = b.field("car.m1.box.r[0]"), rTop = b.field("car.m1.box.r[" + std::to_string(n - 1) + "]");
+        const double radius = b.field("car.m1.radius");
+        const double v = b.tel("car.speed");
+        std::printf("%s: gear %g at %.1f km/h, engine %.0f rpm; the vehicle's idleW %.0f rpm, redW %.0f rpm; wUp at full pedal %.0f rpm; the input in first "
+                    "at this speed %.0f rpm; ecu.redRpm %.0f, rated %.0f rpm; gears %d, first %.2f, top %.2f, final %.2f; top gear at %.0f rpm: %.0f km/h\n",
+                    build, b.tel("car.gear"), v * 3.6, b.tel("engine.speed") * k, idleW * k, redW * k, wUp * k, v / radius * r1 * fd * k,
+                    b.field("ecu.redRpm"), b.field("spec.ecu.ratedSpeed") * k, n, r1, rTop, fd, b.tel("engine.speed") * k,
+                    b.tel("engine.speed") / (rTop * fd) * radius * 3.6);
+    }
+}
