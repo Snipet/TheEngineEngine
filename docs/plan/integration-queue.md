@@ -2514,6 +2514,40 @@ engines only where a source shows such an engine drawn split.
 - **Asked of the owner again, since a fault under `sim/` in either report needs it:** the three sessions whose
   pushes are refused (the integrator, N2, P): approve inside them, have the lead carry, or fresh sessions.
 
+## 27 Nov 11:35 UTC: SHIFTING ON ANY BOX BUT A MANUAL: reproduced (B), the shell half ruled, the sim half X-056
+
+**Reproduced** by B in the application's own path (tee-headless, DRIVE, the default settings: the automatic clutch
+on; E twice at rest, the throttle, E at speed, Q), `car.gear` after each. Manual: 0, 1, 2, 3, 2. Dual clutch
+(shipped, and the coupe set to it): the same. Automatic (diesel-pickup-tuned, the only shipped one) and a coupe
+set to CVT: 0 throughout, the engine free in neutral. Eighteen-speed (truck-15l-six): 0 throughout. The coupe
+set to Sequential: 0, 1, 2 at a standstill, then the engine stalls.
+
+**The cause, confirmed by the lead's own read of the code.** `shell/input/Driver.cpp:276` sends `lever = 0`
+whenever the automatic clutch is on (the default). The automatic and the CVT take R, N, D from the lever alone
+(`sim/vehicle/gearbox.fm:333`) and ignore the counters by design; the eighteen-speed is driven by the lever, the
+buttons and the clutch pedal (`vehicle.fm:611`). So all three sit in neutral whatever is pressed. Of the six
+shipped builds that state a gearbox, four are Eighteen-speed and one is Automatic: five of six. The Dual clutch
+failing for the owner is NOT reproduced and stays open until they say which build, input and mode.
+
+**Ruled (B, `shell/` only, a failing test first per kind, no `sim/` change, no `[soak]`):**
+- The Driver learns the gearbox kind and `car.model` from the build; under `car.model` 0 nothing moves (a test).
+- Automatic and CVT: a selector, a ladder R, N, D held on the lever. A shift up steps towards D; a shift down
+  steps towards R, and from D only at a crawl (above it the press does nothing: a press hoping for a kickdown
+  must not find neutral at speed). N: N at any speed. Keys 1 to 6 and the shifter's forward gates: D. The
+  reverse gate: R. Out of every gate: N.
+- Eighteen-speed: mapped, not refused. The lever passes through whatever the automatic clutch says, and the
+  clutch is the driver's. Keys and gates 1 to 4: the lever's positions; 5: the L slot; reverse; N. A shift up
+  or down: the next gear of the eighteen in order (the shell sets the lever and the splitter and range bits
+  that gear wants, no pedal, no rev match: a driver who does neither grinds, as the box says). A status line
+  says the clutch is the driver's. NOT built: a truck that works its own clutch on the paddles (a `sim/`
+  feature, an automated eighteen; put to the owner as a want).
+- `docs/controls.md` corrected in the same push (three lines there are false today).
+
+**X-056 (numbered now; the integrator's; `sim/`, so the window):** a Sequential box shifted 1 to 2 at rest
+stalls the engine. B's reading, one trace, unconfirmed: `gearbox.fm:283` `robot = 1.0f` ("a dog shift leaves
+the clutch closed") holds during every dog shift, also where the robotised clutch was open. No shipped build is
+Sequential. The integrator confirms or refutes with its own measurement and designs the smallest cure; item 18.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
@@ -2611,6 +2645,8 @@ engines only where a source shows such an engine drawn split.
      behind a hidden switch with the reference's three passes for the null. The line that hands the switch
      to the cylinder's valves is its file's owner's. Acceptance: the null to the bit; the sometimes rows by
      the evidence rule on the real code; the gate warm and cold on all 31; Q's cost; clips for the owner.
+ 18. the integrator, a read and a design first (27 Nov): X-056, a Sequential box's shift at rest stalls the
+     engine (gearbox.fm:283). Behind items 16, 17 and 15: no shipped build is Sequential.
 - **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
   red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
   default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
@@ -2618,6 +2654,8 @@ engines only where a source shows such an engine drawn split.
   check that reads "the shipped builds" reads them as the bake's gate does (warm and cold) or says which state
   it did not read; a refusal of a session's permission check is never worked around; no single draw of a combo row is
   evidence for or against a change (26 Nov 07:26).
+- **27 Nov 11:35 UTC: `shell/` carries one ruled change in flight (B: the gears by gearbox kind, the owner's
+  shifting report).** It needs no bake; `main` moves on its three green jobs after the lead has driven it.
 - **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
   baked tables), docs. **U1** pushes only a pure fast-forward of a tested state, by a hold the lead runs.
 - **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**
