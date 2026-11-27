@@ -44,6 +44,11 @@ TEST_CASE("assistant: the extension's manifest is JSON Claude Desktop can read, 
         CHECK(t["name"].is_string());
         CHECK(t["description"].is_string());
     }
+    // what the owner is told is what the app draws: its own Undo and its status line, no card (none is drawn yet)
+    const std::string said = m.value("description", std::string()) + " " + m.value("long_description", std::string());
+    INFO(said);
+    CHECK(said.find("card") == std::string::npos);
+    CHECK(said.find("Undo") != std::string::npos);
 }
 
 #endif
