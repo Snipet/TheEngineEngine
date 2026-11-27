@@ -2855,6 +2855,16 @@ It ran while the day's fast jobs crowded the runners.
     the baked commit's macOS job should not hang on a draw, and it is not in the bake's path (no Bake or
     Predict file; tee-dyno's bake calls bakeKnockLimit and bakeIntakeCam, not DynoService). So `host` will
     differ from 24835b34 by Dyno.cpp alone when P merges, and that is expected: no key or table can move by it.
+  - **THE TWO EXCEPTIONS ARE IN (16:03); nothing else code-bearing lands before P's push.** Card A's test fix:
+    443ba893 (tests/assistant/McpTest.cpp alone: every socket-making case under a short mkdtemp folder, a
+    length check against 104 on every platform; the lead's run: 49 cases pass, nothing left in /tmp). C's cure
+    of X-062: 36362b62, **`host` 24835b34 to ef1715f6 by host/src/Dyno.cpp alone (+8/-1)**, `sim` 22314cde and
+    `tools` 7c3e4d59 unchanged; the lead's run: the 13 [dyno] cases pass and the new case fails at
+    DynoTest.cpp:146 and :147 on the frozen Dyno.cpp; three readings (C's nm, P's and the lead's of
+    tee-dyno's main) that the bake's path does not call the changed code. **THE TREES OF THE BAKED COMMIT ARE TO
+    BE: sim 22314cde, host ef1715f6, tools 7c3e4d59**, the tables P bakes on sim 22314cde. Card A's manual
+    page (docs/manual/claude.md, 2efa1b80) is in. Held, ready: card A's seven commits (one tier on the stack
+    after the bake), J2's carry of U1's two patches, B's wake (its permission the owner's).
 - **27 Nov 13:28 UTC: `main` IS AT f77a46e6** (run 46000962256, three jobs green). **The trees `main` is gated on: sim
   f23337cc, host 29bcbaa5, tools 7c3e4d59** (host moved 86ea14da to 29bcbaa5 by C's bake across edits alone, no
   baked value moved: C's two byte-identity proofs, the lead's own run of its cases). Before it: 35a733d1 (12:19).
