@@ -436,6 +436,9 @@ namespace tee
     {
         const std::uint64_t key = build.hash() ^ (plan.hash() * 31u);
         const std::lock_guard<std::mutex> lock(mutex_);
+        // a curve finished for an earlier request and not yet taken is no answer to this one (X-062: take() gave the
+        // dyno of the build before the owner's last edit)
+        ready_ = false;
         if (auto it = cache_.find(key); it != cache_.end())
         {
             cached = it->second;
@@ -502,7 +505,11 @@ namespace tee
             if (curve.cancelled)
                 continue;   // a newer request replaced it
             curve.key = key;
-            cache_[key] = curve;
+            cache_[key] = curve;   // right for its own build, kept for a request that asks for it again
+            // a newer request came while it ran (its run ended before the cancel was read): not the answer to it
+            // (X-062); the newer one runs next
+            if (waiting_ || key != key_)
+                continue;
             done_ = std::move(curve);
             ready_ = true;
             error_.clear();

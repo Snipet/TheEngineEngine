@@ -119,6 +119,34 @@ TEST_CASE("the service runs the newest request only, and answers a repeat from i
     CHECK(curve.points.size() == 2);
 }
 
+// X-062: a curve for a build before the last request is never handed back as the newest. The service ran request A to its
+// end and held its curve unread (take() not yet called) when request B came; take() then gave A's curve, the dyno of the
+// build before the owner's last edit (macOS, efec3052's run 46019040854: "the newest request only" read another
+// request's curve). Here made certain: A is run to its end first (asked again until its cache answers), then B is asked.
+TEST_CASE("a curve finished before a newer request is never taken as the newest", "[dyno][service]")
+{
+    const auto sim = standinSim();
+    DynoService service(sim);
+    Build build(sim->fields());
+    DynoPlan plan;
+    plan.steps = {200, 300};
+    DynoCurve curve;
+    build.set("engine.torque", 300);
+    CHECK_FALSE(service.request(build, plan, curve));
+    for (int wait = 0; wait < 600 && !service.request(build, plan, curve); ++wait)   // A done: its cache answers
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    REQUIRE(service.request(build, plan, curve));
+    build.set("engine.torque", 500);   // B, the owner's next edit
+    CHECK_FALSE(service.request(build, plan, curve));
+    DynoCurve done;
+    for (int wait = 0; wait < 600 && !service.take(done); ++wait)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    INFO(service.error());
+    REQUIRE(done.points.size() == 2);
+    CHECK(done.key == (build.hash() ^ (plan.hash() * 31u)));   // B's, not A's
+    CHECK(std::fabs(done.points[0].torque - (500.0 - 0.08 * 200 - 5.0)) < 0.5);
+}
+
 TEST_CASE("tee-dyno's curve equals the runner's", "[dyno][tools]")
 {
     const std::filesystem::path out = std::filesystem::path(TEE_SOURCE_DIR) / "out" / "tests" / "dyno";
