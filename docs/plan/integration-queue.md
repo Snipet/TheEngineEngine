@@ -2825,6 +2825,11 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:13 UTC: `main` IS AT 3ba103f4, the baked commit** (run 46032401939: Linux, macOS and Windows green).
+  **The trees `main` is gated on: sim 22314cde, host ef1715f6, tools 7c3e4d59.** Before it: f77a46e6 (13:28),
+  35a733d1 (12:19), 7ff344bc (09:02). `sim/`, `host/`, `tools/` are closed until the next window. A whole
+  default tier has NO known red. On the branch past it: J2's 40463d37 (U1's withdrawn question and notes: 590
+  of 590); to come: card A's seven commits and item 3; B's wake if its permission allows.
 - **27 Nov 16:55 UTC: THE FREEZE IS OVER. THE BAKED COMMIT IS 3ba103f4** (P's fcc5ff53 under two merges, pushed 16:17).
   Its trees: **sim 22314cde, host ef1715f6, tools 7c3e4d59**. The bake (15:39 to 16:00): all 31 idle within their
   bands warm and cold, before and after; NO TABLE'S VALUES MOVED: the 28 knock-limit tables, the 14 intake cam
