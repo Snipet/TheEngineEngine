@@ -899,7 +899,22 @@ TEST_CASE("assistant: a whole build whose file name is not UTF-8 is listed repla
     json build = json::parse(text.str());
     build.erase("name");
     const std::string stem = std::string("v8") + static_cast<char>(0xFF);
-    std::ofstream(rig.user / (stem + ".json")) << build.dump(2);
+    const fs::path folder = rig.user;
+    {
+        std::ofstream out(folder / (stem + ".json"));
+        out << build.dump(2);
+    }
+    // The file system decides whether such a name exists at all (APFS, for one, refuses a name that is not UTF-8):
+    // made only if the folder now holds an entry of exactly those bytes.
+    bool made = false;
+    std::error_code ec;
+    for (const fs::directory_entry& e : fs::directory_iterator(folder, ec))
+        made = made || e.path().filename().string() == stem + ".json";
+    if (!made)
+    {
+        WARN("this file system refuses a name that is not UTF-8: nothing to list (" << folder.string() << ")");
+        return;
+    }
     const Result listed = rig.call("list_builds");
     REQUIRE_FALSE(listed.isError);
     bool seen = false;
