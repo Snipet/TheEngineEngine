@@ -43,6 +43,21 @@
 
 ## Landed
 
+- **27 Nov 13:28 UTC: `main` at f77a46e6: the H-shifter as a manual's lever, the bake across edits, the tuned pickup.**
+  Run 46000962256: Linux, macOS and Windows green on that commit. `sim` f23337cc and `tools` 7c3e4d59 unchanged;
+  `host` 86ea14da to 29bcbaa5 by C's Bake.h and Bake.cpp alone (three shipped builds rebaked byte-identical, and
+  the same three edited and baked through the new service byte-identical to cams.py's). In it: (B) on a wheel
+  with a clutch pedal a gate of the H-shifter IS the lever at once and the clutch the driver's, by default;
+  the clutch three ways under F9 (the shifter's yours; automatic; yours), an old settings file landing in the
+  default; measured in the application's path: second gear 1 frame after the gate against 40 frames (0.67 s)
+  when sought, and a stall when the clutch is let up in first at rest with no throttle. (C) After an edit the
+  engine plays on the tables it saw current, marked stale, while the new ones bake; the bake waits for the edits
+  to rest (the owner's options 1 and 2). (D2) diesel-pickup-tuned: rated 2900 rpm (2100 was a copy with no
+  source), its redline at its high idle, the archetype's ratios: second 4.4 s after the throttle, 100 km/h in
+  13.4 s (the lead's drive), where it sat in first. Also X's, N2's and the integrator's tests, and B's trucks'
+  start clause. Verified by the lead: C's 21 [bake] cases and B's 7 gearbox cases pass and each fails under a
+  deliberate break of its source. NOT RUN on a Mac with the real wheel. Not in it: U1's words for the bake (on
+  the way through J2), the SETTINGS row for the clutch, every `sim/` fix (the window, then the bake).
 - **27 Nov 12:19 UTC: `main` at 35a733d1: the gears by gearbox kind (the owner's report that shifting worked on no
   box but a manual).** Run 45994332561: Linux, macOS and Windows green on that commit; `sim` f23337cc, `host`
   86ea14da, `tools` 7c3e4d59 unchanged. B's `shell/input`: the Driver learns the build's gearbox and `car.model`;

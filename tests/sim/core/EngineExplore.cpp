@@ -1016,3 +1016,124 @@ TEST_CASE("X-057: a governed diesel's automatic and its shift point", "[.x057]")
                     b.tel("engine.speed") / (rTop * fd) * radius * 3.6);
     }
 }
+
+// Item 19 (X-057's rule): the three governed builds whose high idle sits under the reference ECU's idle + 1500 floor;
+// their stated governor and the redline the ECU gives them today (hidden: "[.x057figs]")
+TEST_CASE("Item 19: the governed builds under the idle + 1500 floor", "[.x057figs]")
+{
+    const double k = 9.5492966;
+    for (const char* build : {"diesel-v8-truck", "diesel-mechanical-classic", "diesel-marine-v12", "truck-15l-six", "truck-15l-six-bobtail", "diesel-pickup-tuned"})
+    {
+        Bench b(build);
+        b.start();
+        b.play(2.0);
+        const double rated = b.field("spec.ecu.ratedSpeed") * k, droop = b.field("spec.ecu.droop");
+        const double hiStated = b.field("spec.ecu.highIdle") * k, idle = b.field("ecu.idleRpm"), red = b.field("ecu.redRpm");
+        std::printf("%s: ratedSpeed %.1f rpm, droop %.3f, highIdle stated %.1f rpm -> governed high idle %.1f rpm; ecu.idleRpm %.1f, "
+                    "floor (idle + 1500) %.1f, ecu.redRpm today %.1f, ecu.model %g\n",
+                    build, rated, droop, hiStated, hiStated > 0 ? hiStated : rated * (1 + droop), idle, idle + 1500, red,
+                    b.field("spec.ecu.model"));
+    }
+}
+
+// X-056's guard measured (27 Nov): the synced overrun 1-2 at about 1500 rpm, step by step (hidden: "[.x056guard]")
+TEST_CASE("X-056: the overrun 1-2's robot, step by step", "[.x056guard]")
+{
+    Bench b("archetypes/inline-five-turbo-rally");
+    b.start();
+    b.ctl().mode = 1;
+    b.play(0.2);
+    b.ctl().shiftUp += 1;
+    b.play(0.2);
+    b.ctl().throttle = 0.2f;
+    b.play(3.0);
+    b.ctl().throttle = 0.0f;
+    b.play(5.0);
+    b.ctl().shiftUp += 1;
+    int k = 0;
+    b.play(0.5, [&] {
+        if (k++ % 3 == 0)
+            std::printf("t+%3d: shifting %g gear %g synced %g robot %.3f engine %.0f rpm\n", k, b.field("car.m1.box.shifting"),
+                        b.field("car.m1.box.gear"), b.field("car.m1.box.synced"), b.field("car.m1.box.robot"), b.tel("engine.speed") * 9.5492966);
+    });
+}
+
+// X-056, the lead's timing (27 Nov): up, up, down at rest with the first press after a wait from the start, as the
+// application's trace (E at 3.2 s, E at 3.9 s, Q at 5.0 s) (hidden: "[.x056lead]")
+TEST_CASE("X-056: rest, up, up, down at the lead's timing", "[.x056lead]")
+{
+    for (double wait : {0.2, 1.0, 2.0, 3.0, 3.2})
+    {
+        Bench b("archetypes/inline-five-turbo-rally");
+        b.start();
+        b.ctl().mode = 1;
+        b.play(wait);
+        const double idle0 = b.field("ecu.idleRpm"), rpm0 = b.tel("engine.speed") * 9.5492966;
+        b.ctl().shiftUp += 1;
+        b.play(0.7);
+        b.ctl().shiftUp += 1;
+        double min2 = 1e9;
+        b.play(1.1, [&] { min2 = std::min(min2, b.tel("engine.speed") * 9.5492966); });
+        b.ctl().shiftDown += 1;
+        int least = 9;
+        double minD = 1e9;
+        b.play(1.0, [&] {
+            least = std::min(least, int(b.field("ecu.state")));
+            minD = std::min(minD, b.tel("engine.speed") * 9.5492966);
+        });
+        std::printf("first press %.1f s after start (engine %.0f rpm, idle %.0f): after the up to 2 down to %.0f rpm; after the down to %.0f rpm, "
+                    "least state %d, now %g\n", wait, rpm0, idle0, min2, minD, least, b.field("ecu.state"));
+    }
+}
+
+// Item 19's readers (27 Nov): what a governed build's redline reaches, read on any sim/ tree (TEE_CORE_SIM, for the
+// before and after): the configure's values, a free rev at full pedal (the top speed, the cut, the sound's level), and
+// the dyno at full pedal at three speeds (torque, boost) (hidden: "[.item19readers]")
+TEST_CASE("Item 19: the readers of ecu.redRpm on the governed builds", "[.item19readers]")
+{
+    const double k = 9.5492966;
+    for (const char* build : {"diesel-v8-truck", "diesel-mechanical-classic", "diesel-marine-v12", "truck-15l-six", "diesel-pickup-tuned"})
+    {
+        {
+            Bench b(build);
+            b.start();
+            b.play(0.5);
+            std::printf("%s: ecu.redRpm %.2f, tel engine.redline %.2f, car.m1.redW %.2f rpm, boost.mach.redRpm %.2f, idle %.1f\n", build,
+                        b.field("ecu.redRpm"), b.tel("engine.redline"), b.field("car.m1.redW") * k, b.field("boost.mach.redRpm"), b.field("ecu.idleRpm"));
+            b.ctl().mode = 0;
+            b.ctl().throttle = 1.0f;
+            double top = 0, sum = 0, sq = 0, n = 0, lo = 1e9, tqMin = 1e9;
+            b.play(3.0);
+            b.play(3.0, [&] {
+                const double w = b.tel("engine.speed") * k;
+                top = std::max(top, w);
+                lo = std::min(lo, w);
+                tqMin = std::min(tqMin, b.tel("engine.torque"));
+                for (float x : b.left())
+                {
+                    sq += double(x) * x;
+                    ++n;
+                }
+                sum += w;
+            });
+            std::printf("   free rev, full pedal, 3-6 s: engine %.1f to %.1f rpm, least torque %.1f N m, sound %.2f dBFS\n", lo, top, tqMin,
+                        10.0 * std::log10(sq / std::max(n, 1.0) + 1e-20));
+        }
+        for (double rpm : {1200.0, 1600.0, 1900.0})
+        {
+            Bench b(build);
+            b.start();
+            b.ctl().mode = 2;
+            b.ctl().throttle = 1.0f;
+            b.ctl().dynoSpeed = float(rpm / k);
+            b.play(4.0);
+            double tq = 0, bp = 0, n = 0;
+            b.play(1.0, [&] {
+                tq += b.tel("engine.dynoTorque");
+                bp += b.tel("boost.pressure");
+                ++n;
+            });
+            std::printf("   dyno %.0f rpm full pedal: torque %.2f N m, boost %.0f Pa\n", rpm, tq / n, bp / n);
+        }
+    }
+}
