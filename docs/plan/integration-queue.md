@@ -2825,6 +2825,60 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 17:49 UTC: X-063, A BUILD WHOSE NAME IS NOT VALID UTF-8 ENDS THE APP** (card A's probe, asked for by the
+  lead after reading acbaae6; not yet re-run by the lead). Every `dump()` in `assistant/` is nlohmann's strict
+  one and nothing there catches: a name "v8\xFF" through the chat's state line ends the chat's worker with
+  `type_error.316` and the process with it; the same through Claude Desktop's link ends the link's poll thread
+  (SIGABRT, both). How a bad name gets in: a build's name falls back to its file's stem
+  (`files/BuildFiles.cpp:103`), and the library's names are stems (`:265`, `:270`). Reach: Linux (a file name
+  is any bytes); not macOS's own disk (APFS keeps names as UTF-8); not Windows in this version (no link, no chat).
+  Cure approved in design, card A's, as its own push after its item 3: (a) one helper with the replace handler for
+  every serialisation in `assistant/`, and a test that finds any `.dump(` outside it; (b) a last guard in the
+  link's per-request handling and in `Chat::turn`, each leaving a state the owner can go on from. Conditions
+  in the lead's message of this time.
+- **27 Nov 17:49 UTC: card A measured B's break on its own plain tree** (the same error at
+  `app/AssistantWake.h:12`). Order ruled: B's build fix; then card A's cure (ef77de5) at once behind it (its tier
+  of record: the whole default tier on 899259e9 + ef77de5 in a plain tree with libsecret and libcurl, plus a tree
+  with neither; on the merged state: everything built, the assistant's and the shell's suites), without waiting
+  for the fix's jobs, since that commit cannot gate `main`; card A's tip is then the protected one and `main`'s
+  next candidate.
+- **27 Nov 17:48 UTC: THE BRANCH TIP DOES NOT BUILD IN THE DEFAULT TREE (B's d0949cf2). DO NOT BASE A TIER ON IT
+  until B's fix is in.** The lead's checkout at f4580ae4, unmodified, configured by the plain `dev` preset
+  (`TEE_BUILD_APP` OFF, its default): `tests/shell/app/AssistantWakeTest.cpp` fails to compile,
+  "app/AssistantWake.h:12:10: fatal error: 'SDL3/SDL.h' file not found". `tests/shell/CMakeLists.txt:109-117` adds
+  the case to `tee-shell-app-tests` always and gives that target SDL's headers only under `TEE_BUILD_APP`. B's
+  tree has the app on; CI's tests tree is the plain preset (`build.yml:327`). **Prediction, written with run
+  46044044673's three jobs still pending: all three fail at the build step.** B fixes forward at once, without
+  waiting for jobs (they are its own and lost). `main` is untouched: it is at 40463d37, which builds.
+  - **THE RULE FROM NOW ON: the tier of record runs in a tree configured as CI configures it** (the plain preset
+    and the deps dir, nothing else). A tier in any other tree is extra. Every report names its tree:
+    `TEE_BUILD_APP`, and whether libsecret and libcurl were found. Two breaks in one hour came from a tier that was
+    green only on its author's configuration: card A's key-read case (a tree with libsecret) and B's wake (a tree
+    with the app on).
+  - The lead's part in it: it allowed B's push on B's tier without asking what tree it ran in, and read the code
+    only after the push. A change the lead has not read is now read from a patch or a pushed side ref before it
+    lands when it touches CMake or a platform part.
+  - The lead's read of the wake itself (60d4c56c): the loop agrees with FunkGui 0.28.0's `DesktopHost::pump` (every
+    event goes to `rawEvent` first, minimised or not); post and take lose no wake; the timer's "stale once fired"
+    note holds for SDL 3.4.20. NOT covered by any case: `app/Main.cpp`'s own lines (the `setWake` call,
+    `rawEvent`'s branch: the case copies that loop), and the 75 ms path through a job that says "not yet". Asked of
+    B: whether a window test under Xvfb can cover the first. A real minimised window on macOS is the owner's.
+  - Order now: B's build fix; card A's cure (ef77de5: proved by card A on a tree with neither libsecret nor
+    libcurl); J2's carry of U1's air patch; card A's item 3.
+- **27 Nov 17:42 UTC: `main` IS AT 40463d37** (run 46039773867: Linux, macOS and Windows green; gated trees
+  unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). Before it: 3ba103f4 (17:13).
+- **27 Nov 17:42 UTC: THE HOLD IS LIFTED** (899259e9's three jobs started, windows-x64 at 17:41:51), **AND ONE RED IS
+  NAMED until card A's cure lands:** on a build with no system key store (no libsecret headers; Windows, by the
+  lead's prediction), a whole default tier may show `assistant.sim` red with exactly
+  `tests/assistant/ChatTest.cpp:820` and `:829` failing and nothing else ("test cases: 34 | 33 passed | 1
+  failed", two assertions). A push may go on such a tier. Any other red is a red. Seen so far on those two lines
+  only: the lead's build, B's tier (596 of 597), J2's container expected. It ends when the cure is on the branch.
+  - The order of code-bearing pushes, each after the tip before it has its three jobs started: B's wake (60d4c56c
+    and its docs; the owner approved B's push), J2's carry of U1's air patch, card A's cure, card A's item 3
+    (b9da7e6).
+  - `main` cannot move to a commit that is red on Windows: it waits for the cure's three greens.
+  - Put to the owner: whether the chat should use the API's server-side compaction for long conversations (card
+    A's paragraph; nothing is built until they say).
 - **27 Nov 17:39 UTC: card A's seven commits are in at 899259e9 (run 46042046822), AND ONE OF ITS NEW CASES IS RED
   WHERE THE BUILD HAS NO SYSTEM KEY STORE.** Gated trees unchanged (sim 22314cde, host ef1715f6, tools 7c3e4d59).
   - The lead's own build of 899259e9: the assistant's tests 30 of 31. `assistant.sim` fails at
