@@ -43,6 +43,18 @@
 
 ## Landed
 
+- **27 Nov 05:08 UTC: `main` at dc2f7db3: THE CRASH ON AN EDIT DURING A CAM BAKE IS FIXED** (from 57265b5f,
+  fast-forward; run 45941160063 on that commit: Linux 584, macOS 583, Windows 576, all green). The owner's Mac
+  build of `main` had died six times on 25 and 26 Nov in `tee::bakeIntakeCam` (host/src/Bake.cpp:354, and in
+  `insertRows`) whenever an edit landed while a cam map baked: `predictCurve` returned true on a cancel with a
+  partial curve and the cam bake indexed the missing points. C's a86b38c6: a cancelled curve returns false
+  ("cancelled"), and the bakes index only whole curves; two default-tier cases that segfaulted before (the
+  lead ran them: pass on the fix, fail on `main`'s old host) and a nightly case that edits during every phase.
+  **`host/` is now 86ea14da, changed from the bake's 2e7c1bec by that commit alone; no bake was needed:** three
+  shipped builds re-baked with the fixed code are byte-identical to the committed tables (1180, 1488 and 757
+  bytes; the keys too). `sim/` f23337cc and `tools/` 7c3e4d59 unchanged. Not changed by it: an edit that moves
+  a bake's key still cancels the bake and starts a new one from nothing after 1.5 s (C's design for that is
+  docs/plan/bake-across-edits.md, the owner's choice).
 - **26 Nov 20:32 UTC: `main` at 57265b5f** (from 6e67ac62, fast-forward; run 45877287272 on that commit: Linux,
   Windows and macOS green; the baked trees unchanged). Tests and docs only: the nightly's shipped-pull case
   gains the flat-plane 3.9 twin-turbo V8 as its fourth build (X-055: at its limiter 7 of 17, a hard fuel-cut

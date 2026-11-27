@@ -2428,15 +2428,38 @@ engines only where a source shows such an engine drawn split.
   The nightly's bake test had also failed on time before it crashed (the load's bake not finished at 300 s
   on that runner): U1's, after C's fix.
 
+## 27 Nov 05:08 UTC: THE CRASH FIX IS IN `main` (dc2f7db3); what it does not change; the soak's replayed references
+
+- **C's a86b38c6:** at the source, `makeCurve` returns false with "cancelled" when cancelled before every point
+  is in (the PredictService already discards a cancelled curve by its request number); in the bakes every
+  curve is checked whole before it is indexed (the cam's sweep, stage rows, refine, half steps, acceptance;
+  the knock bake's later steps and corrections) and `insertRows` checks the flag. C's corrections to the
+  owner's report: the stage-rows crash is the turbo four's and first.json's (the two-stage archetype has no
+  phaser range); line 634 and the half steps were partial-and-true, a wrong result and not a crash, now false.
+  Tests: two default cases (a cancel in the sweep's last curve, the V12; in the stage rows, the turbo four)
+  that segfaulted before; a nightly case that edits during every phase of a service's bake and destroys it
+  mid-bake. The lead's second measurement: both default cases pass at the tip and fail with `main`'s old
+  host under them. Three rebakes byte-identical. The tier 578 of 578; the nightly's bake test by hand.
+- **Not changed by it:** an edit that moves a key cancels the bake and a new one starts from nothing after
+  1.5 s, so an owner who keeps nudging never sees a bake finish. C's design (docs/plan/bake-across-edits.md):
+  recommended, run on the last good tables marked stale while the new ones bake, and a debounce of the
+  longer of 1.5 s and 5 % of the expected bake; not recommended, reusing a table's untouched cells or a
+  warm-started bake. The owner's choice.
+- **The soak's growth (X, confirmed):** every combo case is its own process and the nightly bound's reference
+  sets were kept per process: 360 sets played for 57 distinct ones. X keeps them in files in the build tree,
+  keyed by the test executable's bytes, the sim and content trees, the build, the scenario and the nudges;
+  the proof is every nightly figure to the digit with the store off and on. The soak now runs
+  `tee-bench --quick` (the steward) so its times can be scaled; the first scaled soak is the one on dc2f7db3.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **27 Nov 03:43 UTC: `host/` IS OPEN FOR ONE CHANGE: C's fix for the crash on an edit during a cam bake
-  (Bake.cpp, Predict.cpp and their tests). Nothing else under `host/`, and nothing under `sim/` or `tools/`.**
-- **26 Nov 20:32 UTC: `main` IS AT 57265b5f** (the same bake b43ea339 on sim f23337cc, host 2e7c1bec, tools
-  7c3e4d59, those trees unchanged; run 45877287272: Linux, macOS and Windows green on that commit; `ui/`,
-  tests, the combo corpus, scripts and docs only since d586682c). Before it: 6e67ac62 (26 Nov 18:30), d6615852
-  (16:31), 3f892823 (13:41), 389ee865 (12:25), 317404d9 (11:53), 5278e3e9 (11:01), 3c42b4d2 (09:16), 5cd03815
-  (08:18), 07a08dc0 (07:50), d586682c (04:36). Nothing is on the branch past it.
+- **27 Nov 05:08 UTC: `main` IS AT dc2f7db3** (the crash fix a86b38c6; run 45941160063: Linux, macOS and Windows
+  green on that commit). **The trees `main` is gated on are now sim f23337cc, host 86ea14da, tools 7c3e4d59:**
+  host moved from the bake's 2e7c1bec by C's one commit, with three shipped builds re-baked byte-identical as
+  the reason no bake was needed. Before it: 57265b5f (26 Nov 20:32), 6e67ac62, d6615852, 3f892823, 389ee865,
+  317404d9, 5278e3e9, 3c42b4d2, 5cd03815, 07a08dc0, d586682c (04:36).
+- **`host/` IS CLOSED AGAIN** (opened 27 Nov 03:43 for the crash fix alone). `sim/`, `host/` and `tools/` wait
+  for a bake as before; the next thing under `host/` is the owner's choice on docs/plan/bake-across-edits.md.
 - **THE WINDOW'S ORDER, as ruled on 26 Nov and corrected at 17:39 (each needs a bake to follow, so P):** item 16
   (X-047, the shift's cut; the steward; one file; evidence on three shipped builds), item 17 (X-051, the
   valve's flow solve; G; it moves only cases with the exhaust or intake model on, no reference and no
