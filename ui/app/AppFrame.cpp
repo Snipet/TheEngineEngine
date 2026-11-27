@@ -992,32 +992,70 @@ namespace tee::ui
         return w;
     }
 
-    std::future<bool> AppFrame::ask(std::string question, std::string yes, std::string no)
+    std::future<bool> AppFrame::ask(std::string question, std::string yes, std::string no,
+                                    std::shared_ptr<const std::atomic<bool>> withdrawn)
     {
         auto answer = std::make_shared<std::promise<bool>>();
         std::future<bool> f = answer->get_future();
         {
             const std::lock_guard<std::mutex> lock(askMutex_);
-            asks_.push_back({ std::move(question), std::move(yes), std::move(no), std::move(answer) });
+            asks_.push_back({ std::move(question), std::move(yes), std::move(no), std::move(answer), std::move(withdrawn) });
         }
         return f;
     }
 
     void AppFrame::nextQuestion()
     {
+        // The open question withdrawn by its asker: closed as a no would close it, laid out once below (by the next
+        // question opening, or by this close when none follows).
+        bool withdrew = false;
+        if (askOpen() && openWithdrawn_ && openWithdrawn_->load(std::memory_order_acquire))
+        {
+            withdrawing_ = true;
+            askDialog_->answer(false);
+            withdrawing_ = false;
+            withdrew = true;
+        }
+        const auto settle = [&] {
+            if (!withdrew)
+                return;
+            arrange();
+            setFocus(-1);
+            dirty_ = true;
+        };
         if (askOpen() || keyDialogOpen())
+        {
+            settle();
             return;
+        }
+        // The next question not withdrawn; one withdrawn before its turn is never shown, its future answered no.
         Question q;
+        bool have = false;
         {
             const std::lock_guard<std::mutex> lock(askMutex_);
-            if (asks_.empty())
-                return;
-            q = std::move(asks_.front());
-            asks_.pop_front();
+            while (!asks_.empty() && !have)
+            {
+                Question front = std::move(asks_.front());
+                asks_.pop_front();
+                if (front.isWithdrawn())
+                    front.answer->set_value(false);
+                else
+                {
+                    q = std::move(front);
+                    have = true;
+                }
+            }
         }
+        if (!have)
+        {
+            settle();
+            return;
+        }
+        openWithdrawn_ = q.withdrawn;
         askDialog_->open(std::move(q.text), std::move(q.yes), std::move(q.no), [this, answer = q.answer](bool yes) {
             answer->set_value(yes);
-            if (closing_)
+            openWithdrawn_.reset();
+            if (closing_ || withdrawing_)
                 return;
             arrange();
             setFocus(-1);

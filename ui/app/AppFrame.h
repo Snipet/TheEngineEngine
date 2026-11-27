@@ -29,6 +29,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 
 #include "app/AskDialog.h"
 #include "app/Cockpit.h"
@@ -172,7 +173,11 @@ namespace tee::ui
         // at a time (the next once the one open is answered and no key dialog is open), with the asker's words for yes
         // and no (none: YES and NO); the future answers true for yes. NO, Escape, and a frame that goes before it is
         // answered: false (nothing is lost by a question unanswered).
-        std::future<bool> ask(std::string question, std::string yes = {}, std::string no = {});
+        // `withdrawn` (may be null; card A's, 27 Nov): raised by the asker, from any thread, when it no longer waits for
+        // the answer. A queued question so raised is never shown (its future false); an open one closes on the frame's
+        // next tick, its answer set to no (which nobody reads), and the next question opens in its place.
+        std::future<bool> ask(std::string question, std::string yes = {}, std::string no = {},
+                              std::shared_ptr<const std::atomic<bool>> withdrawn = {});
         bool askOpen() const noexcept { return askDialog_ != nullptr && askDialog_->isOpen(); }
         AskDialog* askDialog() const noexcept { return askDialog_; }
         bool ribbonFolded() const noexcept { return folded_; }
@@ -314,12 +319,16 @@ namespace tee::ui
         {
             std::string text, yes, no;
             std::shared_ptr<std::promise<bool>> answer;
+            std::shared_ptr<const std::atomic<bool>> withdrawn;   // the asker's: raised, it no longer waits
+            bool isWithdrawn() const { return withdrawn && withdrawn->load(std::memory_order_acquire); }
         };
         std::mutex askMutex_;
         std::deque<Question> asks_;
         AskDialog* askDialog_ = nullptr;
         int askIndex_ = -1;
         void nextQuestion();
+        std::shared_ptr<const std::atomic<bool>> openWithdrawn_;   // the open question's flag (the frame's thread only)
+        bool withdrawing_ = false;                                  // closing a withdrawn question: its close lays out nothing
         bool closing_ = false;           // the destructor runs: an answer given now lays nothing out
         KeyDialog* keyDialog_ = nullptr;
         int keyDialogIndex_ = -1;
