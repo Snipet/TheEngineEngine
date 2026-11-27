@@ -683,6 +683,22 @@ jobs:
           fi
           exit $rc
 
+      # the soak's runner, measured as the fast tier's is (tee-bench --quick: the reference's -O2 compile against the
+      # reference runner's 0.93 s), so a soak's times can be scaled from one soak to the next: hosted runners differ by
+      # up to 1.9 times (the soaks of 26 Nov, 65 min and 2 h 29 min, code that did not change running 1.74 to 1.96
+      # times as long; the lead's ruling, 27 Nov 03:42). After the test, on its own, so it never delays a failure's report
+      - name: The bench, quickly (the soak's runner)
+        if: ${{ matrix.tier == 'soak' && !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          bench="build-$PRESET/bin/tee-bench"
+          [ -f "$bench" ] || bench="$bench.exe"
+          if "$bench" --quick --out "$RUNNER_TEMP/bench-quick.md"; then
+            { echo; echo "### The soak's runner (tee-bench --quick)"; echo; cat "$RUNNER_TEMP/bench-quick.md"; } >> "$GITHUB_STEP_SUMMARY"
+            echo "---- the soak's runner (tee-bench --quick):"; cat "$RUNNER_TEMP/bench-quick.md"
+          else
+            echo "::warning::tee-bench --quick did not run"
+          fi
+
       # what was built, as someone would unpack and run it: the build's bin/ without its tests, sim/ and content/
       # beside the executables (the application's build copies them there; a build without it gets them here)
       - name: Pack what was built

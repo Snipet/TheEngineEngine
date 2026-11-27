@@ -36,5 +36,5 @@ for every engine, not only custom (the boom then has the free forces for the ref
 integration: each radiating end's signal and tag to Listen (one source each: today the two channels); (3) lead:
 `spec/telemetry.fm` should include `limits.fm` itself. **Open**: Trackside at a standing idle, 250 Hz 14 dB over the other cameras. **Not done**: each turbo, each tyre as its own place; a rider
 a replay (the host's). Scenarios for the pack: tests/sim/listen/scenarios/ (16). **FMinus**: no issue met.
-**Listen to** (nobody has): first the three of listen.md's "What a person should listen to" marked first; then the
-V8 past trackside, every camera while revving, the cabin shut and open, a single, a flat-plane four and a V12 in turn.
+**Listen to**: listen.md's three marked first; the V8 past trackside, every camera revving, the cabin, a single, a V12.
+**26 Nov, X-049 (1)**: the cut is not starved. Model 0 sits on its 0.85 limiter all pull (0.3 m Exhaust view), so its cut's 0.36 is a dip from a capped ceiling and no relight can stand out; model 1 (auto -14.5 dB) dips 9.4 dB under the firing (small four 8.6; model 0 there 10.7). The turbo six's relight +10 dB over the firing (small four +0.6) is N1's (2); the ratio is the judge's (X).

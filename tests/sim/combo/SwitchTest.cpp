@@ -28,6 +28,8 @@ namespace
             v.failures.push_back({"stall", "not running for " + std::to_string(down) + " s of the switching"});
     }
 
+    tee::test::Run flipRun(const Switch& w, const char* build, double dT, Times& tm);
+
     void flipCase(std::size_t i, const char* build)
     {
         const auto& s = switches();
@@ -35,12 +37,23 @@ namespace
             SKIP("the program has " << s.size() << " switches");
         const Switch& w = s[i];
         Times tm;
+        const tee::test::Run r = flipRun(w, build, 0.0, tm);
+        Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, Kind::Pull),
+                              referenceExcess(build, Kind::Pull));
+        mustRun(r, 3.0, 11.0, v);
+        report(v, "flip " + w.path, build, "flip");
+    }
+
+    // The flip case's run, the air at 293.15 K + dT (dT 0: the case's own)
+    tee::test::Run flipRun(const Switch& w, const char* build, double dT, Times& tm)
+    {
         tm.idleFrom = 2.5;
         tm.idleTo = 3.0;
         tm.off = 12.0;
         tm.end = 15.0;
+        tm.flips = {5.0, 6.5, 8.0, 9.5};
         tee::test::Scenario sc(buildPath(build));
-        sc.at(0.0).spec("env.temperature", 293.15).control("mode", 1).lever(0).clutch(0).ignition(tee::On);
+        sc.at(0.0).spec("env.temperature", 293.15 + dT).control("mode", 1).lever(0).clutch(0).ignition(tee::On);
         sc.at(tm.start).ignition(tee::Start);
         sc.at(tm.started).ignition(tee::On);
         sc.at(3.0).shiftUp();
@@ -54,11 +67,7 @@ namespace
         sc.at(10.5).throttle(0.0).ramp(0.05);
         sc.at(10.6).brake(0.7).ramp(0.2);
         sc.at(12.0).ignition(tee::Off);
-        const tee::test::Run r = sc.run(tm.end);
-        Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, Kind::Pull),
-                              referenceExcess(build, Kind::Pull));
-        mustRun(r, 3.0, 11.0, v);
-        report(v, "flip " + w.path, build, "flip");
+        return sc.run(tm.end);
     }
 
     // Every choice and switch of one section stepped through its options while the engine revs in neutral: each
@@ -236,6 +245,7 @@ namespace
         tm.idleTo = 3.0;
         tm.off = 12.0;
         tm.end = 15.0;
+        tm.flips = {5.0, 6.5, 8.0, 9.5};
         tee::test::Scenario sc(buildPath(build));
         sc.at(0.0).spec("env.temperature", 293.15).control("mode", 1).lever(0).clutch(0).ignition(tee::On);
         sc.at(tm.start).ignition(tee::Start);
@@ -271,4 +281,32 @@ TEST_CASE("every switch flipped in the same block while the V8 pulls in gear", "
 TEST_CASE("every switch flipped in the same block while the turbo six pulls in gear", "[nightly][flip]")
 {
     flipAllCase("turbo-six");
+}
+
+// The flip case's spread, on demand (hidden): FLIPPROOF="<switch index> <archetype>", BOUNDPROOF_DT="dT dT ...": every
+// window's excess at each copy against the nightly bound (the lead's ruling, 26 Nov 11:11: the two flip rows' rates)
+TEST_CASE("the flip case's spread: every window's excess at each copy", "[.flipproof][nightly]")
+{
+    const char* spec = std::getenv("FLIPPROOF");
+    const char* dts = std::getenv("BOUNDPROOF_DT");
+    REQUIRE(spec != nullptr);
+    REQUIRE(dts != nullptr);
+    std::istringstream in(spec);
+    std::size_t i = 0;
+    std::string build;
+    in >> i >> build;
+    const auto& s = switches();
+    REQUIRE(i < s.size());
+    std::istringstream list(dts);
+    double dT = 0.0;
+    while (list >> dT)
+    {
+        Times tm;
+        const tee::test::Run r = flipRun(s[i], build.c_str(), dT, tm);
+        const Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, Kind::Pull),
+                                referenceExcess(build, Kind::Pull));
+        for (const auto& w : v.windows)
+            std::printf("window | %+.2f | %s | %.2f | %.3f | %s\n", dT, w.event.c_str(), w.excess, w.at,
+                        v.excessBound >= 0.0 && w.excess > v.excessBound ? "over" : "under");
+    }
 }

@@ -45,7 +45,13 @@
       ]
     },
     "valve": {
-      "cam": 0.9999
+      "cam": 0.9999,
+      "inDurSeat": 276.8,
+      "exDurSeat": 276.8,
+      "inDur1mm": 254.2,
+      "exDur1mm": 254.2,
+      "inCentre": 106,
+      "exCentre": 106
     },
     "boost": {
       "kind": "Natural",

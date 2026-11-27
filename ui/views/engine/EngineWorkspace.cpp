@@ -335,6 +335,9 @@ namespace tee::ui
             Cylinder cyl;
             Derived derived;
             double liftIn = kNaN, liftEx = kNaN;   // m, the valves' full lifts when the build says
+            // The Reference valvetrain (valve.model 0) has no lift in metres, only a share of full lift over its events
+            // (N1, 26 Nov, X-050: sim/core/cylinder.fm); the lab's inLift/exLift are not its, so none is given.
+            bool referenceLift = false;
             // A custom layout the simulator refused (D's tel.engine.layoutRefused): `layout` is then the dial's, which is
             // what runs; `asked` what the build asked for, and why it makes no engine when that can be said
             bool refused = false;
@@ -404,6 +407,9 @@ namespace tee::ui
                     if (std::isfinite(exB) && (!std::isfinite(model_.liftEx) || exB > model_.liftEx))
                         model_.liftEx = exB;
                 }
+                model_.referenceLift = std::isfinite(labModel) && labModel < 0.5;
+                if (model_.referenceLift)
+                    model_.liftIn = model_.liftEx = kNaN;
             }
             return model_;
         }
@@ -954,8 +960,15 @@ namespace tee::ui
             stage::readout(c, p, in.x, ry, "ANGLE", ang, "deg", lk::kNumberS);
             stage::readout(c, p, in.x + colW, ry, "STROKE", std::isfinite(a1) ? strokeName(ca, false) : "-", "", lk::kNumberS);
             stage::readout(c, p, in.x + 2 * colW, ry, "SPARK", std::isfinite(adv) ? fmt(adv, "%.0f") : "-", "BTDC", lk::kNumberS);
-            stage::readout(c, p, in.x, ry + 36.0f, "IN LIFT", lin, lunit, lk::kNumberS, lin == "-" ? kClear : inInk);
-            stage::readout(c, p, in.x + colW, ry + 36.0f, "EX LIFT", lex, eunit, lk::kNumberS, lex == "-" ? kClear : exInk);
+            // Under the Reference model no lift figure: the valves move by the simulator's share at a nominal height,
+            // and the words say there is no number (the lead, 26 Nov, X-050: not the lab's lift, not the bare shape).
+            if (m.referenceLift)
+                put(c, "NO LIFT FIGURE UNDER THE REFERENCE MODEL", in.x, ry + 36.0f, lk::kCaps, p.label);
+            else
+            {
+                stage::readout(c, p, in.x, ry + 36.0f, "IN LIFT", lin, lunit, lk::kNumberS, lin == "-" ? kClear : inInk);
+                stage::readout(c, p, in.x + colW, ry + 36.0f, "EX LIFT", lex, eunit, lk::kNumberS, lex == "-" ? kClear : exInk);
+            }
             // two-stage cams: the stage in use, in words, as VALVES names it; and why B is not in when the speed
             // asks for it, in VALVES' words
             if (stg.on)

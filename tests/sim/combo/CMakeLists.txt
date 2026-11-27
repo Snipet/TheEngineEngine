@@ -13,6 +13,10 @@ add_library(tee-combo-harness STATIC "${CMAKE_CURRENT_SOURCE_DIR}/Combo.cpp")
 tee_target_defaults(tee-combo-harness)
 target_include_directories(tee-combo-harness PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(tee-combo-harness PUBLIC Tee::host Tee::test)
+# The nightly bound's reference copies kept across the processes of one job (the lead's ruling, 27 Nov 03:44): a file a
+# reference in the build tree, keyed by the test executable, the sim and content trees, the scenario and the nudges
+# (Combo.cpp, reference); TEE_COMBO_REFERENCES=<dir> elsewhere, =off to play every reference
+target_compile_definitions(tee-combo-harness PRIVATE "TEE_COMBO_REFERENCE_DIR=\"${CMAKE_BINARY_DIR}/combo-references\"")
 
 add_executable(tee-tests-combo ${_tee_combo_sources})
 tee_target_defaults(tee-tests-combo)
