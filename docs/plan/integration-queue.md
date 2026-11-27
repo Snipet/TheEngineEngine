@@ -2778,6 +2778,26 @@ the steward would use, if the owner allows it:
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 15:34 UTC: FROZEN FOR THE BAKE.** `sim/`, `host/`, `tools/` and `content/builds/archetypes` with its
+  generator and data are CLOSED TO EVERYONE until the lead lifts this. **The trees P bakes: sim 22314cde, host
+  24835b34, tools 7c3e4d59, as on 91dc6bc6** (C's standard-day bake, the window's last push: `host` 29bcbaa5 to
+  24835b34 by Bake.cpp alone, by the lead's log and rev-parse). In the window: item 16 (d28b3412, the shift's
+  cut), item 18 (efec3052, the dog shift's clutch), item 20 (d21f6eea, Places: true levels, one staging, the
+  Tailpipe camera on the ground), C's standard-day bake (91dc6bc6). Left it: 15, 17, 19.
+  - **P starts now** (the trees are final; the bake's result depends on nothing else): the 28 archetype tables
+    and first.json, the gate on all 31 warm and cold, the five proofs, then one whole default tier on the
+    baked state, first run, with `host.sim.bakes` GREEN and its five cases passing by name; a push with
+    `[soak]`; `main` follows that commit's Linux, macOS and Windows jobs.
+  - **EVERY CODE-BEARING PUSH IS HELD from now** (docs are free), with two exceptions that must land BEFORE P's
+    push so the baked commit can be green on macOS: card A's fix of its own case's socket path (assistant.sim
+    red on macOS at efec3052: 109 bytes against sun_path's 104; tests only), and nothing else without the
+    lead's word. Held and named: J2's carry of U1's two patches (the withdrawn question; three notes) if not
+    yet pushed; card A's item 4 step 1, item 3 and the Keychain read; B's half of the wake (60d4c56c, refused
+    by B's own permission check: the owner's to answer).
+  - **Two reds outside the five, on macOS at efec3052 (the steward's read):** assistant.sim (above, card A's,
+    being fixed), and ONE draw of host's "the service runs the newest request only, and answers a repeat from
+    its cache" (tests/host/DynoTest.cpp:98: another request's curve read): C measures its rate and finds the
+    race; neither re-run to green nor waved off. If it recurs on the baked commit's macOS job, `main` waits.
 - **27 Nov 13:28 UTC: `main` IS AT f77a46e6** (run 46000962256, three jobs green). **The trees `main` is gated on: sim
   f23337cc, host 29bcbaa5, tools 7c3e4d59** (host moved 86ea14da to 29bcbaa5 by C's bake across edits alone, no
   baked value moved: C's two byte-identity proofs, the lead's own run of its cases). Before it: 35a733d1 (12:19).
