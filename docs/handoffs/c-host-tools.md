@@ -171,3 +171,20 @@ the build's own stated air.
   table baked at the standard day, with knock control covering the difference, as for a person's own build today. If a
   temperature axis is ever wanted, the evidence for it would be a hot-day knock-limited point whose closed-loop retard
   costs more than the table's margin. I have no such reading.
+
+## Note, 27 Nov 16:05 UTC: X-062, the dyno service's superseded curve
+
+**What the owner could see.** DYNO could show the curve of the build before their last edit as the current one, for
+as long as the newer run took. The dyno service (host/src/Dyno.cpp, DynoService) published a run that ended
+uncancelled while a newer request was already waiting, and a new request did not set aside a result not yet taken.
+Cured in 36362b62 (Dyno.cpp alone, +8/−1): a new request sets an untaken result aside, and a run that ends while a
+newer one waits is cached under its own key but not handed back. Not in the bake's path: by nm, the bake's objects
+reference none of Dyno.cpp's symbols, and tee-dyno's --bake-spark and --bake-cam do not use DynoService.
+
+**How it was found, and the lesson.** One red on a loaded macOS runner (efec3052's run 46019040854, "the service runs
+the newest request only"). On this box the case failed 0 times in 400 runs with six cores busy: the race needs the test
+thread descheduled for a whole run between two back-to-back calls. Waiting for such a draw finds nothing. The case
+written for it, "a curve finished before a newer request is never taken as the newest" (tests/host/DynoTest.cpp),
+makes the race certain instead: request A is run to its end first, then B is asked. It fails every time on the old
+code. A service with a request-supersedes-request rule should be tested that way, by putting its events in the bad
+order on purpose, not by hoping a runner does.
