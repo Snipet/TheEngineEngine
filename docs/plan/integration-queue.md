@@ -2825,6 +2825,14 @@ It ran while the day's fast jobs crowded the runners.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **27 Nov 18:06 UTC: THE TIP BUILDS AGAIN: B's fix is in at f61531fa** (76ce9d97 under two merges; gated trees
+  unchanged). B's tier of record, in a tree configured by the plain preset (app OFF, no libsecret, no libcurl):
+  591 of 592, the named red only; its app-on tree's shell suites 61 of 61. The lead's own plain tree at f61531fa:
+  everything builds, the shell's tests 25 of 25; with `AssistantWake::post` made to push nothing, three of the
+  wake's four cases fail (`AssistantWakeTest.cpp:72`, `:74`; `:181`, `:182`; `:209`, `:212`); restored. In the fix
+  besides the build: the timer's hold has one owner (its callback; a timer pending when SDL's timers quit leaves
+  one small block at exit), and a case for a job that says "not yet". 899259e9's CI at 18:05: Linux and macOS
+  green, Windows running. Card A's cure goes next, at once; the hold then protects card A's tip.
 - **27 Nov 18:01 UTC: X-064, TWO OF THE ASSISTANT'S LIMITS ARE ON THE FRAME'S CLOCK** (B found the clock; card A read
   every limit; the lead read `app/Offline.cpp:151`, `Tools.h:59`, `:63`, `Tools.cpp:684`). The clock is the frame
   count at 60 a second: still in a minimised window, a fifth of the rate in an occluded one.
