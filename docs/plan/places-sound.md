@@ -201,9 +201,12 @@ With the patch applied and the build made (`cmake --build build-dev`):
 
     build-dev/bin/tee-tests-listen "true levels at the defaults*,the Tailpipe camera*,the level falls 6 dB*,the reference's five views*"
 
-- "true levels at the defaults": first.json idle peak -15.7 / -15.7 dBFS, the rev's typical peak -6.5 / -6.5 (reference
-  / Places), the rise 9.2 / 9.2 dB; the V8's idle over first.json's +8.9 (reference) / +8.1 (Places). With
-  `TEE_LISTEN_PROOF=1` (Auto, the old default) the V8's reads -0.9 and the case fails: it bites.
+- "true levels at the defaults": first.json idle peak -15.7 / -15.8 dBFS, the rev's typical peak -6.5 / -6.5 (reference
+  / Places), the rise 9.2 / 9.3 dB; the V8's idle over first.json's +8.9 (reference) / +8.4 (Places). With
+  `TEE_LISTEN_PROOF=1` (Auto, the old default) the V8's reads -1.0 and the case fails: it bites. (These are what the
+  patch prints, the lead's build and L's alike; an earlier draft of this page gave -15.7, 9.2, +8.1 and -0.9, measured
+  before the ground's fold was added, which moves what the Tailpipe camera hears by some 0.1 to 0.3 dB. The case's
+  print says "under" where it means "over"; its figures are right.)
 - "the Tailpipe camera, a boundary microphone": the least of asphalt over no ground, 300 Hz to 6 kHz, +5.6 dB. On the
   old spot (scene.fm before the patch) -9.2 dB at 620 Hz: it bites.
 - "the level falls 6 dB a doubling": -4.54, -5.52, -5.74, -5.99 dB a doubling against the geometry's -4.45, -5.49,
