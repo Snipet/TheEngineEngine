@@ -2451,6 +2451,21 @@ engines only where a source shows such an engine drawn split.
   the proof is every nightly figure to the digit with the store off and on. The soak now runs
   `tee-bench --quick` (the steward) so its times can be scaled; the first scaled soak is the one on dc2f7db3.
 
+- **The soak's cost, measured on the reference runner (the lead's ruling, 27 Nov 07:34).** Each soak now prints
+  `tee-bench --quick` (the soak's runner; a step after its tests), so its wall can be scaled.
+
+  | soak | commit | runner | wall |
+  |---|---|---|---|
+  | the push's | d586682c | the same speed as the reference, by its unchanged code | 3894 s (65 min) |
+  | C's crash fix | dc2f7db3 | the reference Xeon 6975P-C, -O2 0.91 s | 5566 s (93 min) |
+  | after X's 72684d9b (the nightly bound's reference sets kept across one job's processes) | ddacdf97 | the same | 4251 s (71 min) |
+
+  - At ddacdf97 the mild twin, the shipped pulls and the per-event judge are all in, at 6 minutes over 65.
+  - The line is 10 added minutes on a reference runner, so nothing leaves the soak.
+  - The next growth is measured against 4251 s on a reference runner (a slower runner's wall scaled by its bench
+    first).
+  - At ddacdf97: 226 of 227, N2-38 alone; `ui.build.bake.pictures` passed (243.6 s); `main` at ddacdf97.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 07:16 UTC: `main` IS AT ddacdf97** (run 45951143037: Linux, macOS and Windows green on that commit;
