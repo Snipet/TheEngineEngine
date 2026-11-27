@@ -47,7 +47,9 @@ What a press reaches depends on the build's gearbox (read from the build each fr
 Reference, reads no gearbox and is driven as a manual's paddles whatever the field says):
 
 - **Manual, sequential, dual clutch: the shift counters.** As above: E and Q (and the wheel's paddles) are a shift up
-  and down; a gear key or the wheel's shifter seeks that gear through them.
+  and down; a gear key or the wheel's shifter seeks that gear through them. A sequential box shifted at a standstill
+  can stall today (a shift into second, or back down, with the car still: X-056, the simulator's, until its fix lands):
+  pull away in first.
 - **Automatic, CVT: the selector.** The box picks its own gears in D; the controls move its selector, R, N, D, held
   whatever the automatic clutch says. E (a paddle up) steps towards D: R to N, N to D. Q (a paddle down) steps towards
   R, and out of D only at a crawl (under 5 km/h): at speed Q does nothing, so a press hoping for a kickdown never drops
