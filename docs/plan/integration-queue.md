@@ -2466,6 +2466,27 @@ engines only where a source shows such an engine drawn split.
     first).
   - At ddacdf97: 226 of 227, N2-38 alone; `ui.build.bake.pictures` passed (243.6 s); `main` at ddacdf97.
 
+## 27 Nov 11:23 UTC: THE OWNER'S RULING: yes to options 1 and 2 for the bake; `host/` opened for it (C), the words U1's
+
+- **The owner, 27 Nov: "Yes to options 1 and 2 for the bake"** (docs/plan/bake-across-edits.md): after an edit
+  the engine keeps playing on the last good tables, marked stale, while the new ones bake; and a bake waits
+  for the edits to rest (the larger of 1.5 s and 5 % of the expected bake on that machine).
+- **C builds it, tests first, under these conditions:** what "stale" may cover is decided and tested first (a
+  different build loaded never plays on the last one's tables; an edit that changes a table's axes or meaning
+  sets the table aside as today; a first launch as today); the tests: an edit mid-bake leaves both Auto
+  switches at 0 and the old values in place; three edits a second apart start one bake; a stale table is
+  replaced when the new one lands; an edit undone takes its tables from the cache and is not stale; a cancel
+  and a destruction during the wait; this morning's crash cases stay green. The debounce gets a ceiling and a
+  floor. The service gives the interface FIELDS (stale: which tables; waiting, with seconds; baking, stage and
+  count; restarted, by which field; a stage kept), not sentences. What the predicted curve runs on while
+  tables are stale is answered in the handoff. **No baked value moves** (three shipped builds byte for
+  byte). C's push carries no `[soak]`.
+- **U1:** the words on TUNE's status line (information, not the warning colour), pictures first; the nightly's
+  `ui.build.bake.pictures` restated for the new behaviour on the bake's state; carried by J2 right after C's
+  push, with `[soak]`.
+- `main` moves when the lead has checked the trees (sim and tools unchanged; host changed by C's commits
+  alone), built it and run the new cases, and three jobs are green.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
@@ -2474,7 +2495,10 @@ engines only where a source shows such an engine drawn split.
   byte-identical). Before it: ddacdf97 (27 Nov 07:16), dc2f7db3 (05:08, the crash fix), 57265b5f (26 Nov
   20:32), 6e67ac62, d6615852, 3f892823, 389ee865, 317404d9, 5278e3e9, 3c42b4d2, 5cd03815, 07a08dc0, d586682c
   (04:36). Nothing code-bearing is on the branch past it.
-- **`host/` IS CLOSED AGAIN** (opened 27 Nov 03:43 for the crash fix alone). `sim/`, `host/` and `tools/` wait
+- **27 Nov 11:23 UTC: `host/` IS OPEN FOR ONE CHANGE: the owner's options 1 and 2 for the bake (C: Bake.cpp, its
+  service, their tests), with U1's words and restated nightly case following.** Nothing else under `host/`,
+  and nothing under `sim/` or `tools/`.
+- (`host/` was closed again after the crash fix, opened 27 Nov 03:43 for that alone.) `sim/`, `host/` and `tools/` wait
   for a bake as before; the next thing under `host/` is the owner's choice on docs/plan/bake-across-edits.md.
 - **THE WINDOW'S ORDER, as ruled on 26 Nov and corrected at 17:39 (each needs a bake to follow, so P):** item 16
   (X-047, the shift's cut; the steward; one file; evidence on three shipped builds), item 17 (X-051, the
