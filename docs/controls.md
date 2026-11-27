@@ -52,9 +52,12 @@ gate whatever it says, an automatic and a CVT are their selector, and the eighte
 its clutch always yours. On a manual with the shifter in a gate the status line says when the car is in gear at rest
 ("the clutch, to pull away") and when a gate was refused ("the gear did not go in: the clutch down, or the revs
 matched"), so a gear that did not go in is not mistaken for a delay. Until 27 Nov the shifter's gates were always
-sought (the owner: "a small delay in shifting ... I cannot stall it"). Never yet run on the owner's Mac with the real
-wheel: tested on made-up wheel states through the simulator (`tests/shell/GearboxDrivingTest.cpp`: a gate to its gear
-in 1 frame against 4 to 40 sought; in first at rest, the clutch let up with no throttle, the engine stalls).
+sought (the owner: "a small delay in shifting ... I cannot stall it"). On 27 Nov the owner ran it on their Mac with
+the real G29: "I was able to verify the shifter-clutch logic is correct". That covers the shifter as a manual's lever
+and its clutch, nothing more: the automatics' selector from the gates, the eighteen-speed, how the stall feels and the
+three-way clutch setting are still unproved on a Mac until the owner says. The tests behind it run on made-up wheel
+states through the simulator (`tests/shell/GearboxDrivingTest.cpp`: a gate to its gear in 1 frame against 4 to 40
+sought; in first at rest, the clutch let up with no throttle, the engine stalls).
 
 Out of the shifter's gates (and with no wheel), in the default or Automatic, on a manual, a sequential or a dual
 clutch, E and Q are the paddles of a paddle-shift car: the gearbox works its own clutch, pulls away by itself when the throttle goes down in
@@ -154,6 +157,7 @@ only, as a plain joystick (below). The code is TestingPlayground's, where it dro
 
 **What is verified where.** macOS: the owner reports (26 Nov, on `main` at b557c4a1) that their G29 "worked well with
 the Mac app": the owner's report, not a test of ours, and it says nothing in particular of the lights or the shifter.
+On 27 Nov they verified the shifter and the clutch on a manual (above).
 Linux and Windows: never yet run with a real wheel. No test here opens a device.
 
 - **The switch on the wheel at PS3.** At PS4 it is not read (the status line says to set it to PS3). At PS3, without
