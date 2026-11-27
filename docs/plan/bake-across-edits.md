@@ -98,3 +98,26 @@ The tests:
 
 No table changes, so the bake's own proofs (three builds byte for byte) carry over. Option 5 only after a measurement
 says 1 and 2 are not enough. Options 4 and 6 not at all.
+
+## As built (27 Nov, the owner's yes to 1 and 2; host/src/Bake.cpp, CalibrationBakeService)
+
+- **What may play stale (provenance, no flag from the interface).** A stale table keeps playing only if this service
+  saw those exact values current on this program (consider() with the whole build current, or takeAndApply landing
+  them), and the edits since have not made it unfit (`unfitBy`, the list in Bake.h). A loaded build's tables (a
+  shipped build after a simulator change, a file baked elsewhere) were never seen current here, so they are set aside
+  as before, with the reason "not seen current here". Undo puts the kept tables back under their own keys: current at
+  once, nothing marked stale.
+- **A restart of the application** remembers nothing of this: the record of what was seen current lives in the
+  service, in memory. A build left stale when the owner quit is set aside on the next launch ("not seen current
+  here") and baked as before. A build left current is current at once, and is the new baseline.
+- **The bake measures what it measured before:** its own copy of the build has every stale table set aside, whatever
+  plays live. Shown byte for byte on three shipped builds, edited, baked through the service with their old tables
+  playing, against cams.py's bake of the same edited file.
+- **The wait:** max(debounceSeconds 1.5 s, debounceShare 5 % × the expected bake's points × this machine's seconds a
+  point), at most debounceMostSeconds 15 s. The rate is measured by each bake that finishes; none yet, the floor. Each
+  edit starts it again. A load (nothing plays meanwhile) waits the floor.
+- **BakeStatus**, plain fields for U1: which table plays stale; which was set aside and by which field; the wait and
+  its seconds left; the stage and its points; a restart and the field that caused it; stages kept; bakes started; the
+  rate.
+- **The predicted curve** runs on the build as it stands: on the stale tables while they play. Whether it is marked is
+  U1's call from the stale flags (U1: a quiet note under it, not a warning).

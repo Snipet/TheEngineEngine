@@ -1086,6 +1086,83 @@ TEST_CASE("an edit keeps the stale tables playing and undone is current at once"
     CHECK(bakes.status().bakesStarted == 0);
 }
 
+// The rule a stale table is judged fit by (unfitBy), a line each: each field of the list makes it unfit, by its own
+// path; compression (a key's field, nothing of the table's axes or meaning) does not; nor the displacement while the
+// redline is stated (redlineSpeed above 0), nor a boost kind within its class (Turbo to Twin)
+TEST_CASE("the fit rule: each field of a table's axes or meaning, a line each; compression keeps a table fit",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build base(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(base.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/v12-65.json",
+                          BuildPart::Whole, warnings, error));
+    const auto copyOf = [&](const Build& b) {
+        auto c = std::make_unique<Build>(b.fields());
+        std::vector<std::string> w;
+        std::string e;
+        REQUIRE(c->load(b.save(), BuildPart::Whole, w, e));
+        return c;
+    };
+    // a value other than the base's, within the field's range
+    const auto other = [&](const Build& b, const char* f) {
+        const FieldInfo* info = b.fields().find(std::string("spec.") + f);
+        REQUIRE(info != nullptr);
+        const double v = b.get(f);
+        const double lo = info->minimum.value_or(v - 1.0), hi = info->maximum.value_or(v + 1.0);
+        return v + 1.0 <= hi ? v + 1.0 : v - 1.0 >= lo ? v - 1.0 : (lo + hi) / 2.0;
+    };
+    CHECK(unfitBy(base, *copyOf(base)).empty());   // nothing moved
+    for (const char* f : {"engine.cylinders", "engine.layout", "engine.cycle", "engine.redlineSpeed", "engine.redlineTrim",
+                          "ecu.idle.speed", "boost.layout", "fuel.kind", "valve.model", "intake.model", "boost.model",
+                          "exhaust.model", "fuel.model", "ecu.model"})
+    {
+        INFO(f);
+        if (base.fieldOf(f) < 0)
+            continue;
+        auto now = copyOf(base);
+        now->set(f, other(base, f));
+        CHECK(unfitBy(base, *now) == std::string("spec.") + f);
+    }
+    // the boost's class: none to a turbine, a turbine to a supercharger; within the class (Turbo to Twin) fit
+    {
+        auto now = copyOf(base);
+        now->set("boost.kind", 1.0);
+        CHECK(unfitBy(base, *now) == "spec.boost.kind");
+        auto twin = copyOf(*now);
+        twin->set("boost.kind", 2.0);
+        CHECK(unfitBy(*now, *twin).empty());
+        auto sc = copyOf(*now);
+        sc->set("boost.kind", 4.0);
+        CHECK(unfitBy(*now, *sc) == "spec.boost.kind");
+    }
+    // the displacement and the bore-stroke: unfit while the redline follows the stroke (redlineSpeed 0), fit while it
+    // is stated
+    for (const char* f : {"engine.displacement", "engine.boreStroke"})
+    {
+        INFO(f);
+        auto stated = copyOf(base);
+        REQUIRE(base.get("engine.redlineSpeed") > 0.0);
+        stated->set(f, base.get(f) * 1.05);
+        CHECK(unfitBy(base, *stated).empty());
+        auto derived = copyOf(base);
+        derived->set("engine.redlineSpeed", 0.0);
+        auto moved = copyOf(*derived);
+        moved->set(f, base.get(f) * 1.05);
+        CHECK(unfitBy(*derived, *moved) == std::string("spec.") + f);
+    }
+    // compression: a key's field, fit (the table plays on while it bakes)
+    {
+        auto now = copyOf(base);
+        now->set("engine.compression", base.get("engine.compression") - 0.5);
+        CHECK(unfitBy(base, *now).empty());
+    }
+}
+
 TEST_CASE("an edit of a table's axes or meaning sets it aside, and says which field", "[engine][sim][bake]")
 {
     if (!haveSim())
