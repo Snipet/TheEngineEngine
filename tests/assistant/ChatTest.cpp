@@ -4,6 +4,8 @@
 // placeholder string, checked never to leave the headers.
 #include "Rig.h"
 #include "tee/assistant/Chat.h"
+#include "tee/assistant/KeyStore.h"
+#include "tee/assistant/Session.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -728,4 +730,139 @@ TEST_CASE("assistant: a conversation too long for Claude says so in words, and t
     b.say("Once more");
     CHECK(b.chat->items().back().text.find("longer than Claude") == std::string::npos);
     CHECK(b.chat->takeReturned().empty());
+}
+
+namespace
+{
+    // A store whose read waits until the test lets it go, as the Keychain does while it asks the owner.
+    struct GatedStore final : KeyStore
+    {
+        std::promise<void> release;
+        std::shared_future<void> gate = release.get_future().share();
+        std::atomic<int> loads{0};
+        bool refuse = false;
+        std::string held = "placeholder-not-a-key-0123456789";
+        bool load(std::string& key, std::string& why) override
+        {
+            ++loads;
+            gate.wait();
+            if (refuse)
+            {
+                why = "the owner refused";
+                return false;
+            }
+            key = held;
+            return true;
+        }
+        bool save(const std::string& key, std::string&) override
+        {
+            held = key;
+            return true;
+        }
+        bool remove(std::string&) override
+        {
+            held.clear();
+            return true;
+        }
+    };
+
+    template <class Done>
+    bool within(double seconds, Done done)
+    {
+        const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(static_cast<int>(seconds * 1000));
+        while (!done())
+        {
+            if (std::chrono::steady_clock::now() > until)
+                return false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+        return true;
+    }
+}
+
+TEST_CASE("assistant: the saved key is read off the window's thread, once, and a refusal is not asked again",
+          "[assistant][sharedsim]")
+{
+    Rig rig("chat-keyread");
+    const auto partsFor = [&rig] {
+        return SessionParts{*rig.file, *rig.library, [&rig]() -> SimHost* { return &rig.sim->host(); },
+                            [&rig] { return rig.sim->host().sim(); }, [&rig] { return rig.clock; }, nullptr, nullptr,
+                            McpLinkOptions{(std::filesystem::path(TEE_SOURCE_DIR) / "out" / "assistant" / "link-keyread").string(), -1,
+                                           "0.2.0", {}}};
+    };
+    // a read that waits on the owner: the panel's question does not wait with it
+    {
+        Session session(partsFor());
+        auto owned = std::make_unique<GatedStore>();
+        GatedStore& store = *owned;
+        session.useKeyStore(std::move(owned));
+        const std::uint64_t rev = session.chat().revision();
+        std::string why;
+        // asked as the panel asks, on its own thread here so that a read made on the asker's thread (the old way) fails
+        // this case instead of hanging it: the store is let go when the answer is late
+        auto asked = std::async(std::launch::async, [&] {
+            std::string w;
+            const bool can = session.chat().ready(w);
+            return std::make_pair(can, w);
+        });
+        const bool quick = asked.wait_for(std::chrono::milliseconds(500)) == std::future_status::ready;
+        bool released = false;
+        if (!quick)
+        {
+            store.release.set_value();
+            released = true;
+        }
+        REQUIRE(quick);   // the panel's question answered at once, whatever the store does
+        const auto answer = asked.get();
+        CHECK_FALSE(answer.first);
+        why = answer.second;
+        INFO(why);
+        CHECK(why.find("reading your saved key") != std::string::npos);
+        CHECK(session.keyMask().find("reading") != std::string::npos);
+        REQUIRE(within(5.0, [&] { return store.loads.load() == 1; }));
+        for (int i = 0; i < 50; ++i)   // the panel asks at every layout: one read in all
+            session.chat().ready(why);
+        CHECK(store.loads == 1);
+        if (!released)
+            store.release.set_value();
+        // done: the panel is told (its revision moves) and the chat can send
+        REQUIRE(within(5.0, [&] { return session.chat().revision() != rev && session.chat().ready(why); }));
+        CHECK(session.keyMask() == maskKey(store.held));
+        CHECK(store.loads == 1);
+    }
+    // a refusal: said in words, and not asked again at every layout; a key saved afterwards is the truth
+    {
+        Session session(partsFor());
+        auto owned = std::make_unique<GatedStore>();
+        GatedStore& store = *owned;
+        store.refuse = true;
+        store.release.set_value();
+        session.useKeyStore(std::move(owned));
+        std::string why;
+        REQUIRE(within(5.0, [&] {
+            session.chat().ready(why);
+            return why.find("could not be read") != std::string::npos;
+        }));
+        CHECK(why.find("the owner refused") != std::string::npos);
+        for (int i = 0; i < 50; ++i)
+            session.chat().ready(why);
+        CHECK(store.loads == 1);
+        REQUIRE(session.saveKey("placeholder-not-a-key-abcdefghij", why));
+        CHECK(session.chat().ready(why));
+        CHECK(store.loads == 1);
+    }
+    // the session gone while the store still asks: the read finds it gone and touches nothing
+    {
+        auto owned = std::make_unique<GatedStore>();
+        GatedStore& store = *owned;
+        {
+            Session session(partsFor());
+            session.useKeyStore(std::move(owned));
+            std::string why;
+            session.chat().ready(why);
+            REQUIRE(within(5.0, [&] { return store.loads.load() == 1; }));
+        }
+        store.release.set_value();   // (the store lives on with the read that holds it)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
 }

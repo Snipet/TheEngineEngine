@@ -116,6 +116,9 @@ namespace tee::assistant
         // for macOS and Linux in this version"); ready() says it rather than asking for a key it could not keep.
         std::string noTransportWhy;
         std::string noKeyStoreWhy;
+        // Why there is no key now, when the key function gives none ("" : none is saved): "reading your saved key...",
+        // or that it could not be read. May be empty.
+        std::function<std::string()> keyWhy;
         // Waits `seconds` unless `cancel` is raised first (tests give one that does not wait). Empty: the real clock.
         std::function<void(double seconds, const std::atomic<bool>& cancel)> sleep;
     };
@@ -142,6 +145,9 @@ namespace tee::assistant
         void clear() override;
         bool canClear() const override;
         std::string takeReturned() override;
+
+        // Something the panel shows changed outside a turn (the saved key read): laid out again. Any thread.
+        void refresh();
 
         // The history as it would be sent (a copy), for tests and for nothing else.
         nlohmann::json history() const;

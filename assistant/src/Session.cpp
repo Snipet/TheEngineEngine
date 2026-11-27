@@ -3,6 +3,8 @@
 
 #include "files/BuildFiles.h"
 
+#include <thread>
+
 namespace tee::assistant
 {
     Session::Session(SessionParts parts)
@@ -20,21 +22,59 @@ namespace tee::assistant
         ChatOptions chatOptions;
         chatOptions.noTransportWhy = transportWhy_;   // (Windows: "the chat by API key is for macOS and Linux ...")
         chatOptions.noKeyStoreWhy = keys_ ? std::string() : keysWhy_;
+        chatOptions.keyWhy = [this] { return keyWhy(); };
         chat_ = std::make_unique<Chat>(*tools_, drivers_, transport_.get(), [this] { return currentKey(); },
                                        systemPromptFor(parts.document.build().fields()), clock, std::move(chatOptions));
+        keyState_->changed = [chat = chat_.get()] { chat->refresh(); };
+    }
+
+    void Session::useKeyStore(std::unique_ptr<KeyStore> store)
+    {
+        keys_ = std::move(store);
+        const std::lock_guard<std::mutex> lock(keyState_->mutex);
+        keyState_->step = KeyState::Step::Unread;
     }
 
     std::string Session::currentKey()
     {
-        std::lock_guard<std::mutex> lock(keyMutex_);
-        if (!keyRead_ && keys_)
+        const std::shared_ptr<KeyState> st = keyState_;
+        std::shared_ptr<KeyStore> store = keys_;
+        const std::lock_guard<std::mutex> lock(st->mutex);
+        if (st->step == KeyState::Step::Unread && store)
         {
-            std::string why;
-            keyRead_ = keys_->load(key_, why);
-            if (!keyRead_)
-                key_.clear();
+            st->step = KeyState::Step::Reading;
+            // the store's read, off the caller's thread (the frame's, when the panel asks whether it can send); it holds
+            // the state and the store, never the session
+            std::thread([st, store] {
+                std::string key, why;
+                const bool ok = store->load(key, why);
+                const std::lock_guard<std::mutex> done(st->mutex);
+                if (st->step != KeyState::Step::Reading)
+                    return;   // a key saved or removed meanwhile is the truth
+                st->step = ok ? KeyState::Step::Read : KeyState::Step::Failed;
+                st->key = ok ? key : std::string();
+                st->why = ok ? std::string() : why;
+                if (st->alive && st->changed)
+                    st->changed();
+            }).detach();
         }
-        return key_;
+        return st->step == KeyState::Step::Read ? st->key : std::string();
+    }
+
+    std::string Session::keyWhy()
+    {
+        currentKey();
+        const std::lock_guard<std::mutex> lock(keyState_->mutex);
+        switch (keyState_->step)
+        {
+        case KeyState::Step::Reading:
+            return "reading your saved key (the system may ask whether this app may use it)";
+        case KeyState::Step::Failed:
+            return "your saved key could not be read" + (keyState_->why.empty() ? std::string() : " (" + keyState_->why + ")")
+                   + ": save it again with Key";
+        default:
+            return {};
+        }
     }
 
     bool Session::saveKey(std::string typed, std::string& why)
@@ -46,11 +86,14 @@ namespace tee::assistant
         }
         if (!checkKey(typed, why))
             return false;
-        std::lock_guard<std::mutex> lock(keyMutex_);
         if (!keys_->save(typed, why))
             return false;   // the key held before stays
-        key_ = std::move(typed);
-        keyRead_ = true;
+        const std::lock_guard<std::mutex> lock(keyState_->mutex);
+        keyState_->step = KeyState::Step::Read;
+        keyState_->key = std::move(typed);
+        keyState_->why.clear();
+        if (keyState_->changed)
+            keyState_->changed();
         return true;
     }
 
@@ -58,7 +101,10 @@ namespace tee::assistant
     {
         if (!keys_)
             return keysWhy_;
-        return maskKey(currentKey());
+        const std::string key = currentKey();
+        if (const std::string why = keyWhy(); !why.empty())
+            return why;
+        return maskKey(key);
     }
 
     bool Session::removeKey(std::string& why)
@@ -68,16 +114,25 @@ namespace tee::assistant
             why = keysWhy_;
             return false;
         }
-        std::lock_guard<std::mutex> lock(keyMutex_);
         if (!keys_->remove(why))
             return false;
-        key_.clear();
-        keyRead_ = true;
+        const std::lock_guard<std::mutex> lock(keyState_->mutex);
+        keyState_->step = KeyState::Step::Read;
+        keyState_->key.clear();
+        keyState_->why.clear();
+        if (keyState_->changed)
+            keyState_->changed();
         return true;
     }
 
     Session::~Session()
     {
+        {
+            // a read still at the store (a Keychain question unanswered) finds the session gone and leaves it alone
+            const std::lock_guard<std::mutex> lock(keyState_->mutex);
+            keyState_->alive = false;
+            keyState_->changed = nullptr;
+        }
         stop();
     }
 

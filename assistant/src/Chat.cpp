@@ -229,10 +229,18 @@ namespace tee::assistant
         }
         if (!key_ || key_().empty())
         {
-            why = "no API key is saved: add one in the chat's settings";
+            why = options_.keyWhy ? options_.keyWhy() : std::string();
+            if (why.empty())
+                why = "no API key is saved: add one with Key";
             return false;
         }
         return true;
+    }
+
+    void Chat::refresh()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        ++revision_;
     }
 
     std::string Chat::question() const
