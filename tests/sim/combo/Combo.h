@@ -74,6 +74,14 @@ namespace combo
     // shiftPhase: seconds added to every upshift after the pull-away (a shift cut's phase among the firings)
     tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times,
                                  double shiftPhase = 0.0);
+    // The scenario a build's reference plays (its switches as the caller sets them): the same timeline but never the
+    // lever. A reference's own car (car.model 0) reads no `gearbox`: it is the manual the presses drive with the lever in
+    // N, and lever 1 is its first, dropped in with no clutch: it stalls (the lead's ruling, 27 Nov 12:07).
+    tee::test::Scenario referenceScenario(Kind kind, const std::string& build, Times& times);
+    // A played reference that stopped running while driven (engine.state under 1.5 between driveFrom and driveTo, the
+    // judge's own "stall") throws, naming `what`: a stalled reference's excess is no bound (the automatics' wide bounds
+    // were a stalled engine's). Every reference play calls it, before its figures are used or kept.
+    void requireReferenceRuns(const tee::test::Run& run, const Times& times, const std::string& what);
     // Its timeline as a tee-scenario file (for the tools and the listening pack).
     std::string scenarioJson(Kind kind, std::uint32_t mask, bool drive = false);
     // the build file's box is an automatic or a CVT: the scenarios put its lever in D to drive (see steps)
@@ -155,7 +163,7 @@ namespace combo
     double stepExcess(const tee::test::Run& run, double from, double to, double* at = nullptr, double* period = nullptr);
     // The reference sets kept across one job's processes (Combo.cpp): a set's file name from everything that decides it
     // (empty: nothing kept); a kept set read back (false: a miss, the set is played); one written; a tree's hash
-    std::string referenceKey(const std::string& build, Kind kind, bool copies, bool drive = false);
+    std::string referenceKey(const std::string& build, Kind kind, bool copies);
     bool readKeptReference(const std::string& key, double& step, std::vector<double>& excess);
     void keepReference(const std::string& key, double step, const std::vector<double>& excess);
     std::uint64_t referenceTreeHash(const std::filesystem::path& dir);

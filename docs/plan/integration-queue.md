@@ -2723,14 +2723,38 @@ the rotary twin).
   an automatic put into D at rest, `archetypes/v6-35-twin-turbo-pickup`, 1 of 17 (3.57 over 3.22) 45 ms after
   the lever; a sometimes row on one build, in no case's path; the integrator's list.
 
+## 27 Nov 12:20 UTC: `main` AT 35a733d1 (the gears); P AND THE INTEGRATOR CAN PUSH; C's bake across edits is on the branch
+
+- **`main` moved 7ff344bc to 35a733d1 at 12:19 UTC** (run 45994332561, three jobs green; the three gated trees
+  unchanged). The owner can drive every gearbox kind from it; what it does not hold is in STATUS.md.
+- **THE OWNER approved pushes inside P's and the integrator's sessions** ("I approved two, but I couldn't find the
+  third session that needed input"). P's first push is in (7184c1e2: ac0d0e77, docs only). The third is N2: idle,
+  no prompt waiting; asked to list what it holds and to push its docs and tests, so that a prompt exists.
+- **A BAKE IS POSSIBLE AGAIN. The order of the day:** (1) `main` takes what is owner-facing and needs no bake: C's
+  bake across edits (f5946d7b, in CI) with U1's words and restated nightly case through J2; D2's pickup; B's
+  H-shifter as the lever with the three-way clutch setting. (2) THEN the window's `sim/` pushes, one at a time,
+  each called by the lead: 16, 17, 15, 19, 18, 20, then the list (and C's standard-day bake under `host/`).
+  (3) THEN the lead writes FROZEN FOR THE BAKE, P bakes, and `main` follows the baked commit's three green jobs.
+  Nothing under `sim/` is pushed before its call: the first such push stales every table and stops `main`.
+- **C's push (25b101b7, eb017295, 49794a9e; tip f5946d7b):** `host/` moved 86ea14da to 29bcbaa5 by Bake.h and
+  Bake.cpp alone; `sim` and `tools` unchanged (the lead's rev-parse and log). C's proof that no baked value
+  moves: three shipped builds rebaked byte-identical to bake-maps.json, and the same three edited and baked
+  through the new service byte-identical to cams.py's bake of the edited file. The lead builds and runs C's
+  cases before `main` moves on it. `ui.build.bake.pictures` (nightly) is red until U1's restated case lands.
+- **B's H-shifter (local, its tier running):** the gate to `car.gear` in 1 frame as the lever against 40 frames
+  (0.67 s) to second when sought: the owner's delay, measured; and the stall: first, at rest, the clutch let up
+  with no throttle, `engine.state` leaves 2. The sim's clutch does stall.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **27 Nov 09:02 UTC: `main` IS AT 7ff344bc** (run 45955671762: Linux, macOS and Windows green on that commit;
-  tests and docs only past the crash fix). **The trees `main` is gated on: sim f23337cc, host 86ea14da, tools
-  7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked
-  byte-identical). Before it: ddacdf97 (27 Nov 07:16), dc2f7db3 (05:08, the crash fix), 57265b5f (26 Nov
+- **27 Nov 12:19 UTC: `main` IS AT 35a733d1** (run 45994332561: Linux, macOS and Windows green on that commit;
+  B's gears by gearbox kind, `shell/` and tests). **The trees `main` is gated on: sim f23337cc, host 86ea14da,
+  tools 7c3e4d59** (host moved from the bake's 2e7c1bec by C's a86b38c6 alone, three shipped builds re-baked
+  byte-identical; C's bake across edits, host 29bcbaa5, is on the branch and not yet in `main`). Before it:
+  7ff344bc (27 Nov 09:02), ddacdf97 (27 Nov 07:16), dc2f7db3 (05:08, the crash fix), 57265b5f (26 Nov
   20:32), 6e67ac62, d6615852, 3f892823, 389ee865, 317404d9, 5278e3e9, 3c42b4d2, 5cd03815, 07a08dc0, d586682c
-  (04:36). Nothing code-bearing is on the branch past it.
+  (04:36). On the branch past it, code-bearing and waiting for their own green: B's trucks' start clause
+  (1b97231f), X's tests (the pull in D), C's bake across edits (f5946d7b).
 - **27 Nov 11:23 UTC: `host/` IS OPEN FOR ONE CHANGE: the owner's options 1 and 2 for the bake (C: Bake.cpp, its
   service, their tests), with U1's words and restated nightly case following.** Nothing else under `host/`,
   and nothing under `sim/` or `tools/`.
