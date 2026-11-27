@@ -1035,3 +1035,25 @@ TEST_CASE("Item 19: the governed builds under the idle + 1500 floor", "[.x057fig
                     b.field("spec.ecu.model"));
     }
 }
+
+// X-056's guard measured (27 Nov): the synced overrun 1-2 at about 1500 rpm, step by step (hidden: "[.x056guard]")
+TEST_CASE("X-056: the overrun 1-2's robot, step by step", "[.x056guard]")
+{
+    Bench b("archetypes/inline-five-turbo-rally");
+    b.start();
+    b.ctl().mode = 1;
+    b.play(0.2);
+    b.ctl().shiftUp += 1;
+    b.play(0.2);
+    b.ctl().throttle = 0.2f;
+    b.play(3.0);
+    b.ctl().throttle = 0.0f;
+    b.play(5.0);
+    b.ctl().shiftUp += 1;
+    int k = 0;
+    b.play(0.5, [&] {
+        if (k++ % 3 == 0)
+            std::printf("t+%3d: shifting %g gear %g synced %g robot %.3f engine %.0f rpm\n", k, b.field("car.m1.box.shifting"),
+                        b.field("car.m1.box.gear"), b.field("car.m1.box.synced"), b.field("car.m1.box.robot"), b.tel("engine.speed") * 9.5492966);
+    });
+}
