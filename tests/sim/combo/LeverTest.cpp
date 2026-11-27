@@ -27,7 +27,10 @@ TEST_CASE("the pull drives an automatic and a CVT in D, and moves no other box's
     CHECK(leverDrives(corpusFile("economy-four-15")));             // CVT
     CHECK_FALSE(leverDrives(corpusFile("three-cylinder-10-turbo")));  // Manual
     CHECK_FALSE(leverDrives(corpusFile("flat-plane-v8-39-twin-turbo")));  // Dual clutch
-    CHECK_FALSE(leverDrives(corpusFile("tractor-15-inline-six")));  // Eighteen-speed: no driver yet
+    CHECK_FALSE(leverDrives(corpusFile("tractor-15-inline-six")));  // Eighteen-speed: its own driver
+    CHECK(driverFor(corpusFile("tractor-15-inline-six")) == Driver::Truck);
+    CHECK(driverFor(corpusFile("economy-four-15")) == Driver::Lever);
+    CHECK(driverFor(corpusFile("three-cylinder-10-turbo")) == Driver::Presses);
     CHECK_FALSE(leverDrives(buildPath("turbo-six")));               // the generator's (dual clutch)
     CHECK_FALSE(leverDrives(buildPath("large-diesel")));            // no box named: the default, a manual
 
@@ -35,13 +38,20 @@ TEST_CASE("the pull drives an automatic and a CVT in D, and moves no other box's
     // only a box the lever drives gets the lever's two steps
     for (Kind k : {Kind::Pull, Kind::Launch})
     {
-        const std::string n = scenarioJson(k, 0u, false), d = scenarioJson(k, 0u, true);
+        const std::string n = scenarioJson(k, 0u, Driver::Presses), d = scenarioJson(k, 0u, Driver::Lever);
         CHECK(n == scenarioJson(k, 0u));
         CHECK(n != d);
         CHECK(n.find("\"lever\": 1 ") == std::string::npos);
         CHECK(d.find("\"lever\": 1 ") != std::string::npos);
     }
-    CHECK(scenarioJson(Kind::Tour, 0u, false) == scenarioJson(Kind::Tour, 0u, true));   // the tour drives nowhere
+    CHECK(scenarioJson(Kind::Tour, 0u, Driver::Presses) == scenarioJson(Kind::Tour, 0u, Driver::Lever));   // the tour drives nowhere
+    // the truck's pull-away: the L slot and the clutch, on the pull only
+    {
+        const std::string t = scenarioJson(Kind::Pull, 0u, Driver::Truck);
+        CHECK(t.find("\"lever\": 5 ") != std::string::npos);
+        CHECK(t.find("\"lever\": 1 ") == std::string::npos);
+        CHECK(scenarioJson(Kind::Launch, 0u, Driver::Truck) == scenarioJson(Kind::Launch, 0u, Driver::Presses));
+    }
 
     // and the car moves: in gear and under way mid-pull, where in N it stood still at gear 0
     for (const char* stem : {"economy-four-15", "twin-turbo-hot-vee-v8-40"})
