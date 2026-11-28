@@ -2894,6 +2894,24 @@ forward. None was re-run to green.
   answer; simulator compiling at the call". The first automated evidence on the owner's platform.
 - Windows: "run-wake: no link on this platform (Windows): nothing to call; not a failure".
 
+## 28 Nov: CI's record, the first green soak since the window, and the schedule's real hour (the steward)
+
+**The scheduled soak on main at f7c54737** (run 46142427067, event schedule, filed under main): linux-x64-soak green, 228
+of 228.
+
+- Its wall time was 4463 s (11:59:29 to 13:13:52Z), +212 over 4251, inside the line. ctest's total was 4333 s.
+- Per case against ddacdf97's soak, the summed case time is 15569 to 15526 s (-42). The one grower is
+  ui.build.bake.pictures (243.6 to 357.6 s, J2's restatement, by design).
+- Nothing was red, so nothing outside Known.h. Last night's seven sometimes rows (X-048's three, X-052's four) and
+  X-065's two all passed their one draw: that is what sometimes rows do.
+- A green night's log shows no row's "combo |" line: ctest prints a test's output only when it fails, and the test log
+  was kept only on failure. From 28 Nov the soak tier keeps it every night (the lead's ruling), so a green night's
+  rows, and their excess against their bound, can be read.
+
+**The schedule's hour.** build.yml's schedule says `cron: "23 3 * * *"` (03:23 UTC). GitHub delivers it here about
+nine hours late: the 27 Nov run was created at 12:46:08Z and the 28 Nov run at 11:59:21Z. Plan on a nightly soak
+between about noon and 14:00 UTC, not on 03:23.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **27 Nov 23:52 UTC: `main`'s OWN RUN ON f7c54737 IS GREEN ON ALL THREE (run 46081518403): X-067 CURED ON TWO macOS

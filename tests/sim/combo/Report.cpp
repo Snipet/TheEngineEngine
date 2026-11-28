@@ -68,7 +68,8 @@ namespace combo
             if (csv)
                 csv << c << "," << build << "," << scenario << "," << v.stepMax << "," << v.dcMax << ","
                     << v.idle * 30.0 / 3.14159265 << "," << v.revMax * 30.0 / 3.14159265 << ","
-                    << (r > 0 ? v.coreShare / r : 0.0) << "," << v.coreShare << "," << v.failures.size() << "\n";
+                    << (r > 0 ? v.coreShare / r : 0.0) << "," << v.coreShare << "," << v.failures.size() << ","
+                    << excess << "," << v.excessBound << "\n";   // the row's excess and its bound, at the end (-1: none)
         }
         int knownCount = 0;
         for (const Failure& f : v.failures)
