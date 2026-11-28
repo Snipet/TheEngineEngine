@@ -2914,6 +2914,21 @@ between about noon and 14:00 UTC, not on 03:23.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **28 Nov 14:23 UTC: THE SCHEDULED SOAK ON `main` (f7c54737) IS GREEN: 228 of 228** (run 46142427067, event schedule;
+  linux-x64-soak 11:59:29 to 13:13:52Z; the steward's read, and the lead's own of the run and its job). Nothing
+  red outside `Known.h`, and nothing red at all: the seven sometimes-rows and X-065's two each passed their one
+  draw of the night. Wall 4463 s against 4251; the one grower `ui.build.bake.pictures` (+114 s, by design).
+  `main` is clean by its gate, by its own run, and by the soak.
+  - The run was created at 11:59:21Z, not at the cron's 03:23 (yesterday's at 12:46): the schedule arrives about
+    nine hours late here.
+  - A green night's log shows no row's line, so the rows near their bound cannot be counted from it. Ruled, the
+    steward's proposal: the soak tier keeps its test log every night (one line in `build.yml`, the step "Keep the
+    test log and what the tests wrote"), and each combo row's excess and bound go at the end of its row in
+    `out/combo/runs.csv` once the file's readers have been searched for. One push by the steward on its tier,
+    with a soak asked for on that push so the artifact and the count exist today.
+  - With the owner, unanswered since 27 Nov: compaction for the chat; the Places loudness question with L's clips;
+    their own try of Claude Desktop with the window minimised; the G29 items. The sim window stays closed until
+    they ask.
 - **27 Nov 23:52 UTC: `main`'s OWN RUN ON f7c54737 IS GREEN ON ALL THREE (run 46081518403): X-067 CURED ON TWO macOS
   DRAWS.** The lead's read of the macOS job's log: 599 of 599; `shell.app.cases` passed (46.57 s); the packed
   application's lines "run-wake: answered in 0.03 s; window: minimised=1 hidden=0 occluded=1; ticks 30 before the
