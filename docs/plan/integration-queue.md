@@ -2914,6 +2914,11 @@ between about noon and 14:00 UTC, not on 03:23.
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
+- **28 Nov 15:02 UTC: `main` IS AT 73924cf3** (run 46155625398: Linux 600, macOS 599, Windows 590, green; gated
+  trees unchanged: sim 22314cde, host ef1715f6, tools 7c3e4d59). In it: the steward's push (the soak keeps its
+  log every night; the excess and bound at the end of each `runs.csv` row; tier of record 600 of 600 in its
+  plain tree). Owed: `main`'s own run on it, read when it ends; the soak asked for on that push (its artifact,
+  the count of rows within 15 % of their bound, the nine known rows' excesses), then the ruling on a second draw.
 - **28 Nov 14:23 UTC: THE SCHEDULED SOAK ON `main` (f7c54737) IS GREEN: 228 of 228** (run 46142427067, event schedule;
   linux-x64-soak 11:59:29 to 13:13:52Z; the steward's read, and the lead's own of the run and its job). Nothing
   red outside `Known.h`, and nothing red at all: the seven sometimes-rows and X-065's two each passed their one

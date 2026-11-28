@@ -43,6 +43,12 @@
 
 ## Landed
 
+- **28 Nov 15:02 UTC: `main` at 73924cf3.** Run 46155625398: Linux 600, macOS 599, Windows 590, green (the
+  steward's counts; the lead read the three jobs' conclusions); its soak still running at the move. Gated trees
+  unchanged: `sim` 22314cde, `host` ef1715f6, `tools` 7c3e4d59. In it, past f7c54737, the steward's one push: the
+  soak tier keeps its test log every night (one line in `build.yml`), and each combo row's excess and bound end
+  its row in `out/combo/runs.csv` (no reader of that file found). Nothing the owner would notice. Before it, the
+  scheduled soak on f7c54737 was green, 228 of 228 (run 46142427067).
 - **27 Nov 23:16 UTC: `main` at f7c54737.** Run 46077563740: Linux, Windows and macOS green (macOS 599 of 599,
   `shell.app.cases` passed: the lead's read of its log). Gated trees unchanged: `sim` 22314cde, `host` ef1715f6,
   `tools` 7c3e4d59. In it, past 2a92cc86: B's restatement of the wake's "not yet" case (X-067): the case no
